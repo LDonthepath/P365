@@ -16,11 +16,17 @@ function toJakartaTime(utcDate: Date): string {
   return new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false }).format(utcDate);
 }
 
+function jakartaDate(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value;
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
 function statusFor(date: Date, now: Date): CalendarStatus {
   const dayMs = 24 * 60 * 60 * 1000;
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfTarget = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.round((startOfTarget.getTime() - startOfToday.getTime()) / dayMs);
+  const today = new Date(`${jakartaDate(now)}T00:00:00Z`);
+  const target = new Date(`${jakartaDate(date)}T00:00:00Z`);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / dayMs);
   if (diffDays < 0) return "PAST";
   if (diffDays === 0) return date.getTime() > now.getTime() ? "TODAY" : "PAST";
   if (diffDays === 1) return "TOMORROW";
@@ -40,16 +46,17 @@ export async function fetchEconomicCalendar(limit = 6): Promise<ProviderResult<C
   url.searchParams.set("apikey", apiKey);
 
   try {
-    const res = await fetch(url.toString(), { next: { revalidate: 1800 } });
+    const res = await fetch(url.toString(), { next: { revalidate: 1800 }, signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return { status: "ERROR", data: [], message: `FMP HTTP ${res.status}` };
     const data = (await res.json()) as unknown;
     if (!Array.isArray(data)) return { status: "EMPTY", data: [] };
 
     const events = (data as FmpEvent[])
       .filter((item) => item.country === "US")
-      .map((item, index): CalendarEvent => {
+      .flatMap((item, index): CalendarEvent[] => {
         const date = new Date(`${item.date.replace(" ", "T")}Z`);
-        return {
+        if (!item.event?.trim() || !item.country?.trim() || !Number.isFinite(date.getTime())) return [];
+        return [{
           id: `${item.event}-${item.date}-${index}`,
           time: toJakartaTime(date),
           event: item.event,
@@ -57,7 +64,7 @@ export async function fetchEconomicCalendar(limit = 6): Promise<ProviderResult<C
           impact: mapImpact(item.impact),
           status: statusFor(date, now),
           dateISO: date.toISOString(),
-        };
+        }];
       })
       .filter((item) => item.status !== "PAST")
       .sort((a, b) => new Date(a.dateISO).getTime() - new Date(b.dateISO).getTime())

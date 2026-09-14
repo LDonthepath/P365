@@ -6,7 +6,7 @@ import { fetchCryptoMarketObservations } from "./crypto-market";
 import type { CalendarEvent, NewsItem, ProviderResult } from "./types";
 import type { Evidence, Event, Observation, ProviderHealth } from "../domain/types";
 import {
-  calendarToEvents,
+  calendarToCanonicalRecords,
   cryptoMarketToObservations,
   newsToEvidence,
   providerHealthForResult,
@@ -77,10 +77,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     ...newsToEvidence(avCrypto, P365_SOURCES.alphaVantage.id),
     ...newsToEvidence(coinDesk, P365_SOURCES.coinDesk.id),
   ];
-  const events = calendarToEvents(calendarEvents, P365_SOURCES.fmp.id);
+  const calendarRecords = calendarToCanonicalRecords(calendarEvents, P365_SOURCES.fmp.id);
+  const events = calendarRecords.events;
   const marketFacts = cryptoMarketToObservations(cryptoMarketProvider.data, P365_SOURCES.alphaVantageMarket.id);
   const observations = marketFacts.observations;
-  const evidence = [...newsEvidence, ...marketFacts.evidence];
+  const evidence = [...newsEvidence, ...calendarRecords.evidence, ...marketFacts.evidence];
   const providerHealth = [
     providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider),
     providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider),
