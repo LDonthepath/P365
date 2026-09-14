@@ -2,9 +2,16 @@ import "server-only";
 import { fetchAlphaVantageCryptoNews, fetchMacroNews } from "./alpha-vantage";
 import { fetchCoinDeskNews } from "./coindesk-rss";
 import { fetchEconomicCalendar } from "./economic-calendar";
+import { fetchCryptoMarketObservations } from "./crypto-market";
 import type { CalendarEvent, NewsItem, ProviderResult } from "./types";
 import type { Evidence, Event, Observation, ProviderHealth } from "../domain/types";
-import { calendarToEvents, newsToEvidence, providerHealthForResult, P365_SOURCES } from "../domain/normalize";
+import {
+  calendarToEvents,
+  cryptoMarketToObservations,
+  newsToEvidence,
+  providerHealthForResult,
+  P365_SOURCES,
+} from "../domain/normalize";
 
 export type DashboardData = {
   macroNews: NewsItem[];
@@ -37,17 +44,19 @@ function resultOrEmpty<T>(result: PromiseSettledResult<ProviderResult<T>>): Prov
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [macroResult, avCryptoResult, coinDeskResult, calendarResult] = await Promise.allSettled([
+  const [macroResult, avCryptoResult, coinDeskResult, calendarResult, cryptoMarketResult] = await Promise.allSettled([
     fetchMacroNews(6),
     fetchAlphaVantageCryptoNews(4),
     fetchCoinDeskNews(6),
     fetchEconomicCalendar(6),
+    fetchCryptoMarketObservations(["BTC", "ETH"]),
   ]);
 
   const macroProvider = resultOrEmpty(macroResult);
   const avCryptoProvider = resultOrEmpty(avCryptoResult);
   const coinDeskProvider = resultOrEmpty(coinDeskResult);
   const calendarProvider = resultOrEmpty(calendarResult);
+  const cryptoMarketProvider = resultOrEmpty(cryptoMarketResult);
 
   const macroNews = macroProvider.data;
   const avCrypto = avCryptoProvider.data;
@@ -61,18 +70,22 @@ export async function getDashboardData(): Promise<DashboardData> {
     unavailableSources.push(`berita crypto (CoinDesk: ${coinDeskProvider.status}; Alpha Vantage: ${avCryptoProvider.status})`);
   }
   if (calendarProvider.status !== "SUCCESS") unavailableSources.push(`kalender ekonomi (Financial Modeling Prep: ${calendarProvider.status})`);
+  if (cryptoMarketProvider.status !== "SUCCESS") unavailableSources.push(`market crypto (Alpha Vantage: ${cryptoMarketProvider.status})`);
 
-  const evidence = [
+  const newsEvidence = [
     ...newsToEvidence(macroNews, P365_SOURCES.alphaVantage.id),
     ...newsToEvidence(avCrypto, P365_SOURCES.alphaVantage.id),
     ...newsToEvidence(coinDesk, P365_SOURCES.coinDesk.id),
   ];
   const events = calendarToEvents(calendarEvents, P365_SOURCES.fmp.id);
-  const observations: Observation[] = [];
+  const marketFacts = cryptoMarketToObservations(cryptoMarketProvider.data, P365_SOURCES.alphaVantageMarket.id);
+  const observations = marketFacts.observations;
+  const evidence = [...newsEvidence, ...marketFacts.evidence];
   const providerHealth = [
     providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider),
     providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider),
     providerHealthForResult(P365_SOURCES.fmp.id, calendarProvider),
+    providerHealthForResult(P365_SOURCES.alphaVantageMarket.id, cryptoMarketProvider),
   ];
 
   return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, unavailableSources, observations, events, evidence, providerHealth };
