@@ -3,12 +3,17 @@ import { fetchAlphaVantageCryptoNews, fetchMacroNews } from "./alpha-vantage";
 import { fetchCoinDeskNews } from "./coindesk-rss";
 import { fetchEconomicCalendar } from "./economic-calendar";
 import type { CalendarEvent, NewsItem } from "./types";
+import type { Event, Observation, ProviderHealth } from "../domain/types";
+import { calendarToEvents, newsToObservations, providerHealth, P365_SOURCES } from "../domain/normalize";
 
 export type DashboardData = {
   macroNews: NewsItem[];
   cryptoNews: NewsItem[];
   calendarEvents: CalendarEvent[];
   unavailableSources: string[];
+  observations: Observation[];
+  events: Event[];
+  providerHealth: ProviderHealth[];
 };
 
 function dedupeByTitle(items: NewsItem[]): NewsItem[] {
@@ -46,10 +51,35 @@ export async function getDashboardData(): Promise<DashboardData> {
   const calendarEvents = calendarResult.status === "fulfilled" ? calendarResult.value : [];
   if (calendarEvents.length === 0) unavailableSources.push("kalender ekonomi (Financial Modeling Prep)");
 
+  const observations = [
+    ...newsToObservations(macroNews, P365_SOURCES.alphaVantage.id, "MACRO"),
+    ...newsToObservations(cryptoNews, P365_SOURCES.coinDesk.id),
+  ];
+  const events = calendarToEvents(calendarEvents, P365_SOURCES.fmp.id);
+  const providerHealth = [
+    providerHealthForResult(P365_SOURCES.alphaVantage.id, macroResult, macroNews),
+    providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskResult, coinDesk),
+    providerHealthForResult(P365_SOURCES.fmp.id, calendarResult, calendarEvents),
+  ];
+
   return {
     macroNews: sortByRecency(macroNews),
     cryptoNews,
     calendarEvents,
     unavailableSources,
+    observations,
+    events,
+    providerHealth,
   };
+}
+
+function providerHealthForResult<T>(
+  sourceId: string,
+  result: PromiseSettledResult<T>,
+  items: unknown[],
+): ProviderHealth {
+  if (result.status === "rejected") {
+    return providerHealth(sourceId, items, "ERROR", result.reason instanceof Error ? result.reason.message : "Provider request failed");
+  }
+  return providerHealth(sourceId, items);
 }
