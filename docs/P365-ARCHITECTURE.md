@@ -65,6 +65,20 @@ The observation is therefore never created from a news headline or from an inter
 
 This limitation is intentional. P365 must not fabricate macro observations from narrative news or calendar metadata.
 
+## Intelligence Contract v0.1
+
+The Intelligence layer is currently a **semantic contract and validation layer**, not an autonomous market-interpretation engine.
+
+Each Intelligence object must provide:
+
+`WHAT → WHY → CONFIRMS → CONTRADICTS → INVALIDATES → MONITOR → CONFIDENCE → EVIDENCE`
+
+`lib/domain/contracts.ts` validates that WHAT and WHY are present, evidence exists, confirmation/contradiction references are valid and non-duplicated, and invalidation/monitor criteria are non-empty.
+
+Domain-specific rules are still required before P365 can automatically generate Regime, liquidity, capital-flow, sentiment, or other market interpretations.
+
+See `docs/P365-INTELLIGENCE-CONTRACT.md` for the full contract.
+
 ## Invariants
 
 1. Intelligence must have evidence.
@@ -77,6 +91,7 @@ This limitation is intentional. P365 must not fabricate macro observations from 
 8. Provider-specific response shapes must not leak into the domain layer.
 9. Every canonical observation produced by the current market pipeline has linked Evidence.
 10. News is not silently promoted into Observation.
+11. Intelligence must remain traceable to canonical evidence and explicit reasoning fields.
 
 ## v0.1 implementation
 
