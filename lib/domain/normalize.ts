@@ -1,8 +1,10 @@
 import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
-import type { DataQuality, Evidence, Event, ProviderHealth, SourceHealthStatus } from "./types";
+import type { CryptoMarketObservationInput } from "../data/crypto-market";
+import type { DataQuality, Evidence, Event, Observation, ProviderHealth, SourceHealthStatus } from "./types";
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
+  alphaVantageMarket: { id: "alpha-vantage-market", name: "Alpha Vantage Market", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   fmp: { id: "financial-modeling-prep", name: "Financial Modeling Prep", type: "CALENDAR" },
 } as const;
@@ -46,6 +48,34 @@ export function calendarToEvents(items: CalendarEvent[], sourceId: string): Even
   });
 }
 
+export function cryptoMarketToObservations(items: CryptoMarketObservationInput[], sourceId: string): {
+  observations: Observation[];
+  evidence: Evidence[];
+} {
+  const evidence = items.map((item) => ({
+    id: hashId("evidence", `${sourceId}:${item.symbol}:${item.observedAt}`),
+    sourceId,
+    kind: "OBSERVATION" as const,
+    subject: `${item.symbol}/USD spot rate`,
+    content: `${item.symbol}/USD observed at ${item.value}`,
+    capturedAt: item.observedAt,
+    metadata: item.metadata,
+  }));
+
+  const observations = items.map((item, index) => observationFromCanonicalFact({
+    id: hashId("observation", `${sourceId}:${item.symbol}:${item.observedAt}`),
+    domain: "ASSET",
+    subject: `${item.symbol}/USD spot rate`,
+    value: String(item.value),
+    observedAt: item.observedAt,
+    sourceId,
+    evidenceId: evidence[index].id,
+    metadata: { symbol: item.symbol, quote: "USD", ...item.metadata },
+  }));
+
+  return { observations, evidence };
+}
+
 export function observationFromCanonicalFact(input: {
   id: string;
   domain: "MARKET" | "MACRO" | "ASSET" | "OTHER";
@@ -55,7 +85,7 @@ export function observationFromCanonicalFact(input: {
   sourceId: string;
   evidenceId: string;
   metadata?: Record<string, string | number | boolean | null>;
-}): import("./types").Observation {
+}): Observation {
   return {
     ...input,
     quality: observationQuality(input.observedAt),
