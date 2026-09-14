@@ -4,20 +4,19 @@ import { verifySession } from "@/lib/auth";
 import { getDashboardData } from "@/lib/data/dashboard-data";
 import { relativeTimeID } from "@/lib/data/format";
 import type { CalendarEvent, NewsItem } from "@/lib/data/types";
+import type { DataQuality, ProviderHealth } from "@/lib/domain/types";
 import { logout } from "./actions";
 
 function NewsCard({ item }: { item: NewsItem }) {
   return (
-    <article className="news-card">
+    <article className="evidence-item">
       <div className="card-meta">
         <span>{item.category}</span>
         <span>{item.source} · {relativeTimeID(item.publishedAt)}</span>
       </div>
       <h3>{item.title}</h3>
       <p>{item.summary}</p>
-      <a className="text-link" href={item.url} target="_blank" rel="noreferrer">
-        Baca sumber ↗
-      </a>
+      <a className="text-link" href={item.url} target="_blank" rel="noreferrer">Inspect source ↗</a>
     </article>
   );
 }
@@ -25,14 +24,8 @@ function NewsCard({ item }: { item: NewsItem }) {
 function CalendarRow({ item }: { item: CalendarEvent }) {
   return (
     <article className="calendar-row">
-      <time>
-        {item.time}
-        <small>WIB</small>
-      </time>
-      <div>
-        <h3>{item.event}</h3>
-        <p>{item.country} · {item.status}</p>
-      </div>
+      <time>{item.time}<small>WIB</small></time>
+      <div><h3>{item.event}</h3><p>{item.country} · {item.status}</p></div>
       <span className={`impact ${item.impact.toLowerCase()}`}>{item.impact}</span>
     </article>
   );
@@ -42,134 +35,149 @@ function EmptyPanelNote({ label }: { label: string }) {
   return <p className="muted">Data {label} belum tersedia saat ini. Coba muat ulang beberapa saat lagi.</p>;
 }
 
+function StatusBadge({ value }: { value: "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE" }) {
+  return <span className={`status-badge ${value.toLowerCase()}`}>{value}</span>;
+}
+
+function observationQualityStatus(qualities: DataQuality[]): "PENDING" | "FRESH" | "PARTIAL" {
+  if (qualities.length === 0) return "PENDING";
+  if (qualities.every((quality) => quality === "FRESH")) return "FRESH";
+  return "PARTIAL";
+}
+
+function providerStatus(health: ProviderHealth[]): "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE" {
+  if (health.length === 0) return "PENDING";
+  if (health.some((item) => item.status === "ERROR" || item.status === "UNAVAILABLE")) return "UNAVAILABLE";
+  if (health.some((item) => item.status === "STALE")) return "PARTIAL";
+  if (health.some((item) => item.status === "EMPTY")) return "PENDING";
+  return "FRESH";
+}
+
+const filterLinkStyle = { color: "var(--muted)", textDecoration: "none", padding: "9px 11px", fontSize: "11px" } as const;
+const activeFilterLinkStyle = { ...filterLinkStyle, color: "var(--bg)", background: "var(--lime)", borderRadius: "3px" } as const;
+
 export default async function DashboardPage() {
   const session = await verifySession((await cookies()).get("market_briefing_session")?.value);
   if (!session) redirect("/login");
 
-  const { macroNews, cryptoNews, calendarEvents, unavailableSources } = await getDashboardData();
-  const highImpactEvent = calendarEvents.find((item) => item.impact === "HIGH");
-  const topCryptoHeadline = cryptoNews[0];
-  const isLive = unavailableSources.length === 0;
+  const {
+    macroNews,
+    cryptoNews,
+    calendarEvents,
+    unavailableSources,
+    observations,
+    evidence,
+    providerHealth,
+  } = await getDashboardData();
+
+  const marketObservationStatus = observationQualityStatus(observations.map((item) => item.quality));
+  const sourceStatus = providerStatus(providerHealth);
+  const highImpactEvents = calendarEvents.filter((item) => item.impact === "HIGH").length;
+  const macroNewsEvidenceCount = macroNews.length;
+  const cryptoNewsEvidenceCount = cryptoNews.length;
 
   return (
     <main className="dashboard-shell">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">MARKET INTELLIGENCE // PRIVATE</p>
-          <h1>Market Briefing<span>.</span></h1>
-        </div>
+        <div><p className="eyebrow">P365 // MARKET INTELLIGENCE</p><h1>Market Intelligence<span>.</span></h1></div>
         <div className="topbar-actions">
-          <p><span className="live-dot" /> {isLive ? "DATA LIVE" : "SEBAGIAN DATA TIDAK TERSEDIA"}</p>
+          <p><span className={`live-dot ${sourceStatus === "UNAVAILABLE" ? "warning" : ""}`} /> {sourceStatus === "FRESH" ? "DATA HEALTHY" : "DATA ATTENTION"}</p>
           <form action={logout}><button className="logout" type="submit">Keluar</button></form>
         </div>
       </header>
 
       <nav className="filters" aria-label="Dashboard sections">
-        <button className="active" type="button">Overview</button>
-        <button type="button">Macro</button>
-        <button type="button">Crypto</button>
-        <button type="button">Calendar</button>
+        <a href="#overview" style={activeFilterLinkStyle}>Overview</a>
+        <a href="#macro-evidence" style={filterLinkStyle}>Macro</a>
+        <a href="#crypto-evidence" style={filterLinkStyle}>Crypto</a>
+        <a href="#intelligence" style={filterLinkStyle}>Intelligence</a>
+        <a href="#evidence" style={filterLinkStyle}>Evidence</a>
         <span>WIB / ASIA-JAKARTA</span>
       </nav>
 
-      <section className="briefing panel" aria-labelledby="briefing-title">
-        <div className="panel-label">
-          <span>01 / DAILY BRIEFING</span>
-          <time>LIVE</time>
+      <section id="overview" className="market-state panel" aria-labelledby="state-title">
+        <div className="panel-label"><span>01 / GLOBAL MARKET STATE</span><StatusBadge value="PENDING" /></div>
+        <div className="state-grid">
+          <div>
+            <h2 id="state-title">No consolidated market state yet.</h2>
+            <p>Validated market observations are available, but P365 does not yet have the domain-specific rules required to establish a consolidated market interpretation.</p>
+          </div>
+          <div className="state-meta">
+            <div><span>CONFIDENCE</span><strong>PENDING</strong></div>
+            <div><span>OBSERVATIONS</span><strong>{observations.length} · {marketObservationStatus}</strong></div>
+            <div><span>CANONICAL EVIDENCE</span><strong>{evidence.length} items</strong></div>
+            <div><span>UPCOMING EVENTS</span><strong>{calendarEvents.length}</strong></div>
+          </div>
         </div>
-        <h2 id="briefing-title">Market focus before the session begins.</h2>
-        <p>
-          Ringkasan otomatis berbasis data real dari Alpha Vantage, CoinDesk, dan Financial Modeling Prep.
-          Ringkasan naratif AI penuh berbahasa Indonesia menyusul di sprint berikutnya.
-        </p>
-        <div className="briefing-points">
-          <span>• Event ekonomi mendatang: {calendarEvents.length}</span>
-          <span>• Berita makro terpantau: {macroNews.length}</span>
-          <span>• Berita crypto terpantau: {cryptoNews.length}</span>
-        </div>
-        {unavailableSources.length > 0 && (
-          <p className="muted">Sumber belum tersedia: {unavailableSources.join(", ")}.</p>
-        )}
       </section>
 
       <section className="dashboard-grid">
         <div className="main-column">
-          <section className="panel" aria-labelledby="priority-title">
-            <div className="panel-label">
-              <span>02 / PRIORITY SIGNALS</span>
-              <span>{[highImpactEvent, topCryptoHeadline].filter(Boolean).length} ITEMS</span>
+          <section id="intelligence" className="panel intelligence-panel" aria-labelledby="intelligence-title">
+            <div className="panel-label"><span>02 / MARKET INTELLIGENCE</span><span>SEMANTIC CONTRACT</span></div>
+            <h2 id="intelligence-title">Interpretation is pending.</h2>
+            <p className="lead-copy">P365 will only promote an interpretation when evidence is sufficient. Raw headlines, events, or isolated observations are never presented as market intelligence by themselves.</p>
+            <div className="reasoning-grid">
+              <div><span>WHAT</span><p>No consolidated interpretation exists yet.</p></div>
+              <div><span>WHY</span><p>Higher-level semantic thresholds are not defined yet.</p></div>
+              <div><span>CONFIRMS</span><p>Canonical evidence is available for inspection below.</p></div>
+              <div><span>CONTRADICTS</span><p>No active intelligence claim exists to contradict.</p></div>
+              <div><span>INVALIDATES</span><p>No active interpretation exists, so no invalidation criteria are currently asserted.</p></div>
+              <div><span>MONITOR</span><p>Watch observation quality, provider health, and upcoming events.</p></div>
             </div>
-            <h2 id="priority-title">Perlu diperhatikan</h2>
-            <div className="priority-list">
-              {highImpactEvent ? (
-                <article>
-                  <div><span className="impact high">HIGH</span><span className="tag">MACRO</span></div>
-                  <h3>{highImpactEvent.event}</h3>
-                  <p>{highImpactEvent.time} WIB · Event berdampak tinggi</p>
-                </article>
-              ) : null}
-              {topCryptoHeadline ? (
-                <article>
-                  <div><span className="impact high">HIGH</span><span className="tag">CRYPTO</span></div>
-                  <h3>{topCryptoHeadline.title}</h3>
-                  <p>{topCryptoHeadline.source} · {relativeTimeID(topCryptoHeadline.publishedAt)}</p>
-                </article>
-              ) : null}
-              {!highImpactEvent && !topCryptoHeadline ? (
-                <EmptyPanelNote label="priority signal" />
-              ) : null}
+            <div className="intelligence-footer">
+              <div><span>CONFIDENCE</span><StatusBadge value="PENDING" /></div>
+              <div><span>CANONICAL EVIDENCE</span><strong>{evidence.length}</strong></div>
             </div>
           </section>
 
-          <section className="panel news-section" aria-labelledby="macro-title">
-            <div className="panel-label">
-              <span>03 / MACRO NEWS</span>
-              <span>ALPHA VANTAGE</span>
-            </div>
-            <h2 id="macro-title">Konteks makro</h2>
-            <div className="news-list">
-              {macroNews.length > 0
-                ? macroNews.map((item) => <NewsCard item={item} key={item.id} />)
-                : <EmptyPanelNote label="berita makro" />}
+          <section className="panel" aria-labelledby="monitor-title">
+            <div className="panel-label"><span>03 / MONITOR</span><span>NO ACTIVE INTERPRETATION</span></div>
+            <h2 id="monitor-title">What should be watched?</h2>
+            <div className="monitor-list">
+              <div><strong>Market observations</strong><span>{observations.length} canonical observation(s) · {marketObservationStatus} quality.</span></div>
+              <div><strong>Macro events</strong><span>{highImpactEvents} high-impact event(s) currently visible.</span></div>
+              <div><strong>Provider health</strong><span>{sourceStatus === "FRESH" ? "All configured providers returned healthy results." : "One or more providers require attention."}</span></div>
             </div>
           </section>
 
-          <section className="panel news-section" aria-labelledby="crypto-title">
-            <div className="panel-label">
-              <span>04 / CRYPTO NEWS</span>
-              <span>COINDESK + ALPHA VANTAGE</span>
-            </div>
-            <h2 id="crypto-title">Konteks crypto</h2>
+          <section id="evidence" className="panel" aria-labelledby="evidence-title">
+            <div className="panel-label"><span>04 / RECENT EVIDENCE</span><span>{evidence.length} CANONICAL ITEMS</span></div>
+            <h2 id="evidence-title">Raw evidence layer</h2>
+            <p className="section-note">Evidence is rendered from the canonical domain layer. News is not automatically promoted to intelligence.</p>
             <div className="news-list">
-              {cryptoNews.length > 0
-                ? cryptoNews.map((item) => <NewsCard item={item} key={item.id} />)
-                : <EmptyPanelNote label="berita crypto" />}
+              <div id="macro-evidence"><span className="eyebrow">MACRO NEWS EVIDENCE · {macroNewsEvidenceCount}</span>{macroNews.slice(0, 4).map((item) => <NewsCard item={item} key={`macro-${item.id}`} />)}</div>
+              <div id="crypto-evidence"><span className="eyebrow">CRYPTO NEWS EVIDENCE · {cryptoNewsEvidenceCount}</span>{cryptoNews.slice(0, 4).map((item) => <NewsCard item={item} key={`crypto-${item.id}`} />)}</div>
+              {evidence.length === 0 ? <EmptyPanelNote label="evidence" /> : null}
             </div>
           </section>
         </div>
 
         <aside className="side-column">
-          <section className="panel calendar" aria-labelledby="calendar-title">
-            <div className="panel-label">
-              <span>05 / ECONOMIC CALENDAR</span>
-              <span>TODAY + 3</span>
-            </div>
-            <h2 id="calendar-title">Agenda penting</h2>
-            {calendarEvents.length > 0
-              ? calendarEvents.map((item) => <CalendarRow item={item} key={item.id} />)
-              : <EmptyPanelNote label="kalender ekonomi" />}
+          <section className="panel market-watch" aria-labelledby="watch-title">
+            <div className="panel-label"><span>05 / MARKET WATCH</span><span>DOMAIN COVERAGE</span></div>
+            <h2 id="watch-title">Coverage</h2>
+            <div className="watch-row"><span>Macro news evidence</span><strong>{macroNewsEvidenceCount}</strong><StatusBadge value={macroNewsEvidenceCount ? "FRESH" : "PENDING"} /></div>
+            <div className="watch-row"><span>Crypto news evidence</span><strong>{cryptoNewsEvidenceCount}</strong><StatusBadge value={cryptoNewsEvidenceCount ? "FRESH" : "PENDING"} /></div>
+            <div className="watch-row"><span>Market observations</span><strong>{observations.length}</strong><StatusBadge value={marketObservationStatus} /></div>
+            <div className="watch-row"><span>Providers</span><strong>{providerHealth.length}</strong><StatusBadge value={sourceStatus} /></div>
           </section>
 
-          <section className="panel profile">
-            <p className="panel-label">SESSION</p>
-            <p>Signed in as</p>
-            <strong>{session.email}</strong>
-            <p className="muted">
-              {isLive
-                ? "Semua sumber data aktif."
-                : "Beberapa sumber data sedang tidak tersedia — cek environment variable API key terkait."}
-            </p>
+          <section className="panel calendar" aria-labelledby="calendar-title">
+            <div className="panel-label"><span>06 / UPCOMING EVENTS</span><span>{calendarEvents.length} ITEMS</span></div>
+            <h2 id="calendar-title">Agenda penting</h2>
+            {calendarEvents.length > 0 ? calendarEvents.map((item) => <CalendarRow item={item} key={item.id} />) : <EmptyPanelNote label="kalender ekonomi" />}
           </section>
+
+          <section className="panel data-health" aria-labelledby="health-title">
+            <div className="panel-label"><span>07 / DATA HEALTH</span><span>{sourceStatus === "FRESH" ? "HEALTHY" : "ATTENTION"}</span></div>
+            <h2 id="health-title">Source status</h2>
+            {unavailableSources.length === 0
+              ? <p className="health-ok">All configured sources returned available data for this request.</p>
+              : <><p className="health-warning">Some sources are unavailable. This is not equivalent to an empty result.</p><div className="source-list">{unavailableSources.map((source) => <span key={source}>{source}</span>)}</div></>}
+          </section>
+
+          <section className="panel profile"><p className="panel-label">SESSION</p><p>Signed in as</p><strong>{session.email}</strong></section>
         </aside>
       </section>
     </main>
