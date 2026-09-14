@@ -1,4 +1,5 @@
 import type { Context, Event, Observation } from "./types";
+import { assertContextHasEvidence } from "./contracts";
 
 export function buildContext(input: {
   id: string;
@@ -7,13 +8,15 @@ export function buildContext(input: {
   events: Event[];
   createdAt?: string;
 }): Context {
-  return {
+  const context = {
     id: input.id,
     statement: input.statement,
     observationIds: input.observations.map((item) => item.id),
     eventIds: input.events.map((item) => item.id),
     createdAt: input.createdAt ?? new Date().toISOString(),
-  };
+  } satisfies Context;
+
+  return assertContextHasEvidence(context);
 }
 
 export function contextHasEvidence(context: Context): boolean {
