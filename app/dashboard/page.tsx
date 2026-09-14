@@ -85,7 +85,7 @@ export default async function DashboardPage() {
   return (
     <main className="dashboard-shell">
       <header className="topbar">
-        <div><p className="eyebrow">P365 // MARKET INTELLIGENCE</p><h1>Market Intelligence<span>.</span></h1></div>
+        <div><div className="brand-lockup"><span className="brand-mark" aria-hidden="true">P</span><p className="eyebrow">P365 // MARKET INTELLIGENCE</p></div><h1>Market Intelligence<span>.</span></h1></div>
         <div className="topbar-actions">
           <p><span className={`live-dot ${sourceStatus === "UNAVAILABLE" ? "warning" : ""}`} /> {sourceStatus === "FRESH" ? "DATA SEHAT" : "PERLU PERHATIAN"}</p>
           <form action={logout}><button className="logout" type="submit">Keluar</button></form>
