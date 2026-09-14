@@ -1,13 +1,8 @@
 export type SourceType = "NEWS" | "MARKET" | "CALENDAR" | "MACRO" | "OTHER";
-
 export type SourceHealthStatus = "HEALTHY" | "EMPTY" | "ERROR" | "UNAVAILABLE" | "STALE";
-
 export type DataQuality = "FRESH" | "STALE" | "PARTIAL" | "UNKNOWN";
-
 export type Confidence = "CONFIRMED" | "LEANING" | "PENDING";
-
-export type ObservationDomain = "MARKET" | "MACRO" | "ASSET" | "NEWS" | "OTHER";
-
+export type ObservationDomain = "MARKET" | "MACRO" | "ASSET" | "OTHER";
 export type EventStatus = "UPCOMING" | "ACTIVE" | "PAST" | "UNKNOWN";
 
 export type Source = {
@@ -23,6 +18,16 @@ export type EvidenceRef = {
   observationId?: string;
   eventId?: string;
   capturedAt: string;
+};
+
+export type Evidence = {
+  id: string;
+  sourceId: string;
+  kind: "NEWS" | "OBSERVATION" | "EVENT";
+  subject: string;
+  content: string;
+  capturedAt: string;
+  metadata?: Record<string, string | number | boolean | null>;
 };
 
 export type Observation = {
