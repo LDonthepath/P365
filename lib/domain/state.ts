@@ -1,4 +1,5 @@
 import type { Confidence, Observation, State } from "./types";
+import { assertStateHasEvidence } from "./contracts";
 
 export function buildState(input: {
   id: string;
@@ -8,19 +9,21 @@ export function buildState(input: {
   confidence?: Confidence;
   evaluatedAt?: string;
 }): State {
-  return {
+  const state = {
     id: input.id,
     domain: input.domain,
     value: input.value,
     confidence: input.confidence ?? confidenceFromObservations(input.observations),
     evaluatedAt: input.evaluatedAt ?? new Date().toISOString(),
     evidenceIds: input.observations.map((item) => item.evidenceId),
-  };
+  } satisfies State;
+
+  return assertStateHasEvidence(state);
 }
 
 export function confidenceFromObservations(observations: Observation[]): Confidence {
   if (observations.length === 0) return "PENDING";
-  if (observations.some((item) => item.quality === "STALE")) return "PENDING";
+  if (observations.some((item) => item.quality === "STALE" || item.quality === "UNKNOWN")) return "PENDING";
   if (observations.every((item) => item.quality === "FRESH")) return "CONFIRMED";
   return "LEANING";
 }
