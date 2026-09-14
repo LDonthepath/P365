@@ -12,11 +12,12 @@ type AlphaVantageFeedItem = {
   topics?: { topic: string }[];
 };
 
-function parseAlphaVantageTime(raw: string): string {
+function parseAlphaVantageTime(raw: string): string | null {
   const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/.exec(raw);
-  if (!match) return new Date().toISOString();
+  if (!match) return null;
   const [, y, mo, d, h, mi, s] = match;
-  return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s))).toISOString();
+  const value = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
+  return Number.isFinite(value.getTime()) ? value.toISOString() : null;
 }
 
 async function fetchAlphaVantageFeed(params: Record<string, string>): Promise<ProviderResult<AlphaVantageFeedItem>> {
@@ -29,7 +30,7 @@ async function fetchAlphaVantageFeed(params: Record<string, string>): Promise<Pr
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
 
   try {
-    const res = await fetch(url.toString(), { next: { revalidate: 1800 } });
+    const res = await fetch(url.toString(), { next: { revalidate: 1800 }, signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return { status: "ERROR", data: [], message: `Alpha Vantage HTTP ${res.status}` };
     const data = await res.json();
     if (!Array.isArray(data?.feed)) return { status: "EMPTY", data: [] };
@@ -40,12 +41,14 @@ async function fetchAlphaVantageFeed(params: Record<string, string>): Promise<Pr
   }
 }
 
-function toNewsItem(item: AlphaVantageFeedItem, categoryFallback: string): NewsItem {
+function toNewsItem(item: AlphaVantageFeedItem, categoryFallback: string): NewsItem | null {
+  const publishedAt = parseAlphaVantageTime(item.time_published);
+  if (!publishedAt || !item.title?.trim() || !item.url?.trim()) return null;
   return {
     id: item.url,
     category: (item.topics?.[0]?.topic ?? categoryFallback).toUpperCase().replace(/_/g, " "),
     source: item.source,
-    publishedAt: parseAlphaVantageTime(item.time_published),
+    publishedAt,
     title: item.title,
     summary: item.summary,
     url: item.url,
@@ -58,7 +61,8 @@ export async function fetchMacroNews(limit = 6): Promise<ProviderResult<NewsItem
     sort: "LATEST",
     limit: String(limit),
   });
-  return { ...result, data: result.data.slice(0, limit).map((item) => toNewsItem(item, "MACRO")) };
+  const data = result.data.map((item) => toNewsItem(item, "MACRO")).filter((item): item is NewsItem => item !== null).slice(0, limit);
+  return { ...result, status: data.length > 0 ? result.status : result.status === "SUCCESS" ? "EMPTY" : result.status, data };
 }
 
 export async function fetchAlphaVantageCryptoNews(limit = 6): Promise<ProviderResult<NewsItem>> {
@@ -67,5 +71,6 @@ export async function fetchAlphaVantageCryptoNews(limit = 6): Promise<ProviderRe
     sort: "LATEST",
     limit: String(limit),
   });
-  return { ...result, data: result.data.slice(0, limit).map((item) => toNewsItem(item, "CRYPTO")) };
+  const data = result.data.map((item) => toNewsItem(item, "CRYPTO")).filter((item): item is NewsItem => item !== null).slice(0, limit);
+  return { ...result, status: data.length > 0 ? result.status : result.status === "SUCCESS" ? "EMPTY" : result.status, data };
 }

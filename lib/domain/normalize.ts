@@ -16,7 +16,9 @@ function hashId(prefix: string, value: string): string {
 }
 
 function observationQuality(observedAt: string): DataQuality {
-  return Number.isFinite(new Date(observedAt).getTime()) ? "FRESH" : "UNKNOWN";
+  const observedAtMs = new Date(observedAt).getTime();
+  if (!Number.isFinite(observedAtMs) || observedAtMs > Date.now()) return "UNKNOWN";
+  return Date.now() - observedAtMs <= 15 * 60_000 ? "FRESH" : "STALE";
 }
 
 export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] {
@@ -31,21 +33,35 @@ export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] 
   }));
 }
 
-export function calendarToEvents(items: CalendarEvent[], sourceId: string): Event[] {
-  return items.map((item) => {
+export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: string): {
+  events: Event[];
+  evidence: Evidence[];
+} {
+  const evidence = items.map((item) => ({
+    id: hashId("evidence", `${sourceId}:${item.id}`),
+    sourceId,
+    kind: "EVENT" as const,
+    subject: item.event,
+    content: `${item.country} · ${item.impact} impact · ${item.status}`,
+    capturedAt: new Date().toISOString(),
+    metadata: { country: item.country, impact: item.impact, status: item.status, scheduledAt: item.dateISO },
+  }));
+
+  const events = items.map((item, index) => {
     const scheduledAt = new Date(item.dateISO).toISOString();
-    const evidenceId = hashId("evidence", `${sourceId}:${item.id}`);
     return {
       id: hashId("event", `${sourceId}:${item.id}`),
       subject: item.event,
       description: `${item.country} economic event`,
       scheduledAt,
-      status: item.status === "PAST" ? "PAST" : "UPCOMING",
+      status: item.status === "PAST" ? "PAST" as const : "UPCOMING" as const,
       importance: item.impact,
       sourceId,
-      evidenceId,
+      evidenceId: evidence[index].id,
     };
   });
+
+  return { events, evidence };
 }
 
 export function cryptoMarketToObservations(items: CryptoMarketObservationInput[], sourceId: string): {

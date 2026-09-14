@@ -24,7 +24,7 @@ function NewsCard({ item }: { item: NewsItem }) {
 function CalendarRow({ item }: { item: CalendarEvent }) {
   return (
     <article className="calendar-row">
-      <time>{item.time}<small>WIB</small></time>
+      <time dateTime={item.dateISO} aria-label={`${item.event}, ${item.status}, ${item.time} WIB`}>{item.time}<small>WIB</small></time>
       <div><h3>{item.event}</h3><p>{item.country} · {item.status}</p></div>
       <span className={`impact ${item.impact.toLowerCase()}`}>{item.impact}</span>
     </article>
@@ -93,7 +93,7 @@ export default async function DashboardPage() {
       </header>
 
       <nav className="filters" aria-label="Bagian dashboard">
-        <a href="#overview" style={activeFilterLinkStyle}>Overview</a>
+        <a href="#overview" className="active" aria-current="location" style={activeFilterLinkStyle}>Overview</a>
         <a href="#macro-evidence" style={filterLinkStyle}>Macro</a>
         <a href="#crypto-evidence" style={filterLinkStyle}>Crypto</a>
         <a href="#intelligence" style={filterLinkStyle}>Intelligence</a>
@@ -106,7 +106,9 @@ export default async function DashboardPage() {
         <div className="state-grid">
           <div>
             <h2 id="state-title">Belum ada kesimpulan status pasar.</h2>
-            <p>Observasi pasar yang tervalidasi sudah tersedia, tapi P365 belum punya aturan domain-specific untuk menyusunnya jadi satu interpretasi status pasar yang solid.</p>
+            <p>{observations.length > 0
+              ? "Observasi pasar tersedia, tetapi P365 belum memiliki aturan domain spesifik untuk menggabungkannya menjadi satu status pasar."
+              : "Tidak ada observasi pasar yang dapat diverifikasi pada request ini, sehingga P365 tidak menampilkan status pasar."}</p>
           </div>
           <div className="state-meta">
             <div><span>CONFIDENCE</span><strong>BELUM ADA</strong></div>
