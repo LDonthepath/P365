@@ -5,12 +5,7 @@ export type Confidence = "CONFIRMED" | "LEANING" | "PENDING";
 export type ObservationDomain = "MARKET" | "MACRO" | "ASSET" | "OTHER";
 export type EventStatus = "UPCOMING" | "ACTIVE" | "PAST" | "UNKNOWN";
 
-export type Source = {
-  id: string;
-  name: string;
-  type: SourceType;
-  status: SourceHealthStatus;
-};
+export type Source = { id: string; name: string; type: SourceType; status: SourceHealthStatus };
 
 export type EvidenceRef = {
   id: string;
@@ -80,6 +75,7 @@ export type Intelligence = {
   invalidates: string[];
   monitor: string[];
   confidence: Confidence;
+  evidenceIds: string[];
   createdAt: string;
 };
 
