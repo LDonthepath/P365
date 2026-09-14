@@ -1,13 +1,11 @@
 import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
-import type { DataQuality, Evidence, Event, Observation, ProviderHealth, Source, SourceHealthStatus } from "./types";
+import type { DataQuality, Evidence, Event, ProviderHealth, SourceHealthStatus } from "./types";
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   fmp: { id: "financial-modeling-prep", name: "Financial Modeling Prep", type: "CALENDAR" },
 } as const;
-
-export function sourceDefinition(source: Source): Source { return source; }
 
 function hashId(prefix: string, value: string): string {
   let hash = 0;
@@ -48,17 +46,20 @@ export function calendarToEvents(items: CalendarEvent[], sourceId: string): Even
   });
 }
 
-export function observationsFromEvents(items: Event[]): Observation[] {
-  return items.map((item) => ({
-    id: hashId("observation", item.id),
-    domain: "MACRO",
-    subject: item.subject,
-    value: item.description,
-    observedAt: item.scheduledAt ?? new Date().toISOString(),
-    sourceId: item.sourceId,
-    quality: "FRESH",
-    evidenceId: item.evidenceId,
-  }));
+export function observationFromCanonicalFact(input: {
+  id: string;
+  domain: "MARKET" | "MACRO" | "ASSET" | "OTHER";
+  subject: string;
+  value: string;
+  observedAt: string;
+  sourceId: string;
+  evidenceId: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}): import("./types").Observation {
+  return {
+    ...input,
+    quality: observationQuality(input.observedAt),
+  };
 }
 
 export function providerHealthForResult<T>(sourceId: string, result: ProviderResult<T>): ProviderHealth {
