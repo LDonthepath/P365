@@ -16,9 +16,7 @@ function NewsCard({ item }: { item: NewsItem }) {
       </div>
       <h3>{item.title}</h3>
       <p>{item.summary}</p>
-      <a className="text-link" href={item.url} target="_blank" rel="noreferrer">
-        Inspect source ↗
-      </a>
+      <a className="text-link" href={item.url} target="_blank" rel="noreferrer">Inspect source ↗</a>
     </article>
   );
 }
@@ -55,6 +53,9 @@ function providerStatus(health: ProviderHealth[]): "PENDING" | "FRESH" | "PARTIA
   return "FRESH";
 }
 
+const filterLinkStyle = { color: "var(--muted)", textDecoration: "none", padding: "9px 11px", fontSize: "11px" } as const;
+const activeFilterLinkStyle = { ...filterLinkStyle, color: "var(--bg)", background: "var(--lime)", borderRadius: "3px" } as const;
+
 export default async function DashboardPage() {
   const session = await verifySession((await cookies()).get("market_briefing_session")?.value);
   if (!session) redirect("/login");
@@ -72,8 +73,8 @@ export default async function DashboardPage() {
   const marketObservationStatus = observationQualityStatus(observations.map((item) => item.quality));
   const sourceStatus = providerStatus(providerHealth);
   const highImpactEvents = calendarEvents.filter((item) => item.impact === "HIGH").length;
-  const macroEvidence = evidence.filter((item) => item.kind === "NEWS" && item.sourceId.includes("alpha-vantage"));
-  const cryptoEvidence = evidence.filter((item) => item.kind === "NEWS" && !item.sourceId.includes("alpha-vantage"));
+  const macroNewsEvidenceCount = macroNews.length;
+  const cryptoNewsEvidenceCount = cryptoNews.length;
 
   return (
     <main className="dashboard-shell">
@@ -86,11 +87,11 @@ export default async function DashboardPage() {
       </header>
 
       <nav className="filters" aria-label="Dashboard sections">
-        <a className="active" href="#overview">Overview</a>
-        <a href="#macro-evidence">Macro</a>
-        <a href="#crypto-evidence">Crypto</a>
-        <a href="#intelligence">Intelligence</a>
-        <a href="#evidence">Evidence</a>
+        <a href="#overview" style={activeFilterLinkStyle}>Overview</a>
+        <a href="#macro-evidence" style={filterLinkStyle}>Macro</a>
+        <a href="#crypto-evidence" style={filterLinkStyle}>Crypto</a>
+        <a href="#intelligence" style={filterLinkStyle}>Intelligence</a>
+        <a href="#evidence" style={filterLinkStyle}>Evidence</a>
         <span>WIB / ASIA-JAKARTA</span>
       </nav>
 
@@ -145,8 +146,8 @@ export default async function DashboardPage() {
             <h2 id="evidence-title">Raw evidence layer</h2>
             <p className="section-note">Evidence is rendered from the canonical domain layer. News is not automatically promoted to intelligence.</p>
             <div className="news-list">
-              {macroNews.slice(0, 4).map((item) => <div id="macro-evidence" key={`macro-${item.id}`}><NewsCard item={item} /></div>)}
-              {cryptoNews.slice(0, 4).map((item) => <div id="crypto-evidence" key={`crypto-${item.id}`}><NewsCard item={item} /></div>)}
+              <div id="macro-evidence"><span className="eyebrow">MACRO NEWS EVIDENCE · {macroNewsEvidenceCount}</span>{macroNews.slice(0, 4).map((item) => <NewsCard item={item} key={`macro-${item.id}`} />)}</div>
+              <div id="crypto-evidence"><span className="eyebrow">CRYPTO NEWS EVIDENCE · {cryptoNewsEvidenceCount}</span>{cryptoNews.slice(0, 4).map((item) => <NewsCard item={item} key={`crypto-${item.id}`} />)}</div>
               {evidence.length === 0 ? <EmptyPanelNote label="evidence" /> : null}
             </div>
           </section>
@@ -156,8 +157,8 @@ export default async function DashboardPage() {
           <section className="panel market-watch" aria-labelledby="watch-title">
             <div className="panel-label"><span>05 / MARKET WATCH</span><span>DOMAIN COVERAGE</span></div>
             <h2 id="watch-title">Coverage</h2>
-            <div className="watch-row"><span>Macro evidence</span><strong>{macroEvidence.length}</strong><StatusBadge value={macroEvidence.length ? "FRESH" : "PENDING"} /></div>
-            <div className="watch-row"><span>Crypto evidence</span><strong>{cryptoEvidence.length}</strong><StatusBadge value={cryptoEvidence.length ? "FRESH" : "PENDING"} /></div>
+            <div className="watch-row"><span>Macro news evidence</span><strong>{macroNewsEvidenceCount}</strong><StatusBadge value={macroNewsEvidenceCount ? "FRESH" : "PENDING"} /></div>
+            <div className="watch-row"><span>Crypto news evidence</span><strong>{cryptoNewsEvidenceCount}</strong><StatusBadge value={cryptoNewsEvidenceCount ? "FRESH" : "PENDING"} /></div>
             <div className="watch-row"><span>Market observations</span><strong>{observations.length}</strong><StatusBadge value={marketObservationStatus} /></div>
             <div className="watch-row"><span>Providers</span><strong>{providerHealth.length}</strong><StatusBadge value={sourceStatus} /></div>
           </section>
