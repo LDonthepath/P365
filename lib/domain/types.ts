@@ -4,6 +4,7 @@ export type DataQuality = "FRESH" | "STALE" | "PARTIAL" | "UNKNOWN";
 export type Confidence = "CONFIRMED" | "LEANING" | "PENDING";
 export type ObservationDomain = "MARKET" | "MACRO" | "ASSET" | "OTHER";
 export type EventStatus = "UPCOMING" | "ACTIVE" | "PAST" | "UNKNOWN";
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
 
 export type Source = { id: string; name: string; type: SourceType; status: SourceHealthStatus };
 
@@ -62,6 +63,16 @@ export type State = {
   domain: string;
   value: string;
   confidence: Confidence;
+  evaluatedAt: string;
+  evidenceIds: string[];
+};
+
+export type Risk = {
+  id: string;
+  domain: string;
+  level: RiskLevel;
+  statement: string;
+  reason: string;
   evaluatedAt: string;
   evidenceIds: string[];
 };
