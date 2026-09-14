@@ -105,3 +105,30 @@ Current canonical outputs exposed by `getDashboardData()`:
 - `providerHealth`
 
 Existing `macroNews`, `cryptoNews`, and `calendarEvents` are preserved for UI compatibility.
+
+## Roadmap: connecting Context → State → Risk → Intelligence (staged)
+
+As of `ca32418`, `lib/domain/context.ts`, `state.ts`, `risk.ts`, `intelligence.ts`, and
+`contracts.ts` are implemented but **not wired to `getDashboardData()` or the UI**. Only
+`Evidence`, `Observation`, and `ProviderHealth` (via `normalize.ts`) are live. This is
+intentional — connecting the rest requires real domain rules, not just plumbing, and
+should happen in small, reviewable steps instead of all at once.
+
+**Process rule:** one stage below = one PR = one deploy = one checkpoint with the human
+before starting the next stage. Do not implement multiple stages in a single pass, and do
+not self-merge — leave the PR for explicit review.
+
+1. **Context** — group related Evidence/Observation/Event into a `Context` per topic
+   (e.g. "BTC price action", "Fed policy outlook"). Wire `createContext`-style logic into
+   `getDashboardData()`, render as a simple list (replacing the current static "Interpretasi
+   belum tersedia" copy is out of scope for this stage — only show contexts, not states).
+2. **State** — define the actual confidence rules (what makes a State `CONFIRMED` vs
+   `LEANING` vs `PENDING`) for at least one concrete case (e.g. BTC short-term trend from
+   price observations). Wire into one panel only.
+3. **Risk** — derive Risk statements from State + upcoming high-impact calendar events.
+4. **Intelligence** — synthesize Context + State + Risk into the WHAT/WHY/CONFIRMS/
+   CONTRADICTS/INVALIDATES/MONITOR structure, replacing the static placeholder panel.
+
+Each stage should ship with its own tests/manual verification and a short note on what
+domain rule was chosen and why, since these are judgment calls, not mechanical refactors.
+
