@@ -3,8 +3,8 @@ import { fetchAlphaVantageCryptoNews, fetchMacroNews } from "./alpha-vantage";
 import { fetchCoinDeskNews } from "./coindesk-rss";
 import { fetchEconomicCalendar } from "./economic-calendar";
 import type { CalendarEvent, NewsItem, ProviderResult } from "./types";
-import type { Event, Observation, ProviderHealth } from "../domain/types";
-import { calendarToEvents, newsToObservations, providerHealthForResult, P365_SOURCES } from "../domain/normalize";
+import type { Evidence, Event, Observation, ProviderHealth } from "../domain/types";
+import { calendarToEvents, newsToEvidence, providerHealthForResult, P365_SOURCES } from "../domain/normalize";
 
 export type DashboardData = {
   macroNews: NewsItem[];
@@ -13,6 +13,7 @@ export type DashboardData = {
   unavailableSources: string[];
   observations: Observation[];
   events: Event[];
+  evidence: Evidence[];
   providerHealth: ProviderHealth[];
 };
 
@@ -61,17 +62,18 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
   if (calendarProvider.status !== "SUCCESS") unavailableSources.push(`kalender ekonomi (Financial Modeling Prep: ${calendarProvider.status})`);
 
-  const observations = [
-    ...newsToObservations(macroNews, P365_SOURCES.alphaVantage.id, "MACRO"),
-    ...newsToObservations(avCrypto, P365_SOURCES.alphaVantage.id),
-    ...newsToObservations(coinDesk, P365_SOURCES.coinDesk.id),
+  const evidence = [
+    ...newsToEvidence(macroNews, P365_SOURCES.alphaVantage.id),
+    ...newsToEvidence(avCrypto, P365_SOURCES.alphaVantage.id),
+    ...newsToEvidence(coinDesk, P365_SOURCES.coinDesk.id),
   ];
   const events = calendarToEvents(calendarEvents, P365_SOURCES.fmp.id);
+  const observations: Observation[] = [];
   const providerHealth = [
     providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider),
     providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider),
     providerHealthForResult(P365_SOURCES.fmp.id, calendarProvider),
   ];
 
-  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, unavailableSources, observations, events, providerHealth };
+  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, unavailableSources, observations, events, evidence, providerHealth };
 }
