@@ -20,3 +20,11 @@ export type CalendarEvent = {
   status: CalendarStatus;
   dateISO: string;
 };
+
+export type ProviderResultStatus = "SUCCESS" | "EMPTY" | "ERROR" | "UNAVAILABLE";
+
+export type ProviderResult<T> = {
+  status: ProviderResultStatus;
+  data: T[];
+  message?: string;
+};
