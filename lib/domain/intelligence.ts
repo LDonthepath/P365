@@ -1,4 +1,5 @@
 import type { Confidence, EvidenceRef, Intelligence } from "./types";
+import { assertIntelligenceContract } from "./contracts";
 
 export function createIntelligence(input: {
   id: string;
@@ -11,8 +12,7 @@ export function createIntelligence(input: {
   confidence: Confidence;
   evidenceIds: string[];
 }): Intelligence {
-  if (input.evidenceIds.length === 0) throw new Error("Intelligence requires at least one evidence reference");
-  return {
+  const intelligence = {
     id: input.id,
     what: input.what,
     why: input.why,
@@ -23,5 +23,7 @@ export function createIntelligence(input: {
     confidence: input.confidence,
     evidenceIds: input.evidenceIds,
     createdAt: new Date().toISOString(),
-  };
+  } satisfies Intelligence;
+
+  return assertIntelligenceContract(intelligence);
 }
