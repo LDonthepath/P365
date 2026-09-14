@@ -9,7 +9,9 @@ export function createIntelligence(input: {
   invalidates?: string[];
   monitor?: string[];
   confidence: Confidence;
+  evidenceIds: string[];
 }): Intelligence {
+  if (input.evidenceIds.length === 0) throw new Error("Intelligence requires at least one evidence reference");
   return {
     id: input.id,
     what: input.what,
@@ -19,6 +21,7 @@ export function createIntelligence(input: {
     invalidates: input.invalidates ?? [],
     monitor: input.monitor ?? [],
     confidence: input.confidence,
+    evidenceIds: input.evidenceIds,
     createdAt: new Date().toISOString(),
   };
 }
