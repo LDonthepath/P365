@@ -1,5 +1,5 @@
 import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
-import type { DataQuality, Event, Observation, ProviderHealth, Source, SourceHealthStatus } from "./types";
+import type { DataQuality, Evidence, Event, Observation, ProviderHealth, Source, SourceHealthStatus } from "./types";
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
@@ -19,36 +19,16 @@ function observationQuality(observedAt: string): DataQuality {
   return Number.isFinite(new Date(observedAt).getTime()) ? "FRESH" : "UNKNOWN";
 }
 
-export function newsToEvidence(item: NewsItem, sourceId: string): Observation {
-  const evidenceId = hashId("evidence", `${sourceId}:${item.id}`);
-  return {
-    id: hashId("information", `${sourceId}:${item.id}`),
-    domain: "NEWS",
-    subject: item.title,
-    value: item.summary,
-    observedAt: item.publishedAt,
+export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] {
+  return items.map((item) => ({
+    id: hashId("evidence", `${sourceId}:${item.id}`),
     sourceId,
-    quality: observationQuality(item.publishedAt),
-    evidenceId,
-    metadata: { category: item.category, url: item.url, source: item.source, kind: "NEWS_EVIDENCE" },
-  };
-}
-
-export function newsToObservations(items: NewsItem[], sourceId: string, domain: "MACRO" | "NEWS" = "NEWS"): Observation[] {
-  return items.map((item) => {
-    const evidenceId = hashId("evidence", `${sourceId}:${item.id}`);
-    return {
-      id: hashId("observation", `${sourceId}:${item.id}`),
-      domain,
-      subject: item.title,
-      value: item.summary,
-      observedAt: item.publishedAt,
-      sourceId,
-      quality: observationQuality(item.publishedAt),
-      evidenceId,
-      metadata: { category: item.category, url: item.url, source: item.source, kind: "NEWS_REFERENCE" },
-    };
-  });
+    kind: "NEWS",
+    subject: item.title,
+    content: item.summary,
+    capturedAt: item.publishedAt,
+    metadata: { category: item.category, url: item.url, source: item.source },
+  }));
 }
 
 export function calendarToEvents(items: CalendarEvent[], sourceId: string): Event[] {
@@ -66,6 +46,19 @@ export function calendarToEvents(items: CalendarEvent[], sourceId: string): Even
       evidenceId,
     };
   });
+}
+
+export function observationsFromEvents(items: Event[]): Observation[] {
+  return items.map((item) => ({
+    id: hashId("observation", item.id),
+    domain: "MACRO",
+    subject: item.subject,
+    value: item.description,
+    observedAt: item.scheduledAt ?? new Date().toISOString(),
+    sourceId: item.sourceId,
+    quality: "FRESH",
+    evidenceId: item.evidenceId,
+  }));
 }
 
 export function providerHealthForResult<T>(sourceId: string, result: ProviderResult<T>): ProviderHealth {
