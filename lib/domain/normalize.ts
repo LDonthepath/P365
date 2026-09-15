@@ -6,7 +6,7 @@ import type { DataQuality, Evidence, Event, Observation, ProviderHealth, SourceH
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
-  alphaVantageMarket: { id: "alpha-vantage-market", name: "Alpha Vantage Market", type: "MARKET" },
+  coinGeckoMarket: { id: "coingecko-market", name: "CoinGecko Market", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   forexFactory: { id: "forex-factory", name: "Forex Factory", type: "CALENDAR" },
   fred: { id: "fred", name: "Federal Reserve Economic Data (FRED)", type: "MACRO" },
@@ -51,10 +51,7 @@ export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] 
   }));
 }
 
-export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: string): {
-  events: Event[];
-  evidence: Evidence[];
-} {
+export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
   const evidence = items.map((item) => ({
     id: hashId("evidence", `${sourceId}:${item.id}`),
     sourceId,
@@ -65,56 +62,47 @@ export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: str
     metadata: { country: item.country, impact: item.impact, status: item.status, scheduledAt: item.dateISO },
   }));
 
-  const events = items.map((item, index) => {
-    const scheduledAt = new Date(item.dateISO).toISOString();
-    return {
-      id: hashId("event", `${sourceId}:${item.id}`),
-      subject: item.event,
-      description: `${item.country} economic event`,
-      scheduledAt,
-      status: item.status === "PAST" ? "PAST" as const : "UPCOMING" as const,
-      importance: item.impact,
-      sourceId,
-      evidenceId: evidence[index].id,
-    };
-  });
+  const events = items.map((item, index) => ({
+    id: hashId("event", `${sourceId}:${item.id}`),
+    subject: item.event,
+    description: `${item.country} economic event`,
+    scheduledAt: new Date(item.dateISO).toISOString(),
+    status: item.status === "PAST" ? "PAST" as const : "UPCOMING" as const,
+    importance: item.impact,
+    sourceId,
+    evidenceId: evidence[index].id,
+  }));
 
   return { events, evidence };
 }
 
-export function cryptoMarketToObservations(items: CryptoMarketObservationInput[], sourceId: string): {
-  observations: Observation[];
-  evidence: Evidence[];
-} {
+export function cryptoMarketToObservations(items: CryptoMarketObservationInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
   const evidence = items.map((item) => ({
-    id: hashId("evidence", `${sourceId}:${item.symbol}:${item.observedAt}`),
+    id: hashId("evidence", `${sourceId}:${item.metricId}:${item.observedAt}`),
     sourceId,
     kind: "OBSERVATION" as const,
-    subject: `${item.symbol}/USD spot rate`,
-    content: `${item.symbol}/USD observed at ${item.value}`,
+    subject: item.metricId,
+    content: `${item.metricId} observed at ${item.value}`,
     capturedAt: item.observedAt,
-    metadata: item.metadata,
+    metadata: { ...item.metadata, symbol: item.symbol, metricId: item.metricId },
   }));
 
   const observations = items.map((item, index) => observationFromCanonicalFact({
-    id: hashId("observation", `${sourceId}:${item.symbol}:${item.observedAt}`),
-    domain: "ASSET",
-    subject: `${item.symbol}/USD spot rate`,
+    id: hashId("observation", `${sourceId}:${item.metricId}:${item.observedAt}`),
+    domain: item.metricId.startsWith("crypto.") ? "MARKET" : "ASSET",
+    subject: item.metricId,
     value: String(item.value),
     observedAt: item.observedAt,
     sourceId,
     evidenceId: evidence[index].id,
-    metadata: { symbol: item.symbol, quote: "USD", ...item.metadata },
+    metadata: { symbol: item.symbol, metricId: item.metricId, ...item.metadata },
   }));
 
   return { observations, evidence };
 }
 
 /** Converts validated FRED records into canonical facts without interpretation. */
-export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId: string): {
-  observations: Observation[];
-  evidence: Evidence[];
-} {
+export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
   const capturedAt = new Date().toISOString();
   const eligibleItems = items.filter((item) => isValidCurrentOrPastMacroDate(item.observationDate));
   const evidence = eligibleItems.map((item) => ({
