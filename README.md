@@ -20,5 +20,8 @@ Sprint ini menyediakan fondasi aplikasi Next.js, halaman login berbasis satu aku
 | `DASHBOARD_AUTH_SECRET` | Kunci HMAC untuk menandatangani cookie sesi. |
 | `DASHBOARD_ACCESS_EMAIL` | Satu email yang diizinkan untuk Sprint 1. |
 | `DASHBOARD_ACCESS_PASSWORD` | Password akun tersebut. |
+| `FRED_API_KEY` | API key server-only untuk observasi makro resmi FRED. |
 
-Untuk deployment Vercel, atur ketiga nilai tersebut pada Project Settings → Environment Variables. Jangan commit `.env.local` atau nilai rahasia lain ke repository.
+Untuk deployment Vercel, atur nilai-nilai tersebut pada Project Settings → Environment Variables. Jangan commit `.env.local` atau nilai rahasia lain ke repository.
+
+Dokumentasi cakupan, seri P0, freshness, dan batasan Macro Data Foundation v0.1 tersedia di [`docs/MACRO-DATA-FOUNDATION-v0.1.md`](docs/MACRO-DATA-FOUNDATION-v0.1.md).
