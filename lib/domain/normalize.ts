@@ -1,5 +1,7 @@
 import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
+import type { MacroObservationInput } from "../data/fred";
+import type { FomcEventInput } from "../data/federal-reserve-events";
 import type { DataQuality, Evidence, Event, Observation, ProviderHealth, SourceHealthStatus } from "./types";
 
 export const P365_SOURCES = {
@@ -7,6 +9,8 @@ export const P365_SOURCES = {
   alphaVantageMarket: { id: "alpha-vantage-market", name: "Alpha Vantage Market", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   fmp: { id: "financial-modeling-prep", name: "Financial Modeling Prep", type: "CALENDAR" },
+  fred: { id: "fred", name: "Federal Reserve Economic Data (FRED)", type: "MACRO" },
+  federalReserve: { id: "federal-reserve", name: "Board of Governors of the Federal Reserve System", type: "CALENDAR" },
 } as const;
 
 function hashId(prefix: string, value: string): string {
@@ -19,6 +23,20 @@ function observationQuality(observedAt: string): DataQuality {
   const observedAtMs = new Date(observedAt).getTime();
   if (!Number.isFinite(observedAtMs) || observedAtMs > Date.now()) return "UNKNOWN";
   return Date.now() - observedAtMs <= 15 * 60_000 ? "FRESH" : "STALE";
+}
+
+function macroObservationQuality(observationDate: string, freshnessMs: number): DataQuality {
+  const observationDateMs = new Date(`${observationDate}T00:00:00.000Z`).getTime();
+  if (!Number.isFinite(observationDateMs) || observationDateMs > Date.now()) return "UNKNOWN";
+  return Date.now() - observationDateMs <= freshnessMs ? "FRESH" : "STALE";
+}
+
+function isValidCurrentOrPastMacroDate(observationDate: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(observationDate)) return false;
+  const date = new Date(`${observationDate}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime())
+    && date.toISOString().slice(0, 10) === observationDate
+    && observationDate <= new Date().toISOString().slice(0, 10);
 }
 
 export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] {
@@ -90,6 +108,82 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
   }));
 
   return { observations, evidence };
+}
+
+/** Converts validated FRED records into canonical facts without interpretation. */
+export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId: string): {
+  observations: Observation[];
+  evidence: Evidence[];
+} {
+  const capturedAt = new Date().toISOString();
+  // Keep a normalization boundary guard: future or malformed periods are never canonical facts.
+  const eligibleItems = items.filter((item) => isValidCurrentOrPastMacroDate(item.observationDate));
+  const evidence = eligibleItems.map((item) => ({
+    id: hashId("evidence", `${sourceId}:${item.series.seriesId}:${item.observationDate}:${item.value}`),
+    sourceId,
+    kind: "OBSERVATION" as const,
+    subject: item.series.subject,
+    content: `${item.series.seriesId} = ${item.value} (${item.observationDate})`,
+    capturedAt,
+    metadata: {
+      seriesId: item.series.seriesId,
+      frequency: item.series.frequency,
+      unit: item.series.unit,
+      source: item.series.source,
+      observationDate: item.observationDate,
+      releaseDate: null,
+      previousValue: item.previousValue,
+      vintageDate: item.vintageDate,
+    },
+  }));
+
+  const observations = eligibleItems.map((item, index) => ({
+    id: hashId("observation", `${sourceId}:${item.series.seriesId}:${item.observationDate}:${item.value}`),
+    domain: "MACRO" as const,
+    subject: item.series.subject,
+    value: item.value,
+    // observedAt is the time P365 captured the published record, not its measurement period.
+    observedAt: capturedAt,
+    sourceId,
+    quality: macroObservationQuality(item.observationDate, item.series.freshnessMs),
+    evidenceId: evidence[index].id,
+    metadata: {
+      seriesId: item.series.seriesId,
+      frequency: item.series.frequency,
+      unit: item.series.unit,
+      source: item.series.source,
+      observationDate: item.observationDate,
+      releaseDate: null,
+      previousValue: item.previousValue,
+      vintageDate: item.vintageDate,
+    },
+  }));
+
+  return { observations, evidence };
+}
+
+export function fomcToCanonicalRecords(items: FomcEventInput[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
+  const capturedAt = new Date().toISOString();
+  const evidence = items.map((item) => ({
+    id: hashId("evidence", `${sourceId}:fomc:${item.scheduledAt}`),
+    sourceId,
+    kind: "EVENT" as const,
+    subject: "FOMC meeting",
+    content: `FOMC meeting scheduled for ${item.label}`,
+    capturedAt,
+    metadata: { source: "Federal Reserve", scheduledAt: item.scheduledAt, scheduledAtIsDateAnchor: true, url: item.sourceUrl },
+  }));
+  const events = items.map((item, index) => ({
+    id: hashId("event", `${sourceId}:fomc:${item.scheduledAt}`),
+    subject: "FOMC meeting",
+    description: `Federal Open Market Committee meeting (${item.label})`,
+    scheduledAt: item.scheduledAt,
+    status: "UPCOMING" as const,
+    importance: "HIGH" as const,
+    sourceId,
+    evidenceId: evidence[index].id,
+  }));
+  return { events, evidence };
 }
 
 export function observationFromCanonicalFact(input: {
