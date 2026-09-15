@@ -1,4 +1,4 @@
-# P365 Architecture v0.2
+# P365 Architecture v0.3
 
 ## Product boundary
 
@@ -6,16 +6,57 @@ P365 is a private market-intelligence dashboard. The current implementation scop
 
 P365 is not a trading bot, execution system, signal copier, or price predictor.
 
+P365 exists to **explain the market, not merely to display it**. The intended user-facing output is a Market Briefing that explains what changed, why it matters, how expectations and pricing changed, how the move transmitted across assets, what confirms or contradicts the interpretation, and what should be monitored next.
+
 ## Core domain
 
 - Observation: a fact or measurable item observed from a source.
 - Event: a time-bound occurrence, scheduled or unscheduled.
 - Context: an explicit grouping of related canonical observations/events. Context does not infer market direction.
+- Baseline: a validated reference used to answer a specific comparison question.
+- Market Memory: time-indexed prior canonical references used to evaluate change. It is not a second source of truth.
 - State: an interpreted condition at a point in time, with confidence and evidence.
 - Risk: uncertainty or adverse-condition context that matters to decision support.
 - Intelligence: evidence-based interpretation with explicit confirmation, contradiction, invalidation, and monitoring criteria.
+- Briefing: human-readable synthesis of canonical intelligence; it must not invent new facts.
 
 Regime, sentiment, liquidity-flow, capital-flow, and portfolio/trading models remain deferred until their definitions and evidence requirements are established.
+
+## Market reasoning model
+
+P365 should reason about **change relative to context**, not isolated values.
+
+```text
+Observe
+  ↓
+Compare with appropriate Baseline
+  ↓
+Detect Change / Surprise
+  ↓
+Detect Repricing
+  ↓
+Test Cross-Asset Transmission
+  ↓
+Resolve Confirmation / Contradiction
+  ↓
+Explain Regime
+  ↓
+Market Briefing
+```
+
+A single universal baseline is insufficient. P365 should distinguish:
+
+```text
+FACTUAL BASELINE       → what was true before?
+EXPECTATION BASELINE   → what was expected?
+PRICING BASELINE       → what was already priced?
+REGIME BASELINE        → under what environment did the market operate?
+HISTORICAL BASELINE    → is the change unusual?
+```
+
+For example, an economic release can be above consensus while still producing little incremental market surprise if the result was already embedded in market pricing.
+
+See [`docs/P365-MARKET-REASONING-BASELINE-v0.1.md`](P365-MARKET-REASONING-BASELINE-v0.1.md) for the conceptual contract.
 
 ## Data flow
 
@@ -30,7 +71,9 @@ Canonical Observation / Event / Evidence
   ↓
 Context
   ↓
-State / Risk
+Baseline / Market Memory
+  ↓
+State / Repricing / Regime Analysis
   ↓
 Intelligence
   ↓
@@ -41,7 +84,7 @@ UI
 
 ## Context Layer v0.2
 
-Context is a **neutral relationship/grouping layer**. It establishes which canonical facts belong together so a later State layer has a stable, traceable input.
+Context is a **neutral relationship/grouping layer**. It establishes which canonical facts belong together so a later reasoning layer has a stable, traceable input.
 
 Current Context scopes:
 
@@ -97,20 +140,26 @@ News remains Evidence and is not silently promoted into Observation. Economic-ca
 9. Every canonical observation produced by the current pipeline has linked Evidence.
 10. News is not silently promoted into Observation.
 11. Intelligence must remain traceable to canonical evidence and explicit reasoning fields.
+12. Baselines must have a defined comparison purpose, timestamp, provenance, and quality.
+13. Missing or stale baselines must remain explicit uncertainty.
+14. Market Memory must not replace canonical observations/events as the source of truth.
+15. Different baseline types must not be collapsed into one generic delta.
 
 ## Current implementation
 
-`getDashboardData()` exposes canonical observations, events, contexts, evidence, and provider health while preserving the existing UI-compatible news/calendar fields. Context is now wired into the dashboard and rendered as a dedicated neutral context list.
+`getDashboardData()` exposes canonical observations, events, contexts, evidence, and provider health while preserving the existing UI-compatible news/calendar fields. Context is wired into the dashboard and rendered as a dedicated neutral context list.
 
-The current Context implementation is deliberately mechanical. It is not a State engine and must not be used as one.
+The current Context implementation is deliberately mechanical. It is not a State engine and must not be used as one. Baseline and Market Memory are currently **design-level reasoning infrastructure**, not an implemented engine.
 
-## Roadmap: Context → State → Risk → Intelligence
+## Roadmap: Context → Baseline/Memory → State → Risk → Intelligence → Briefing
 
 **Process rule:** one stage = one isolated change/checkpoint. Do not implement multiple reasoning stages in a single pass.
 
-1. **Context** — complete v0.2 grouping and traceability foundation. **Current checkpoint.**
-2. **State** — define concrete confidence/domain rules for at least one case and wire one panel only.
-3. **Risk** — derive Risk from State plus relevant upcoming events.
-4. **Intelligence** — synthesize Context + State + Risk into WHAT/WHY/CONFIRMS/CONTRADICTS/INVALIDATES/MONITOR.
+1. **Context** — complete v0.2 grouping and traceability foundation. **Current foundation checkpoint.**
+2. **Baseline / Market Memory** — define validated comparison references and temporal memory without creating a second source of truth.
+3. **State** — define concrete confidence/domain rules for at least one case and wire one panel only.
+4. **Risk** — derive Risk from State plus relevant upcoming events.
+5. **Intelligence** — synthesize Context + Baseline/Memory + State + Risk into WHAT/WHY/CONFIRMS/CONTRADICTS/INVALIDATES/MONITOR.
+6. **Briefing** — render human-readable market synthesis from canonical intelligence without inventing facts.
 
 Each stage requires its own verification and a short note explaining the chosen domain rule. Domain reasoning must be established before it is encoded.
