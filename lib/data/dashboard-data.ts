@@ -44,15 +44,15 @@ export async function getDashboardData(): Promise<DashboardData> {
   if (macroProvider.status !== "SUCCESS") unavailableSources.push(`berita makro (Alpha Vantage: ${macroProvider.status})`);
   if (cryptoNews.length === 0 || (coinDeskProvider.status !== "SUCCESS" && avCryptoProvider.status !== "SUCCESS")) unavailableSources.push(`berita crypto (CoinDesk: ${coinDeskProvider.status}; Alpha Vantage: ${avCryptoProvider.status})`);
   if (calendarProvider.status !== "SUCCESS") unavailableSources.push(`kalender ekonomi (Forex Factory: ${calendarProvider.status})`);
-  if (cryptoMarketProvider.status !== "SUCCESS") unavailableSources.push(`market crypto (Alpha Vantage: ${cryptoMarketProvider.status})`);
+  if (cryptoMarketProvider.status !== "SUCCESS") unavailableSources.push(`market crypto (CoinGecko: ${cryptoMarketProvider.status})`);
   if (fredProvider.status !== "SUCCESS") unavailableSources.push(`observasi makro (FRED: ${fredProvider.status})`);
   if (fomcProvider.status !== "SUCCESS") unavailableSources.push(`event FOMC (Federal Reserve: ${fomcProvider.status})`);
   const newsEvidence = [...newsToEvidence(macroNews, P365_SOURCES.alphaVantage.id), ...newsToEvidence(avCrypto, P365_SOURCES.alphaVantage.id), ...newsToEvidence(coinDesk, P365_SOURCES.coinDesk.id)];
   const calendarRecords = calendarToCanonicalRecords(calendarEvents, P365_SOURCES.forexFactory.id); const fomcRecords = fomcToCanonicalRecords(fomcProvider.data, P365_SOURCES.federalReserve.id); const events = [...calendarRecords.events, ...fomcRecords.events];
-  const marketFacts = cryptoMarketToObservations(cryptoMarketProvider.data, P365_SOURCES.alphaVantageMarket.id); const macroFacts = macroToCanonicalRecords(fredProvider.data, P365_SOURCES.fred.id);
+  const marketFacts = cryptoMarketToObservations(cryptoMarketProvider.data, P365_SOURCES.coinGeckoMarket.id); const macroFacts = macroToCanonicalRecords(fredProvider.data, P365_SOURCES.fred.id);
   const fredHealth = providerHealthForResult(P365_SOURCES.fred.id, fredProvider); if (fredProvider.status === "SUCCESS" && macroFacts.observations.length > 0 && macroFacts.observations.every((item) => item.quality === "STALE")) fredHealth.status = "STALE";
   const observations = [...marketFacts.observations, ...macroFacts.observations]; const evidence = [...newsEvidence, ...calendarRecords.evidence, ...fomcRecords.evidence, ...marketFacts.evidence, ...macroFacts.evidence]; const contexts = buildDashboardContexts({ observations, events });
   try { await persistMarketMemory(observations, events, evidence); } catch (error) { unavailableSources.push(`market memory (${error instanceof Error ? error.message : "persistence failed"})`); }
-  const providerHealth = [providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider), providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider), providerHealthForResult(P365_SOURCES.forexFactory.id, calendarProvider), providerHealthForResult(P365_SOURCES.alphaVantageMarket.id, cryptoMarketProvider), fredHealth, providerHealthForResult(P365_SOURCES.federalReserve.id, fomcProvider)];
+  const providerHealth = [providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider), providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider), providerHealthForResult(P365_SOURCES.forexFactory.id, calendarProvider), providerHealthForResult(P365_SOURCES.coinGeckoMarket.id, cryptoMarketProvider), fredHealth, providerHealthForResult(P365_SOURCES.federalReserve.id, fomcProvider)];
   return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations: macroFacts.observations, events, contexts, evidence, providerHealth };
 }
