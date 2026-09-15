@@ -8,6 +8,7 @@ import { fetchFomcEvents } from "./federal-reserve-events";
 import type { CalendarEvent, NewsItem, ProviderResult } from "./types";
 import type { Context, Evidence, Event, Observation, ProviderHealth } from "../domain/types";
 import { buildDashboardContexts } from "../domain/context";
+import { SupabaseMarketMemoryStore } from "../domain/market-memory";
 import {
   calendarToCanonicalRecords,
   cryptoMarketToObservations,
@@ -93,6 +94,15 @@ function dedupeCalendarEvents(calendarEvents: CalendarEvent[], fomcDates: string
   });
 }
 
+async function persistMarketMemory(observations: Observation[], events: Event[], evidence: Evidence[]): Promise<void> {
+  const store = new SupabaseMarketMemoryStore();
+  await store.appendMany([
+    ...observations.map((observation) => ({ observation })),
+    ...events.map((event) => ({ event })),
+    ...evidence.map((item) => ({ evidence: item })),
+  ]);
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
   const [macroResult, avCryptoResult, coinDeskResult, calendarResult, cryptoMarketResult, fredResult, fomcResult] = await Promise.allSettled([
     fetchMacroNews(6),
@@ -146,6 +156,9 @@ export async function getDashboardData(): Promise<DashboardData> {
   const observations = [...marketFacts.observations, ...macroFacts.observations];
   const evidence = [...newsEvidence, ...calendarRecords.evidence, ...fomcRecords.evidence, ...marketFacts.evidence, ...macroFacts.evidence];
   const contexts = buildDashboardContexts({ observations, events });
+
+  await persistMarketMemory(observations, events, evidence);
+
   const providerHealth = [
     providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider),
     providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider),
