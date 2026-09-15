@@ -49,6 +49,29 @@ function resultOrEmpty<T>(result: PromiseSettledResult<ProviderResult<T>>): Prov
   return { status: "ERROR", data: [], message: result.reason instanceof Error ? result.reason.message : "Provider request failed" };
 }
 
+function jakartaDate(dateISO: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(dateISO));
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value;
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+function isFomcCalendarEvent(item: CalendarEvent): boolean {
+  return /\bfomc\b|federal open market committee/i.test(item.event);
+}
+
+function dedupeCalendarEvents(calendarEvents: CalendarEvent[], fomcDates: string[]): CalendarEvent[] {
+  const officialFomcDates = new Set(fomcDates.map(jakartaDate));
+  return calendarEvents.filter((item) => {
+    if (!isFomcCalendarEvent(item)) return true;
+    return !officialFomcDates.has(jakartaDate(item.dateISO));
+  });
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
   const [macroResult, avCryptoResult, coinDeskResult, calendarResult, cryptoMarketResult, fredResult, fomcResult] = await Promise.allSettled([
     fetchMacroNews(6),
@@ -72,7 +95,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const avCrypto = avCryptoProvider.data;
   const coinDesk = coinDeskProvider.data;
   const cryptoNews = sortByRecency(dedupeByTitle([...coinDesk, ...avCrypto])).slice(0, 6);
-  const calendarEvents = calendarProvider.data;
+  const calendarEvents = dedupeCalendarEvents(calendarProvider.data, fomcProvider.data.map((item) => item.scheduledAt));
   const calendarProviderMessage = calendarProvider.message;
 
   const unavailableSources: string[] = [];
