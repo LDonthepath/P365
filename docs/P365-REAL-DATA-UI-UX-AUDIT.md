@@ -41,6 +41,8 @@ It does not introduce a market-regime, risk, or intelligence rule.
 - Freshness is measured from the provider's reported observation timestamp, not
   from a provider SLA. A source can be reachable while its latest quote is stale;
   the UI reports this through observation quality rather than claiming freshness.
-- The Financial Modeling Prep calendar timestamp is interpreted as UTC because the
-  current provider response does not carry a per-record timezone in this adapter.
-  That assumption should be revisited if the provider contract changes.
+- The economic calendar is now provided by Forex Factory's weekly feed. FOMC events
+  remain sourced from the official Federal Reserve calendar, which is treated as
+  authoritative for FOMC dates.
+- The current canonical calendar contract does not yet model official release
+  revisions or actual/forecast/previous values as structured fields.
