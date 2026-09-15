@@ -1,23 +1,27 @@
-# P365 Context → State → Risk Audit v0.1
+# P365 Context → State → Risk Audit v0.2
 
 ## Audit target
 
-Audit the Context → State → Risk layer after canonical crypto Observations became available in PR #5.
+Audit the Context → State → Risk contract after canonical crypto Observations, macro Observations, and calendar Events became available.
 
 ## Verified findings
 
-1. Canonical Observation objects now exist for measurable crypto market facts.
-2. Context builder previously allowed an empty context; this is now rejected.
-3. State builder previously allowed a state with zero evidence; this is now rejected.
-4. State confidence previously treated `UNKNOWN` quality as implicitly confirmed because only `STALE` was checked; this is now corrected.
-5. Risk builder previously allowed a risk with zero evidence; this is now rejected.
-6. No generic market State/Risk is generated from the existence of an Observation alone. Meaning and thresholds remain undefined and therefore are not fabricated.
+1. Canonical Observation objects exist for measurable crypto and macro facts.
+2. Context builder rejects an empty context and preserves observation/event IDs.
+3. State builder rejects zero-evidence states and prevents explicitly `CONFIRMED` states when supplied observations are stale or unknown-quality.
+4. Risk builder rejects zero-evidence risks.
+5. No generic market State/Risk is generated merely because observations exist. Domain meaning and thresholds remain intentionally undefined.
+6. Contract hardening now rejects empty or duplicate observation/event/evidence IDs in Context, State, and Risk references.
+7. Intelligence evidence IDs must be non-empty and unique; `CONFIRMS` and `CONTRADICTS` references must also be present in the Intelligence `evidenceIds` set and cannot duplicate one another.
+8. These contract checks remain semantic/traceability guards only. They do not create market interpretations or trading signals.
 
 ## Architectural conclusion
 
-The Context → State → Risk layer is currently a **contract layer**, not yet a market interpretation engine.
+The Context → State → Risk layer is currently a **contract and neutral grouping layer**, not yet a market interpretation engine.
 
-That is intentional. The next intelligence work must define the semantic meaning of states and risks from verified evidence before adding domain-specific labels or formulas.
+Context v0.2 is the current implementation checkpoint. State and Risk builders exist as validated domain primitives, but no domain-specific State/Risk engine is wired into the dashboard.
+
+The next reasoning work must define the semantic meaning of states and risks from verified evidence before adding domain-specific labels, thresholds, or formulas.
 
 ## Out of scope
 
@@ -27,3 +31,4 @@ That is intentional. The next intelligence work must define the semantic meaning
 - Sentiment
 - Cluster Rotation
 - trading/execution logic
+- price prediction
