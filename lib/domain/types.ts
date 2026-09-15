@@ -50,8 +50,20 @@ export type Event = {
   evidenceId: string;
 };
 
+export type ContextScope =
+  | "CRYPTO_MARKET"
+  | "MACRO_MONETARY_POLICY"
+  | "MACRO_LIQUIDITY"
+  | "MACRO_INFLATION"
+  | "MACRO_LABOR"
+  | "MACRO_RATES"
+  | "MACRO_USD"
+  | "MACRO_GROWTH"
+  | "ECONOMIC_EVENTS";
+
 export type Context = {
   id: string;
+  scope: ContextScope;
   statement: string;
   observationIds: string[];
   eventIds: string[];
