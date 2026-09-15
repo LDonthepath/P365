@@ -6,7 +6,8 @@ import { fetchCryptoMarketObservations } from "./crypto-market";
 import { fetchFredMacroObservations } from "./fred";
 import { fetchFomcEvents } from "./federal-reserve-events";
 import type { CalendarEvent, NewsItem, ProviderResult } from "./types";
-import type { Evidence, Event, Observation, ProviderHealth } from "../domain/types";
+import type { Context, Evidence, Event, Observation, ProviderHealth } from "../domain/types";
+import { buildDashboardContexts } from "../domain/context";
 import {
   calendarToCanonicalRecords,
   cryptoMarketToObservations,
@@ -26,6 +27,7 @@ export type DashboardData = {
   observations: Observation[];
   macroObservations: Observation[];
   events: Event[];
+  contexts: Context[];
   evidence: Evidence[];
   providerHealth: ProviderHealth[];
 };
@@ -124,6 +126,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
   const observations = [...marketFacts.observations, ...macroFacts.observations];
   const evidence = [...newsEvidence, ...calendarRecords.evidence, ...fomcRecords.evidence, ...marketFacts.evidence, ...macroFacts.evidence];
+  const contexts = buildDashboardContexts({ observations, events });
   const providerHealth = [
     providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider),
     providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider),
@@ -133,5 +136,5 @@ export async function getDashboardData(): Promise<DashboardData> {
     providerHealthForResult(P365_SOURCES.federalReserve.id, fomcProvider),
   ];
 
-  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations: macroFacts.observations, events, evidence, providerHealth };
+  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations: macroFacts.observations, events, contexts, evidence, providerHealth };
 }
