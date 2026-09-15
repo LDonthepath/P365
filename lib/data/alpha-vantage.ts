@@ -12,12 +12,24 @@ type AlphaVantageFeedItem = {
   topics?: { topic: string }[];
 };
 
+type AlphaVantageResponse = {
+  feed?: unknown;
+  Note?: unknown;
+  Information?: unknown;
+  ErrorMessage?: unknown;
+};
+
 function parseAlphaVantageTime(raw: string): string | null {
   const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/.exec(raw);
   if (!match) return null;
   const [, y, mo, d, h, mi, s] = match;
   const value = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
   return Number.isFinite(value.getTime()) ? value.toISOString() : null;
+}
+
+function providerDiagnostic(data: AlphaVantageResponse): string | undefined {
+  const diagnostic = data.Note ?? data.Information ?? data.ErrorMessage;
+  return typeof diagnostic === "string" && diagnostic.trim() ? diagnostic.trim() : undefined;
 }
 
 async function fetchAlphaVantageFeed(params: Record<string, string>): Promise<ProviderResult<AlphaVantageFeedItem>> {
@@ -32,10 +44,19 @@ async function fetchAlphaVantageFeed(params: Record<string, string>): Promise<Pr
   try {
     const res = await fetch(url.toString(), { next: { revalidate: 1800, tags: ["p365-dashboard"] }, signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return { status: "ERROR", data: [], message: `Alpha Vantage HTTP ${res.status}` };
-    const data = await res.json();
-    if (!Array.isArray(data?.feed)) return { status: "EMPTY", data: [] };
+
+    const data = (await res.json()) as AlphaVantageResponse;
+    const diagnostic = providerDiagnostic(data);
+    if (!Array.isArray(data.feed)) {
+      return { status: diagnostic ? "ERROR" : "EMPTY", data: [], message: diagnostic ?? "Alpha Vantage returned no news feed" };
+    }
+
     const feed = data.feed as AlphaVantageFeedItem[];
-    return { status: feed.length > 0 ? "SUCCESS" : "EMPTY", data: feed };
+    return {
+      status: feed.length > 0 ? "SUCCESS" : "EMPTY",
+      data: feed,
+      message: diagnostic,
+    };
   } catch (error) {
     return { status: "ERROR", data: [], message: error instanceof Error ? error.message : "Alpha Vantage request failed" };
   }
