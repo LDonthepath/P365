@@ -1,6 +1,6 @@
 import type { Evidence, Event, Observation, State } from "./types";
 
-export type MarketMemoryRecordType = "OBSERVATION" | "EVENT" | "STATE" | "EVIDENCE";
+export type MarketMemoryRecordType = "OBSERVATION" | "EVENT" | "EVIDENCE" | "STATE";
 
 export type MarketMemoryRecord = {
   id: string;
@@ -28,13 +28,12 @@ export type MarketMemoryStore = {
 function recordFromInput(input: MarketMemoryAppendInput): MarketMemoryRecord {
   const entries = [
     input.observation && { type: "OBSERVATION" as const, item: input.observation, effectiveAt: input.observation.observedAt, sourceId: input.observation.sourceId },
-    input.event && { type: "EVENT" as const, item: input.event, effectiveAt: input.event.occurredAt ?? input.event.scheduledAt ?? input.event.status, sourceId: input.event.sourceId },
+    input.event && { type: "EVENT" as const, item: input.event, effectiveAt: input.event.occurredAt ?? input.event.scheduledAt ?? new Date().toISOString(), sourceId: input.event.sourceId },
     input.state && { type: "STATE" as const, item: input.state, effectiveAt: input.state.evaluatedAt, sourceId: input.state.domain },
     input.evidence && { type: "EVIDENCE" as const, item: input.evidence, effectiveAt: input.evidence.capturedAt, sourceId: input.evidence.sourceId },
   ].filter(Boolean) as Array<{ type: MarketMemoryRecordType; item: { id: string }; effectiveAt: string; sourceId: string }>;
 
   if (entries.length !== 1) throw new Error("Market Memory append requires exactly one canonical object.");
-
   const entry = entries[0];
   return {
     id: `memory-${entry.type.toLowerCase()}-${entry.item.id}-${entry.effectiveAt}`,
@@ -46,10 +45,6 @@ function recordFromInput(input: MarketMemoryAppendInput): MarketMemoryRecord {
   };
 }
 
-/**
- * Contract-only adapter. It intentionally does not pretend to be durable.
- * Production persistence must be supplied by an external append-only store.
- */
 export class NonDurableMarketMemoryStore implements MarketMemoryStore {
   private readonly records: MarketMemoryRecord[] = [];
 
