@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createSession, sessionMaxAge, validateCredentials } from "@/lib/auth";
+import { createSession, sessionMaxAge, validateCredentials } from "@/src/backend/auth";
 
 export type LoginState = { error?: string };
 
