@@ -1,23 +1,38 @@
 import "server-only";
 import type { CalendarEvent, CalendarImpact, CalendarStatus, ProviderResult } from "./types";
 
-const FMP_BASE = "https://financialmodelingprep.com/stable/economic-calendar";
+const FOREX_FACTORY_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
 
-type FmpEvent = { event?: string; date?: string; country?: string; impact?: string };
+type ForexFactoryEvent = {
+  title?: unknown;
+  country?: unknown;
+  date?: unknown;
+  impact?: unknown;
+};
 
-function mapImpact(raw?: string): CalendarImpact {
-  const value = (raw ?? "").toLowerCase();
-  if (value.includes("high")) return "HIGH";
-  if (value.includes("medium")) return "MEDIUM";
+function mapImpact(raw: unknown): CalendarImpact {
+  const value = typeof raw === "string" ? raw.toLowerCase() : "";
+  if (value === "high") return "HIGH";
+  if (value === "medium") return "MEDIUM";
   return "LOW";
 }
 
-function toJakartaTime(utcDate: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false }).format(utcDate);
+function toJakartaTime(date: Date): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }
 
 function jakartaDate(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
   const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value;
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
@@ -27,58 +42,98 @@ function statusFor(date: Date, now: Date): CalendarStatus {
   const today = new Date(`${jakartaDate(now)}T00:00:00Z`);
   const target = new Date(`${jakartaDate(date)}T00:00:00Z`);
   const diffDays = Math.round((target.getTime() - today.getTime()) / dayMs);
+
   if (diffDays < 0) return "PAST";
   if (diffDays === 0) return date.getTime() > now.getTime() ? "TODAY" : "PAST";
   if (diffDays === 1) return "TOMORROW";
   return "UPCOMING";
 }
 
-export async function fetchEconomicCalendar(limit = 6): Promise<ProviderResult<CalendarEvent>> {
-  const apiKey = process.env.FMP_API_KEY;
-  if (!apiKey) return { status: "UNAVAILABLE", data: [], message: "FMP_API_KEY is not configured" };
+function isLikelyJson(contentType: string | null, body: string): boolean {
+  if (contentType?.toLowerCase().includes("json")) return true;
+  const first = body.trimStart().charAt(0);
+  return first === "[" || first === "{";
+}
 
+function isForexFactoryEvent(value: unknown): value is ForexFactoryEvent {
+  if (!value || typeof value !== "object") return false;
+  const item = value as ForexFactoryEvent;
+  return typeof item.title === "string"
+    && item.title.trim().length > 0
+    && typeof item.country === "string"
+    && item.country.trim().length > 0
+    && typeof item.date === "string"
+    && item.date.trim().length > 0;
+}
+
+export async function fetchEconomicCalendar(limit = 6): Promise<ProviderResult<CalendarEvent>> {
   const now = new Date();
-  const from = jakartaDate(now);
-  const toDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const to = jakartaDate(toDate);
-  const url = new URL(FMP_BASE);
-  url.searchParams.set("from", from);
-  url.searchParams.set("to", to);
-  url.searchParams.set("apikey", apiKey);
 
   try {
-    const res = await fetch(url.toString(), { next: { revalidate: 1800, tags: ["p365-dashboard"] }, signal: AbortSignal.timeout(10_000) });
-    if (!res.ok) return { status: "ERROR", data: [], message: `FMP HTTP ${res.status}` };
+    const res = await fetch(FOREX_FACTORY_URL, {
+      next: { revalidate: 3600, tags: ["p365-dashboard"] },
+      signal: AbortSignal.timeout(10_000),
+      headers: { Accept: "application/json" },
+    });
 
-    const data = (await res.json()) as unknown;
-    if (!Array.isArray(data)) return { status: "ERROR", data: [], message: "FMP economic calendar returned a non-array response" };
+    const contentType = res.headers.get("content-type");
+    const body = await res.text();
 
-    const events = (data as FmpEvent[])
-      .filter((item) => item.country === "US")
+    if (!res.ok) {
+      return { status: "ERROR", data: [], message: `ForexFactory HTTP ${res.status}` };
+    }
+
+    if (!isLikelyJson(contentType, body)) {
+      return { status: "ERROR", data: [], message: "ForexFactory returned a non-JSON response" };
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return { status: "ERROR", data: [], message: "ForexFactory returned invalid JSON" };
+    }
+
+    if (!Array.isArray(parsed)) {
+      return { status: "ERROR", data: [], message: "ForexFactory calendar returned a non-array response" };
+    }
+
+    const validItems = parsed.filter(isForexFactoryEvent);
+    if (parsed.length > 0 && validItems.length === 0) {
+      return { status: "ERROR", data: [], message: "ForexFactory calendar contained no valid event records" };
+    }
+
+    const events = validItems
       .flatMap((item, index): CalendarEvent[] => {
-        if (!item.date || !item.event?.trim() || !item.country?.trim()) return [];
-        const date = new Date(`${item.date.replace(" ", "T")}Z`);
+        const date = new Date(item.date as string);
         if (!Number.isFinite(date.getTime())) return [];
+
+        const status = statusFor(date, now);
+        if (status === "PAST") return [];
+
         return [{
-          id: `${item.event}-${item.date}-${index}`,
+          id: `forexfactory-${date.toISOString()}-${item.country}-${item.title}-${index}`,
           time: toJakartaTime(date),
-          event: item.event,
-          country: item.country,
+          event: item.title as string,
+          country: item.country as string,
           impact: mapImpact(item.impact),
-          status: statusFor(date, now),
+          status,
           dateISO: date.toISOString(),
         }];
       })
-      .filter((item) => item.status !== "PAST")
       .sort((a, b) => new Date(a.dateISO).getTime() - new Date(b.dateISO).getTime())
       .slice(0, limit);
 
     return {
       status: events.length > 0 ? "SUCCESS" : "EMPTY",
       data: events,
-      message: events.length > 0 ? undefined : "FMP returned no upcoming US economic events in the requested window",
+      message: events.length > 0 ? undefined : "ForexFactory returned no upcoming events in the current weekly feed",
     };
   } catch (error) {
-    return { status: "ERROR", data: [], message: error instanceof Error ? error.message : "FMP request failed" };
+    return {
+      status: "ERROR",
+      data: [],
+      message: error instanceof Error ? error.message : "ForexFactory request failed",
+    };
   }
 }
