@@ -31,6 +31,7 @@ export type CryptoMarketObservationInput = {
   symbol: string;
   value: number;
   observedAt: string;
+  retrievedAt: string;
   source: string;
   metadata: Record<string, string | number | boolean | null>;
 };
@@ -86,11 +87,11 @@ export async function fetchCryptoMarketObservations(
       const observedAt = observedAtFromUnix(item?.last_updated_at);
       if (!item || !observedAt) continue;
 
+      const retrievedAt = new Date().toISOString();
       const baseMetadata = {
         providerAssetId: id,
         quote: "USD",
         endpoint: "/simple/price",
-        retrievedAt: new Date().toISOString(),
       };
 
       if (Number.isFinite(item.usd)) {
@@ -99,6 +100,7 @@ export async function fetchCryptoMarketObservations(
           symbol,
           value: Number(item.usd),
           observedAt,
+          retrievedAt,
           source: "CoinGecko",
           metadata: { ...baseMetadata, metric: "spot_price", unit: "USD" },
         });
@@ -110,6 +112,7 @@ export async function fetchCryptoMarketObservations(
           symbol,
           value: Number(item.usd_market_cap),
           observedAt,
+          retrievedAt,
           source: "CoinGecko",
           metadata: { ...baseMetadata, metric: "market_cap", unit: "USD" },
         });
@@ -119,6 +122,7 @@ export async function fetchCryptoMarketObservations(
     const globalData = global.data;
     const globalObservedAt = observedAtFromUnix(globalData?.updated_at);
     if (globalData && globalObservedAt) {
+      const retrievedAt = new Date().toISOString();
       const globalMetrics: Array<{ metricId: string; symbol: string; value: number | undefined; metric: string; unit: string }> = [
         { metricId: "crypto.total_market_cap.usd", symbol: "TOTAL_CRYPTO", value: globalData.total_market_cap?.usd, metric: "total_market_cap", unit: "USD" },
         { metricId: "crypto.total_volume_24h.usd", symbol: "TOTAL_CRYPTO", value: globalData.total_volume?.usd, metric: "total_volume_24h", unit: "USD" },
@@ -133,12 +137,12 @@ export async function fetchCryptoMarketObservations(
           symbol: metric.symbol,
           value: Number(metric.value),
           observedAt: globalObservedAt,
+          retrievedAt,
           source: "CoinGecko",
           metadata: {
             metric: metric.metric,
             unit: metric.unit,
             endpoint: "/global",
-            retrievedAt: new Date().toISOString(),
           },
         });
       }
