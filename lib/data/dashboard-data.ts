@@ -32,6 +32,25 @@ export type DashboardData = {
   providerHealth: ProviderHealth[];
 };
 
+function normalizeNewsUrl(url: string): string {
+  return url.trim().replace(/#.*$/, "").replace(/\/+$/, "").toLowerCase();
+}
+
+/**
+ * Removes exact duplicate news records within the same canonical source.
+ * Cross-provider duplicates are intentionally preserved so source provenance
+ * is not silently discarded from Evidence.
+ */
+function dedupeNewsBySource(items: NewsItem[], sourceId: string): NewsItem[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${sourceId}:${normalizeNewsUrl(item.url)}`;
+    if (!normalizeNewsUrl(item.url) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function dedupeByTitle(items: NewsItem[]): NewsItem[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -93,9 +112,9 @@ export async function getDashboardData(): Promise<DashboardData> {
   const fredProvider = resultOrEmpty(fredResult);
   const fomcProvider = resultOrEmpty(fomcResult);
 
-  const macroNews = macroProvider.data;
-  const avCrypto = avCryptoProvider.data;
-  const coinDesk = coinDeskProvider.data;
+  const macroNews = dedupeNewsBySource(macroProvider.data, P365_SOURCES.alphaVantage.id);
+  const avCrypto = dedupeNewsBySource(avCryptoProvider.data, P365_SOURCES.alphaVantage.id);
+  const coinDesk = dedupeNewsBySource(coinDeskProvider.data, P365_SOURCES.coinDesk.id);
   const cryptoNews = sortByRecency(dedupeByTitle([...coinDesk, ...avCrypto])).slice(0, 6);
   const calendarEvents = dedupeCalendarEvents(calendarProvider.data, fomcProvider.data.map((item) => item.scheduledAt));
   const calendarProviderMessage = calendarProvider.message;
