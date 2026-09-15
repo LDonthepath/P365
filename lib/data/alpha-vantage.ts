@@ -30,7 +30,7 @@ async function fetchAlphaVantageFeed(params: Record<string, string>): Promise<Pr
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
 
   try {
-    const res = await fetch(url.toString(), { next: { revalidate: 1800 }, signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(url.toString(), { next: { revalidate: 1800, tags: ["p365-dashboard"] }, signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return { status: "ERROR", data: [], message: `Alpha Vantage HTTP ${res.status}` };
     const data = await res.json();
     if (!Array.isArray(data?.feed)) return { status: "EMPTY", data: [] };

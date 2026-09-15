@@ -12,7 +12,7 @@ function stripHtml(value: string): string {
 
 export async function fetchCoinDeskNews(limit = 6): Promise<ProviderResult<NewsItem>> {
   try {
-    const res = await fetch(COINDESK_RSS_URL, { next: { revalidate: 900 }, signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(COINDESK_RSS_URL, { next: { revalidate: 900, tags: ["p365-dashboard"] }, signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return { status: "ERROR", data: [], message: `CoinDesk HTTP ${res.status}` };
 
     const xml = await res.text();

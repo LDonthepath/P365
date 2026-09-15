@@ -46,7 +46,7 @@ export async function fetchEconomicCalendar(limit = 6): Promise<ProviderResult<C
   url.searchParams.set("apikey", apiKey);
 
   try {
-    const res = await fetch(url.toString(), { next: { revalidate: 1800 }, signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(url.toString(), { next: { revalidate: 1800, tags: ["p365-dashboard"] }, signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return { status: "ERROR", data: [], message: `FMP HTTP ${res.status}` };
     const data = (await res.json()) as unknown;
     if (!Array.isArray(data)) return { status: "EMPTY", data: [] };

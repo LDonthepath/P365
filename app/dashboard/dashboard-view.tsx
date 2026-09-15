@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { relativeTimeID } from "@/lib/data/format";
 import type { DashboardData } from "@/lib/data/dashboard-data";
 import type { CalendarEvent, NewsItem } from "@/lib/data/types";
 import type { DataQuality, ProviderHealth } from "@/lib/domain/types";
-import { logout } from "./actions";
+import { logout, refreshDashboardData } from "./actions";
 
 type Menu = "overview" | "macro" | "crypto" | "intelligence" | "evidence";
 const menuItems: { id: Menu; label: string }[] = [
@@ -24,15 +25,26 @@ function observationStatus(qualities: DataQuality[]): "PENDING" | "FRESH" | "PAR
 function sourceStatus(health: ProviderHealth[]): "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE" { if (!health.length) return "PENDING"; if (health.some((item) => item.status === "ERROR" || item.status === "UNAVAILABLE")) return "UNAVAILABLE"; if (health.some((item) => item.status === "STALE")) return "PARTIAL"; return health.some((item) => item.status === "EMPTY") ? "PENDING" : "FRESH"; }
 
 export function DashboardView({ data, sessionEmail }: { data: DashboardData; sessionEmail: string }) {
+  const router = useRouter();
   const [activeMenu, setActiveMenu] = useState<Menu>("overview");
+  const [isRefreshing, startRefresh] = useTransition();
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const { macroNews, cryptoNews, calendarEvents, unavailableSources, observations, evidence, providerHealth } = data;
+
+  function handleManualRefresh() {
+    startRefresh(async () => {
+      const result = await refreshDashboardData();
+      setLastRefreshedAt(result.refreshedAt);
+      router.refresh();
+    });
+  }
   const marketStatus = observationStatus(observations.map((item) => item.quality));
   const providerStatus = sourceStatus(providerHealth);
   const highImpactEvents = calendarEvents.filter((item) => item.impact === "HIGH").length;
   const showNews = (items: NewsItem[], label: string) => <section className="panel news-panel"><div className="panel-label"><span>{label}</span><span>{items.length} ITEM</span></div><h2>Evidence berita terbaru</h2><div className="news-list">{items.length ? items.map((item) => <NewsCard item={item} key={item.id} />) : <EmptyPanelNote label={label.toLowerCase()} />}</div></section>;
 
   return <main className="dashboard-shell">
-    <header className="topbar"><div><div className="brand-lockup"><span className="brand-mark" aria-hidden="true">P</span><p className="eyebrow">P365 // MARKET INTELLIGENCE</p></div><h1>Market Intelligence<span>.</span></h1></div><div className="topbar-actions"><p><span className={`live-dot ${providerStatus === "UNAVAILABLE" ? "warning" : ""}`} /> {providerStatus === "FRESH" ? "DATA SEHAT" : "PERLU PERHATIAN"}</p><form action={logout}><button className="logout" type="submit">Keluar</button></form></div></header>
+    <header className="topbar"><div><div className="brand-lockup"><span className="brand-mark" aria-hidden="true">P</span><p className="eyebrow">P365 // MARKET INTELLIGENCE</p></div><h1>Market Intelligence<span>.</span></h1></div><div className="topbar-actions"><p><span className={`live-dot ${providerStatus === "UNAVAILABLE" ? "warning" : ""}`} /> {providerStatus === "FRESH" ? "DATA SEHAT" : "PERLU PERHATIAN"}</p>{lastRefreshedAt && <p className="muted refresh-note">Refresh manual terakhir: {relativeTimeID(lastRefreshedAt)}</p>}<button className="refresh-btn" type="button" onClick={handleManualRefresh} disabled={isRefreshing} aria-busy={isRefreshing}>{isRefreshing ? "Memuat ulang…" : "Muat ulang manual"}</button><form action={logout}><button className="logout" type="submit">Keluar</button></form></div></header>
     <nav className="filters" aria-label="Bagian dashboard" role="tablist">{menuItems.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeMenu === item.id} className={activeMenu === item.id ? "active" : ""} onClick={() => setActiveMenu(item.id)}>{item.label}</button>)}<span>WIB / ASIA-JAKARTA</span></nav>
 
     <div className="dashboard-content" role="tabpanel">

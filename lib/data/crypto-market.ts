@@ -36,7 +36,7 @@ async function fetchRate(symbol: string): Promise<CryptoMarketObservationInput |
   url.searchParams.set("to_currency", "USD");
   url.searchParams.set("apikey", apiKey);
 
-  const res = await fetch(url.toString(), { next: { revalidate: 300 }, signal: AbortSignal.timeout(10_000) });
+  const res = await fetch(url.toString(), { next: { revalidate: 300, tags: ["p365-dashboard"] }, signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
 
   const payload = (await res.json()) as AlphaVantageRateResponse;
