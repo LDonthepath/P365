@@ -14,6 +14,7 @@ export type MacroObservationInput = {
   observationDate: string;
   previousValue: string | null;
   vintageDate: string | null;
+  retrievedAt: string;
 };
 
 function isDateOnly(value: string | undefined): value is string {
@@ -49,6 +50,7 @@ async function fetchSeries(series: MacroSeriesDefinition, apiKey: string): Promi
       .sort((a, b) => b.date.localeCompare(a.date));
     if (valid.length === 0) return { status: "EMPTY", data: [], message: `FRED ${series.seriesId} returned no valid observations` };
 
+    const retrievedAt = new Date().toISOString();
     return {
       status: "SUCCESS",
       data: valid.map((observation, index) => ({
@@ -57,6 +59,7 @@ async function fetchSeries(series: MacroSeriesDefinition, apiKey: string): Promi
         observationDate: observation.date,
         previousValue: valid[index + 1]?.value ?? null,
         vintageDate: observation.realtime_start && isDateOnly(observation.realtime_start) ? observation.realtime_start : null,
+        retrievedAt,
       })),
     };
   } catch (error) {
