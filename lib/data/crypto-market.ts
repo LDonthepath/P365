@@ -9,6 +9,7 @@ type AlphaVantageRateResponse = {
     "1. From_Currency Code"?: string;
     "2. From_Currency Name"?: string;
     "3. To_Currency Code"?: string;
+    "3. To_Currency Name"?: string;
     "4. To_Currency Name"?: string;
     "5. Exchange Rate"?: string;
     "6. Last Refreshed"?: string;
@@ -54,6 +55,9 @@ async function fetchRate(symbol: string): Promise<CryptoMarketObservationInput |
     observedAt: observedDate.toISOString(),
     source: "Alpha Vantage",
     metadata: {
+      seriesId: `${symbol}/USD:SPOT`,
+      frequency: "REALTIME",
+      unit: "USD",
       quote: "USD",
       bid: Number(rate["8. Bid Price"] ?? NaN),
       ask: Number(rate["9. Ask Price"] ?? NaN),
