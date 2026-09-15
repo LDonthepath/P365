@@ -9,9 +9,8 @@ export async function logout() {
   redirect("/login");
 }
 
-// Memaksa semua fetch provider (Alpha Vantage, CoinDesk, FMP) untuk
-// mengambil data baru pada render berikutnya, bukan menunggu revalidate
-// cache alami (15-30 menit). Dipanggil dari tombol "Muat ulang manual".
+// Memaksa semua fetch provider untuk mengambil data baru pada render berikutnya,
+// bukan menunggu revalidate cache alami. Dipanggil dari tombol "Muat ulang manual".
 export async function refreshDashboardData() {
   revalidateTag("p365-dashboard");
   return { refreshedAt: new Date().toISOString() };
