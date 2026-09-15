@@ -40,25 +40,30 @@ function isValidCurrentOrPastMacroDate(observationDate: string): boolean {
 }
 
 export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] {
+  const retrievedAt = new Date().toISOString();
   return items.map((item) => ({
     id: hashId("evidence", `${sourceId}:${item.id}`),
     sourceId,
     kind: "NEWS",
     subject: item.title,
     content: item.summary,
-    capturedAt: item.publishedAt,
+    capturedAt: retrievedAt,
+    retrievedAt,
+    publishedAt: item.publishedAt,
     metadata: { category: item.category, url: item.url, source: item.source },
   }));
 }
 
 export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
+  const retrievedAt = new Date().toISOString();
   const evidence = items.map((item) => ({
     id: hashId("evidence", `${sourceId}:${item.id}`),
     sourceId,
     kind: "EVENT" as const,
     subject: item.event,
     content: `${item.country} · ${item.impact} impact · ${item.status}`,
-    capturedAt: new Date().toISOString(),
+    capturedAt: retrievedAt,
+    retrievedAt,
     metadata: { country: item.country, impact: item.impact, status: item.status, scheduledAt: item.dateISO },
   }));
 
@@ -67,6 +72,7 @@ export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: str
     subject: item.event,
     description: `${item.country} economic event`,
     scheduledAt: new Date(item.dateISO).toISOString(),
+    retrievedAt,
     status: item.status === "PAST" ? "PAST" as const : "UPCOMING" as const,
     importance: item.impact,
     sourceId,
@@ -83,7 +89,8 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
     kind: "OBSERVATION" as const,
     subject: item.metricId,
     content: `${item.metricId} observed at ${item.value}`,
-    capturedAt: item.observedAt,
+    capturedAt: item.retrievedAt,
+    retrievedAt: item.retrievedAt,
     metadata: { ...item.metadata, symbol: item.symbol, metricId: item.metricId },
   }));
 
@@ -93,6 +100,7 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
     subject: item.metricId,
     value: String(item.value),
     observedAt: item.observedAt,
+    retrievedAt: item.retrievedAt,
     sourceId,
     evidenceId: evidence[index].id,
     metadata: { symbol: item.symbol, metricId: item.metricId, ...item.metadata },
@@ -103,7 +111,6 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
 
 /** Converts validated FRED records into canonical facts without interpretation. */
 export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
-  const capturedAt = new Date().toISOString();
   const eligibleItems = items.filter((item) => isValidCurrentOrPastMacroDate(item.observationDate));
   const evidence = eligibleItems.map((item) => ({
     id: hashId("evidence", `${sourceId}:${item.series.seriesId}:${item.observationDate}:${item.value}`),
@@ -111,7 +118,8 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
     kind: "OBSERVATION" as const,
     subject: item.series.subject,
     content: `${item.series.seriesId} = ${item.value} (${item.observationDate})`,
-    capturedAt,
+    capturedAt: item.retrievedAt,
+    retrievedAt: item.retrievedAt,
     metadata: {
       seriesId: item.series.seriesId,
       frequency: item.series.frequency,
@@ -129,7 +137,8 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
     domain: "MACRO" as const,
     subject: item.series.subject,
     value: item.value,
-    observedAt: capturedAt,
+    observedAt: item.observationDate,
+    retrievedAt: item.retrievedAt,
     sourceId,
     quality: macroObservationQuality(item.observationDate, item.series.freshnessMs),
     evidenceId: evidence[index].id,
@@ -149,14 +158,15 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
 }
 
 export function fomcToCanonicalRecords(items: FomcEventInput[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
-  const capturedAt = new Date().toISOString();
+  const retrievedAt = new Date().toISOString();
   const evidence = items.map((item) => ({
     id: hashId("evidence", `${sourceId}:fomc:${item.scheduledAt}`),
     sourceId,
     kind: "EVENT" as const,
     subject: "FOMC meeting",
     content: `FOMC meeting scheduled for ${item.label}`,
-    capturedAt,
+    capturedAt: retrievedAt,
+    retrievedAt,
     metadata: { source: "Federal Reserve", scheduledAt: item.scheduledAt, scheduledAtIsDateAnchor: true, url: item.sourceUrl },
   }));
   const events = items.map((item, index) => ({
@@ -164,6 +174,7 @@ export function fomcToCanonicalRecords(items: FomcEventInput[], sourceId: string
     subject: "FOMC meeting",
     description: `Federal Open Market Committee meeting (${item.label})`,
     scheduledAt: item.scheduledAt,
+    retrievedAt,
     status: "UPCOMING" as const,
     importance: "HIGH" as const,
     sourceId,
@@ -178,6 +189,7 @@ export function observationFromCanonicalFact(input: {
   subject: string;
   value: string;
   observedAt: string;
+  retrievedAt: string;
   sourceId: string;
   evidenceId: string;
   metadata?: Record<string, string | number | boolean | null>;
