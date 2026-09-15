@@ -72,10 +72,18 @@ function isEarlier(a: Observation, b: Observation): boolean {
   return aTime !== null && bTime !== null && aTime < bTime;
 }
 
-function baselineSortTime(observation: Observation): number {
-  const date = observationDate(observation);
-  if (date) return Date.parse(`${date}T00:00:00.000Z`);
-  return observedTime(observation) ?? Number.NEGATIVE_INFINITY;
+function compareBaselineRecency(a: Observation, b: Observation): number {
+  const aDate = observationDate(a);
+  const bDate = observationDate(b);
+
+  if (aDate && bDate && aDate !== bDate) return bDate.localeCompare(aDate);
+
+  const aTime = observedTime(a);
+  const bTime = observedTime(b);
+  if (aTime !== null && bTime !== null) return bTime - aTime;
+  if (aTime !== null) return -1;
+  if (bTime !== null) return 1;
+  return 0;
 }
 
 function baselineStatus(quality: DataQuality): BaselineStatus {
@@ -110,7 +118,7 @@ export function selectFactualBaseline(
   const compatibleCandidates = consideredCandidates
     .filter((candidate) => compatible(current, candidate))
     .filter((candidate) => isEarlier(candidate, current))
-    .sort((a, b) => baselineSortTime(b) - baselineSortTime(a));
+    .sort(compareBaselineRecency);
 
   const baseline = compatibleCandidates[0];
 
