@@ -31,6 +31,14 @@ function macroObservationQuality(observationDate: string, freshnessMs: number): 
   return Date.now() - observationDateMs <= freshnessMs ? "FRESH" : "STALE";
 }
 
+function isValidCurrentOrPastMacroDate(observationDate: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(observationDate)) return false;
+  const date = new Date(`${observationDate}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime())
+    && date.toISOString().slice(0, 10) === observationDate
+    && observationDate <= new Date().toISOString().slice(0, 10);
+}
+
 export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] {
   return items.map((item) => ({
     id: hashId("evidence", `${sourceId}:${item.id}`),
@@ -108,7 +116,9 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
   evidence: Evidence[];
 } {
   const capturedAt = new Date().toISOString();
-  const evidence = items.map((item) => ({
+  // Keep a normalization boundary guard: future or malformed periods are never canonical facts.
+  const eligibleItems = items.filter((item) => isValidCurrentOrPastMacroDate(item.observationDate));
+  const evidence = eligibleItems.map((item) => ({
     id: hashId("evidence", `${sourceId}:${item.series.seriesId}:${item.observationDate}:${item.value}`),
     sourceId,
     kind: "OBSERVATION" as const,
@@ -127,7 +137,7 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
     },
   }));
 
-  const observations = items.map((item, index) => ({
+  const observations = eligibleItems.map((item, index) => ({
     id: hashId("observation", `${sourceId}:${item.series.seriesId}:${item.observationDate}:${item.value}`),
     domain: "MACRO" as const,
     subject: item.series.subject,
@@ -161,7 +171,7 @@ export function fomcToCanonicalRecords(items: FomcEventInput[], sourceId: string
     subject: "FOMC meeting",
     content: `FOMC meeting scheduled for ${item.label}`,
     capturedAt,
-    metadata: { source: "Federal Reserve", scheduledAt: item.scheduledAt, url: item.sourceUrl },
+    metadata: { source: "Federal Reserve", scheduledAt: item.scheduledAt, scheduledAtIsDateAnchor: true, url: item.sourceUrl },
   }));
   const events = items.map((item, index) => ({
     id: hashId("event", `${sourceId}:fomc:${item.scheduledAt}`),

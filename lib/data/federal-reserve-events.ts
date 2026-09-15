@@ -21,13 +21,15 @@ function monthNumber(value: string): number | null {
 function parseUpcomingFomcMeetings(html: string, now = new Date()): FomcEventInput[] {
   const matches = [...html.matchAll(/fomc-meeting__month[^>]*>([\s\S]*?)<\/[^>]+>[\s\S]*?fomc-meeting__date[^>]*>([\s\S]*?)<\/[^>]+>/gi)];
   const years = [now.getUTCFullYear(), now.getUTCFullYear() + 1];
+  const todayAnchorMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const events = matches.flatMap((match): FomcEventInput[] => {
     const month = monthNumber(text(match[1]));
     const dayMatch = text(match[2]).match(/\d{1,2}/);
     if (month === null || !dayMatch) return [];
     const day = Number(dayMatch[0]);
-    const candidates = years.map((year) => new Date(Date.UTC(year, month, day, 18, 0, 0)));
-    const scheduled = candidates.find((candidate) => candidate.getTime() >= now.getTime());
+    // The official calendar provides a date/window, not a verified meeting time.
+    const candidates = years.map((year) => new Date(Date.UTC(year, month, day, 0, 0, 0)));
+    const scheduled = candidates.find((candidate) => candidate.getTime() >= todayAnchorMs);
     if (!scheduled || scheduled.getUTCDate() !== day || scheduled.getUTCMonth() !== month) return [];
     return [{ scheduledAt: scheduled.toISOString(), label: `${text(match[1])} ${text(match[2])}`, sourceUrl: FOMC_CALENDAR_URL }];
   });

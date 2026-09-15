@@ -6,6 +6,7 @@ const FRED_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observatio
 
 type FredObservation = { date?: string; value?: string; realtime_start?: string; realtime_end?: string };
 type FredResponse = { observations?: FredObservation[]; error_message?: string };
+type ValidFredObservation = FredObservation & { date: string; value: string };
 
 export type MacroObservationInput = {
   series: MacroSeriesDefinition;
@@ -16,11 +17,17 @@ export type MacroObservationInput = {
 };
 
 function isDateOnly(value: string | undefined): value is string {
-  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(new Date(`${value}T00:00:00.000Z`).getTime()));
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function isNumericValue(value: string | undefined): value is string {
   return Boolean(value && value !== "." && Number.isFinite(Number(value)));
+}
+
+function isValidCurrentOrPastDate(value: string): boolean {
+  return isDateOnly(value) && value <= new Date().toISOString().slice(0, 10);
 }
 
 async function fetchSeries(series: MacroSeriesDefinition, apiKey: string): Promise<ProviderResult<MacroObservationInput>> {
@@ -37,12 +44,14 @@ async function fetchSeries(series: MacroSeriesDefinition, apiKey: string): Promi
     const payload = await response.json() as FredResponse;
     if (!Array.isArray(payload.observations)) return { status: "ERROR", data: [], message: payload.error_message ?? `FRED ${series.seriesId} response is malformed` };
 
-    const valid = payload.observations.filter((item) => isDateOnly(item.date) && isNumericValue(item.value));
+    const valid = payload.observations
+      .filter((item): item is ValidFredObservation => isValidCurrentOrPastDate(item.date ?? "") && isNumericValue(item.value))
+      .sort((a, b) => b.date.localeCompare(a.date));
     if (valid.length === 0) return { status: "EMPTY", data: [], message: `FRED ${series.seriesId} returned no valid observations` };
     const [latest, previous] = valid;
     return {
       status: "SUCCESS",
-      data: [{ series, value: latest.value!, observationDate: latest.date!, previousValue: previous?.value ?? null, vintageDate: latest.realtime_start && isDateOnly(latest.realtime_start) ? latest.realtime_start : null }],
+      data: [{ series, value: latest.value, observationDate: latest.date, previousValue: previous?.value ?? null, vintageDate: latest.realtime_start && isDateOnly(latest.realtime_start) ? latest.realtime_start : null }],
     };
   } catch (error) {
     return { status: "ERROR", data: [], message: error instanceof Error ? error.message : `FRED ${series.seriesId} request failed` };
