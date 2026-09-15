@@ -2,6 +2,47 @@
 
 P365 adalah private market-intelligence dashboard untuk membaca kondisi pasar berbasis data dan evidence. Sistem ini **bukan** trading bot, execution system, signal copier, atau price predictor.
 
+## Purpose
+
+P365 dibangun untuk **menjelaskan market, bukan sekadar menampilkan market**.
+
+Tujuan akhirnya adalah menghasilkan **Market Briefing** yang membantu pengguna memahami:
+
+- apa yang sedang berubah di market;
+- mengapa perubahan tersebut terjadi;
+- bagaimana perubahan ekspektasi diterjemahkan menjadi repricing;
+- bagaimana repricing tersebut ditransmisikan antar-aset;
+- bukti apa yang mengonfirmasi atau bertentangan dengan pembacaan tersebut; dan
+- apa yang perlu dimonitor berikutnya.
+
+P365 karena itu tidak boleh berhenti pada pembacaan angka atau headline. Angka ekonomi, kebijakan moneter, likuiditas, market pricing, dan pergerakan aset harus dibaca **relatif terhadap rezim yang sedang berlaku dan ekspektasi yang sudah di-price oleh market**.
+
+Mental model reasoning P365:
+
+```text
+Observe
+  ↓
+Compare
+  ↓
+Detect Surprise
+  ↓
+Detect Repricing
+  ↓
+Test Transmission
+  ↓
+Resolve Confirmation / Contradiction
+  ↓
+Explain Regime
+  ↓
+Market Briefing
+```
+
+Prinsip utama:
+
+> **P365 exists to explain the market, not merely to display it.**
+
+Setiap layer, data source, model, dan UI harus dapat dipertanggungjawabkan terhadap tujuan tersebut. Kompleksitas yang hanya membuat dashboard semakin ramai tanpa meningkatkan kemampuan P365 untuk memahami dan menjelaskan market bukan merupakan tujuan produk.
+
 ## Current scope
 
 Implementasi aktif saat ini berfokus pada **Macro + Crypto**. Fondasi domain dibuat market-agnostic agar domain pasar lain dapat ditambahkan kemudian tanpa mengubah kontrak inti.
