@@ -1,4 +1,4 @@
-# P365 Architecture v0.3
+# P365 Architecture v0.4
 
 ## Product boundary
 
@@ -14,7 +14,8 @@ P365 exists to **explain the market, not merely to display it**. The intended us
 - Event: a time-bound occurrence, scheduled or unscheduled.
 - Context: an explicit grouping of related canonical observations/events. Context does not infer market direction.
 - Baseline: a validated reference used to answer a specific comparison question.
-- Market Memory: time-indexed prior canonical references used to evaluate change. It is not a second source of truth.
+- Market Snapshot: an immutable, time-indexed representation of the market information relevant to a defined scope at capture time.
+- Market Memory: time-indexed references to prior canonical objects and Snapshots used to evaluate change. It is not a second source of truth.
 - State: an interpreted condition at a point in time, with confidence and evidence.
 - Risk: uncertainty or adverse-condition context that matters to decision support.
 - Intelligence: evidence-based interpretation with explicit confirmation, contradiction, invalidation, and monitoring criteria.
@@ -56,7 +57,7 @@ HISTORICAL BASELINE    → is the change unusual?
 
 For example, an economic release can be above consensus while still producing little incremental market surprise if the result was already embedded in market pricing.
 
-See [`docs/P365-MARKET-REASONING-BASELINE-v0.1.md`](P365-MARKET-REASONING-BASELINE-v0.1.md) for the conceptual contract.
+See [`docs/P365-MARKET-REASONING-BASELINE-v0.1.md`](P365-MARKET-REASONING-BASELINE-v0.1.md) for the conceptual baseline contract and [`docs/P365-MARKET-SNAPSHOT-CONTRACT-v0.1.md`](P365-MARKET-SNAPSHOT-CONTRACT-v0.1.md) for the immutable snapshot model.
 
 ## Data flow
 
@@ -71,7 +72,7 @@ Canonical Observation / Event / Evidence
   ↓
 Context
   ↓
-Baseline / Market Memory
+Baseline / Market Snapshot / Market Memory
   ↓
 State / Repricing / Regime Analysis
   ↓
@@ -81,6 +82,26 @@ Briefing
   ↓
 UI
 ```
+
+## Market Snapshot principle
+
+A Snapshot records **what was observable at capture time**. It must never be retroactively rewritten using information learned later.
+
+For event analysis, the conceptual sequence is:
+
+```text
+PRE-EVENT SNAPSHOT
+        ↓
+EVENT / RELEASE
+        ↓
+POST-EVENT SNAPSHOT
+        ↓
+CHANGE / SURPRISE / REPRICING
+        ↓
+CROSS-ASSET TRANSMISSION TEST
+```
+
+Snapshots reference canonical observations/events and preserve their provenance. They are not a second source of truth and do not contain hidden directional conclusions.
 
 ## Context Layer v0.2
 
@@ -144,22 +165,26 @@ News remains Evidence and is not silently promoted into Observation. Economic-ca
 13. Missing or stale baselines must remain explicit uncertainty.
 14. Market Memory must not replace canonical observations/events as the source of truth.
 15. Different baseline types must not be collapsed into one generic delta.
+16. Market Snapshots are immutable after creation.
+17. Historical Snapshots must not be rewritten using later information.
+18. Snapshot comparisons must respect temporal, semantic, unit, and quality compatibility.
 
 ## Current implementation
 
 `getDashboardData()` exposes canonical observations, events, contexts, evidence, and provider health while preserving the existing UI-compatible news/calendar fields. Context is wired into the dashboard and rendered as a dedicated neutral context list.
 
-The current Context implementation is deliberately mechanical. It is not a State engine and must not be used as one. Baseline and Market Memory are currently **design-level reasoning infrastructure**, not an implemented engine.
+The current Context implementation is deliberately mechanical. It is not a State engine and must not be used as one. Baseline, Market Memory, and Market Snapshot are currently **design-level reasoning infrastructure**, not implemented engines.
 
-## Roadmap: Context → Baseline/Memory → State → Risk → Intelligence → Briefing
+## Roadmap: Context → Baseline/Memory → Snapshot → State → Risk → Intelligence → Briefing
 
 **Process rule:** one stage = one isolated change/checkpoint. Do not implement multiple reasoning stages in a single pass.
 
 1. **Context** — complete v0.2 grouping and traceability foundation. **Current foundation checkpoint.**
 2. **Baseline / Market Memory** — define validated comparison references and temporal memory without creating a second source of truth.
-3. **State** — define concrete confidence/domain rules for at least one case and wire one panel only.
-4. **Risk** — derive Risk from State plus relevant upcoming events.
-5. **Intelligence** — synthesize Context + Baseline/Memory + State + Risk into WHAT/WHY/CONFIRMS/CONTRADICTS/INVALIDATES/MONITOR.
-6. **Briefing** — render human-readable market synthesis from canonical intelligence without inventing facts.
+3. **Market Snapshot** — implement immutable capture-time market state references for before/after and historical comparison.
+4. **State** — define concrete confidence/domain rules for at least one case and wire one panel only.
+5. **Risk** — derive Risk from State plus relevant upcoming events.
+6. **Intelligence** — synthesize Context + Baseline/Memory + Snapshot + State + Risk into WHAT/WHY/CONFIRMS/CONTRADICTS/INVALIDATES/MONITOR.
+7. **Briefing** — render human-readable market synthesis from canonical intelligence without inventing facts.
 
 Each stage requires its own verification and a short note explaining the chosen domain rule. Domain reasoning must be established before it is encoded.
