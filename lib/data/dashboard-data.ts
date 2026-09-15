@@ -80,7 +80,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   if (cryptoNews.length === 0 || (coinDeskProvider.status !== "SUCCESS" && avCryptoProvider.status !== "SUCCESS")) {
     unavailableSources.push(`berita crypto (CoinDesk: ${coinDeskProvider.status}; Alpha Vantage: ${avCryptoProvider.status})`);
   }
-  if (calendarProvider.status !== "SUCCESS") unavailableSources.push(`kalender ekonomi (Financial Modeling Prep: ${calendarProvider.status})`);
+  if (calendarProvider.status !== "SUCCESS") unavailableSources.push(`kalender ekonomi (Forex Factory: ${calendarProvider.status})`);
   if (cryptoMarketProvider.status !== "SUCCESS") unavailableSources.push(`market crypto (Alpha Vantage: ${cryptoMarketProvider.status})`);
   if (fredProvider.status !== "SUCCESS") unavailableSources.push(`observasi makro (FRED: ${fredProvider.status})`);
   if (fomcProvider.status !== "SUCCESS") unavailableSources.push(`event FOMC (Federal Reserve: ${fomcProvider.status})`);
@@ -90,7 +90,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     ...newsToEvidence(avCrypto, P365_SOURCES.alphaVantage.id),
     ...newsToEvidence(coinDesk, P365_SOURCES.coinDesk.id),
   ];
-  const calendarRecords = calendarToCanonicalRecords(calendarEvents, P365_SOURCES.fmp.id);
+  const calendarRecords = calendarToCanonicalRecords(calendarEvents, P365_SOURCES.forexFactory.id);
   const fomcRecords = fomcToCanonicalRecords(fomcProvider.data, P365_SOURCES.federalReserve.id);
   const events = [...calendarRecords.events, ...fomcRecords.events];
   const marketFacts = cryptoMarketToObservations(cryptoMarketProvider.data, P365_SOURCES.alphaVantageMarket.id);
@@ -104,7 +104,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const providerHealth = [
     providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider),
     providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider),
-    providerHealthForResult(P365_SOURCES.fmp.id, calendarProvider),
+    providerHealthForResult(P365_SOURCES.forexFactory.id, calendarProvider),
     providerHealthForResult(P365_SOURCES.alphaVantageMarket.id, cryptoMarketProvider),
     fredHealth,
     providerHealthForResult(P365_SOURCES.federalReserve.id, fomcProvider),
