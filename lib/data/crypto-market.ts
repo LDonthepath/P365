@@ -1,24 +1,33 @@
 import "server-only";
 import type { ProviderResult } from "./types";
 
-const ALPHA_VANTAGE_BASE = "https://www.alphavantage.co/query";
+const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
 
-type AlphaVantageRateResponse = {
-  [key: string]: unknown;
-  "Realtime Currency Exchange Rate"?: {
-    "1. From_Currency Code"?: string;
-    "2. From_Currency Name"?: string;
-    "3. To_Currency Code"?: string;
-    "4. To_Currency Name"?: string;
-    "5. Exchange Rate"?: string;
-    "6. Last Refreshed"?: string;
-    "7. Time Zone"?: string;
-    "8. Bid Price"?: string;
-    "9. Ask Price"?: string;
+const ASSET_IDS = {
+  BTC: "bitcoin",
+  ETH: "ethereum",
+} as const;
+
+type CoinGeckoSimplePrice = {
+  [id: string]: {
+    usd?: number;
+    usd_market_cap?: number;
+    usd_24h_vol?: number;
+    last_updated_at?: number;
+  };
+};
+
+type CoinGeckoGlobal = {
+  data?: {
+    total_market_cap?: { usd?: number };
+    total_volume?: { usd?: number };
+    market_cap_percentage?: { btc?: number; eth?: number };
+    updated_at?: number;
   };
 };
 
 export type CryptoMarketObservationInput = {
+  metricId: string;
   symbol: string;
   value: number;
   observedAt: string;
@@ -26,65 +35,122 @@ export type CryptoMarketObservationInput = {
   metadata: Record<string, string | number | boolean | null>;
 };
 
-async function fetchRate(symbol: string): Promise<CryptoMarketObservationInput | null> {
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
-  if (!apiKey) return null;
+function observedAtFromUnix(seconds: number | undefined): string | null {
+  if (!Number.isFinite(seconds)) return null;
+  const date = new Date(Number(seconds) * 1000);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
 
-  const url = new URL(ALPHA_VANTAGE_BASE);
-  url.searchParams.set("function", "CURRENCY_EXCHANGE_RATE");
-  url.searchParams.set("from_currency", symbol);
-  url.searchParams.set("to_currency", "USD");
-  url.searchParams.set("apikey", apiKey);
+async function fetchCoinGecko<T>(path: string, params: Record<string, string>): Promise<T> {
+  const url = new URL(`${COINGECKO_BASE}${path}`);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
-  const res = await fetch(url.toString(), { next: { revalidate: 300, tags: ["p365-dashboard"] }, signal: AbortSignal.timeout(10_000) });
-  if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
+  const apiKey = process.env.COINGECKO_API_KEY;
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (apiKey) headers["x-cg-demo-api-key"] = apiKey;
 
-  const payload = (await res.json()) as AlphaVantageRateResponse;
-  const rate = payload["Realtime Currency Exchange Rate"];
-  const value = Number(rate?.["5. Exchange Rate"]);
-  if (!rate || !Number.isFinite(value)) return null;
+  const res = await fetch(url.toString(), {
+    headers,
+    next: { revalidate: 300, tags: ["p365-dashboard"] },
+    signal: AbortSignal.timeout(10_000),
+  });
 
-  const observedAt = rate["6. Last Refreshed"];
-  const observedDate = observedAt ? new Date(`${observedAt.replace(" ", "T")}Z`) : null;
-  if (!observedDate || !Number.isFinite(observedDate.getTime())) return null;
-
-  return {
-    symbol,
-    value,
-    observedAt: observedDate.toISOString(),
-    source: "Alpha Vantage",
-    metadata: {
-      seriesId: `${symbol}/USD:SPOT`,
-      frequency: "REALTIME",
-      unit: "USD",
-      quote: "USD",
-      bid: Number(rate["8. Bid Price"] ?? NaN),
-      ask: Number(rate["9. Ask Price"] ?? NaN),
-      timezone: rate["7. Time Zone"] ?? null,
-    },
-  };
+  if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
+  return (await res.json()) as T;
 }
 
 export async function fetchCryptoMarketObservations(
   symbols: string[] = ["BTC", "ETH"],
 ): Promise<ProviderResult<CryptoMarketObservationInput>> {
-  if (!process.env.ALPHA_VANTAGE_API_KEY) {
-    return { status: "UNAVAILABLE", data: [], message: "ALPHA_VANTAGE_API_KEY is not configured" };
-  }
+  const requestedSymbols = symbols.filter((symbol) => symbol in ASSET_IDS) as Array<keyof typeof ASSET_IDS>;
+  if (requestedSymbols.length === 0) return { status: "EMPTY", data: [], message: "No supported crypto symbols requested" };
 
-  const results = await Promise.allSettled(symbols.map(fetchRate));
-  const data: CryptoMarketObservationInput[] = [];
-  const errors: string[] = [];
+  try {
+    const ids = requestedSymbols.map((symbol) => ASSET_IDS[symbol]).join(",");
+    const [assets, global] = await Promise.all([
+      fetchCoinGecko<CoinGeckoSimplePrice>("/simple/price", {
+        ids,
+        vs_currencies: "usd",
+        include_market_cap: "true",
+        include_24hr_vol: "true",
+        include_last_updated_at: "true",
+      }),
+      fetchCoinGecko<CoinGeckoGlobal>("/global", {}),
+    ]);
 
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      if (result.value) data.push(result.value);
-    } else {
-      errors.push(result.reason instanceof Error ? result.reason.message : "Crypto market provider request failed");
+    const data: CryptoMarketObservationInput[] = [];
+
+    for (const symbol of requestedSymbols) {
+      const id = ASSET_IDS[symbol];
+      const item = assets[id];
+      const observedAt = observedAtFromUnix(item?.last_updated_at);
+      if (!item || !observedAt) continue;
+
+      const baseMetadata = {
+        providerAssetId: id,
+        quote: "USD",
+        endpoint: "/simple/price",
+        retrievedAt: new Date().toISOString(),
+      };
+
+      if (Number.isFinite(item.usd)) {
+        data.push({
+          metricId: `${symbol.toLowerCase()}.spot.usd`,
+          symbol,
+          value: Number(item.usd),
+          observedAt,
+          source: "CoinGecko",
+          metadata: { ...baseMetadata, metric: "spot_price", unit: "USD" },
+        });
+      }
+
+      if (Number.isFinite(item.usd_market_cap)) {
+        data.push({
+          metricId: `${symbol.toLowerCase()}.market_cap.usd`,
+          symbol,
+          value: Number(item.usd_market_cap),
+          observedAt,
+          source: "CoinGecko",
+          metadata: { ...baseMetadata, metric: "market_cap", unit: "USD" },
+        });
+      }
     }
-  }
 
-  if (data.length > 0) return { status: "SUCCESS", data, message: errors.length ? errors.join("; ") : undefined };
-  if (errors.length > 0) return { status: "ERROR", data: [], message: errors.join("; ") };
-  return { status: "EMPTY", data: [] };
+    const globalData = global.data;
+    const globalObservedAt = observedAtFromUnix(globalData?.updated_at);
+    if (globalData && globalObservedAt) {
+      const globalMetrics: Array<{ metricId: string; symbol: string; value: number | undefined; metric: string; unit: string }> = [
+        { metricId: "crypto.total_market_cap.usd", symbol: "TOTAL_CRYPTO", value: globalData.total_market_cap?.usd, metric: "total_market_cap", unit: "USD" },
+        { metricId: "crypto.total_volume_24h.usd", symbol: "TOTAL_CRYPTO", value: globalData.total_volume?.usd, metric: "total_volume_24h", unit: "USD" },
+        { metricId: "crypto.btc_dominance.pct", symbol: "BTC", value: globalData.market_cap_percentage?.btc, metric: "btc_dominance", unit: "PERCENT" },
+        { metricId: "crypto.eth_dominance.pct", symbol: "ETH", value: globalData.market_cap_percentage?.eth, metric: "eth_dominance", unit: "PERCENT" },
+      ];
+
+      for (const metric of globalMetrics) {
+        if (!Number.isFinite(metric.value)) continue;
+        data.push({
+          metricId: metric.metricId,
+          symbol: metric.symbol,
+          value: Number(metric.value),
+          observedAt: globalObservedAt,
+          source: "CoinGecko",
+          metadata: {
+            metric: metric.metric,
+            unit: metric.unit,
+            endpoint: "/global",
+            retrievedAt: new Date().toISOString(),
+          },
+        });
+      }
+    }
+
+    if (data.length === 0) return { status: "EMPTY", data: [], message: "CoinGecko returned no canonical crypto observations" };
+    return { status: "SUCCESS", data };
+  } catch (error) {
+    return {
+      status: "ERROR",
+      data: [],
+      message: error instanceof Error ? error.message : "CoinGecko request failed",
+    };
+  }
 }
