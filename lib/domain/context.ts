@@ -1,14 +1,6 @@
 import type { Context, ContextScope, Event, Observation } from "./types";
 import { assertContextHasEvidence } from "./contracts";
 
-type ContextGroup = {
-  scope: ContextScope;
-  id: string;
-  statement: string;
-  observations: Observation[];
-  events?: Event[];
-};
-
 const MACRO_GROUPS: Array<{
   scope: ContextScope;
   id: string;
