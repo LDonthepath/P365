@@ -16,7 +16,7 @@ Canonical observations, events, and evidence remain the authoritative source of 
 
 | Baseline | Question answered | Required reference | Current readiness |
 | --- | --- | --- | --- |
-| **Factual** | What was true before? | Previous valid canonical observation | **READY** |
+| **Factual** | What was true before? | Previous valid canonical observation | **IMPLEMENTED / PARTIAL INTEGRATION** |
 | **Expectation** | What was expected? | Consensus / explicit expectation observation | **PARTIAL** |
 | **Pricing** | What was already priced? | Market-implied pricing captured before event | **NOT READY** |
 | **Regime** | Under what environment did this occur? | Previous confirmed state/regime | **NOT READY** |
@@ -52,9 +52,20 @@ Selection rules:
 3. Compatible measurement period.
 4. Previous observation must be valid.
 5. Stale data remains marked stale.
-6. Missing previous observation produces `UNKNOWN`, not a fabricated delta.
+6. Missing previous observation is explicit and must not produce a fabricated delta.
 
-**Current readiness: READY for deterministic implementation.**
+For macro observations, `observationDate` is the primary measurement-time axis. `observedAt` is the P365 capture timestamp and is used only when measurement periods are identical.
+
+The implementation returns:
+- `VALID` for a FRESH selected baseline;
+- `STALE` for a selected STALE baseline;
+- `UNKNOWN` when required timestamp/quality information is invalid or insufficient;
+- `INCOMPATIBLE` when supplied candidates exist but none is semantically compatible;
+- `MISSING` when no usable earlier compatible observation is available.
+
+`PARTIAL` or `UNKNOWN` observation quality is never silently promoted to `VALID`.
+
+**Implementation status: selector implemented. System-wide use remains dependent on historical canonical Observation availability.**
 
 ## 3. Expectation Baseline
 
@@ -284,6 +295,7 @@ This illustrates why P365 cannot interpret an event from the actual value alone.
 1. Expectation baseline.
 2. Cross-asset baseline.
 3. Historical baseline.
+4. Historical canonical Observation availability for system-wide factual baseline selection.
 
 ### Requires new reasoning/market-pricing infrastructure
 1. Pricing baseline.
@@ -306,8 +318,6 @@ Provider
   ↓
 Ingestion
   ↓
-Normalization
-  ↓
 Canonical Observation / Event / Evidence
   ↓
 Context
@@ -327,6 +337,6 @@ Market Memory remains append-only. Market Snapshots remain immutable. Baseline s
 
 ## Decision
 
-**Baseline Contract v0.2 is a design contract, not yet a reasoning engine.**
+**Factual Baseline selector is implemented and audited against the current Observation contracts. It is not yet a system-wide historical baseline engine because the current FRED provider exposes only the latest canonical observation per series and keeps the provider's previous value as metadata rather than as a second canonical Observation.**
 
-The first implementation target should be the deterministic **Factual Baseline**, while the other baseline classes remain explicitly gated by their data and reasoning prerequisites.
+The correct next dependency is historical canonical Observation availability / Market Memory persistence. Do not use `previousValue` as a hidden substitute and do not advance to higher-order reasoning until this dependency is resolved.
