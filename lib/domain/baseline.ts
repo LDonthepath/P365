@@ -78,6 +78,12 @@ function baselineSortTime(observation: Observation): number {
   return observedTime(observation) ?? Number.NEGATIVE_INFINITY;
 }
 
+function baselineStatus(quality: DataQuality): BaselineStatus {
+  if (quality === "FRESH") return "VALID";
+  if (quality === "STALE") return "STALE";
+  return "UNKNOWN";
+}
+
 export function selectFactualBaseline(
   current: Observation,
   candidates: Observation[],
@@ -109,10 +115,10 @@ export function selectFactualBaseline(
   const baseline = compatibleCandidates[0];
 
   if (!baseline) {
-    const hasCompatibleSeriesCandidates = consideredCandidates.some((candidate) => compatible(current, candidate));
+    const hasCompatibleCandidates = consideredCandidates.some((candidate) => compatible(current, candidate));
     return {
       kind: "FACTUAL",
-      status: hasCompatibleSeriesCandidates ? "MISSING" : consideredCandidates.length > 0 ? "INCOMPATIBLE" : "MISSING",
+      status: hasCompatibleCandidates ? "MISSING" : consideredCandidates.length > 0 ? "INCOMPATIBLE" : "MISSING",
       currentObservationId: current.id,
       baselineObservationId: null,
       currentValue: current.value,
@@ -121,15 +127,15 @@ export function selectFactualBaseline(
       baselineObservedAt: null,
       sourceId: current.sourceId,
       quality: current.quality,
-      reason: hasCompatibleSeriesCandidates
-        ? "Compatible observations exist, but none precedes the current measurement.":
-        consideredCandidates.length > 0
+      reason: hasCompatibleCandidates
+        ? "Compatible observations exist, but none precedes the current measurement."
+        : consideredCandidates.length > 0
           ? "Candidate observations exist, but none is semantically compatible with the current observation."
           : "No candidate observations were supplied.",
     };
   }
 
-  const status: BaselineStatus = baseline.quality === "STALE" ? "STALE" : "VALID";
+  const status = baselineStatus(baseline.quality);
 
   return {
     kind: "FACTUAL",
@@ -142,7 +148,11 @@ export function selectFactualBaseline(
     baselineObservedAt: baseline.observedAt,
     sourceId: current.sourceId,
     quality: baseline.quality,
-    ...(status === "STALE" ? { reason: "Selected baseline observation is marked stale." } : {}),
+    ...(status === "STALE"
+      ? { reason: "Selected baseline observation is marked stale." }
+      : status === "UNKNOWN"
+        ? { reason: "Selected baseline observation does not have sufficient quality for a valid factual baseline." }
+        : {}),
   };
 }
 
