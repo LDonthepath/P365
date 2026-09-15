@@ -28,7 +28,7 @@ Evidence / Context / Snapshot / Memory
 
 **Core rule:** a provider can be excellent for one role and invalid for another.
 
-Example: Alpha Vantage may remain a news provider while its current crypto spot implementation is removed from the canonical market-data path. The current code registers these as two different source roles (`alpha-vantage` and `alpha-vantage-market`), which confirms that the distinction already exists in the domain layer. fileciteturn96file0L2-L6
+Alpha Vantage remains a news provider while its current crypto spot implementation is removed from the canonical market-data path.
 
 ---
 
@@ -105,22 +105,9 @@ Every candidate provider must be evaluated against these fields:
 
 Current implementation already uses FRED as the macro provider and has a defined P0 series universe.
 
-FRED supports observations by series and exposes real-time/vintage controls. Its API distinguishes observation dates from real-time/vintage periods, which is important for future release/surprise reasoning. citeturn0search0turn0search2
-
-**Keep:** current FRED foundation.
-
-**Required follow-up:** distinguish these fields in P365:
-
-```text
-observationDate
-releasedAt / releaseDate
-retrievedAt
-vintageDate
-```
-
-FRED also exposes release-date endpoints, but its documentation notes that published release dates do not necessarily equal the moment the data becomes available on FRED/ALFRED. Therefore P365 must not treat a release calendar timestamp as automatically equivalent to data availability. citeturn0search3
-
 **Qualification status:** `QUALIFIED / P0`
+
+**Required follow-up:** distinguish observation date, release date, retrieval timestamp, and vintage semantics in P365.
 
 ---
 
@@ -128,19 +115,11 @@ FRED also exposes release-date endpoints, but its documentation notes that publi
 
 **Role:** official monetary-policy event source.
 
-Use the Federal Reserve as the canonical source for:
-- FOMC meeting dates
-- statements
-- implementation notes
-- press-conference timing
-- minutes
-- projection materials when applicable
-
-The official FOMC calendar provides meeting dates and associated statement/minutes information. citeturn0search4
+Use the Federal Reserve as the canonical source for FOMC meeting dates and official monetary-policy publications.
 
 **Qualification status:** `QUALIFIED / P0 EVENT`
 
-**Follow-up:** preserve official publication/release timestamps for statements and minutes instead of treating the meeting date as the release timestamp.
+**Follow-up:** preserve official publication/release timestamps instead of treating the meeting date as the release timestamp.
 
 ---
 
@@ -148,15 +127,7 @@ The official FOMC calendar provides meeting dates and associated statement/minut
 
 **Current role:** `NEWS`.
 
-The domain source registry already distinguishes `alpha-vantage` (`NEWS`) from `alpha-vantage-market` (`MARKET`). fileciteturn96file0L2-L6
-
-**Decision:** keep Alpha Vantage news only until a separate market-data qualification is completed.
-
-The current `crypto-market.ts` calls Alpha Vantage `CURRENCY_EXCHANGE_RATE` for BTC/USD and ETH/USD. fileciteturn97file0L2-L7
-
-That path is **not accepted as the P365 crypto-market foundation** because it supplies only spot exchange rates and does not satisfy the required market-universe fields.
-
-**Action:** do not expand this provider into a pseudo-TOTAL3/dominance/volume source.
+**Decision:** keep Alpha Vantage news only. Its crypto spot endpoint is not the canonical P365 market-data path.
 
 **Qualification status:** `QUALIFIED / NEWS ONLY`
 
@@ -166,9 +137,7 @@ That path is **not accepted as the P365 crypto-market foundation** because it su
 
 **Role:** crypto news evidence.
 
-CoinDesk may supply narrative evidence and source metadata.
-
-It must not become a substitute for canonical market observations such as market cap, dominance, volume, breadth, or volatility.
+CoinDesk may supply narrative evidence and source metadata. It must not become a substitute for canonical market observations.
 
 **Qualification status:** `QUALIFIED / EVIDENCE`
 
@@ -178,25 +147,7 @@ It must not become a substitute for canonical market observations such as market
 
 **Current role:** economic calendar awareness.
 
-Current implementation can provide:
-- event name
-- country
-- impact
-- scheduled time
-- status
-
-But this is insufficient for surprise reasoning because the P365 event contract ultimately needs:
-
-```text
-actual
-expected
-previous
-scheduledAt
-releasedAt
-source
-```
-
-**Decision:** keep for calendar awareness, but do not classify it as the final canonical economic-release source until actual/expected/previous and release-time semantics are verified.
+It can provide event name, country, impact, scheduled time, and status, but this remains insufficient for complete surprise reasoning without verified actual/expected/previous/release-time semantics.
 
 **Qualification status:** `PARTIAL / EVENT AWARENESS`
 
@@ -216,10 +167,7 @@ BTC market cap
 ETH market cap
 BTC dominance
 ETH dominance
-Stablecoin market cap
 Market volume
-Breadth
-Volatility
 ```
 
 The provider must support a consistent timestamp and enough historical data to construct:
@@ -234,13 +182,30 @@ change
 historical baseline
 ```
 
-### Provider decision
+### Canonical provider decision
 
-**Primary candidate:** a dedicated broad crypto market-data provider such as CoinGecko, subject to endpoint/rate-limit/history qualification.
+**CoinGecko is the canonical primary crypto market provider for P365 v0.1.**
 
-**Do not use:** Alpha Vantage spot FX-style crypto rates as the broad market foundation.
+CoinGecko is used for the first P0 crypto market foundation because its broad market endpoints can provide global market capitalization, market-wide volume, BTC/ETH dominance, and asset-level BTC/ETH observations from one provider family.
 
-**Important:** TOTAL3 and dominance should be derived only when the underlying market-cap universe and formula are explicitly documented. Never introduce a hidden proxy.
+Canonical fields in v0.1:
+
+| Canonical field | Domain | Unit / semantic |
+|---|---|---|
+| `BTC/USD spot rate` | ASSET | USD per BTC |
+| `ETH/USD spot rate` | ASSET | USD per ETH |
+| `BTC market cap` | ASSET | USD |
+| `ETH market cap` | ASSET | USD |
+| `Total crypto market cap` | MARKET | USD |
+| `BTC dominance` | MARKET | percent of total crypto market cap |
+| `ETH dominance` | MARKET | percent of total crypto market cap |
+| `Total crypto 24h volume` | MARKET | USD |
+
+**Not yet canonical:** stablecoin market cap, breadth, volatility. Those require separate metric definitions and qualification before implementation.
+
+**Do not use:** Alpha Vantage spot exchange rates as the broad market foundation.
+
+**Do not silently derive TOTAL3.** If a future model requires TOTAL3, its exact universe and formula must be documented first.
 
 ---
 
@@ -264,36 +229,15 @@ VIX
 MOVE
 ```
 
-### Source qualification rule
-
-Do not implement these as a random collection of free ticker endpoints.
-
-The selected source must provide:
-- stable identifiers
-- timestamped observations
-- historical data
-- consistent units
-- clear instrument definitions
-- sufficient reliability
-- reproducible retrieval
-
 **Status:** `MISSING / SOURCE SELECTION REQUIRED`
 
 ### Important USD semantic constraint
 
-The existing FRED `DTWEXBGS` series is a broad trade-weighted dollar index. It must **not** be labeled or treated as DXY without an explicit semantic decision.
-
-Therefore:
+The existing FRED `DTWEXBGS` series is a broad trade-weighted dollar index. It must not be labeled or treated as DXY without an explicit semantic decision.
 
 ```text
 Broad Trade-Weighted USD ≠ DXY
 ```
-
-P365 must either:
-1. explicitly adopt broad trade-weighted USD as its USD metric, or
-2. add a qualified DXY source.
-
-No silent substitution.
 
 ---
 
@@ -314,20 +258,7 @@ horizon
 methodology / sourceType
 ```
 
-Examples of acceptable source classes:
-- official survey consensus
-- professional economist consensus
-- published forecast dataset
-
-The following are **not interchangeable**:
-
-```text
-Consensus forecast
-≠
-Market-implied pricing
-≠
-Previous release
-```
+Consensus forecast, market-implied pricing, and previous release remain separate concepts.
 
 **Status:** `MISSING / SOURCE SELECTION REQUIRED`
 
@@ -349,8 +280,6 @@ Required classes:
 
 **Status:** `DEFERRED UNTIL SOURCE QUALIFICATION`
 
-Do not derive pricing surprise before this layer exists.
-
 ---
 
 ## 9. Event reasoning contract
@@ -371,16 +300,7 @@ CROSS-ASSET TRANSMISSION
 POST-EVENT STATE
 ```
 
-This means an event source alone is not enough.
-
-P365 needs at least four synchronized layers:
-
-1. event metadata
-2. actual result
-3. expectation
-4. market observations before/after release
-
-Without all four, P365 may report an event but must not claim a surprise/repricing explanation.
+An event source alone is not enough. P365 needs event metadata, actual result, expectation, and synchronized market observations before/after release before claiming a surprise/repricing explanation.
 
 ---
 
@@ -393,12 +313,12 @@ Without all four, P365 may report an event but must not claim a surprise/reprici
 | Macro news | Evidence | Alpha Vantage | QUALIFIED | Keep evidence-only |
 | Crypto news | Evidence | CoinDesk | QUALIFIED | Keep evidence-only |
 | Economic calendar | Event awareness | Forex Factory | PARTIAL | Qualify actual/expected/previous |
-| BTC/ETH spot | Observation | Alpha Vantage Market | REJECTED for foundation | Replace with qualified crypto market source |
-| Total crypto MCAP | Observation | — | MISSING | Qualify broad crypto provider |
-| BTC/ETH MCAP | Observation | — | MISSING | Same provider where possible |
-| BTC/ETH dominance | Observation | — | MISSING | Same provider or documented derivation |
-| Stablecoin MCAP | Observation | — | MISSING | Qualify source/universe |
-| Volume | Observation | — | MISSING | Define market-wide scope first |
+| BTC/ETH spot | Observation | CoinGecko | QUALIFIED / P0 | Implement canonical adapter |
+| Total crypto MCAP | Observation | CoinGecko | QUALIFIED / P0 | Implement canonical adapter |
+| BTC/ETH MCAP | Observation | CoinGecko | QUALIFIED / P0 | Implement canonical adapter |
+| BTC/ETH dominance | Observation | CoinGecko | QUALIFIED / P0 | Implement canonical adapter |
+| Volume | Observation | CoinGecko | QUALIFIED / P0 | Implement canonical adapter |
+| Stablecoin MCAP | Observation | — | MISSING | Define and qualify source/universe |
 | Breadth | Observation | — | MISSING | Define asset universe first |
 | Volatility | Observation | — | MISSING | Define metric/universe first |
 | Cross-asset | Observation | — | MISSING | Select qualified source architecture |
@@ -422,6 +342,8 @@ Cannot proceed until:
 - provenance model defined
 - source health behavior defined
 
+**Current checkpoint:** provider and field definitions are selected; engineering verification of the adapter and historical continuity remains.
+
 ### Gate B — Cross-asset foundation
 
 Cannot proceed until the factual cross-asset universe is available.
@@ -436,16 +358,7 @@ Cannot implement pricing surprise until market-implied data is available.
 
 ### Gate E — Intelligence
 
-Only after A–D can P365 safely reason about:
-
-```text
-WHAT happened?
-WHY did the market care?
-WHAT repriced?
-DID transmission occur?
-WHAT confirms it?
-WHAT contradicts it?
-```
+Only after A–D can P365 safely reason about what happened, why the market cared, what repriced, and whether transmission occurred.
 
 ---
 
@@ -468,19 +381,16 @@ WHAT contradicts it?
 
 **Do not build Intelligence yet.**
 
-The next engineering checkpoint is:
-
-> **Crypto Market Foundation v0.1 — provider qualification + canonical observation adapter.**
+> **Crypto Market Foundation v0.1 — CoinGecko adapter → canonical BTC/ETH/global observations.**
 
 Deliverables:
-1. select and qualify the broad crypto provider;
-2. define exact P0 crypto fields;
-3. define canonical IDs and units;
-4. define timestamp semantics;
-5. replace the current Alpha Vantage market path;
-6. preserve the existing normalization/context pipeline;
-7. add provider health and provenance;
-8. verify historical continuity before exposing the data to reasoning layers.
+1. implement the CoinGecko adapter;
+2. define canonical IDs and units;
+3. define timestamp semantics;
+4. replace the current Alpha Vantage market path;
+5. preserve the existing normalization/context pipeline;
+6. add provider health and provenance;
+7. verify historical continuity before exposing the data to reasoning layers.
 
 The objective is not to make the dashboard show more numbers.
 
