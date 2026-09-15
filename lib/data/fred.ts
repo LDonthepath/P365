@@ -48,10 +48,16 @@ async function fetchSeries(series: MacroSeriesDefinition, apiKey: string): Promi
       .filter((item): item is ValidFredObservation => isValidCurrentOrPastDate(item.date ?? "") && isNumericValue(item.value))
       .sort((a, b) => b.date.localeCompare(a.date));
     if (valid.length === 0) return { status: "EMPTY", data: [], message: `FRED ${series.seriesId} returned no valid observations` };
-    const [latest, previous] = valid;
+
     return {
       status: "SUCCESS",
-      data: [{ series, value: latest.value, observationDate: latest.date, previousValue: previous?.value ?? null, vintageDate: latest.realtime_start && isDateOnly(latest.realtime_start) ? latest.realtime_start : null }],
+      data: valid.map((observation, index) => ({
+        series,
+        value: observation.value,
+        observationDate: observation.date,
+        previousValue: valid[index + 1]?.value ?? null,
+        vintageDate: observation.realtime_start && isDateOnly(observation.realtime_start) ? observation.realtime_start : null,
+      })),
     };
   } catch (error) {
     return { status: "ERROR", data: [], message: error instanceof Error ? error.message : `FRED ${series.seriesId} request failed` };
@@ -68,7 +74,7 @@ export async function fetchFredMacroObservations(): Promise<ProviderResult<Macro
   const emptyCount = results.filter((result) => result.status === "EMPTY").length;
 
   if (data.length > 0) {
-    const omitted = MACRO_SERIES_REGISTRY.length - data.length;
+    const omitted = MACRO_SERIES_REGISTRY.length - results.filter((result) => result.status === "SUCCESS").length;
     return { status: "SUCCESS", data, message: omitted ? `${omitted} P0 series unavailable or invalid${failures.length ? `: ${failures.join("; ")}` : ""}` : undefined };
   }
   if (failures.length > 0) return { status: "ERROR", data: [], message: failures.join("; ") };
