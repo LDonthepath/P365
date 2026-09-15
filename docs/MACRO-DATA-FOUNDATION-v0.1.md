@@ -2,7 +2,7 @@
 
 ## [IMPLEMENTED] scope
 
-P365 now ingests free, official macroeconomic data as canonical `MACRO` Observations. Each observation is linked to an `OBSERVATION` Evidence record. This layer records facts only; it does not make macro conclusions.
+P365 ingests free, official macroeconomic data as canonical `MACRO` Observations. Each observation is linked to an `OBSERVATION` Evidence record. This layer records facts only; it does not make macro conclusions.
 
 Flow:
 
@@ -15,9 +15,11 @@ Federal Reserve FOMC calendar → event normalizer → Evidence + Event → Dash
 
 1. FRED (Federal Reserve Economic Data): all P0 measurement series.
 2. Board of Governors of the Federal Reserve System: FOMC meeting calendar.
-3. Existing Financial Modeling Prep economic-calendar integration remains unchanged for its existing calendar behavior; it is not used for P0 measurements.
+3. Forex Factory weekly economic calendar: upcoming economic-event coverage outside the official FOMC event stream.
 
-No paid provider was introduced.
+Forex Factory is an event source, not a substitute for FRED measurement data. The official Federal Reserve provider remains authoritative for FOMC meetings, and duplicate FOMC calendar records from Forex Factory are removed by the aggregation layer when they match an official FOMC date.
+
+No paid provider was introduced by the Macro Data Foundation.
 
 ## [IMPLEMENTED] P0 series registry
 
@@ -63,7 +65,7 @@ Macro quality uses expected cadence rather than the crypto market 15-minute rule
 
 FOMC meetings are ingested from the official Federal Reserve calendar as canonical Events with calendar Evidence. They are distinct from FRED observations. Because that calendar parser verifies a meeting date/window rather than a meeting time, `scheduledAt` uses a documented `00:00:00Z` date anchor (`scheduledAtIsDateAnchor: true`) and is not an actual meeting-time claim. FOMC statements are not fetched in v0.1, so no statement Evidence is fabricated.
 
-The existing FMP economic calendar continues to provide its existing CPI, PCE, nonfarm payrolls, and GDP release-event coverage where configured. This implementation does not claim official agency calendars for those releases.
+The economic calendar is now supplied by Forex Factory's rolling weekly feed. The adapter preserves upcoming events and does not promote calendar values into measured Observations. Official FOMC events remain authoritative and duplicate FOMC calendar records are filtered during aggregation.
 
 ## [IMPLEMENTED] environment and failure semantics
 
@@ -80,4 +82,5 @@ Provider states are preserved: `SUCCESS`, `EMPTY`, `ERROR`, and `UNAVAILABLE` ar
 - Release-date / revision-vintage subsystem.
 - Official CPI, PCE, nonfarm payrolls, and GDP release calendar providers.
 - FOMC statement ingestion.
-- Context, State, Risk, Intelligence, Regime, LDS, Capital Flow, trading logic, forecasting, scoring, or recommendations.
+- Domain-specific State, Risk, or Intelligence reasoning engines.
+- Regime, LDS, Capital Flow, trading logic, forecasting, scoring, or recommendations.
