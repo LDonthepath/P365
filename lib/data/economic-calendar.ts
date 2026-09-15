@@ -1,9 +1,9 @@
 import "server-only";
 import type { CalendarEvent, CalendarImpact, CalendarStatus, ProviderResult } from "./types";
 
-const FMP_BASE = "https://financialmodelingprep.com/api/v3/economic_calendar";
+const FMP_BASE = "https://financialmodelingprep.com/stable/economic-calendar";
 
-type FmpEvent = { event: string; date: string; country: string; impact?: string };
+type FmpEvent = { event?: string; date?: string; country?: string; impact?: string };
 
 function mapImpact(raw?: string): CalendarImpact {
   const value = (raw ?? "").toLowerCase();
@@ -38,8 +38,9 @@ export async function fetchEconomicCalendar(limit = 6): Promise<ProviderResult<C
   if (!apiKey) return { status: "UNAVAILABLE", data: [], message: "FMP_API_KEY is not configured" };
 
   const now = new Date();
-  const from = now.toISOString().slice(0, 10);
-  const to = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const from = jakartaDate(now);
+  const toDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const to = jakartaDate(toDate);
   const url = new URL(FMP_BASE);
   url.searchParams.set("from", from);
   url.searchParams.set("to", to);
@@ -48,14 +49,16 @@ export async function fetchEconomicCalendar(limit = 6): Promise<ProviderResult<C
   try {
     const res = await fetch(url.toString(), { next: { revalidate: 1800, tags: ["p365-dashboard"] }, signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return { status: "ERROR", data: [], message: `FMP HTTP ${res.status}` };
+
     const data = (await res.json()) as unknown;
-    if (!Array.isArray(data)) return { status: "EMPTY", data: [] };
+    if (!Array.isArray(data)) return { status: "ERROR", data: [], message: "FMP economic calendar returned a non-array response" };
 
     const events = (data as FmpEvent[])
       .filter((item) => item.country === "US")
       .flatMap((item, index): CalendarEvent[] => {
+        if (!item.date || !item.event?.trim() || !item.country?.trim()) return [];
         const date = new Date(`${item.date.replace(" ", "T")}Z`);
-        if (!item.event?.trim() || !item.country?.trim() || !Number.isFinite(date.getTime())) return [];
+        if (!Number.isFinite(date.getTime())) return [];
         return [{
           id: `${item.event}-${item.date}-${index}`,
           time: toJakartaTime(date),
@@ -69,7 +72,12 @@ export async function fetchEconomicCalendar(limit = 6): Promise<ProviderResult<C
       .filter((item) => item.status !== "PAST")
       .sort((a, b) => new Date(a.dateISO).getTime() - new Date(b.dateISO).getTime())
       .slice(0, limit);
-    return { status: events.length > 0 ? "SUCCESS" : "EMPTY", data: events };
+
+    return {
+      status: events.length > 0 ? "SUCCESS" : "EMPTY",
+      data: events,
+      message: events.length > 0 ? undefined : "FMP returned no upcoming US economic events in the requested window",
+    };
   } catch (error) {
     return { status: "ERROR", data: [], message: error instanceof Error ? error.message : "FMP request failed" };
   }
