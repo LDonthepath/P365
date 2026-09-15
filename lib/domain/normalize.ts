@@ -8,7 +8,7 @@ export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
   alphaVantageMarket: { id: "alpha-vantage-market", name: "Alpha Vantage Market", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
-  fmp: { id: "financial-modeling-prep", name: "Financial Modeling Prep", type: "CALENDAR" },
+  forexFactory: { id: "forex-factory", name: "Forex Factory", type: "CALENDAR" },
   fred: { id: "fred", name: "Federal Reserve Economic Data (FRED)", type: "MACRO" },
   federalReserve: { id: "federal-reserve", name: "Board of Governors of the Federal Reserve System", type: "CALENDAR" },
 } as const;
@@ -116,7 +116,6 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
   evidence: Evidence[];
 } {
   const capturedAt = new Date().toISOString();
-  // Keep a normalization boundary guard: future or malformed periods are never canonical facts.
   const eligibleItems = items.filter((item) => isValidCurrentOrPastMacroDate(item.observationDate));
   const evidence = eligibleItems.map((item) => ({
     id: hashId("evidence", `${sourceId}:${item.series.seriesId}:${item.observationDate}:${item.value}`),
@@ -142,7 +141,6 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
     domain: "MACRO" as const,
     subject: item.series.subject,
     value: item.value,
-    // observedAt is the time P365 captured the published record, not its measurement period.
     observedAt: capturedAt,
     sourceId,
     quality: macroObservationQuality(item.observationDate, item.series.freshnessMs),
