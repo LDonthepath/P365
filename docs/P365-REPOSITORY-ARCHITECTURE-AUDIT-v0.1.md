@@ -13,82 +13,65 @@ Reduce structural ambiguity and future maintenance/debugging cost without changi
 P365 is currently a single Next.js application with:
 
 - `app/` — routes, pages, dashboard UI, login UI, global CSS.
-- `lib/` — mixed backend/domain concerns including auth, data providers, normalization, persistence, and domain concepts.
+- `lib/` — mixed backend/domain concerns including auth, data providers, normalization, persistence, and shared types.
 - `docs/` — architecture, contracts, audits, roadmap, and data requirements.
 - root configuration files — Next.js, TypeScript, ESLint, environment example, package metadata.
 
-The current structure is functional, but `lib/` is becoming a mixed responsibility container. The audit confirms that `lib/domain/` itself is not uniformly pure: `market-memory.ts` contains durable Supabase access, while `normalize.ts` depends on provider input types. Those two files therefore should not be treated as pure domain code.
+The current structure is functional, but `lib/` is becoming a mixed responsibility container. This creates increasing discovery cost when debugging provider failures, domain logic, application orchestration, persistence, or authentication.
 
 ## Target Architecture
 
 P365 should remain a single Next.js application for the current stage. Do **not** split it into separate `frontend/` and `backend/` applications yet.
 
-The conservative target is:
+The target separation is:
 
 ```text
 P365/
-├── app/                              # Next.js route / presentation boundary
+├── app/                         # Next.js route / presentation boundary
 │   ├── login/
-│   └── dashboard/
+│   ├── dashboard/
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
 │
 ├── src/
-│   └── backend/
-│       ├── domain/                   # pure P365 domain concepts/rules
-│       ├── application/              # use cases / orchestration
-│       ├── infrastructure/           # external providers + persistence
-│       └── services/                  # auth and cross-cutting services
+│   ├── domain/                  # domain concepts and pure rules
+│   ├── application/             # use cases / orchestration
+│   ├── infrastructure/          # external providers, database, config
+│   ├── services/                # cross-cutting application services
+│   └── shared/                  # generic utilities/constants
 │
 ├── docs/
+├── public/
+├── tests/
 └── root configuration files
 ```
-
-This first cleanup separates the entire backend-oriented codebase from the Next.js route layer while preserving existing internal module relationships. A later pass can refine `backend/data` into `infrastructure/providers`, `backend/application`, and `backend/services` once dependency boundaries are explicitly verified.
 
 ## Layer Rules
 
 ### `app/`
 
-Owns Next.js routing and presentation entry points. It may call backend application/service boundaries, but should not contain provider-specific data access or domain reasoning.
+Owns Next.js routing and presentation entry points. It may call application services, but should not contain provider-specific data access or domain reasoning.
 
-### `src/backend/domain/`
+### `src/domain/`
 
-Owns pure domain concepts, canonical types, contracts, baseline/context/state/intelligence rules, and other provider-independent reasoning primitives.
+Owns P365 domain types, canonical concepts, normalization rules, contracts, and pure reasoning primitives. It must not depend on CoinGecko, FRED, Supabase, Next.js, or environment variables.
 
-Domain code must not depend on CoinGecko, FRED, Supabase, Next.js, environment variables, or provider-specific input types.
+### `src/application/`
 
-### `src/backend/application/`
+Owns use cases and orchestration. It coordinates domain logic and infrastructure interfaces without embedding provider-specific implementation details into domain code.
 
-Owns use cases and orchestration such as assembling dashboard data. It coordinates domain and infrastructure concerns.
+### `src/infrastructure/`
 
-### `src/backend/infrastructure/`
+Owns external-world concerns: market providers, macro providers, news providers, database adapters, environment/config integration, and provider-specific transformations.
 
-Owns external-world concerns: market providers, macro/news/calendar providers, persistence adapters, and provider-specific normalization/transport code.
+### `src/services/`
 
-### `src/backend/services/`
+Owns cross-cutting services such as authentication/session and Market Memory service boundaries when those responsibilities are not themselves domain concepts.
 
-Owns cross-cutting backend services such as authentication and Market Memory service boundaries.
+### `src/shared/`
 
-## Migration Map
-
-| Current area | Immediate target | Notes |
-|---|---|---|
-| `app/*` | `app/*` | KEEP; preserve Next.js routing contract |
-| `lib/auth.ts` | `src/backend/auth.ts` | First-pass backend move; can later become `services/auth/` |
-| `lib/domain/types.ts` | `src/backend/domain/types.ts` | Pure domain types |
-| `lib/domain/contracts.ts` | `src/backend/domain/contracts.ts` | Pure domain guardrails |
-| `lib/domain/baseline.ts` | `src/backend/domain/baseline.ts` | Pure domain baseline logic |
-| `lib/domain/context.ts` | `src/backend/domain/context.ts` | Pure context grouping logic |
-| `lib/domain/intelligence.ts` | `src/backend/domain/intelligence.ts` | Pure intelligence contract logic |
-| `lib/domain/risk.ts` | `src/backend/domain/risk.ts` | Domain risk model; currently deferred by roadmap |
-| `lib/domain/state.ts` | `src/backend/domain/state.ts` | Domain state model; currently deferred by roadmap |
-| `lib/domain/market-memory.ts` | `src/backend/services/market-memory.ts` | Contains Supabase access; not pure domain |
-| `lib/domain/normalize.ts` | `src/backend/infrastructure/normalization/normalize.ts` | Depends on provider input types |
-| `lib/data/*` provider adapters | `src/backend/infrastructure/providers/` | External data access |
-| `lib/data/dashboard-data.ts` | `src/backend/application/dashboard-data.ts` | Application orchestration |
-| `lib/data/market-memory-store.ts` | `src/backend/infrastructure/database/market-memory-store.ts` | Persistence adapter |
-| `lib/data/format.ts` | `src/backend/services/format.ts` | Shared presentation-facing helper; classify again later |
-| `docs/*` | `docs/*` | KEEP |
-| root config | root | KEEP |
+Owns genuinely generic utilities and constants. It must not become a second mixed `lib/` directory.
 
 ## Migration Principles
 
@@ -99,42 +82,49 @@ Owns cross-cutting backend services such as authentication and Market Memory ser
 5. Preserve Next.js route conventions under `app/`.
 6. Preserve server/client boundaries such as `server-only`.
 7. Preserve environment variable names and deployment contracts.
-8. Do not introduce separate frontend/backend deployables during this cleanup.
+8. Do not introduce `frontend/` and `backend/` applications during this cleanup.
 9. Do not combine repository cleanup with Phase 1 data-model changes.
-10. Verify every migration checkpoint.
+10. Verify every migration checkpoint before continuing.
 
-## Immediate Migration Strategy
+## Initial Classification
 
-The first physical move will be deliberately conservative: relocate `lib/*` under `src/backend/*` while preserving its internal directory structure. This reduces path churn and allows the repository to become structurally clearer without simultaneously redesigning every dependency.
+| Current area | Target responsibility | Classification |
+|---|---|---|
+| `app/*` | Presentation / routing | KEEP IN `app/` |
+| `lib/auth.ts` | Authentication service | MOVE TO `src/services/auth/` |
+| `lib/data/*` provider adapters | Infrastructure | MOVE TO `src/infrastructure/providers/` |
+| `lib/data/normalize.ts` | Domain normalization | MOVE TO `src/domain/` after dependency audit |
+| `lib/data/types.ts` | Domain/application contracts | MOVE TO `src/domain/` after dependency audit |
+| Market Memory persistence | Infrastructure/service boundary | MOVE TO `src/infrastructure/database/` and/or `src/services/market-memory/` based on dependency audit |
+| `docs/*` | Architecture/documentation | KEEP |
+| root config | Build/deployment | KEEP |
 
-After that move is verified, a second architectural pass can refine:
+## Important Constraint
 
-```text
-src/backend/
-├── domain/
-├── application/
-├── infrastructure/
-└── services/
-```
-
-That second pass is dependency-driven, not naming-driven.
+The audit identifies the target architecture. It does not authorize a blind bulk move of every file. Before migration, imports and dependency direction must be mapped so the cleanup does not create circular dependencies or break Next.js/Vercel deployment.
 
 ## Migration Sequence
 
 ```text
 Audit
   ↓
-Conservative backend move (`lib` → `src/backend`)
+Dependency Map
   ↓
-Consumer import migration
+Create Target Directories
   ↓
-Remove obsolete `lib/`
+Move Domain Layer
   ↓
-Lint / Build verification
+Move Infrastructure Providers
   ↓
-Optional second-pass layer refinement
+Move Services
   ↓
-Resume Phase 1
+Fix Application Imports
+  ↓
+Remove Obsolete `lib/`
+  ↓
+Build / Lint Verification
+  ↓
+Architecture Cleanup Complete
 ```
 
 ## Scope Boundary

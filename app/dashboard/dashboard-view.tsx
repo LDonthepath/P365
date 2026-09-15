@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { relativeTimeID } from "@/src/backend/data/format";
-import type { DashboardData } from "@/src/backend/data/dashboard-data";
-import type { CalendarEvent, NewsItem } from "@/src/backend/data/types";
-import type { Context, DataQuality, Evidence, Observation, ProviderHealth } from "@/src/backend/domain/types";
+import { relativeTimeID } from "@/lib/data/format";
+import type { DashboardData } from "@/lib/data/dashboard-data";
+import type { CalendarEvent, NewsItem } from "@/lib/data/types";
+import type { Context, DataQuality, Evidence, Observation, ProviderHealth } from "@/lib/domain/types";
 import { logout, refreshDashboardData } from "./actions";
 
 type Menu = "overview" | "macro" | "crypto" | "context" | "intelligence" | "evidence";

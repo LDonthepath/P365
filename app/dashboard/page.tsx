@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifySession } from "@/src/backend/auth";
-import { getDashboardData } from "@/src/backend/data/dashboard-data";
+import { verifySession } from "@/lib/auth";
+import { getDashboardData } from "@/lib/data/dashboard-data";
 import { DashboardView } from "./dashboard-view";
 
 export default async function DashboardPage() {
