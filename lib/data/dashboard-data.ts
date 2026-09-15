@@ -21,6 +21,7 @@ export type DashboardData = {
   macroNews: NewsItem[];
   cryptoNews: NewsItem[];
   calendarEvents: CalendarEvent[];
+  calendarProviderMessage?: string;
   unavailableSources: string[];
   observations: Observation[];
   macroObservations: Observation[];
@@ -72,6 +73,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const coinDesk = coinDeskProvider.data;
   const cryptoNews = sortByRecency(dedupeByTitle([...coinDesk, ...avCrypto])).slice(0, 6);
   const calendarEvents = calendarProvider.data;
+  const calendarProviderMessage = calendarProvider.message;
 
   const unavailableSources: string[] = [];
   if (macroProvider.status !== "SUCCESS") unavailableSources.push(`berita makro (Alpha Vantage: ${macroProvider.status})`);
@@ -108,5 +110,5 @@ export async function getDashboardData(): Promise<DashboardData> {
     providerHealthForResult(P365_SOURCES.federalReserve.id, fomcProvider),
   ];
 
-  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, unavailableSources, observations, macroObservations: macroFacts.observations, events, evidence, providerHealth };
+  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations: macroFacts.observations, events, evidence, providerHealth };
 }
