@@ -22,7 +22,14 @@ export type Evidence = {
   kind: "NEWS" | "OBSERVATION" | "EVENT";
   subject: string;
   content: string;
+  /** Backward-compatible alias for P365 retrieval/capture time. */
   capturedAt: string;
+  /** P365 retrieval/capture timestamp. Never substitutes for source publication/release time. */
+  retrievedAt: string;
+  /** Source-native publication timestamp, when available. */
+  publishedAt?: string;
+  /** Source-native release/result timestamp, when available. */
+  releasedAt?: string;
   metadata?: Record<string, string | number | boolean | null>;
 };
 
@@ -31,7 +38,10 @@ export type Observation = {
   domain: ObservationDomain;
   subject: string;
   value: string;
+  /** Source-native observation timestamp when the provider supplies a timestamp. */
   observedAt: string;
+  /** P365 retrieval/capture timestamp. */
+  retrievedAt: string;
   sourceId: string;
   quality: DataQuality;
   evidenceId: string;
@@ -42,8 +52,14 @@ export type Event = {
   id: string;
   subject: string;
   description: string;
+  /** Actual occurrence time, when known. */
   occurredAt?: string;
+  /** Scheduled event time, when known. */
   scheduledAt?: string;
+  /** Result/release time, when applicable and known. */
+  releasedAt?: string;
+  /** P365 retrieval/capture timestamp. */
+  retrievedAt: string;
   status: EventStatus;
   importance: "HIGH" | "MEDIUM" | "LOW";
   sourceId: string;
