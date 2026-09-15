@@ -36,13 +36,11 @@ This matches the factual-baseline requirement for series identity, measurement p
 
 For FRED, `observationDate` represents the measurement period while `observedAt` represents when P365 captured the provider response. A factual baseline must compare measurement periods first. Capture time is used only as a tie-breaker when the measurement period is identical.
 
-The implementation now follows this rule.
+The implementation follows this rule.
 
-### 3. Compatibility must be conservative
+### 3. Compatibility is conservative
 
-The previous implementation treated missing metadata as compatible when only one side had a value. That could allow a baseline to pass without proving the same series, unit, or frequency.
-
-The implementation now requires equality for:
+The implementation requires equality for:
 
 - domain
 - subject
@@ -52,11 +50,26 @@ The implementation now requires equality for:
 
 When a measurement date is present on either observation, both observations must contain valid `observationDate` metadata.
 
-### 4. Crypto observations previously lacked canonical series/unit/frequency metadata
+### 4. Historical FRED observations are now canonicalized
 
-BTC/USD and ETH/USD observations had subject and quote information, but no explicit `seriesId`, `unit`, or `frequency` metadata. That made strict factual-baseline compatibility impossible.
+The FRED provider already requested eight observations per series but previously emitted only the latest one, leaving `previousValue` as provider metadata.
 
-The crypto market provider now emits:
+The provider now emits all valid observations returned by that request as separate canonical input records. Normalization therefore creates multiple canonical Observation objects with their own:
+
+- observation ID
+- measurement date
+- value
+- capture timestamp
+- series identity
+- unit/frequency
+- Evidence linkage
+- quality
+
+`previousValue` remains metadata/provenance and is not used as a hidden baseline substitute.
+
+### 5. Crypto observations have canonical series metadata
+
+BTC/USD and ETH/USD observations emit:
 
 - `seriesId = <SYMBOL>/USD:SPOT`
 - `unit = USD`
@@ -64,31 +77,51 @@ The crypto market provider now emits:
 
 No directional interpretation is attached.
 
-### 5. Baseline status semantics are now explicit
+### 6. Baseline status semantics are explicit
 
 The implementation distinguishes:
 
 - `VALID` — selected baseline is FRESH.
 - `STALE` — selected baseline exists but is stale.
-- `MISSING` — no usable earlier compatible observation exists, or no candidates were supplied despite compatibility being possible.
+- `MISSING` — no usable earlier compatible observation exists.
 - `INCOMPATIBLE` — candidate observations exist but none is semantically compatible.
 - `UNKNOWN` — required timestamp or quality information is invalid/insufficient.
 
 `PARTIAL` and `UNKNOWN` quality are not silently promoted to `VALID`.
 
-### 6. Current FRED provider does not yet expose historical canonical candidates
+## Current architecture state
 
-`fetchFredMacroObservations()` currently returns the latest valid observation for each registered series and carries the provider's previous value as metadata. Therefore the current dashboard response does **not** yet contain a second canonical Observation that the factual-baseline selector can use as the historical reference.
+```text
+FRED provider
+    ↓
+8 historical observations / series
+    ↓
+Canonical Observation
+    ↓
+Observation history available in current dashboard data
+    ↓
+Factual Baseline selector
+    ↓
+Factual change
+```
 
-This is an integration/data-retention gap, not a reason to use `previousValue` as a hidden substitute. The factual baseline contract requires a canonical prior Observation reference.
+This removes the previous immediate blocker: the selector no longer depends on a hidden provider `previousValue` to access the prior factual observation.
 
-The provider's `previousValue` remains provenance/context metadata and is not promoted into a synthetic baseline Observation.
+## Remaining dependency: durable Market Memory
+
+The current dashboard pipeline can now construct a factual baseline from multiple canonical observations present in the same data capture.
+
+What is **not** implemented yet is durable append-only Market Memory across independent dashboard requests/deployments. The Market Memory contract requires historical reasoning records to remain reconstructable without relying on the live provider response.
+
+That persistence layer must be introduced deliberately rather than by writing arbitrary files to the application filesystem, because deployment/runtime storage may not be durable.
 
 ## Result
 
-**Factual Baseline implementation: contract-aligned at the selector level, not yet fully wired to historical canonical Observation storage.**
+**Factual Baseline selector: READY at the canonical-data level.**
 
-The selector is now conservative about semantic compatibility, measurement-period ordering, and data quality. The next implementation dependency is historical canonical Observation availability / Market Memory persistence before factual baseline can be used as a system-wide reasoning input.
+**Factual Baseline system-wide persistence: NOT READY.**
+
+The correct next architectural dependency is durable append-only Market Memory storage. Do not use provider `previousValue` as a substitute and do not advance to higher-order baseline classes until historical reasoning storage has an explicit persistence contract.
 
 ## Explicit exclusions
 
@@ -103,7 +136,3 @@ This audit does not add:
 - risk-on/risk-off inference
 - AI conclusions
 - proxy baselines
-
-## Decision
-
-Keep Factual Baseline as the first deterministic baseline capability. Do not advance to higher-order baseline classes or regime/intelligence automation until canonical historical observations can be selected without relying on hidden provider fields or convenient substitutes.
