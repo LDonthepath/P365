@@ -7,13 +7,15 @@ import { fetchFredMacroObservations } from "./fred";
 import { fetchFomcEvents } from "./federal-reserve-events";
 import type { CalendarEvent, NewsItem, ProviderResult } from "./types";
 import type { Context, Evidence, Event, Observation, ProviderHealth } from "../domain/types";
+import type { FactualBaseline } from "../domain/baseline";
+import { buildMacroFactualBaselines } from "../domain/baseline";
 import { buildDashboardContexts } from "../domain/context";
 import { calendarToCanonicalRecords, cryptoMarketToObservations, fomcToCanonicalRecords, macroToCanonicalRecords, newsToEvidence, providerHealthForResult, P365_SOURCES } from "../domain/normalize";
 
 export type DashboardData = {
   macroNews: NewsItem[]; cryptoNews: NewsItem[]; calendarEvents: CalendarEvent[]; calendarProviderMessage?: string;
   unavailableSources: string[]; observations: Observation[]; macroObservations: Observation[]; events: Event[];
-  contexts: Context[]; evidence: Evidence[]; providerHealth: ProviderHealth[];
+  contexts: Context[]; macroBaselines: Record<string, FactualBaseline>; evidence: Evidence[]; providerHealth: ProviderHealth[];
 };
 
 function normalizeNewsUrl(url: string): string { return url.trim().replace(/#.*$/, "").replace(/\/+$/, "").toLowerCase(); }
@@ -42,6 +44,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const marketFacts = cryptoMarketToObservations(cryptoMarketProvider.data, P365_SOURCES.coinGeckoMarket.id); const macroFacts = macroToCanonicalRecords(fredProvider.data, P365_SOURCES.fred.id);
   const fredHealth = providerHealthForResult(P365_SOURCES.fred.id, fredProvider); if (fredProvider.status === "SUCCESS" && macroFacts.observations.length > 0 && macroFacts.observations.every((item) => item.quality === "STALE")) fredHealth.status = "STALE";
   const observations = [...marketFacts.observations, ...macroFacts.observations]; const evidence = [...newsEvidence, ...calendarRecords.evidence, ...fomcRecords.evidence, ...marketFacts.evidence, ...macroFacts.evidence]; const contexts = buildDashboardContexts({ observations, events });
+  const macroBaselines = buildMacroFactualBaselines(macroFacts.observations);
   const providerHealth = [providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider), providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider), providerHealthForResult(P365_SOURCES.forexFactory.id, calendarProvider), providerHealthForResult(P365_SOURCES.coinGeckoMarket.id, cryptoMarketProvider), fredHealth, providerHealthForResult(P365_SOURCES.federalReserve.id, fomcProvider)];
-  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations: macroFacts.observations, events, contexts, evidence, providerHealth };
+  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations: macroFacts.observations, events, contexts, macroBaselines, evidence, providerHealth };
 }
