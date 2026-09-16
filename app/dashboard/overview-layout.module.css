@@ -1,4 +1,4 @@
-.overviewLayout :global(.dashboard-content:has(.market-state) > .panel:nth-child(2)){
+.overviewLayout :global(.dashboard-content:has(.market-state) > .panel:has(#crypto-foundation-title)){
   display:none;
 }
 
