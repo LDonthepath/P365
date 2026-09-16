@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="PROJECT365 logo">
+  <defs>
+    <linearGradient id="gold" x1="18" y1="8" x2="82" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe46a"/>
+      <stop offset="0.5" stop-color="#e7c34b"/>
+      <stop offset="1" stop-color="#c99e2f"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#gold)" fill-rule="evenodd" d="M12 5h76v39c0 25-13 39-38 51C25 83 12 69 12 44V5Zm9 9v30c0 19 9 31 29 41 20-10 29-22 29-41V14H21Z"/>
+  <path fill="url(#gold)" d="M23 70 50 43l-9-8 32-8-8 32-8-9-27 27-7-7Z"/>
+</svg>
