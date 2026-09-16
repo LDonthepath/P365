@@ -47,6 +47,24 @@
 .dashboardLayout :global(.filters button.active){border-left-color:var(--lime);background:#182017;color:var(--lime)}
 .dashboardLayout :global(.filters span){margin:auto 10px 4px;padding-top:14px;border-top:1px solid var(--line-soft);font-size:8px;line-height:1.5}
 
+.dashboardLayout :global(.topbar)::after{
+  content:"OVERVIEW";
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  color:var(--muted);
+  font:500 9px 'DM Mono',monospace;
+  letter-spacing:.16em;
+  white-space:nowrap;
+}
+.dashboardLayout :global(.dashboard-shell:has(.filters button:nth-child(2).active) .topbar)::after{content:"MACRO"}
+.dashboardLayout :global(.dashboard-shell:has(.filters button:nth-child(3).active) .topbar)::after{content:"CRYPTO"}
+.dashboardLayout :global(.dashboard-shell:has(.filters button:nth-child(4).active) .topbar)::after{content:"CONTEXT"}
+.dashboardLayout :global(.dashboard-shell:has(.filters button:nth-child(5).active) .topbar)::after{content:"INTELLIGENCE"}
+.dashboardLayout :global(.dashboard-shell:has(.filters button:nth-child(6).active) .topbar)::after{content:"EVIDENCE"}
+
 .dashboardLayout :global(.dashboard-content){grid-column:1;grid-row:2;min-width:0;padding:32px 36px 64px;max-width:1480px;width:100%;margin:0 auto}
 .dashboardLayout :global(.market-state){margin-bottom:18px}
 .dashboardLayout :global(.overview-grid),
@@ -62,6 +80,7 @@
   .dashboardLayout :global(.topbar){padding:14px 16px;min-height:64px}
   .dashboardLayout :global(.topbar-actions){gap:8px}
   .dashboardLayout :global(.refresh-note),.dashboardLayout :global(.refresh-btn){display:none}
+  .dashboardLayout :global(.topbar)::after{display:none}
   .dashboardLayout :global(.dashboard-content){padding:20px 16px 44px}
   .dashboardLayout :global(.filters){padding-top:78px}
 }
