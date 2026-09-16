@@ -1,5 +1,6 @@
 import "server-only";
 import type { NewsItem, ProviderResult } from "./types";
+import { providerResult } from "./types";
 
 const ALPHA_VANTAGE_BASE = "https://www.alphavantage.co/query";
 
@@ -34,7 +35,7 @@ function providerDiagnostic(data: AlphaVantageResponse): string | undefined {
 
 async function fetchAlphaVantageFeed(params: Record<string, string>): Promise<ProviderResult<AlphaVantageFeedItem>> {
   const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
-  if (!apiKey) return { status: "UNAVAILABLE", data: [], message: "ALPHA_VANTAGE_API_KEY is not configured" };
+  if (!apiKey) return providerResult("alpha-vantage", "UNAVAILABLE", [], "ALPHA_VANTAGE_API_KEY is not configured");
 
   const url = new URL(ALPHA_VANTAGE_BASE);
   url.searchParams.set("function", "NEWS_SENTIMENT");
@@ -43,22 +44,18 @@ async function fetchAlphaVantageFeed(params: Record<string, string>): Promise<Pr
 
   try {
     const res = await fetch(url.toString(), { next: { revalidate: 1800, tags: ["p365-dashboard"] }, signal: AbortSignal.timeout(10_000) });
-    if (!res.ok) return { status: "ERROR", data: [], message: `Alpha Vantage HTTP ${res.status}` };
+    if (!res.ok) return providerResult("alpha-vantage", "ERROR", [], `Alpha Vantage HTTP ${res.status}`);
 
     const data = (await res.json()) as AlphaVantageResponse;
     const diagnostic = providerDiagnostic(data);
     if (!Array.isArray(data.feed)) {
-      return { status: diagnostic ? "ERROR" : "EMPTY", data: [], message: diagnostic ?? "Alpha Vantage returned no news feed" };
+      return providerResult("alpha-vantage", diagnostic ? "ERROR" : "EMPTY", [], diagnostic ?? "Alpha Vantage returned no news feed");
     }
 
     const feed = data.feed as AlphaVantageFeedItem[];
-    return {
-      status: feed.length > 0 ? "SUCCESS" : "EMPTY",
-      data: feed,
-      message: diagnostic,
-    };
+    return providerResult("alpha-vantage", feed.length > 0 ? "SUCCESS" : "EMPTY", feed, diagnostic);
   } catch (error) {
-    return { status: "ERROR", data: [], message: error instanceof Error ? error.message : "Alpha Vantage request failed" };
+    return providerResult("alpha-vantage", "ERROR", [], error instanceof Error ? error.message : "Alpha Vantage request failed");
   }
 }
 
@@ -77,21 +74,13 @@ function toNewsItem(item: AlphaVantageFeedItem, categoryFallback: string): NewsI
 }
 
 export async function fetchMacroNews(limit = 6): Promise<ProviderResult<NewsItem>> {
-  const result = await fetchAlphaVantageFeed({
-    topics: "economy_macro,economy_monetary,economy_fiscal,financial_markets",
-    sort: "LATEST",
-    limit: String(limit),
-  });
+  const result = await fetchAlphaVantageFeed({ topics: "economy_macro,economy_monetary,economy_fiscal,financial_markets", sort: "LATEST", limit: String(limit) });
   const data = result.data.map((item) => toNewsItem(item, "MACRO")).filter((item): item is NewsItem => item !== null).slice(0, limit);
   return { ...result, status: data.length > 0 ? result.status : result.status === "SUCCESS" ? "EMPTY" : result.status, data };
 }
 
 export async function fetchAlphaVantageCryptoNews(limit = 6): Promise<ProviderResult<NewsItem>> {
-  const result = await fetchAlphaVantageFeed({
-    tickers: "CRYPTO:BTC,CRYPTO:ETH",
-    sort: "LATEST",
-    limit: String(limit),
-  });
+  const result = await fetchAlphaVantageFeed({ tickers: "CRYPTO:BTC,CRYPTO:ETH", sort: "LATEST", limit: String(limit) });
   const data = result.data.map((item) => toNewsItem(item, "CRYPTO")).filter((item): item is NewsItem => item !== null).slice(0, limit);
   return { ...result, status: data.length > 0 ? result.status : result.status === "SUCCESS" ? "EMPTY" : result.status, data };
 }
