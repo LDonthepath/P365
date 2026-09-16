@@ -77,21 +77,24 @@
 .dashboardLayout :global(.menu-grid .calendar .calendar-row > span.impact.low){display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap}
 .dashboardLayout :global(.menu-grid .calendar .calendar-row > span.impact.low small){display:block;margin-top:0 !important;font:500 8px/1.3 'DM Mono',monospace;letter-spacing:.03em;color:var(--muted);opacity:.85;white-space:nowrap}
 
-/* Macro presentation: compact analytical tiles instead of a feed/list. */
+/* Macro presentation: fixed responsive matrix so the workspace uses horizontal width before growing vertically. */
 .dashboardLayout :global(.menu-grid .calendar){
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  grid-template-columns:repeat(4,minmax(0,1fr));
   gap:8px;
+  width:100%;
+  min-width:0;
 }
 .dashboardLayout :global(.menu-grid .calendar > .panel-label),
 .dashboardLayout :global(.menu-grid .calendar > h2),
 .dashboardLayout :global(.menu-grid .calendar > .muted){grid-column:1 / -1}
 .dashboardLayout :global(.menu-grid .calendar .calendar-row){
   min-height:152px;
+  min-width:0;
   margin:0;
   padding:14px;
   display:grid;
-  grid-template-columns:1fr auto;
+  grid-template-columns:minmax(0,1fr) auto;
   grid-template-rows:auto 1fr auto;
   gap:8px 10px;
   align-items:start;
@@ -145,6 +148,9 @@
 }
 .dashboardLayout :global(.menu-grid .calendar .calendar-row > div p::first-letter){text-transform:uppercase}
 
+@media(max-width:1180px){
+  .dashboardLayout :global(.menu-grid .calendar){grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 @media(max-width:900px){
   .dashboardLayout :global(.topbar){padding:16px 20px}
   .dashboardLayout :global(.dashboard-content){padding:24px 20px 48px}
