@@ -31,19 +31,46 @@ export type ProviderId =
   | "fred"
   | "federal-reserve";
 
+export type ProviderErrorCode =
+  | "CONFIGURATION"
+  | "AUTHENTICATION"
+  | "RATE_LIMIT"
+  | "HTTP_ERROR"
+  | "UPSTREAM_UNAVAILABLE"
+  | "TIMEOUT"
+  | "NETWORK_ERROR"
+  | "MALFORMED_PAYLOAD"
+  | "UNKNOWN_ERROR";
+
 export type ProviderResult<T> = {
   providerId: ProviderId;
   status: ProviderResultStatus;
   data: T[];
   retrievedAt: string;
   message?: string;
+  errorCode?: ProviderErrorCode;
 };
+
+export function classifyProviderError(message: string): ProviderErrorCode {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("not configured") || normalized.includes("is not configured")) return "CONFIGURATION";
+  if (/(http|status)\s+(401|403)\b/.test(normalized)) return "AUTHENTICATION";
+  if (/(http|status)\s+429\b|rate.?limit|too many requests/.test(normalized)) return "RATE_LIMIT";
+  if (/(http|status)\s+5\d\d\b/.test(normalized)) return "UPSTREAM_UNAVAILABLE";
+  if (/(http|status)\s+4\d\d\b/.test(normalized)) return "HTTP_ERROR";
+  if (normalized.includes("timeout") || normalized.includes("timed out") || normalized.includes("aborted")) return "TIMEOUT";
+  if (normalized.includes("malformed") || normalized.includes("invalid json") || normalized.includes("unexpected token")) return "MALFORMED_PAYLOAD";
+  if (normalized.includes("fetch failed") || normalized.includes("network") || normalized.includes("request failed")) return "NETWORK_ERROR";
+  return "UNKNOWN_ERROR";
+}
 
 export function providerResult<T>(
   providerId: ProviderId,
   status: ProviderResultStatus,
   data: T[] = [],
   message?: string,
+  errorCode?: ProviderErrorCode,
 ): ProviderResult<T> {
   return {
     providerId,
@@ -51,5 +78,6 @@ export function providerResult<T>(
     data,
     retrievedAt: new Date().toISOString(),
     ...(message ? { message } : {}),
+    ...(status === "ERROR" && message ? { errorCode: errorCode ?? classifyProviderError(message) } : {}),
   };
 }
