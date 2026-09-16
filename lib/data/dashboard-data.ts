@@ -8,7 +8,6 @@ import { fetchFomcEvents } from "./federal-reserve-events";
 import type { CalendarEvent, NewsItem, ProviderResult } from "./types";
 import type { Context, Evidence, Event, Observation, ProviderHealth } from "../domain/types";
 import { buildDashboardContexts } from "../domain/context";
-import { SupabaseMarketMemoryStore } from "./market-memory-store";
 import { calendarToCanonicalRecords, cryptoMarketToObservations, fomcToCanonicalRecords, macroToCanonicalRecords, newsToEvidence, providerHealthForResult, P365_SOURCES } from "../domain/normalize";
 
 export type DashboardData = {
@@ -25,15 +24,6 @@ function resultOrEmpty<T>(result: PromiseSettledResult<ProviderResult<T>>): Prov
 function jakartaDate(dateISO: string): string { const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(dateISO)); const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value; return `${value("year")}-${value("month")}-${value("day")}`; }
 function isFomcCalendarEvent(item: CalendarEvent): boolean { return /\bfomc\b|federal open market committee/i.test(item.event); }
 function dedupeCalendarEvents(calendarEvents: CalendarEvent[], fomcDates: string[]): CalendarEvent[] { const officialFomcDates = new Set(fomcDates.map(jakartaDate)); return calendarEvents.filter((item) => !isFomcCalendarEvent(item) || !officialFomcDates.has(jakartaDate(item.dateISO))); }
-
-async function persistMarketMemory(observations: Observation[], events: Event[], evidence: Evidence[]): Promise<void> {
-  const store = new SupabaseMarketMemoryStore();
-  await store.appendMany([
-    ...observations.map((observation) => ({ observation })),
-    ...events.map((event) => ({ event })).filter(({ event }) => Boolean(event.occurredAt ?? event.scheduledAt)),
-    ...evidence.map((item) => ({ evidence: item })),
-  ]);
-}
 
 export async function getDashboardData(): Promise<DashboardData> {
   const [macroResult, avCryptoResult, coinDeskResult, calendarResult, cryptoMarketResult, fredResult, fomcResult] = await Promise.allSettled([fetchMacroNews(6), fetchAlphaVantageCryptoNews(4), fetchCoinDeskNews(6), fetchEconomicCalendar(6), fetchCryptoMarketObservations(["BTC", "ETH"]), fetchFredMacroObservations(), fetchFomcEvents()]);
@@ -52,7 +42,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const marketFacts = cryptoMarketToObservations(cryptoMarketProvider.data, P365_SOURCES.coinGeckoMarket.id); const macroFacts = macroToCanonicalRecords(fredProvider.data, P365_SOURCES.fred.id);
   const fredHealth = providerHealthForResult(P365_SOURCES.fred.id, fredProvider); if (fredProvider.status === "SUCCESS" && macroFacts.observations.length > 0 && macroFacts.observations.every((item) => item.quality === "STALE")) fredHealth.status = "STALE";
   const observations = [...marketFacts.observations, ...macroFacts.observations]; const evidence = [...newsEvidence, ...calendarRecords.evidence, ...fomcRecords.evidence, ...marketFacts.evidence, ...macroFacts.evidence]; const contexts = buildDashboardContexts({ observations, events });
-  try { await persistMarketMemory(observations, events, evidence); } catch (error) { unavailableSources.push(`market memory (${error instanceof Error ? error.message : "persistence failed"})`); }
   const providerHealth = [providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider), providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider), providerHealthForResult(P365_SOURCES.forexFactory.id, calendarProvider), providerHealthForResult(P365_SOURCES.coinGeckoMarket.id, cryptoMarketProvider), fredHealth, providerHealthForResult(P365_SOURCES.federalReserve.id, fomcProvider)];
   return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations: macroFacts.observations, events, contexts, evidence, providerHealth };
 }
