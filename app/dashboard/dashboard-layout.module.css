@@ -47,14 +47,11 @@
 .dashboardLayout :global(.filters span){margin:auto 10px 4px;padding-top:14px;border-top:1px solid var(--line-soft);font-size:8px;line-height:1.5}
 
 .dashboardLayout :global(.filters button:nth-child(2)),
-.dashboardLayout :global(.filters button:nth-child(4)),
-.dashboardLayout :global(.filters button:nth-child(6)){margin-top:18px}
+.dashboardLayout :global(.filters button:nth-child(4)){margin-top:18px}
 .dashboardLayout :global(.filters button:nth-child(2))::before,
-.dashboardLayout :global(.filters button:nth-child(4))::before,
-.dashboardLayout :global(.filters button:nth-child(6))::before{position:absolute;left:12px;top:-17px;color:var(--muted);font:500 8px 'DM Mono',monospace;letter-spacing:.12em;white-space:nowrap;pointer-events:none}
+.dashboardLayout :global(.filters button:nth-child(4))::before{position:absolute;left:12px;top:-17px;color:var(--muted);font:500 8px 'DM Mono',monospace;letter-spacing:.12em;white-space:nowrap;pointer-events:none}
 .dashboardLayout :global(.filters button:nth-child(2))::before{content:"MARKETS"}
 .dashboardLayout :global(.filters button:nth-child(4))::before{content:"ANALYSIS"}
-.dashboardLayout :global(.filters button:nth-child(6))::before{content:"EVIDENCE"}
 
 .dashboardLayout :global(.topbar)::after{content:"OVERVIEW";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;color:var(--muted);font:500 9px 'DM Mono',monospace;letter-spacing:.16em;white-space:nowrap}
 .dashboardLayout :global(.dashboard-shell:has(.filters button:nth-child(2).active) .topbar)::after{content:"MACRO"}
