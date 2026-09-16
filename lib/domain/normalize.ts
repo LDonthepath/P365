@@ -134,7 +134,7 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
 
   const observations = eligibleItems.map((item, index) => ({
     id: hashId("observation", `${sourceId}:${item.series.seriesId}:${item.observationDate}:${item.value}`),
-    domain: "MACRO" as const,
+    domain: item.series.domain,
     subject: item.series.subject,
     value: item.value,
     observedAt: item.observationDate,
