@@ -26,6 +26,8 @@ export const MACRO_SERIES_REGISTRY = [
   { seriesId: "WRESBAL", subject: "Reserve Balances with Federal Reserve Banks", frequency: "WEEKLY", unit: "Millions of U.S. Dollars", source: "FRED", freshnessMs: 14 * DAY, revalidateSeconds: 12 * 60 * 60 },
   { seriesId: "M2SL", subject: "M2 Money Stock", frequency: "MONTHLY", unit: "Billions of U.S. Dollars", source: "FRED", freshnessMs: 45 * DAY, revalidateSeconds: 12 * 60 * 60 },
   { seriesId: "WTREGEN", subject: "U.S. Treasury General Account", frequency: "WEEKLY", unit: "Millions of U.S. Dollars", source: "FRED", freshnessMs: 14 * DAY, revalidateSeconds: 12 * 60 * 60 },
+  { seriesId: "SOFR", subject: "Secured Overnight Financing Rate", frequency: "DAILY", unit: "Percent", source: "FRED", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
+  { seriesId: "IORB", subject: "Interest Rate on Reserve Balances", frequency: "DAILY", unit: "Percent", source: "FRED", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
   { seriesId: "RRPONTSYD", subject: "Overnight Reverse Repurchase Agreements", frequency: "DAILY", unit: "Billions of U.S. Dollars", source: "FRED", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
   { seriesId: "CPIAUCSL", subject: "Consumer Price Index for All Urban Consumers: All Items", frequency: "MONTHLY", unit: "Index 1982-1984=100", source: "FRED", freshnessMs: 45 * DAY, revalidateSeconds: 12 * 60 * 60 },
   { seriesId: "CPILFESL", subject: "Consumer Price Index for All Urban Consumers: All Items Less Food and Energy", frequency: "MONTHLY", unit: "Index 1982-1984=100", source: "FRED", freshnessMs: 45 * DAY, revalidateSeconds: 12 * 60 * 60 },
