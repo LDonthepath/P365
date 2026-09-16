@@ -33,7 +33,7 @@ function observationDate(observation: Observation): string | null {
 }
 
 function compatible(a: Observation, b: Observation): boolean {
-  if (a.domain !== b.domain || a.subject !== b.subject) return false;
+  if (a.domain !== b.domain || a.subject !== b.subject || a.sourceId !== b.sourceId) return false;
 
   const aSeries = observationSeriesId(a);
   const bSeries = observationSeriesId(b);
@@ -86,9 +86,9 @@ function compareBaselineRecency(a: Observation, b: Observation): number {
   return 0;
 }
 
-function baselineStatus(quality: DataQuality): BaselineStatus {
-  if (quality === "FRESH") return "VALID";
-  if (quality === "STALE") return "STALE";
+function baselineStatus(currentQuality: DataQuality, baselineQuality: DataQuality): BaselineStatus {
+  if (currentQuality === "FRESH" && baselineQuality === "FRESH") return "VALID";
+  if (currentQuality === "STALE" || baselineQuality === "STALE") return "STALE";
   return "UNKNOWN";
 }
 
@@ -143,7 +143,7 @@ export function selectFactualBaseline(
     };
   }
 
-  const status = baselineStatus(baseline.quality);
+  const status = baselineStatus(current.quality, baseline.quality);
 
   return {
     kind: "FACTUAL",
@@ -155,11 +155,11 @@ export function selectFactualBaseline(
     currentObservedAt: current.observedAt,
     baselineObservedAt: baseline.observedAt,
     sourceId: current.sourceId,
-    quality: baseline.quality,
+    quality: status === "VALID" ? "FRESH" : status === "STALE" ? "STALE" : "UNKNOWN",
     ...(status === "STALE"
-      ? { reason: "Selected baseline observation is marked stale." }
+      ? { reason: "Current or selected baseline observation is marked stale." }
       : status === "UNKNOWN"
-        ? { reason: "Selected baseline observation does not have sufficient quality for a valid factual baseline." }
+        ? { reason: "Current or selected baseline observation does not have sufficient quality for a valid factual baseline." }
         : {}),
   };
 }
