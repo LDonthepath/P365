@@ -25,6 +25,23 @@
   padding:14px 0;
 }
 
+/* Step 2A.2: expose the What Changed layer without fabricating deltas.
+   The current observation model has no previous value/change field, so this
+   layer is intentionally an explicit data-state message until that contract exists. */
+.overviewLayout :global(.dashboard-content:has(.market-state) .overview-grid)::before{
+  content:"WHAT CHANGED\\A\\APerubahan terverifikasi belum dapat dihitung dari observation model saat ini. Previous value / delta belum tersedia, sehingga P365 tidak menampilkan arah atau besaran perubahan yang tidak dapat diverifikasi.";
+  white-space:pre-wrap;
+  grid-column:1 / -1;
+  display:block;
+  border:1px solid var(--line);
+  background:var(--panel-2);
+  padding:18px 20px;
+  color:var(--muted);
+  font:500 10px/1.65 'DM Mono',monospace;
+  letter-spacing:.04em;
+  text-transform:none;
+}
+
 @media(max-width:900px){
   .overviewLayout :global(.dashboard-content:has(.market-state) .overview-grid){
     grid-template-columns:1fr;
