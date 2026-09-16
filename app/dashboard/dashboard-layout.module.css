@@ -24,7 +24,6 @@
 }
 
 .dashboardLayout :global(.topbar-actions){gap:14px}
-
 .dashboardLayout :global(.topbar-brand-group){display:flex;align-items:center;gap:12px;min-width:0}
 
 .dashboardLayout :global(.nav-toggle){width:38px;height:38px;padding:9px;display:grid;align-content:center;gap:4px;flex:0 0 auto;border:1px solid var(--line);border-radius:2px;background:transparent;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -41,24 +40,23 @@
 .dashboardLayout :global(.filters){position:fixed;top:0;left:0;bottom:0;width:min(280px,86vw);margin:0;padding:88px 16px max(22px,env(safe-area-inset-bottom));border:0;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:stretch;gap:4px;overflow-y:auto;overscroll-behavior:contain;background:#0c100e;box-shadow:16px 0 36px rgba(0,0,0,.34);transform:translate3d(-105%,0,0);visibility:hidden;transition:transform .2s ease,visibility 0s linear .2s;z-index:45}
 .dashboardLayout :global(.filters.open){transform:translate3d(0,0,0);visibility:visible;transition:transform .2s ease}
 .dashboardLayout :global(.filters)::before{content:"WORKSPACE";display:block;padding:8px 10px 11px;color:var(--muted);font:500 9px 'DM Mono',monospace;letter-spacing:.12em}
-.dashboardLayout :global(.filters button){width:100%;min-height:42px;padding:10px 12px;border-left:2px solid transparent;border-radius:2px;text-align:left;font-size:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.dashboardLayout :global(.filters button){width:100%;min-height:42px;padding:10px 12px;border-left:2px solid transparent;border-radius:2px;text-align:left;font-size:10px;cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative}
 .dashboardLayout :global(.filters button:hover),
 .dashboardLayout :global(.filters button:focus-visible){background:#151d19;outline:none}
 .dashboardLayout :global(.filters button.active){border-left-color:var(--lime);background:#182017;color:var(--lime)}
 .dashboardLayout :global(.filters span){margin:auto 10px 4px;padding-top:14px;border-top:1px solid var(--line-soft);font-size:8px;line-height:1.5}
 
-.dashboardLayout :global(.topbar)::after{
-  content:"OVERVIEW";
-  position:absolute;
-  left:50%;
-  top:50%;
-  transform:translate(-50%,-50%);
-  pointer-events:none;
-  color:var(--muted);
-  font:500 9px 'DM Mono',monospace;
-  letter-spacing:.16em;
-  white-space:nowrap;
-}
+.dashboardLayout :global(.filters button:nth-child(2)),
+.dashboardLayout :global(.filters button:nth-child(4)),
+.dashboardLayout :global(.filters button:nth-child(6)){margin-top:18px}
+.dashboardLayout :global(.filters button:nth-child(2))::before,
+.dashboardLayout :global(.filters button:nth-child(4))::before,
+.dashboardLayout :global(.filters button:nth-child(6))::before{position:absolute;left:12px;top:-17px;color:var(--muted);font:500 8px 'DM Mono',monospace;letter-spacing:.12em;white-space:nowrap;pointer-events:none}
+.dashboardLayout :global(.filters button:nth-child(2))::before{content:"MARKETS"}
+.dashboardLayout :global(.filters button:nth-child(4))::before{content:"ANALYSIS"}
+.dashboardLayout :global(.filters button:nth-child(6))::before{content:"EVIDENCE"}
+
+.dashboardLayout :global(.topbar)::after{content:"OVERVIEW";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;color:var(--muted);font:500 9px 'DM Mono',monospace;letter-spacing:.16em;white-space:nowrap}
 .dashboardLayout :global(.dashboard-shell:has(.filters button:nth-child(2).active) .topbar)::after{content:"MACRO"}
 .dashboardLayout :global(.dashboard-shell:has(.filters button:nth-child(3).active) .topbar)::after{content:"CRYPTO"}
 .dashboardLayout :global(.dashboard-shell:has(.filters button:nth-child(4).active) .topbar)::after{content:"CONTEXT"}
