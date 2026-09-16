@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/auth";
-import { getDashboardData } from "@/lib/data/dashboard-data";
+import { getDashboardData } from "@/lib/application/dashboard-query";
 import { DashboardView } from "./dashboard-view";
 import styles from "./dashboard-layout.module.css";
 import overviewStyles from "./overview-layout.module.css";
