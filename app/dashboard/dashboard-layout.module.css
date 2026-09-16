@@ -67,6 +67,16 @@
 .dashboardLayout :global(.panel){border-radius:2px}
 .dashboardLayout :global(.crypto-market-panel){margin-top:16px !important}
 
+/* Baseline presentation: comparison is visible, implementation terminology stays secondary. */
+.dashboardLayout :global(.overview-change-layer .panel-label span:last-child){color:var(--muted);font-size:8px;letter-spacing:.1em}
+.dashboardLayout :global(.overview-change-layer .state-meta > div:nth-child(2) span),
+.dashboardLayout :global(.overview-change-layer .state-meta > div:nth-child(3) span){font-size:7px;letter-spacing:.08em}
+.dashboardLayout :global(.overview-change-layer .monitor-list){border-top:1px solid var(--line-soft);padding-top:10px}
+.dashboardLayout :global(.overview-change-layer .monitor-list > div){min-height:34px}
+.dashboardLayout :global(.overview-change-layer .monitor-list > div span){font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dashboardLayout :global(.menu-grid .calendar .calendar-row > span.impact.low){display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap}
+.dashboardLayout :global(.menu-grid .calendar .calendar-row > span.impact.low small){display:block;margin-top:0 !important;font:500 8px/1.3 'DM Mono',monospace;letter-spacing:.03em;color:var(--muted);opacity:.85;white-space:nowrap}
+
 @media(max-width:900px){
   .dashboardLayout :global(.topbar){padding:16px 20px}
   .dashboardLayout :global(.dashboard-content){padding:24px 20px 48px}
@@ -78,6 +88,8 @@
   .dashboardLayout :global(.topbar)::after{display:none}
   .dashboardLayout :global(.dashboard-content){padding:20px 16px 44px}
   .dashboardLayout :global(.filters){padding-top:78px}
+  .dashboardLayout :global(.overview-change-layer .monitor-list > div){align-items:flex-start;gap:8px;flex-direction:column}
+  .dashboardLayout :global(.menu-grid .calendar .calendar-row > span.impact.low small){font-size:7px}
 }
 @media(prefers-reduced-motion:reduce){
   .dashboardLayout :global(.filters),.dashboardLayout :global(.nav-toggle span){transition:none}
