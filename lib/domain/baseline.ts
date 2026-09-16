@@ -173,3 +173,31 @@ export function factualBaselineChange(baseline: FactualBaseline): number | null 
 
   return current - previous;
 }
+
+/**
+ * Builds factual baselines for all macro series represented in canonical
+ * observations. This is comparison infrastructure only; it does not classify
+ * direction, surprise, abnormality, repricing, or regime.
+ */
+export function buildMacroFactualBaselines(observations: Observation[]): Record<string, FactualBaseline> {
+  const macroObservations = observations.filter((observation) => observation.domain === "MACRO");
+  const bySeries = new Map<string, Observation[]>();
+
+  for (const observation of macroObservations) {
+    const seriesId = observationSeriesId(observation);
+    if (!seriesId) continue;
+    const series = bySeries.get(seriesId) ?? [];
+    series.push(observation);
+    bySeries.set(seriesId, series);
+  }
+
+  const baselines: Record<string, FactualBaseline> = {};
+
+  for (const [seriesId, series] of bySeries.entries()) {
+    const current = [...series].sort(compareBaselineRecency)[0];
+    if (!current) continue;
+    baselines[seriesId] = selectFactualBaseline(current, series);
+  }
+
+  return baselines;
+}
