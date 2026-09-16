@@ -23,3 +23,12 @@ export interface ContextRepository {
   saveMany(contexts: Context[]): Promise<void>;
   findById(id: string): Promise<Context | null>;
 }
+
+/**
+ * Generic contract reserved for the immutable MarketSnapshot introduced in P0-05.
+ * Keeping the repository generic prevents this stage from defining snapshot semantics.
+ */
+export interface SnapshotRepository<TSnapshot extends { id: string }> {
+  save(snapshot: TSnapshot): Promise<void>;
+  findById(id: string): Promise<TSnapshot | null>;
+}
