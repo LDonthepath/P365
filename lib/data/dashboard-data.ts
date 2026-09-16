@@ -44,7 +44,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   const marketFacts = cryptoMarketToObservations(cryptoMarketProvider.data, P365_SOURCES.coinGeckoMarket.id); const macroFacts = macroToCanonicalRecords(fredProvider.data, P365_SOURCES.fred.id);
   const fredHealth = providerHealthForResult(P365_SOURCES.fred.id, fredProvider); if (fredProvider.status === "SUCCESS" && macroFacts.observations.length > 0 && macroFacts.observations.every((item) => item.quality === "STALE")) fredHealth.status = "STALE";
   const observations = [...marketFacts.observations, ...macroFacts.observations]; const evidence = [...newsEvidence, ...calendarRecords.evidence, ...fomcRecords.evidence, ...marketFacts.evidence, ...macroFacts.evidence]; const contexts = buildDashboardContexts({ observations, events });
-  const macroBaselines = buildMacroFactualBaselines(macroFacts.observations);
+  const macroObservations = macroFacts.observations.filter((item) => item.domain === "MACRO");
+  const macroBaselines = buildMacroFactualBaselines(macroObservations);
   const providerHealth = [providerHealthForResult(P365_SOURCES.alphaVantage.id, macroProvider), providerHealthForResult(P365_SOURCES.coinDesk.id, coinDeskProvider), providerHealthForResult(P365_SOURCES.forexFactory.id, calendarProvider), providerHealthForResult(P365_SOURCES.coinGeckoMarket.id, cryptoMarketProvider), fredHealth, providerHealthForResult(P365_SOURCES.federalReserve.id, fomcProvider)];
-  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations: macroFacts.observations, events, contexts, macroBaselines, evidence, providerHealth };
+  return { macroNews: sortByRecency(macroNews), cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations, events, contexts, macroBaselines, evidence, providerHealth };
 }
