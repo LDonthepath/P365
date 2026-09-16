@@ -1,0 +1,143 @@
+.dashboardLayout :global(.dashboard-shell){
+  width:100%;
+  max-width:none;
+  min-height:100vh;
+  margin:0;
+  padding:0;
+  display:grid;
+  grid-template-columns:232px minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr);
+  column-gap:0;
+  background:var(--bg);
+}
+
+.dashboardLayout :global(.topbar){
+  grid-column:2;
+  grid-row:1;
+  min-width:0;
+  padding:24px 36px 22px;
+  border-bottom:1px solid var(--line);
+  align-items:center;
+}
+
+.dashboardLayout :global(.topbar h1){
+  font-size:clamp(26px,2.5vw,34px);
+}
+
+.dashboardLayout :global(.topbar-actions){
+  gap:14px;
+}
+
+.dashboardLayout :global(.filters){
+  grid-column:1;
+  grid-row:1 / 3;
+  position:sticky;
+  top:0;
+  height:100vh;
+  margin:0;
+  padding:22px 14px;
+  border:0;
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:4px;
+  overflow-y:auto;
+  background:var(--panel-2);
+  z-index:10;
+}
+
+.dashboardLayout :global(.filters)::before{
+  content:"WORKSPACE";
+  display:block;
+  padding:8px 10px 12px;
+  color:var(--muted);
+  font:500 9px 'DM Mono',monospace;
+  letter-spacing:.12em;
+}
+
+.dashboardLayout :global(.filters button){
+  width:100%;
+  min-height:38px;
+  padding:9px 12px;
+  border-left:2px solid transparent;
+  border-radius:2px;
+  text-align:left;
+  font-size:10px;
+}
+
+.dashboardLayout :global(.filters button:hover){
+  background:#151d19;
+}
+
+.dashboardLayout :global(.filters button.active){
+  border-left-color:var(--lime);
+  border-radius:2px;
+  background:#182017;
+  color:var(--lime);
+}
+
+.dashboardLayout :global(.filters span){
+  margin:auto 10px 4px;
+  padding-top:14px;
+  border-top:1px solid var(--line-soft);
+  font-size:8px;
+  line-height:1.5;
+}
+
+.dashboardLayout :global(.dashboard-content){
+  grid-column:2;
+  grid-row:2;
+  min-width:0;
+  padding:28px 36px 64px;
+  max-width:1440px;
+  width:100%;
+  margin:0 auto;
+}
+
+.dashboardLayout :global(.market-state){
+  margin-bottom:16px;
+}
+
+.dashboardLayout :global(.overview-grid),
+.dashboardLayout :global(.menu-grid){
+  gap:16px;
+}
+
+.dashboardLayout :global(.panel){
+  border-radius:2px;
+}
+
+.dashboardLayout :global(.crypto-market-panel){
+  margin-top:16px !important;
+}
+
+@media(max-width:900px){
+  .dashboardLayout :global(.dashboard-shell){
+    display:block;
+    min-height:0;
+  }
+
+  .dashboardLayout :global(.filters){
+    position:sticky;
+    top:0;
+    height:auto;
+    padding:7px 16px;
+    border-right:0;
+    border-bottom:1px solid var(--line);
+    flex-direction:row;
+    overflow-x:auto;
+    z-index:30;
+  }
+
+  .dashboardLayout :global(.filters)::before{display:none}
+  .dashboardLayout :global(.filters button){width:auto;min-width:max-content}
+  .dashboardLayout :global(.filters span){display:none}
+  .dashboardLayout :global(.topbar){padding:20px 20px 18px}
+  .dashboardLayout :global(.dashboard-content){padding:20px 20px 48px}
+}
+
+@media(max-width:760px){
+  .dashboardLayout :global(.topbar){padding:18px 16px 16px}
+  .dashboardLayout :global(.dashboard-content){padding:16px 16px 44px}
+}
