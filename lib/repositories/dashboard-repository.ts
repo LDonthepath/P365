@@ -14,14 +14,16 @@ export type CanonicalRepositories = {
   contexts: ContextRepository;
 };
 
-export function createInMemoryCanonicalRepositories(): CanonicalRepositories {
-  return {
-    observations: new InMemoryObservationRepository(),
-    events: new InMemoryEventRepository(),
-    evidence: new InMemoryEvidenceRepository(),
-    contexts: new InMemoryContextRepository(),
-  };
-}
+/**
+ * Process-local repository set. This is intentionally an adapter, not durable storage.
+ * A database-backed implementation can replace it without changing callers.
+ */
+export const canonicalRepositories: CanonicalRepositories = {
+  observations: new InMemoryObservationRepository(),
+  events: new InMemoryEventRepository(),
+  evidence: new InMemoryEvidenceRepository(),
+  contexts: new InMemoryContextRepository(),
+};
 
 export async function persistCanonicalDashboardData(
   repositories: CanonicalRepositories,
