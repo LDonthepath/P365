@@ -23,8 +23,33 @@ export type CalendarEvent = {
 
 export type ProviderResultStatus = "SUCCESS" | "EMPTY" | "ERROR" | "UNAVAILABLE";
 
+export type ProviderId =
+  | "alpha-vantage"
+  | "coindesk-rss"
+  | "forex-factory"
+  | "coingecko"
+  | "fred"
+  | "federal-reserve";
+
 export type ProviderResult<T> = {
+  providerId: ProviderId;
   status: ProviderResultStatus;
   data: T[];
+  retrievedAt: string;
   message?: string;
 };
+
+export function providerResult<T>(
+  providerId: ProviderId,
+  status: ProviderResultStatus,
+  data: T[] = [],
+  message?: string,
+): ProviderResult<T> {
+  return {
+    providerId,
+    status,
+    data,
+    retrievedAt: new Date().toISOString(),
+    ...(message ? { message } : {}),
+  };
+}
