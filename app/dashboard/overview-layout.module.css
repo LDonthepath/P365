@@ -36,34 +36,34 @@
   align-items:start;
 }
 
-.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer){
+.overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel){
   margin-top:20px;
 }
 
-.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-groups){
+.overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-groups){
   margin-top:20px;
 }
 
-.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-group){
+.overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-group){
   border-top:1px solid var(--line);
 }
 
-.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-group:last-child){
+.overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-group:last-child){
   border-bottom:1px solid var(--line);
 }
 
-.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-group-button){
+.overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-group-button){
   cursor:default;
 }
 
-.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-detail-empty){
+.overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-detail-empty){
   margin-top:20px;
   padding:18px 20px;
   border:1px solid var(--line);
   background:var(--panel-2);
 }
 
-.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-detail-empty h3){
+.overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-detail-empty h3){
   margin:0 0 6px;
 }
 
