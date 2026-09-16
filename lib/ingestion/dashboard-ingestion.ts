@@ -6,7 +6,7 @@ import { fetchEconomicCalendar } from "../data/economic-calendar";
 import { fetchCryptoMarketObservations, type CryptoMarketObservationInput } from "../data/crypto-market";
 import { fetchFredMacroObservations, type MacroObservationInput } from "../data/fred";
 import { fetchFomcEvents, type FomcEventInput } from "../data/federal-reserve-events";
-import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
+import { providerResult, type CalendarEvent, type NewsItem, type ProviderResult } from "../data/types";
 
 export type DashboardIngestion = {
   macroNews: ProviderResult<NewsItem>;
@@ -18,13 +18,9 @@ export type DashboardIngestion = {
   fomc: ProviderResult<FomcEventInput>;
 };
 
-function resultOrEmpty<T>(result: PromiseSettledResult<ProviderResult<T>>): ProviderResult<T> {
+function resultOrEmpty<T>(result: PromiseSettledResult<ProviderResult<T>>, providerId: Parameters<typeof providerResult>[0]): ProviderResult<T> {
   if (result.status === "fulfilled") return result.value;
-  return {
-    status: "ERROR",
-    data: [],
-    message: result.reason instanceof Error ? result.reason.message : "Provider request failed",
-  };
+  return providerResult(providerId, "ERROR", [], result.reason instanceof Error ? result.reason.message : "Provider request failed");
 }
 
 export async function ingestDashboardData(): Promise<DashboardIngestion> {
@@ -40,12 +36,12 @@ export async function ingestDashboardData(): Promise<DashboardIngestion> {
     ]);
 
   return {
-    macroNews: resultOrEmpty(macroResult),
-    alphaVantageCryptoNews: resultOrEmpty(alphaVantageCryptoResult),
-    coinDeskNews: resultOrEmpty(coinDeskResult),
-    calendar: resultOrEmpty(calendarResult),
-    cryptoMarket: resultOrEmpty(cryptoMarketResult),
-    fred: resultOrEmpty(fredResult),
-    fomc: resultOrEmpty(fomcResult),
+    macroNews: resultOrEmpty(macroResult, "alpha-vantage"),
+    alphaVantageCryptoNews: resultOrEmpty(alphaVantageCryptoResult, "alpha-vantage"),
+    coinDeskNews: resultOrEmpty(coinDeskResult, "coindesk-rss"),
+    calendar: resultOrEmpty(calendarResult, "forex-factory"),
+    cryptoMarket: resultOrEmpty(cryptoMarketResult, "coingecko"),
+    fred: resultOrEmpty(fredResult, "fred"),
+    fomc: resultOrEmpty(fomcResult, "federal-reserve"),
   };
 }
