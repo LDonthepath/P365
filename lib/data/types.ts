@@ -78,6 +78,8 @@ export function providerResult<T>(
     data,
     retrievedAt: new Date().toISOString(),
     ...(message ? { message } : {}),
-    ...(status === "ERROR" && message ? { errorCode: errorCode ?? classifyProviderError(message) } : {}),
+    ...((status === "ERROR" || status === "UNAVAILABLE") && message
+      ? { errorCode: errorCode ?? classifyProviderError(message) }
+      : {}),
   };
 }
