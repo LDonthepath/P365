@@ -36,6 +36,37 @@
   align-items:start;
 }
 
+.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer){
+  margin-top:20px;
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-groups){
+  margin-top:20px;
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-group){
+  border-top:1px solid var(--line);
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-group:last-child){
+  border-bottom:1px solid var(--line);
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-group-button){
+  cursor:default;
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-detail-empty){
+  margin-top:20px;
+  padding:18px 20px;
+  border:1px solid var(--line);
+  background:var(--panel-2);
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .overview-context-layer .context-detail-empty h3){
+  margin:0 0 6px;
+}
+
 @media(max-width:900px){
   .overviewLayout :global(.dashboard-content:has(.market-state) .overview-grid){
     grid-template-columns:1fr;
