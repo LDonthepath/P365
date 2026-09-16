@@ -6,6 +6,7 @@ import { relativeTimeID } from "@/lib/data/format";
 import type { DashboardData } from "@/lib/data/dashboard-data";
 import type { CalendarEvent, NewsItem } from "@/lib/data/types";
 import type { Context, DataQuality, Evidence, Observation, ProviderHealth } from "@/lib/domain/types";
+import { buildBaselinePresentations, type BaselinePresentation } from "@/lib/presentation/baseline";
 import { logout, refreshDashboardData } from "./actions";
 
 type Menu = "overview" | "macro" | "crypto" | "context" | "intelligence" | "evidence";
@@ -56,9 +57,19 @@ function CalendarRow({ item }: { item: CalendarEvent }) {
   return <article className="calendar-row"><time dateTime={item.dateISO} aria-label={`${item.event}, ${item.status}, ${item.time} WIB`}>{item.time}<small>WIB</small></time><div><h3>{item.event}</h3><p>{item.country} · {item.status}</p></div><span className={`impact ${item.impact.toLowerCase()}`}>{item.impact}</span></article>;
 }
 
-function MacroObservationRow({ item }: { item: Observation }) {
+function formatBaselineDelta(value: number | null): string {
+  if (value === null) return "—";
+  return `${value > 0 ? "+" : ""}${value.toFixed(2)}`;
+}
+
+function MacroObservationRow({ item, baseline }: { item: Observation; baseline: BaselinePresentation | null }) {
   const metadata = item.metadata ?? {};
-  return <article className="calendar-row"><time dateTime={item.observedAt}>{String(metadata.frequency ?? "UNKNOWN")}<small>{item.quality}</small></time><div><h3>{item.subject}</h3><p>{String(metadata.seriesId ?? "")} · observation date {String(metadata.observationDate ?? "unknown")}</p></div><span className="impact low">{item.value} {String(metadata.unit ?? "")}</span></article>;
+  const delta = baseline?.changeValue ?? null;
+  return <article className="calendar-row">
+    <time dateTime={item.observedAt}>{String(metadata.frequency ?? "UNKNOWN")}<small>{item.quality}</small></time>
+    <div><h3>{item.subject}</h3><p>{String(metadata.seriesId ?? "")} · observation date {String(metadata.observationDate ?? "unknown")} · {baseline?.sourceId ?? item.sourceId}</p></div>
+    <span className="impact low">{item.value} {String(metadata.unit ?? "")}<small style={{ display: "block", marginTop: "0.2rem", opacity: 0.7 }}>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `BASE ${baseline.baselineValue} · Δ ${formatBaselineDelta(delta)}` : `BASE ${baseline?.status ?? "MISSING"}`}</small></span>
+  </article>;
 }
 
 function ContextCard({ context, label, selected, onClick }: { context: Context; label: string; selected: boolean; onClick: () => void }) {
@@ -136,21 +147,24 @@ function CryptoMarketPanel({ observations, providerHealth }: { observations: Obs
   </section>;
 }
 
-function OverviewWhatChanged({ observations }: { observations: Observation[] }) {
+function OverviewWhatChanged({ observations, baselines }: { observations: Observation[]; baselines: BaselinePresentation[] }) {
+  const validChanges = baselines.filter((item) => item.status === "VALID" && item.changeValue !== null);
+  const staleBaselines = baselines.filter((item) => item.status === "STALE");
   return <section className="panel overview-change-layer" aria-labelledby="what-changed-title">
-    <div className="panel-label"><span>02 / WHAT CHANGED</span><span>VERIFIED CHANGE LAYER</span></div>
+    <div className="panel-label"><span>02 / WHAT CHANGED</span><span>FACTUAL BASELINE</span></div>
     <div className="change-layer-grid">
       <div>
-        <h2 id="what-changed-title">Perubahan terverifikasi belum dapat dihitung.</h2>
-        <p className="lead-copy">Observation model saat ini hanya mengekspos nilai observasi dan waktu pengamatan. Previous value atau delta belum tersedia, sehingga P365 tidak menampilkan perubahan arah maupun besaran yang tidak dapat diverifikasi.</p>
+        <h2 id="what-changed-title">Perubahan faktual tersedia untuk {validChanges.length} seri.</h2>
+        <p className="lead-copy">Layer ini hanya membandingkan observasi terbaru dengan factual baseline yang valid. Delta tidak diterjemahkan menjadi arah pasar, regime, surprise, atau implikasi trading.</p>
       </div>
       <div className="state-meta">
         <div><span>OBSERVASI TERSEDIA</span><strong>{observations.length}</strong></div>
-        <div><span>PREVIOUS VALUE</span><strong>NOT EXPOSED</strong></div>
-        <div><span>DELTA</span><strong>NOT CALCULABLE</strong></div>
-        <div><span>STATUS</span><strong>WAITING FOR CONTRACT</strong></div>
+        <div><span>BASELINE VALID</span><strong>{validChanges.length}</strong></div>
+        <div><span>BASELINE STALE</span><strong>{staleBaselines.length}</strong></div>
+        <div><span>STATUS</span><strong>{baselines.length ? "FACTUAL ONLY" : "NO BASELINE"}</strong></div>
       </div>
     </div>
+    {validChanges.length > 0 && <div className="monitor-list" style={{ marginTop: "1rem" }}>{validChanges.slice(0, 6).map((item) => <div key={item.seriesId}><strong>{item.seriesId}</strong><span>{item.currentValue} vs {item.baselineValue} · Δ {formatBaselineDelta(item.changeValue)}</span></div>)}</div>}
   </section>;
 }
 
@@ -183,7 +197,9 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const { macroNews, cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations, contexts, evidence, providerHealth } = data;
+  const { macroNews, cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations, macroBaselines, contexts, evidence, providerHealth } = data;
+  const baselinePresentations = buildBaselinePresentations(macroBaselines);
+  const baselinesBySeries = new Map(baselinePresentations.map((item) => [item.seriesId, item]));
 
   useEffect(() => {
     if (!navOpen) return;
@@ -218,8 +234,8 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
     <nav id="dashboard-navigation" className={`filters${navOpen ? " open" : ""}`} aria-label="Bagian dashboard" role="tablist">{menuItems.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeMenu === item.id} className={activeMenu === item.id ? "active" : ""} onClick={() => { setActiveMenu(item.id); setNavOpen(false); }}>{item.label}</button>)}<span>WIB / ASIA-JAKARTA</span></nav>
 
     <div className="dashboard-content" role="tabpanel">
-      {activeMenu === "overview" && <><section className="market-state panel" aria-labelledby="state-title"><div className="panel-label"><span>01 / STATUS PASAR GLOBAL</span><StatusBadge value="PENDING" /></div><div className="state-grid"><div><h2 id="state-title">Belum ada kesimpulan status pasar.</h2><p>{observations.length ? "Observasi pasar tersedia, tetapi P365 belum memiliki aturan domain spesifik untuk menggabungkannya menjadi satu status pasar." : "Tidak ada observasi pasar yang dapat diverifikasi pada request ini, sehingga P365 tidak menampilkan status pasar."}</p></div><div className="state-meta"><div><span>CONFIDENCE</span><strong>BELUM ADA</strong></div><div><span>OBSERVASI</span><strong>{observations.length} · {marketStatus}</strong></div><div><span>EVIDENCE KANONIK</span><strong>{evidence.length} item</strong></div><div><span>EVENT MENDATANG</span><strong>{calendarEvents.length}</strong></div></div></div></section><OverviewWhatChanged observations={observations} /><OverviewContext contextGroups={contextGroups} selectedContextId={selectedContextId} selectedContext={selectedContext} onSelect={(id) => setSelectedContextId(selectedContextId === id ? null : id)} /><section className="overview-grid"><section className="panel market-watch"><div className="panel-label"><span>CAKUPAN DOMAIN</span><span>RINGKASAN</span></div><h2>Cakupan data</h2>{[["Evidence berita makro", macroNews.length, macroNews.length ? "FRESH" : "PENDING"], ["Evidence berita crypto", cryptoNews.length, cryptoNews.length ? "FRESH" : "PENDING"], ["Observasi pasar", observations.length, marketStatus], ["Provider", providerHealth.length, providerStatus]].map(([label, count, status]) => <div className="watch-row" key={String(label)}><span>{label}</span><strong>{count}</strong><StatusBadge value={status as "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE"} /></div>)}</section><section className="panel calendar"><div className="panel-label"><span>EVENT MENDATANG</span><span>{calendarEvents.length} ITEM</span></div><h2>Agenda penting</h2>{calendarEvents.length ? calendarEvents.map((item) => <CalendarRow item={item} key={item.id} />) : <><EmptyPanelNote label="kalender ekonomi" />{calendarProviderMessage && <p className="muted">Diagnostic Forex Factory: {calendarProviderMessage}</p>}</>}</section></section></>}
-      {activeMenu === "macro" && <div className="menu-grid">{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar"><div className="panel-label"><span>OBSERVASI MAKRO</span><span>{macroObservations.length} ITEM</span></div><h2>Monitor data makro</h2>{macroObservations.length ? macroObservations.map((item) => <MacroObservationRow item={item} key={item.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div>}
+      {activeMenu === "overview" && <><section className="market-state panel" aria-labelledby="state-title"><div className="panel-label"><span>01 / STATUS PASAR GLOBAL</span><StatusBadge value="PENDING" /></div><div className="state-grid"><div><h2 id="state-title">Belum ada kesimpulan status pasar.</h2><p>{observations.length ? "Observasi pasar tersedia, tetapi P365 belum memiliki aturan domain spesifik untuk menggabungkannya menjadi satu status pasar." : "Tidak ada observasi pasar yang dapat diverifikasi pada request ini, sehingga P365 tidak menampilkan status pasar."}</p></div><div className="state-meta"><div><span>CONFIDENCE</span><strong>BELUM ADA</strong></div><div><span>OBSERVASI</span><strong>{observations.length} · {marketStatus}</strong></div><div><span>EVIDENCE KANONIK</span><strong>{evidence.length} item</strong></div><div><span>EVENT MENDATANG</span><strong>{calendarEvents.length}</strong></div></div></div></section><OverviewWhatChanged observations={observations} baselines={baselinePresentations} /><OverviewContext contextGroups={contextGroups} selectedContextId={selectedContextId} selectedContext={selectedContext} onSelect={(id) => setSelectedContextId(selectedContextId === id ? null : id)} /><section className="overview-grid"><section className="panel market-watch"><div className="panel-label"><span>CAKUPAN DOMAIN</span><span>RINGKASAN</span></div><h2>Cakupan data</h2>{[["Evidence berita makro", macroNews.length, macroNews.length ? "FRESH" : "PENDING"], ["Evidence berita crypto", cryptoNews.length, cryptoNews.length ? "FRESH" : "PENDING"], ["Observasi pasar", observations.length, marketStatus], ["Provider", providerHealth.length, providerStatus]].map(([label, count, status]) => <div className="watch-row" key={String(label)}><span>{label}</span><strong>{count}</strong><StatusBadge value={status as "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE"} /></div>)}</section><section className="panel calendar"><div className="panel-label"><span>EVENT MENDATANG</span><span>{calendarEvents.length} ITEM</span></div><h2>Agenda penting</h2>{calendarEvents.length ? calendarEvents.map((item) => <CalendarRow item={item} key={item.id} />) : <><EmptyPanelNote label="kalender ekonomi" />{calendarProviderMessage && <p className="muted">Diagnostic Forex Factory: {calendarProviderMessage}</p>}</>}</section></section></>}
+      {activeMenu === "macro" && <div className="menu-grid">{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar"><div className="panel-label"><span>OBSERVASI MAKRO</span><span>{macroObservations.length} ITEM · {baselinePresentations.length} BASELINE</span></div><h2>Monitor data makro</h2>{macroObservations.length ? macroObservations.map((item) => <MacroObservationRow item={item} baseline={baselinesBySeries.get(String(item.metadata?.seriesId ?? "")) ?? null} key={item.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div>}
       {activeMenu === "crypto" && <div className="menu-grid"><CryptoMarketPanel observations={observations} providerHealth={providerHealth} />{showNews(cryptoNews, "BERITA CRYPTO")}</div>}
       {activeMenu === "context" && <div className="menu-grid context-menu"><section className="panel intelligence-panel"><div className="panel-label"><span>MARKET CONTEXT</span><span>{contexts.length} CONTEXT</span></div><h2>Context explorer</h2><p className="lead-copy">Context adalah layer pengelompokan evidence. Pilih grup untuk membuka context di dalamnya, lalu klik context untuk melihat traceability.</p><div className="context-groups">{contextGroups.length ? contextGroups.map((group) => { const isExpanded = expandedGroup === group.id; return <section className={`context-group${isExpanded ? " expanded" : ""}`} key={group.id}><button type="button" className="context-group-button" aria-expanded={isExpanded} onClick={() => setExpandedGroup(isExpanded ? null : group.id)}><span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span><span>{group.contexts.length} CONTEXT {isExpanded ? "↑" : "→"}</span></button>{isExpanded && <div className="context-list">{group.contexts.map((context) => { const label = context.scope === "CRYPTO_MARKET" ? context.id.replace("context-crypto-", "").toUpperCase() : context.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " "); return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => setSelectedContextId(selectedContextId === context.id ? null : context.id)} key={context.id} />; })}</div>}</section>; }) : <EmptyPanelNote label="context" />}</div></section>{selectedContext ? <ContextDetail context={selectedContext} label={selectedLabel} /> : <section className="panel context-detail-empty"><div className="panel-label"><span>CONTEXT DETAIL</span><span>WAITING</span></div><h2>Pilih context</h2><p className="lead-copy">Klik salah satu context untuk membuka detail dan melihat hubungan langsungnya ke canonical observation/event.</p></section>}</div>}
       {activeMenu === "intelligence" && <div className="menu-grid"><section className="panel intelligence-panel"><div className="panel-label"><span>INTELLIGENCE</span><span>SEMANTIC LAYER</span></div><h2>Intelligence yang terverifikasi</h2><p className="lead-copy">Intelligence akan menjelaskan WHAT, WHY, evidence yang mengonfirmasi atau bertentangan, invalidation, monitoring, dan confidence. Context tidak ditampilkan sebagai intelligence.</p><div className="monitor-list"><div><strong>Context</strong><span>Dipisahkan ke menu Context sebagai canonical grouping layer.</span></div><div><strong>Evidence</strong><span>{evidence.length} evidence canonical tersedia sebagai dasar reasoning.</span></div><div><strong>Inference</strong><span>Belum ada kesimpulan regime, sentiment, liquidity, capital flow, atau price prediction.</span></div></div></section><section className="panel"><div className="panel-label"><span>MONITOR</span><span>STATUS OPERASIONAL</span></div><h2>Apa yang perlu dipantau?</h2><div className="monitor-list"><div><strong>Observasi pasar</strong><span>{observations.length} observasi · kualitas {marketStatus}.</span></div><div><strong>Event makro</strong><span>{highImpactEvents} event berdampak tinggi terdeteksi.</span></div><div><strong>Provider</strong><span>{providerHealth.length} provider terdaftar · status {providerStatus}.</span></div><div><strong>Unavailable</strong><span>{unavailableSources.length ? unavailableSources.join(" · ") : "Tidak ada provider yang ditandai unavailable."}</span></div></div></section></div>}
