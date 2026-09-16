@@ -1,7 +1,7 @@
 # P365 Current State v0.1
 
 **Status:** Repository state checkpoint  
-**Last checkpoint:** 2026-09-15  
+**Last checkpoint:** 2026-09-16  
 **Product:** P365 Market Intelligence System
 
 ---
@@ -20,11 +20,14 @@ Current maturity is therefore:
 Product boundary          ✅ Established
 Domain contracts           ✅ Established
 Canonical observations     ✅ Implemented
-Events / Evidence         ✅ Foundation implemented
+Events / Evidence          ✅ Foundation implemented
 Context                    ✅ Implemented
 Crypto market foundation  ✅ Implemented
 Macro factual foundation  ✅ Implemented
-Baseline                  🟡 Design-level
+Factual baseline          🟡 Implemented for macro series
+Expectation baseline      ❌ Not implemented
+Pricing baseline          ❌ Not implemented
+Historical baseline       🟡 Contract/design only
 Market Memory             🟡 Design + storage foundation
 Market Snapshot           🟡 Design-level
 Cross-asset reasoning     ❌ Not implemented
@@ -59,7 +62,7 @@ The core contracts remain market-agnostic. New market domains should be added th
 
 ### Macro
 
-The FRED foundation is implemented with a registered P0 macro series set covering:
+The FRED foundation is implemented with a registered macro series set covering:
 
 - monetary policy;
 - liquidity;
@@ -92,6 +95,19 @@ Context v0.2 is implemented as a neutral grouping layer.
 Current groups include Macro scopes, Economic Events, and Crypto Market.
 
 Context does not infer market direction, regime, sentiment, liquidity flow, or capital flow.
+
+### Factual macro baseline
+
+A factual baseline implementation is now wired into `getDashboardData()`.
+
+For each macro series represented in the canonical observation set, P365 selects:
+
+- the latest compatible observation as the current measurement;
+- the immediately preceding compatible observation as the factual comparison point;
+- source, quality, timestamps, and Evidence IDs for both observations;
+- the factual numerical delta when both values are numeric and the baseline is valid.
+
+This layer does **not** classify direction, abnormality, surprise, repricing, or regime.
 
 ### Crypto market foundation
 
@@ -133,21 +149,6 @@ The UI is still a presentation layer and does not own domain reasoning.
 
 ## 3. What is not yet complete
 
-### Market-domain coverage
-
-Current implementation is incomplete relative to the long-term P365 objective.
-
-Missing or incomplete factual foundations include qualified coverage for:
-
-- Equities;
-- Rates beyond the existing macro series where required for transmission analysis;
-- FX / DXY;
-- Commodities;
-- Credit;
-- Volatility such as MOVE where required.
-
-The Data Requirements Matrix already defines much of the required cross-asset foundation.
-
 ### Expectation baseline
 
 Consensus/forecast data is not yet implemented as a canonical expectation layer.
@@ -164,13 +165,17 @@ Therefore P365 cannot yet reliably distinguish:
 
 > A factual surprise from a genuine market repricing.
 
+### Historical abnormality
+
+Historical distribution and abnormality rules are not yet locked. No implicit z-score, percentile, or threshold should be introduced by implementation.
+
 ### Cross-asset transmission
 
 The system has not yet implemented the evidence and comparison machinery required to determine whether repricing transmitted across markets.
 
-### Baseline / Market Memory
+### Market Memory
 
-The concepts and governance are established, and Market Memory storage infrastructure exists, but the full comparison engine is not yet implemented.
+Market Memory storage infrastructure and governance exist, but the full temporal comparison/retrieval workflow is not yet the source for reasoning decisions.
 
 ### Market Snapshot
 
@@ -222,7 +227,7 @@ Observation / Event / Evidence
   ↓
 Context
   ↓
-Baseline / Market Snapshot / Market Memory
+Factual Baseline / Market Snapshot / Market Memory
   ↓
 State / Repricing / Regime Analysis
   ↓
@@ -233,7 +238,7 @@ Briefing
 UI
 ```
 
-Current implementation reaches reliably into the first part of this flow.
+Current implementation reaches reliably into the factual baseline stage for macro observations.
 
 The later reasoning stages remain design/deferred rather than partially invented.
 
@@ -247,13 +252,16 @@ The later reasoning stages remain design/deferred rather than partially invented
 | Domain contracts | COMPLETE | Canonical types and invariants hardened |
 | Data requirements | COMPLETE | P0/P1/P2 requirements defined |
 | Source architecture | COMPLETE | Provider roles and qualification rules defined |
-| FRED macro | IMPLEMENTED | 19 P0 series registered |
+| FRED macro | IMPLEMENTED | Macro series registered and normalized |
 | Economic events | PARTIAL | Event awareness exists; surprise fields incomplete |
 | News / Evidence | IMPLEMENTED | News kept separate from factual observations |
 | Context | IMPLEMENTED | Neutral grouping and traceability |
 | Crypto market | IMPLEMENTED | CoinGecko selected and wired |
 | Dashboard UI | IMPLEMENTED | Crypto foundation metrics visible |
-| Baseline | DESIGN | Contract/governance exists; engine pending |
+| Factual macro baseline | IMPLEMENTED | Latest/preceding compatible observation wired into dashboard data |
+| Expectation baseline | MISSING | Consensus/forecast layer pending |
+| Pricing baseline | MISSING | Market-implied pricing layer pending |
+| Historical baseline | DESIGN | Statistical contract pending |
 | Market Memory | FOUNDATION | Governance + storage foundation exists |
 | Market Snapshot | DESIGN | Immutable contract exists; engine pending |
 | Cross-asset | MISSING | Provider/data coverage and reasoning pending |
@@ -266,29 +274,22 @@ The later reasoning stages remain design/deferred rather than partially invented
 
 ## 6. Immediate next step
 
-The next work should be a **repository-wide data gap analysis** against:
+The current checkpoint completes the first **factual baseline** implementation without introducing market interpretation.
 
-`docs/P365-DATA-REQUIREMENTS-MATRIX-v0.1.md`
+The next stage is **Baseline / Market Memory completion**, specifically expectation and pricing baseline contracts, followed by verification before moving to Market Snapshot.
 
-Classify every current path as:
-
-- CORRECT;
-- PARTIAL;
-- SEMANTICALLY WRONG;
-- DUPLICATE;
-- MISSING;
-- DEFERRED.
-
-The purpose is to complete the multi-market factual foundation without prematurely building a crypto-only intelligence engine.
-
-After the gap analysis:
+Target sequence:
 
 ```text
-Data Foundation
+Context
       ↓
-Baseline / Market Memory
+Factual Baseline          ← current checkpoint
       ↓
-Market Snapshot
+Expectation Baseline
+      ↓
+Pricing Baseline
+      ↓
+Market Memory / Snapshot
       ↓
 Cross-Asset Transmission
       ↓
