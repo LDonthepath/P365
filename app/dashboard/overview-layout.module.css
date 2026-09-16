@@ -1,0 +1,32 @@
+.overviewLayout :global(.dashboard-content:has(.market-state) > .panel:nth-child(2)){
+  display:none;
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .overview-grid){
+  grid-template-columns:minmax(0,1.35fr) minmax(320px,.85fr);
+  gap:20px;
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .market-watch),
+.overviewLayout :global(.dashboard-content:has(.market-state) .calendar){
+  min-height:0;
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .market-watch h2),
+.overviewLayout :global(.dashboard-content:has(.market-state) .calendar h2){
+  margin-bottom:20px;
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .market-watch .watch-row){
+  padding:15px 0;
+}
+
+.overviewLayout :global(.dashboard-content:has(.market-state) .calendar-row){
+  padding:14px 0;
+}
+
+@media(max-width:900px){
+  .overviewLayout :global(.dashboard-content:has(.market-state) .overview-grid){
+    grid-template-columns:1fr;
+  }
+}
