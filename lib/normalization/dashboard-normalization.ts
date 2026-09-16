@@ -1,8 +1,8 @@
 import type { DashboardIngestion } from "../ingestion/dashboard-ingestion";
 import type { CalendarEvent, NewsItem } from "../data/types";
 import type { Context, Evidence, Event, Observation, ProviderHealth } from "../domain/types";
+import { buildDashboardContexts } from "../domain/context";
 import {
-  buildDashboardContexts,
   calendarToCanonicalRecords,
   cryptoMarketToObservations,
   fomcToCanonicalRecords,
