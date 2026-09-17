@@ -3,10 +3,73 @@ import { fetchAlphaVantageCryptoNews, fetchMacroNews } from "../data/alpha-vanta
 import { fetchGoldSpot, fetchRussell2000Proxy } from "../data/alpha-vantage-markets";
 import { fetchCoinDeskNews } from "../data/coindesk-rss";
 import { fetchEconomicCalendar } from "../data/economic-calendar";
+import { fetchBiquoteEconomicCalendar, type BiquoteEconomicCalendarRecord } from "../data/biquote-economic-calendar";
 import { fetchCryptoMarketObservations, type CryptoMarketObservationInput } from "../data/crypto-market";
 import { fetchFredMacroObservations, type MacroObservationInput } from "../data/fred";
 import { fetchFomcEvents, type FomcEventInput } from "../data/federal-reserve-events";
 import { providerResult, type CalendarEvent, type NewsItem, type ProviderResult } from "../data/types";
-export type DashboardIngestion = { macroNews: ProviderResult<NewsItem>; alphaVantageCryptoNews: ProviderResult<NewsItem>; coinDeskNews: ProviderResult<NewsItem>; calendar: ProviderResult<CalendarEvent>; cryptoMarket: ProviderResult<CryptoMarketObservationInput>; goldSpot: ProviderResult<CryptoMarketObservationInput>; russell2000: ProviderResult<CryptoMarketObservationInput>; fred: ProviderResult<MacroObservationInput>; fomc: ProviderResult<FomcEventInput> };
-function resultOrEmpty<T>(result: PromiseSettledResult<ProviderResult<T>>, providerId: Parameters<typeof providerResult>[0]): ProviderResult<T> { if (result.status === "fulfilled") return result.value; return providerResult(providerId, "ERROR", [], result.reason instanceof Error ? result.reason.message : "Provider request failed"); }
-export async function ingestDashboardData(): Promise<DashboardIngestion> { const [macroResult, alphaVantageCryptoResult, coinDeskResult, calendarResult, cryptoMarketResult, goldResult, russellResult, fredResult, fomcResult] = await Promise.allSettled([fetchMacroNews(6), fetchAlphaVantageCryptoNews(4), fetchCoinDeskNews(6), fetchEconomicCalendar(6), fetchCryptoMarketObservations(["BTC", "ETH"]), fetchGoldSpot(), fetchRussell2000Proxy(), fetchFredMacroObservations(), fetchFomcEvents()]); return { macroNews: resultOrEmpty(macroResult, "alpha-vantage"), alphaVantageCryptoNews: resultOrEmpty(alphaVantageCryptoResult, "alpha-vantage"), coinDeskNews: resultOrEmpty(coinDeskResult, "coindesk-rss"), calendar: resultOrEmpty(calendarResult, "forex-factory"), cryptoMarket: resultOrEmpty(cryptoMarketResult, "coingecko"), goldSpot: resultOrEmpty(goldResult, "alpha-vantage"), russell2000: resultOrEmpty(russellResult, "alpha-vantage"), fred: resultOrEmpty(fredResult, "fred"), fomc: resultOrEmpty(fomcResult, "federal-reserve") }; }
+
+export type DashboardIngestion = {
+  macroNews: ProviderResult<NewsItem>;
+  alphaVantageCryptoNews: ProviderResult<NewsItem>;
+  coinDeskNews: ProviderResult<NewsItem>;
+  calendar: ProviderResult<CalendarEvent>;
+  biquoteCalendar: ProviderResult<BiquoteEconomicCalendarRecord>;
+  cryptoMarket: ProviderResult<CryptoMarketObservationInput>;
+  goldSpot: ProviderResult<CryptoMarketObservationInput>;
+  russell2000: ProviderResult<CryptoMarketObservationInput>;
+  fred: ProviderResult<MacroObservationInput>;
+  fomc: ProviderResult<FomcEventInput>;
+};
+
+function resultOrEmpty<T>(
+  result: PromiseSettledResult<ProviderResult<T>>,
+  providerId: Parameters<typeof providerResult>[0],
+): ProviderResult<T> {
+  if (result.status === "fulfilled") return result.value;
+  return providerResult(
+    providerId,
+    "ERROR",
+    [],
+    result.reason instanceof Error ? result.reason.message : "Provider request failed",
+  );
+}
+
+export async function ingestDashboardData(): Promise<DashboardIngestion> {
+  const [
+    macroResult,
+    alphaVantageCryptoResult,
+    coinDeskResult,
+    calendarResult,
+    biquoteCalendarResult,
+    cryptoMarketResult,
+    goldResult,
+    russellResult,
+    fredResult,
+    fomcResult,
+  ] = await Promise.allSettled([
+    fetchMacroNews(6),
+    fetchAlphaVantageCryptoNews(4),
+    fetchCoinDeskNews(6),
+    fetchEconomicCalendar(6),
+    fetchBiquoteEconomicCalendar({ limit: 50 }),
+    fetchCryptoMarketObservations(["BTC", "ETH"]),
+    fetchGoldSpot(),
+    fetchRussell2000Proxy(),
+    fetchFredMacroObservations(),
+    fetchFomcEvents(),
+  ]);
+
+  return {
+    macroNews: resultOrEmpty(macroResult, "alpha-vantage"),
+    alphaVantageCryptoNews: resultOrEmpty(alphaVantageCryptoResult, "alpha-vantage"),
+    coinDeskNews: resultOrEmpty(coinDeskResult, "coindesk-rss"),
+    calendar: resultOrEmpty(calendarResult, "forex-factory"),
+    biquoteCalendar: resultOrEmpty(biquoteCalendarResult, "biquote"),
+    cryptoMarket: resultOrEmpty(cryptoMarketResult, "coingecko"),
+    goldSpot: resultOrEmpty(goldResult, "alpha-vantage"),
+    russell2000: resultOrEmpty(russellResult, "alpha-vantage"),
+    fred: resultOrEmpty(fredResult, "fred"),
+    fomc: resultOrEmpty(fomcResult, "federal-reserve"),
+  };
+}
