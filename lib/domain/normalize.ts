@@ -3,6 +3,7 @@ import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { MacroObservationInput } from "../data/fred";
 import type { FomcEventInput } from "../data/federal-reserve-events";
 import type { DataQuality, Evidence, Event, Observation, ProviderHealth, SourceHealthStatus } from "./types";
+import { qualityFromFreshness, freshnessPolicyForFamily } from "./freshness";
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
@@ -20,16 +21,8 @@ function hashId(prefix: string, value: string): string {
   return `${prefix}-${Math.abs(hash).toString(36)}`;
 }
 
-function observationQuality(observedAt: string): DataQuality {
-  const observedAtMs = new Date(observedAt).getTime();
-  if (!Number.isFinite(observedAtMs) || observedAtMs > Date.now()) return "UNKNOWN";
-  return Date.now() - observedAtMs <= 15 * 60_000 ? "FRESH" : "STALE";
-}
-
 function macroObservationQuality(observationDate: string, freshnessMs: number): DataQuality {
-  const observationDateMs = new Date(`${observationDate}T00:00:00.000Z`).getTime();
-  if (!Number.isFinite(observationDateMs) || observationDateMs > Date.now()) return "UNKNOWN";
-  return Date.now() - observationDateMs <= freshnessMs ? "FRESH" : "STALE";
+  return qualityFromFreshness(observationDate, { ...freshnessPolicyForFamily("FRED_MACRO"), maxAgeMs: freshnessMs });
 }
 
 function isValidCurrentOrPastMacroDate(observationDate: string): boolean {
@@ -104,6 +97,7 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
     retrievedAt: item.retrievedAt,
     sourceId,
     evidenceId: evidence[index].id,
+    freshnessFamily: sourceId === "alpha-vantage-markets" && item.metricId.startsWith("russell2000.") ? "MARKET_DAILY" : "MARKET_REALTIME",
     metadata: { symbol: item.symbol, metricId: item.metricId, ...item.metadata },
   }));
 
@@ -193,11 +187,14 @@ export function observationFromCanonicalFact(input: {
   retrievedAt: string;
   sourceId: string;
   evidenceId: string;
+  /** Explicit freshness classification is required; domain must not imply provider cadence. */
+  freshnessFamily: "FRED_MACRO" | "MARKET_REALTIME" | "MARKET_DAILY";
   metadata?: Record<string, string | number | boolean | null>;
 }): Observation {
+  const { freshnessFamily, ...canonicalInput } = input;
   return {
-    ...input,
-    quality: observationQuality(input.observedAt),
+    ...canonicalInput,
+    quality: qualityFromFreshness(input.observedAt, freshnessPolicyForFamily(freshnessFamily)),
   };
 }
 
