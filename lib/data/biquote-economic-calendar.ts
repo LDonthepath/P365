@@ -103,8 +103,9 @@ export function normalizeBiquoteEconomicCalendar(
   return records.map((record) => {
     const evidenceId = `biquote-economic-event-evidence-${record.id}`;
     const eventId = `biquote-economic-event-${record.id}`;
-    const resultId = `biquote-economic-event-result-${record.id}`;
     const hasActual = record.actual !== null && record.actual !== undefined;
+    const resultEffectiveAt = hasActual ? record.time : retrievedAt;
+    const resultId = `biquote-economic-event-result-${record.id}-${resultEffectiveAt}`;
     const evidence: Evidence = {
       id: evidenceId,
       sourceId: "biquote",
