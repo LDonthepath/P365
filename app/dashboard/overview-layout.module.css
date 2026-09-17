@@ -76,3 +76,82 @@
     grid-template-columns:1fr;
   }
 }
+
+@media(max-width:760px){
+  .overviewLayout :global(.dashboard-content:has(.market-state) .overview-grid){
+    gap:12px;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .market-watch h2),
+  .overviewLayout :global(.dashboard-content:has(.market-state) .calendar h2){
+    margin-bottom:12px;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .market-watch .watch-row){
+    padding:12px 0;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .calendar-row){
+    padding:12px 0;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .overview-change-layer),
+  .overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel){
+    margin-top:12px;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .change-layer-grid){
+    gap:14px;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .state-meta){
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .state-meta > div){
+    min-width:0;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .state-meta strong){
+    overflow-wrap:anywhere;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-groups){
+    margin-top:14px;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-group){
+    min-width:0;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-list){
+    display:grid;
+    gap:8px;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .intelligence-panel .context-detail-empty){
+    margin-top:12px;
+    padding:14px;
+  }
+}
+
+@media(max-width:430px){
+  .overviewLayout :global(.dashboard-content:has(.market-state) .state-meta){
+    grid-template-columns:1fr;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .market-watch .watch-row){
+    grid-template-columns:minmax(0,1fr);
+    gap:5px;
+    align-items:start;
+  }
+
+  .overviewLayout :global(.dashboard-content:has(.market-state) .market-watch .watch-row > *:last-child){
+    justify-self:start;
+  }
+}
