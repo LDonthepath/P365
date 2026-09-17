@@ -11,6 +11,7 @@ export const P365_SOURCES = {
   coinGeckoMarket: { id: "coingecko-market", name: "CoinGecko Market", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   forexFactory: { id: "forex-factory", name: "Forex Factory", type: "CALENDAR" },
+  biquote: { id: "biquote", name: "Biquote Economic Calendar", type: "CALENDAR" },
   fred: { id: "fred", name: "Federal Reserve Economic Data (FRED)", type: "MACRO" },
   federalReserve: { id: "federal-reserve", name: "Board of Governors of the Federal Reserve System", type: "CALENDAR" },
 } as const;
