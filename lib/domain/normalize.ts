@@ -6,6 +6,7 @@ import type { DataQuality, Evidence, Event, Observation, ProviderHealth, SourceH
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
+  alphaVantageMarkets: { id: "alpha-vantage-markets", name: "Alpha Vantage (Gold & Russell 2000)", type: "MARKET" },
   coinGeckoMarket: { id: "coingecko-market", name: "CoinGecko Market", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   forexFactory: { id: "forex-factory", name: "Forex Factory", type: "CALENDAR" },
