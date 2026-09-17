@@ -190,9 +190,10 @@ export function observationFromCanonicalFact(input: {
   freshnessFamily?: "FRED_MACRO" | "MARKET_REALTIME" | "MARKET_DAILY";
   metadata?: Record<string, string | number | boolean | null>;
 }): Observation {
-  const family = input.freshnessFamily ?? (input.domain === "MACRO" ? "FRED_MACRO" : "MARKET_REALTIME");
+  const { freshnessFamily, ...canonicalInput } = input;
+  const family = freshnessFamily ?? (input.domain === "MACRO" ? "FRED_MACRO" : "MARKET_REALTIME");
   return {
-    ...input,
+    ...canonicalInput,
     quality: qualityFromFreshness(input.observedAt, freshnessPolicyForFamily(family)),
   };
 }
