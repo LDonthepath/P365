@@ -1,0 +1,5 @@
+@media (min-width: 761px) {
+  body {
+    overflow: auto !important;
+  }
+}
