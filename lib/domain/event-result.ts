@@ -9,10 +9,10 @@ export type EventExpectedType =
  * Canonical released result and expectation data attached to an economic Event.
  *
  * Event describes the event lifecycle (what/when/status). EventResult carries
- * numeric outcome/baseline fields without assuming that every expectation is
- * a market consensus. Provider-specific payloads stay outside this contract.
+ * numeric outcome/baseline fields without assuming that every expectation is a market consensus. Provider-specific payloads stay outside this contract.
  */
 export type EconomicEventResult = {
+  id: string;
   eventId: Event["id"];
   actual?: number;
   expected?: number;
@@ -40,6 +40,7 @@ function assertTimestamp(field: string, value: string | undefined, required = fa
 }
 
 export function assertEconomicEventResult(result: EconomicEventResult): EconomicEventResult {
+  if (!result.id) throw new Error("Economic event result requires id.");
   if (!result.eventId) throw new Error("Economic event result requires eventId.");
   if (!result.sourceId) throw new Error("Economic event result requires sourceId.");
   if (!result.evidenceId) throw new Error("Economic event result requires evidenceId.");
