@@ -29,7 +29,8 @@ export type ProviderId =
   | "forex-factory"
   | "coingecko"
   | "fred"
-  | "federal-reserve";
+  | "federal-reserve"
+  | "biquote";
 
 export type ProviderErrorCode =
   | "CONFIGURATION"
