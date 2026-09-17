@@ -3,7 +3,8 @@
 **Status:** Active roadmap  
 **Product:** P365 Market Intelligence System  
 **Current implementation scope:** Macro + Crypto  
-**Long-term scope:** Multi-market / cross-asset market intelligence
+**Long-term scope:** Multi-market / cross-asset market intelligence  
+**Last audited against actual codebase:** 17 Sep 2026 — see per-phase "Current Status" blocks below. Audited by reading source directly, not by trusting prior commit messages or docs.
 
 ---
 
@@ -115,6 +116,8 @@ The exact reasoning rules for State, Regime, Risk, and Intelligence must be defi
 - Establish canonical data flow and invariants.
 - Explicitly reject trading-bot, execution, price-prediction, and hidden-proxy scope.
 
+**Current Status:** Confirmed complete. `lib/domain/types.ts` defines Observation/Event/Evidence/Context/State/Risk/Intelligence. `lib/domain/contracts.ts` enforces invariants (e.g. `assertStateHasEvidence`, `assertRiskHasEvidence`, `assertContextHasEvidence`, `assertIntelligenceContract` — every State/Risk/Context/Intelligence must cite evidence or it throws). `lib/domain/state.ts`, `risk.ts`, `intelligence.ts` exist as builder functions but are correctly **not imported anywhere yet** — this is expected, not dead code, since Phases 5–7 are deferred.
+
 ### Phase 1 — Data Foundation
 **Status: IN PROGRESS**
 
@@ -157,6 +160,17 @@ Establish qualified observations for:
 
 **Gate:** every provider must answer a defined reasoning requirement and satisfy identity, semantics, time, unit, provenance, continuity, quality, and reproducibility requirements.
 
+**Current Status (per domain):**
+
+| Domain | Status | Detail |
+|---|---|---|
+| Macro | ✅ COMPLETE | `lib/data/macro-registry.ts` + `lib/data/fred.ts`. All P0 series present: FEDFUNDS, EFFR, WALCL, WRESBAL, M2SL, WTREGEN, SOFR, IORB, CPIAUCSL, CPILFESL, PCEPI, PCEPILFE, UNRATE, PAYEMS, ICSA, DGS2, DGS10, DFII10, DTWEXBGS, GDPC1. |
+| Crypto | 🟡 PARTIAL | `lib/data/crypto-market.ts` (CoinGecko). Have: BTC/ETH price, market cap, dominance, total market cap, total volume. **Missing:** stablecoin market cap, basic volatility. |
+| Cross-asset | 🟡 PARTIAL | VIX/S&P 500/Nasdaq/WTI Oil in `macro-registry.ts` (`domain: "ASSET"`). US2Y/US10Y/10Y real yield/DXY covered dual-purpose via the macro rate series. **Missing:** Gold (FRED discontinued its spot gold series — needs a different provider, e.g. Alpha Vantage `GOLD_SILVER_SPOT`), Russell 2000 (no free FRED series — needs an ETF proxy like IWM), MOVE (no free source found yet). |
+| Evidence | ✅ COMPLETE | `lib/data/alpha-vantage.ts` + `lib/data/coindesk-rss.ts`, normalized via `newsToEvidence` in `lib/domain/normalize.ts`. |
+| Economic events / calendar | 🔴 GAP | `lib/data/economic-calendar.ts` (ForexFactory) + `lib/data/federal-reserve-events.ts` (FOMC) fetch events, but the `CalendarEvent` type (`lib/data/types.ts`) has **no `actual`/`expected`/`previous` fields**. This blocks the reasoning flow's second step ("Detect Change / Surprise" in Section 4) for every scheduled release — the data literally cannot answer "was this a surprise?" yet. |
+| Pipeline architecture | ✅ NEW | A clean Provider→Ingestion→Normalization boundary now exists: `lib/ingestion/dashboard-ingestion.ts`, `lib/normalization/dashboard-normalization.ts`, `lib/application/dashboard-query.ts` orchestrates both. Matches this doc's Section 3 flow by name. |
+
 ### Phase 2 — Baseline & Market Memory
 **Status: PARTIAL / DESIGN COMPLETE**
 
@@ -171,6 +185,10 @@ Implement validated comparison references and historical memory.
 - Explicit temporal semantics.
 - No universal or hidden delta.
 - Market Memory must not become a second source of truth.
+
+**Current Status:** Mixed — one real gap looks solved but isn't yet.
+- **Baseline: ✅ IMPLEMENTED.** `lib/domain/baseline.ts` (`buildMacroFactualBaselines`, `factualBaselineChange`) + `lib/presentation/baseline.ts` convert current-vs-prior macro observations into a display-ready comparison. Wired into the dashboard UI (`OverviewWhatChanged`).
+- **Market Memory: 🔴 SHAPE EXISTS, FUNCTIONALLY A NO-OP.** `lib/repositories/{types,memory,dashboard-repository}.ts` define a clean, swappable repository interface (`ObservationRepository`, `EventRepository`, `EvidenceRepository`, `ContextRepository`) and an in-memory adapter, wired via `persistCanonicalDashboardData` in `lib/application/dashboard-query.ts`. Two problems make this non-functional today: (1) storage is a plain `Map` held in server memory — not durable across serverless cold starts/redeploys; (2) `.findById()` is **never called anywhere in the codebase** — data is written every request and never read back. This is write-only, dead-end persistence. The interface design is reusable and worth keeping; a real backend still needs to be plugged in before Phase 2 can be called done. (A Supabase-backed implementation was attempted and removed on 16 Sep 2026 for being premature/unreviewed — the removal was about process, not concept; a durable backend is still the right eventual answer here.)
 
 ### Phase 3 — Market Snapshot
 **Status: DESIGN COMPLETE / IMPLEMENTATION PENDING**
@@ -189,8 +207,10 @@ COMPARE
 
 Snapshots must preserve what was observable at capture time and must not be rewritten using later information.
 
+**Current Status:** Confirmed not started. No PRE-EVENT/EVENT/POST-EVENT capture concept exists anywhere in the codebase.
+
 ### Phase 4 — Cross-Asset Context & Transmission
-**Status: NOT STARTED**
+**Status: PARTIAL (grouping exists; transmission reasoning does not)**
 
 Move from isolated market observations toward relationships between markets.
 
@@ -203,6 +223,8 @@ Questions include:
 - Is the observed relationship supported by comparable timestamps and evidence?
 
 No directional conclusion should be created without an approved reasoning rule.
+
+**Current Status:** `lib/domain/context.ts` (`buildDashboardContexts`) groups canonical observations into neutral, evidence-backed contexts — 7 macro groups (monetary policy, liquidity, inflation, labor, rates, USD, growth) plus per-symbol crypto grouping plus an economic-events group. This is legitimate, correctly-scoped Context infrastructure (grouping only, no direction/regime inference, matching this section's own constraint). What's still missing: any actual transmission-chain logic (e.g. yield → DXY → gold → crypto sequencing) and it is currently blocked by the Phase 1 gold-data gap.
 
 ### Phase 5 — Market State / Regime
 **Status: DEFERRED**
@@ -218,6 +240,8 @@ Requirements:
 - evidence lineage;
 - contradiction handling;
 - no arbitrary composite score.
+
+**Current Status:** Confirmed deferred and respected — `lib/domain/state.ts` exists (builder + confidence rules) but is imported nowhere outside `lib/domain/`. No regime logic has been implemented anywhere in the pipeline.
 
 ### Phase 6 — Risk Context
 **Status: DEFERRED**
@@ -298,13 +322,13 @@ The priority is to complete the **market-agnostic data foundation and repository
 
 Next checkpoints:
 
-1. Audit current data paths against the Data Requirements Matrix.
-2. Separate CORRECT / PARTIAL / SEMANTICALLY WRONG / DUPLICATE / MISSING / DEFERRED.
-3. Identify qualified providers for missing market domains.
-4. Complete canonical observation coverage.
-5. Implement Baseline / Market Memory.
-6. Implement Market Snapshot.
-7. Build cross-asset reasoning only after the underlying evidence is ready.
+1. ✅ **Done (16 Sep 2026).** Audit current data paths against the Data Requirements Matrix.
+2. ✅ **Done.** Separated CORRECT / PARTIAL / SEMANTICALLY WRONG / DUPLICATE / MISSING / DEFERRED — see Phase 1 table above.
+3. 🟡 **Partially done.** Qualified providers identified for VIX/S&P/Nasdaq/Oil (FRED, done) and gold/Russell (Alpha Vantage, identified but not yet implemented).
+4. 🔴 **Not done.** Canonical observation coverage still has gaps: gold, Russell 2000, MOVE, stablecoin market cap, crypto volatility, and calendar actual/expected/previous fields (see Phase 1 table).
+5. 🟡 **Partially done, needs rework.** Baseline is real; Market Memory is a non-functional stub (see Phase 2 status) — needs a durable backend before this checkpoint is actually complete.
+6. 🔴 **Not done.** Market Snapshot — no implementation exists.
+7. 🔴 **Not started.** Cross-asset reasoning — grouping infrastructure exists (Phase 4), transmission logic does not.
 
 ---
 
@@ -324,3 +348,13 @@ The roadmap does not authorize:
 - premature crypto derivatives/positioning models.
 
 These may only be reconsidered if they become justified by a separate approved product/reasoning requirement.
+
+---
+
+## 9. Known issues (as of 17 Sep 2026 audit)
+
+Concrete, currently-true bugs — not roadmap gaps, just things that are broken right now and got reintroduced once already by an unsupervised agent session. Fix these before adding new UI surface area.
+
+1. **Raw English status leaked into Indonesian UI.** `app/dashboard/dashboard-view.tsx` interpolates `{marketStatus}` directly in at least 2 places (Overview "OBSERVASI", Intelligence tab) instead of translating it through a label map. This was fixed once (a `STATUS_LABEL_ID` map) and got overwritten during the 15–17 Sep unsupervised sessions.
+2. **"Provider" row in the Overview "Cakupan data" panel is semantically mismatched.** It shows the total provider count paired with the worst-case aggregate status badge (e.g. "4 — TIDAK TERSEDIA" when only 1 of 4 providers is actually down). This was fixed once (shown as a healthy/total ratio, e.g. "3/4") and also got overwritten.
+3. **`next@15.3.6` has a known security vulnerability** per `npm install` output. Needs a version bump; unrelated to the agent-chaos incidents, just noted here so it isn't lost.
