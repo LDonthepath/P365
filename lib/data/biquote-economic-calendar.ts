@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import type { EconomicEventResult } from "../domain/event-result";
 import type { Evidence, Event } from "../domain/types";
 import type { ProviderResult } from "./types";
@@ -97,7 +98,7 @@ function mapStatus(record: BiquoteEconomicCalendarRecord, now: Date): Event["sta
 }
 
 /**
- * Deterministic non-cryptographic fingerprint for provider snapshots.
+ * SHA-256 fingerprint for provider snapshots.
  * The identity is based on normalized result content, not retrieval time, so
  * identical observations dedupe while later provider revisions get a new id.
  */
@@ -116,12 +117,7 @@ function snapshotFingerprint(record: BiquoteEconomicCalendarRecord): string {
     record.sourceUrl ?? null,
   ]);
 
-  let hash = 2166136261;
-  for (let index = 0; index < canonical.length; index += 1) {
-    hash ^= canonical.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0");
+  return createHash("sha256").update(canonical, "utf8").digest("hex");
 }
 
 export function normalizeBiquoteEconomicCalendar(
