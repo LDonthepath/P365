@@ -9,6 +9,7 @@ type MarketMemoryRow = {
   record_type: RecordType;
   canonical_id: string;
   effective_at: string;
+  captured_at: string;
   dedupe_key: string;
   payload: CanonicalRecord;
 };
@@ -40,6 +41,10 @@ function rowFor(recordType: RecordType, record: CanonicalRecord): MarketMemoryRo
     record_type: recordType,
     canonical_id: record.id,
     effective_at: effective,
+    // Write-time timestamp for this memory row — distinct from effective_at,
+    // which is the record's own semantic time (when the fact was true, not
+    // when P365 wrote it to memory).
+    captured_at: new Date().toISOString(),
     dedupe_key: `${recordType}:${record.id}:${effective}`,
     payload: record,
   };
