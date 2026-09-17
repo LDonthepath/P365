@@ -23,9 +23,21 @@ export type EconomicEventResult = {
   unit?: string;
   period?: string;
   releasedAt?: string;
+  retrievedAt: string;
   sourceId: string;
   evidenceId: string;
 };
+
+function assertTimestamp(field: string, value: string | undefined, required = false): void {
+  if (value === undefined) {
+    if (required) throw new Error(`Economic event result requires ${field}.`);
+    return;
+  }
+
+  if (!Number.isFinite(Date.parse(value))) {
+    throw new Error(`Economic event result ${field} must be a valid timestamp.`);
+  }
+}
 
 export function assertEconomicEventResult(result: EconomicEventResult): EconomicEventResult {
   if (!result.eventId) throw new Error("Economic event result requires eventId.");
@@ -51,6 +63,9 @@ export function assertEconomicEventResult(result: EconomicEventResult): Economic
       throw new Error(`Economic event result ${field} must be finite when provided.`);
     }
   }
+
+  assertTimestamp("releasedAt", result.releasedAt);
+  assertTimestamp("retrievedAt", result.retrievedAt, true);
 
   return result;
 }
