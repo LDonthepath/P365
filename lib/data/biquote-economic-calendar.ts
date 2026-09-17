@@ -146,6 +146,7 @@ export function normalizeBiquoteEconomicCalendar(
         sourceUrl: record.sourceUrl ?? null,
       }),
       retrievedAt,
+      capturedAt: retrievedAt,
       ...(hasActual ? { releasedAt: record.time } : {}),
       metadata: {
         providerEventId: record.eventId,
