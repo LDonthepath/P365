@@ -194,18 +194,18 @@ export async function fetchBiquoteEconomicCalendar(options: {
 
     const body = await response.text();
     if (!response.ok) {
-      return providerResult("biquote", "ERROR", [], `Biquote HTTP ${response.status}`);
+      return providerResult("biquote", "ERROR", [], `Biquote HTTP ${response.status}`, undefined, retrievedAt);
     }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(body);
     } catch {
-      return providerResult("biquote", "ERROR", [], "Biquote returned invalid JSON");
+      return providerResult("biquote", "ERROR", [], "Biquote returned invalid JSON", undefined, retrievedAt);
     }
 
     if (!Array.isArray(parsed)) {
-      return providerResult("biquote", "ERROR", [], "Biquote calendar returned a non-array response");
+      return providerResult("biquote", "ERROR", [], "Biquote calendar returned a non-array response", undefined, retrievedAt);
     }
 
     const records = parsed.flatMap((item) => {
@@ -214,7 +214,7 @@ export async function fetchBiquoteEconomicCalendar(options: {
     });
 
     if (parsed.length > 0 && records.length === 0) {
-      return providerResult("biquote", "ERROR", [], "Biquote calendar contained no valid event records");
+      return providerResult("biquote", "ERROR", [], "Biquote calendar contained no valid event records", undefined, retrievedAt);
     }
 
     return providerResult(
@@ -222,8 +222,10 @@ export async function fetchBiquoteEconomicCalendar(options: {
       records.length > 0 ? "SUCCESS" : "EMPTY",
       records,
       records.length > 0 ? undefined : "Biquote calendar returned no matching events",
+      undefined,
+      retrievedAt,
     );
   } catch (error) {
-    return providerResult("biquote", "ERROR", [], error instanceof Error ? error.message : "Biquote request failed");
+    return providerResult("biquote", "ERROR", [], error instanceof Error ? error.message : "Biquote request failed", undefined, retrievedAt);
   }
 }
