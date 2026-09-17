@@ -46,6 +46,7 @@ export type ProviderResult<T> = {
   providerId: ProviderId;
   status: ProviderResultStatus;
   data: T[];
+  /** P365 retrieval timestamp for this provider operation. */
   retrievedAt: string;
   message?: string;
   errorCode?: ProviderErrorCode;
@@ -70,12 +71,13 @@ export function providerResult<T>(
   data: T[] = [],
   message?: string,
   errorCode?: ProviderErrorCode,
+  retrievedAt = new Date().toISOString(),
 ): ProviderResult<T> {
   return {
     providerId,
     status,
     data,
-    retrievedAt: new Date().toISOString(),
+    retrievedAt,
     ...(message ? { message } : {}),
     ...((status === "ERROR" || status === "UNAVAILABLE") && message
       ? { errorCode: errorCode ?? classifyProviderError(message) }
