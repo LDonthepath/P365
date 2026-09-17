@@ -3,3 +3,5 @@
     overflow: auto !important;
   }
 }
+
+/* Preserve desktop document scrolling for the dashboard shell. */
