@@ -96,6 +96,34 @@ function mapStatus(record: BiquoteEconomicCalendarRecord, now: Date): Event["sta
   return Date.parse(record.time) > now.getTime() ? "UPCOMING" : "ACTIVE";
 }
 
+/**
+ * Deterministic non-cryptographic fingerprint for provider snapshots.
+ * The identity is based on normalized result content, not retrieval time, so
+ * identical observations dedupe while later provider revisions get a new id.
+ */
+function snapshotFingerprint(record: BiquoteEconomicCalendarRecord): string {
+  const canonical = JSON.stringify([
+    record.eventId,
+    record.time,
+    record.period ?? null,
+    record.unit ?? null,
+    record.multiplier ?? null,
+    record.actual ?? null,
+    record.forecast ?? null,
+    record.previous ?? null,
+    record.revisedPrevious ?? null,
+    record.revision ?? null,
+    record.sourceUrl ?? null,
+  ]);
+
+  let hash = 2166136261;
+  for (let index = 0; index < canonical.length; index += 1) {
+    hash ^= canonical.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
 export function normalizeBiquoteEconomicCalendar(
   records: BiquoteEconomicCalendarRecord[],
   retrievedAt: string,
@@ -104,8 +132,7 @@ export function normalizeBiquoteEconomicCalendar(
     const evidenceId = `biquote-economic-event-evidence-${record.id}`;
     const eventId = `biquote-economic-event-${record.id}`;
     const hasActual = record.actual !== null && record.actual !== undefined;
-    const resultEffectiveAt = hasActual ? record.time : retrievedAt;
-    const resultId = `biquote-economic-event-result-${record.id}-${resultEffectiveAt}`;
+    const resultId = `biquote-economic-event-result-${record.id}-${snapshotFingerprint(record)}`;
     const evidence: Evidence = {
       id: evidenceId,
       sourceId: "biquote",
