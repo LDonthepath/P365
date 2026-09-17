@@ -187,14 +187,14 @@ export function observationFromCanonicalFact(input: {
   retrievedAt: string;
   sourceId: string;
   evidenceId: string;
-  freshnessFamily?: "FRED_MACRO" | "MARKET_REALTIME" | "MARKET_DAILY";
+  /** Explicit freshness classification is required; domain must not imply provider cadence. */
+  freshnessFamily: "FRED_MACRO" | "MARKET_REALTIME" | "MARKET_DAILY";
   metadata?: Record<string, string | number | boolean | null>;
 }): Observation {
   const { freshnessFamily, ...canonicalInput } = input;
-  const family = freshnessFamily ?? (input.domain === "MACRO" ? "FRED_MACRO" : "MARKET_REALTIME");
   return {
     ...canonicalInput,
-    quality: qualityFromFreshness(input.observedAt, freshnessPolicyForFamily(family)),
+    quality: qualityFromFreshness(input.observedAt, freshnessPolicyForFamily(freshnessFamily)),
   };
 }
 
