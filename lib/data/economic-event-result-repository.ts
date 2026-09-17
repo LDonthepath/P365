@@ -19,6 +19,7 @@ function rowFor(result: EconomicEventResult) {
     record_type: "EVENT_RESULT" as const,
     canonical_id: result.id,
     effective_at: effectiveAt,
+    captured_at: new Date().toISOString(),
     dedupe_key: `EVENT_RESULT:${result.id}:${effectiveAt}`,
     payload: result,
   };
