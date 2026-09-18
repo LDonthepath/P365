@@ -1,6 +1,6 @@
 import "server-only";
 import { fetchAlphaVantageCryptoNews, fetchMacroNews } from "../data/alpha-vantage";
-import { fetchGoldSpot, fetchRussell2000Proxy } from "../data/alpha-vantage-markets";
+import { fetchDxyIndex, fetchGoldFuturesSpot, fetchRussell2000Index } from "../data/yahoo-finance-markets";
 import { fetchCoinDeskNews } from "../data/coindesk-rss";
 import { fetchEconomicCalendar } from "../data/economic-calendar";
 import { fetchBiquoteEconomicCalendar, type BiquoteEconomicCalendarRecord } from "../data/biquote-economic-calendar";
@@ -18,6 +18,7 @@ export type DashboardIngestion = {
   cryptoMarket: ProviderResult<CryptoMarketObservationInput>;
   goldSpot: ProviderResult<CryptoMarketObservationInput>;
   russell2000: ProviderResult<CryptoMarketObservationInput>;
+  dxy: ProviderResult<CryptoMarketObservationInput>;
   fred: ProviderResult<MacroObservationInput>;
   fomc: ProviderResult<FomcEventInput>;
 };
@@ -45,6 +46,7 @@ export async function ingestDashboardData(): Promise<DashboardIngestion> {
     cryptoMarketResult,
     goldResult,
     russellResult,
+    dxyResult,
     fredResult,
     fomcResult,
   ] = await Promise.allSettled([
@@ -54,8 +56,9 @@ export async function ingestDashboardData(): Promise<DashboardIngestion> {
     fetchEconomicCalendar(6),
     fetchBiquoteEconomicCalendar({ limit: 50 }),
     fetchCryptoMarketObservations(["BTC", "ETH"]),
-    fetchGoldSpot(),
-    fetchRussell2000Proxy(),
+    fetchGoldFuturesSpot(),
+    fetchRussell2000Index(),
+    fetchDxyIndex(),
     fetchFredMacroObservations(),
     fetchFomcEvents(),
   ]);
@@ -67,8 +70,9 @@ export async function ingestDashboardData(): Promise<DashboardIngestion> {
     calendar: resultOrEmpty(calendarResult, "forex-factory"),
     biquoteCalendar: resultOrEmpty(biquoteCalendarResult, "biquote"),
     cryptoMarket: resultOrEmpty(cryptoMarketResult, "coingecko"),
-    goldSpot: resultOrEmpty(goldResult, "alpha-vantage"),
-    russell2000: resultOrEmpty(russellResult, "alpha-vantage"),
+    goldSpot: resultOrEmpty(goldResult, "yahoo-finance"),
+    russell2000: resultOrEmpty(russellResult, "yahoo-finance"),
+    dxy: resultOrEmpty(dxyResult, "yahoo-finance"),
     fred: resultOrEmpty(fredResult, "fred"),
     fomc: resultOrEmpty(fomcResult, "federal-reserve"),
   };
