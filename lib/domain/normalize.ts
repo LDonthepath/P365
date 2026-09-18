@@ -7,7 +7,7 @@ import { qualityFromFreshness, freshnessPolicyForFamily } from "./freshness";
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
-  alphaVantageMarkets: { id: "alpha-vantage-markets", name: "Alpha Vantage (Gold & Russell 2000)", type: "MARKET" },
+  yahooFinance: { id: "yahoo-finance", name: "Yahoo Finance (Gold, Russell 2000 & DXY)", type: "MARKET" },
   coinGeckoMarket: { id: "coingecko-market", name: "CoinGecko Market", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   forexFactory: { id: "forex-factory", name: "Forex Factory", type: "CALENDAR" },
@@ -98,7 +98,10 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
     retrievedAt: item.retrievedAt,
     sourceId,
     evidenceId: evidence[index].id,
-    freshnessFamily: sourceId === "alpha-vantage-markets" && item.metricId.startsWith("russell2000.") ? "MARKET_DAILY" : "MARKET_REALTIME",
+    // Yahoo Finance's chart meta.regularMarketPrice is a live/delayed quote (not a
+    // once-daily close), so gold, Russell 2000, and DXY all qualify as MARKET_REALTIME —
+    // matched by a 15 min revalidate cadence in lib/data/yahoo-finance-markets.ts.
+    freshnessFamily: "MARKET_REALTIME",
     metadata: { symbol: item.symbol, metricId: item.metricId, ...item.metadata },
   }));
 

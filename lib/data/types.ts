@@ -30,7 +30,8 @@ export type ProviderId =
   | "coingecko"
   | "fred"
   | "federal-reserve"
-  | "biquote";
+  | "biquote"
+  | "yahoo-finance";
 
 export type ProviderErrorCode =
   | "CONFIGURATION"
