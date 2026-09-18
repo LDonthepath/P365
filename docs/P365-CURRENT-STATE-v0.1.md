@@ -1,220 +1,47 @@
 # P365 Current State v0.1
 
-**Status:** Repository state checkpoint  
-**Last checkpoint:** 2026-09-16  
-**Product:** P365 Market Intelligence System
-
----
+**Status:** Current-state SSOT  
+**Last verified:** 2026-09-18  
+**Product:** P365 Market Intelligence System  
+**Audit baseline:** `docs/P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md`
 
 ## 1. Executive state
 
-P365 is currently a **Market Intelligence System foundation**.
-
-The architecture is market-agnostic, while the current implementation coverage is **Macro + Crypto**. Crypto is an implementation domain, not the product boundary.
-
-The system currently has a working canonical-data path and dashboard presentation, but it does **not yet have a production reasoning engine** for State, Risk, Intelligence, or Market Briefing.
-
-Current maturity is therefore:
+P365 is in **foundation remediation** after the end-to-end F0 audit. The active product scope is Macro + Crypto with cross-asset factual coverage; the architecture remains market-agnostic. The product serves a self-directed retail trader/investor as decision support and does not make the user's trading/investment decision.
 
 ```text
-Product boundary          ✅ Established
-Domain contracts           ✅ Established
-Canonical observations     ✅ Implemented
-Events / Evidence          ✅ Foundation implemented
-Context                    ✅ Implemented
-Crypto market foundation  ✅ Implemented
-Macro factual foundation  ✅ Implemented
-Factual baseline          🟡 Implemented for macro series
-Expectation baseline      ❌ Not implemented
-Pricing baseline          ❌ Not implemented
-Historical baseline       🟡 Contract/design only
-Market Memory             🟡 Design + storage foundation
-Market Snapshot           🟡 Design-level
-Cross-asset reasoning     ❌ Not implemented
-State / Regime            ⏸ Deferred
-Risk                      ⏸ Deferred
-Intelligence              ⏸ Deferred
-Market Briefing           ⏸ Deferred
-Multi-market expansion    ⏸ Future
+Product/user contract        COMPLETE
+Canonical provider pipeline  IMPLEMENTED / PARTIAL HARDENING
+Macro factual foundation     IMPLEMENTED
+Crypto factual foundation    PARTIAL
+Cross-asset factual data     PARTIAL
+Economic event results       TRIAL / PARTIAL
+Context                      IMPLEMENTED / DEFECT OPEN (FND-004)
+Durable Market Memory        FOUNDATION IMPLEMENTED
+Historical retrieval         MISSING (FND-001)
+Factual baseline             IMPLEMENTED / NOT REPOSITORY-BACKED (FND-002)
+Independent ingestion        MISSING (FND-003)
+Expectation baseline         MISSING lifecycle
+Pricing baseline             MISSING
+Market Snapshot              DESIGN ONLY
+Transmission reasoning       MISSING
+State / Regime / Risk        DEFERRED
+Intelligence / Briefing      DEFERRED
 ```
 
----
+## 2. Current factual coverage
 
-## 2. What is working
+**Macro:** FRED covers the approved monetary-policy, liquidity, inflation, labor, rates, broad-USD and growth foundation. FRED also supplies several cross-asset series.
 
-### Product boundary
+**Crypto:** CoinGecko supplies BTC/ETH spot, BTC/ETH market cap, total crypto market cap, total volume and BTC/ETH dominance. Stablecoin market cap and a defined basic-volatility metric remain open.
 
-P365 is explicitly defined as:
+**Cross-asset:** S&P 500, Nasdaq, Russell 2000, US 2Y, US 10Y, 10Y real yield, DXY, broad USD, Gold futures, WTI, VIX and IG/HY credit spreads are available. DXY and the FRED broad USD index are separate instruments and must never be treated as interchangeable. MOVE remains open.
 
-> A system that explains the market, not merely displays it.
+**Economic events:** Forex Factory supplies scheduled-calendar awareness; Federal Reserve supplies official FOMC date anchors; Biquote supplies trial structured result fields including actual/forecast/previous/revision. Production qualification and release-time semantics remain open.
 
-It is not:
+**Evidence:** Alpha Vantage and CoinDesk news remain Evidence and are not promoted into Observation or Intelligence.
 
-- a trading bot;
-- an execution system;
-- a signal copier;
-- a price predictor;
-- a portfolio engine.
-
-### Domain architecture
-
-The core contracts remain market-agnostic. New market domains should be added through qualified providers and canonical observations rather than by redesigning the core model.
-
-### Macro
-
-The FRED foundation is implemented with a registered macro series set covering:
-
-- monetary policy;
-- liquidity;
-- inflation;
-- labor;
-- rates;
-- USD measure;
-- growth.
-
-Historical observations, provenance, quality state, and previous-value metadata are preserved.
-
-**Known semantic gap:** the current USD series `DTWEXBGS` is a broad trade-weighted dollar index, not the DXY. It must not be silently represented as DXY.
-
-### Economic events
-
-FOMC/official event foundation and economic-calendar awareness exist.
-
-The event layer is not yet sufficient for full surprise/repricing analysis because canonical actual/consensus/release-time coverage is incomplete.
-
-### News / Evidence
-
-News remains Evidence rather than being silently promoted into factual Observation.
-
-Alpha Vantage and CoinDesk are used in evidence/news roles.
-
-### Context
-
-Context v0.2 is implemented as a neutral grouping layer.
-
-Current groups include Macro scopes, Economic Events, and Crypto Market.
-
-Context does not infer market direction, regime, sentiment, liquidity flow, or capital flow.
-
-### Factual macro baseline
-
-A factual baseline implementation is now wired into `getDashboardData()`.
-
-For each macro series represented in the canonical observation set, P365 selects:
-
-- the latest compatible observation as the current measurement;
-- the immediately preceding compatible observation as the factual comparison point;
-- source, quality, timestamps, and Evidence IDs for both observations;
-- the factual numerical delta when both values are numeric and the baseline is valid.
-
-This layer does **not** classify direction, abnormality, surprise, repricing, or regime.
-
-### Crypto market foundation
-
-CoinGecko is the selected primary crypto market provider.
-
-The current implementation exposes factual observations for:
-
-- BTC price;
-- ETH price;
-- BTC market cap;
-- ETH market cap;
-- total crypto market cap;
-- total crypto 24h volume;
-- BTC dominance;
-- ETH dominance.
-
-The provider path uses CoinGecko market endpoints and preserves source/provenance and health information through the data layer.
-
-The dashboard now renders these CoinGecko observations directly.
-
-**Important:** this does not turn P365 into a crypto product. It is the first market-domain implementation used to validate the market-agnostic architecture.
-
-### Dashboard
-
-The dashboard currently contains navigation for:
-
-- Overview;
-- Macro;
-- Crypto;
-- Context;
-- Intelligence;
-- Evidence.
-
-Crypto market foundation metrics are visible in the UI.
-
-The UI is still a presentation layer and does not own domain reasoning.
-
----
-
-## 3. What is not yet complete
-
-### Expectation baseline
-
-Consensus/forecast data is not yet implemented as a canonical expectation layer.
-
-Therefore P365 cannot yet reliably answer:
-
-> Was the factual release surprising relative to what the market expected?
-
-### Pricing baseline
-
-Market-implied pricing data is not yet implemented as a canonical pricing layer.
-
-Therefore P365 cannot yet reliably distinguish:
-
-> A factual surprise from a genuine market repricing.
-
-### Historical abnormality
-
-Historical distribution and abnormality rules are not yet locked. No implicit z-score, percentile, or threshold should be introduced by implementation.
-
-### Cross-asset transmission
-
-The system has not yet implemented the evidence and comparison machinery required to determine whether repricing transmitted across markets.
-
-### Market Memory
-
-Market Memory storage infrastructure and governance exist, but the full temporal comparison/retrieval workflow is not yet the source for reasoning decisions.
-
-### Market Snapshot
-
-The immutable snapshot contract exists at design level, but the capture/comparison engine is not yet implemented.
-
-### State / Regime
-
-Deferred.
-
-No regime formula, composite score, or directional label should be added until the required factual, baseline, snapshot, and cross-asset evidence foundation exists.
-
-### Risk
-
-Deferred until State and relevant evidence/event relationships are defined.
-
-### Intelligence
-
-Deferred until the underlying reasoning chain is sufficiently mature.
-
-Target structure:
-
-```text
-WHAT
-WHY
-CONFIRMS
-CONTRADICTS
-INVALIDATES
-MONITOR
-```
-
-### Market Briefing
-
-Deferred until Intelligence exists.
-
-The briefing must synthesize canonical intelligence and must not invent facts.
-
----
-
-## 4. Current architecture state
+## 3. Active architecture state
 
 ```text
 Provider
@@ -223,99 +50,71 @@ Ingestion
   ↓
 Normalization
   ↓
-Observation / Event / Evidence
+Canonical Observation / Event / Evidence / EconomicEventResult
   ↓
 Context
+  ├── known taxonomy defect pending repair
   ↓
-Factual Baseline / Market Snapshot / Market Memory
+Append-only Market Memory
+  ├── historical semantic query missing
   ↓
-State / Repricing / Regime Analysis
-  ↓
-Intelligence
-  ↓
-Briefing
-  ↓
-UI
+Factual Baseline
+  └── currently uses the current provider retrieval window
 ```
 
-Current implementation reaches reliably into the factual baseline stage for macro observations.
+No State, Risk, Regime, Intelligence, Market Briefing, trading signal, portfolio sizing or execution logic is active.
 
-The later reasoning stages remain design/deferred rather than partially invented.
+## 4. Authoritative open foundation blockers
 
----
+The F0 audit is the authoritative defect inventory. Current HIGH blockers are:
 
-## 5. Current repository checkpoints
+- FND-001 — semantic historical Observation query missing.
+- FND-002 — factual baseline is not repository-backed.
+- FND-003 — historical ingestion/backfill has no independent owner.
+- FND-004 — CRYPTO_MARKET Context taxonomy mixes/omits domains.
+- FND-005 — documentation drift; this reconciliation checkpoint addresses the current-state portion.
+- FND-006 — Market Snapshot implementation missing.
+- FND-007 — Pricing baseline/market-implied layer missing.
+- FND-009 — manual refresh does not invalidate all canonical cadence tags.
 
-| Area | State | Notes |
-|---|---|---|
-| Product architecture | COMPLETE | Market-agnostic foundation established |
-| Domain contracts | COMPLETE | Canonical types and invariants hardened |
-| Data requirements | COMPLETE | P0/P1/P2 requirements defined |
-| Source architecture | COMPLETE | Provider roles and qualification rules defined |
-| FRED macro | IMPLEMENTED | Macro series registered and normalized |
-| Economic events | PARTIAL | Event awareness exists; surprise fields incomplete |
-| News / Evidence | IMPLEMENTED | News kept separate from factual observations |
-| Context | IMPLEMENTED | Neutral grouping and traceability |
-| Crypto market | IMPLEMENTED | CoinGecko selected and wired |
-| Dashboard UI | IMPLEMENTED | Crypto foundation metrics visible |
-| Factual macro baseline | IMPLEMENTED | Latest/preceding compatible observation wired into dashboard data |
-| Expectation baseline | MISSING | Consensus/forecast layer pending |
-| Pricing baseline | MISSING | Market-implied pricing layer pending |
-| Historical baseline | DESIGN | Statistical contract pending |
-| Market Memory | FOUNDATION | Governance + storage foundation exists |
-| Market Snapshot | DESIGN | Immutable contract exists; engine pending |
-| Cross-asset | MISSING | Provider/data coverage and reasoning pending |
-| State / Regime | DEFERRED | Definition/evidence gate not passed |
-| Risk | DEFERRED | Depends on State |
-| Intelligence | DEFERRED | Depends on reasoning foundation |
-| Market Briefing | DEFERRED | Depends on Intelligence |
+Medium/low findings FND-008 and FND-010 through FND-019 remain governed by the F0 audit and must not be silently dropped.
 
----
-
-## 6. Immediate next step
-
-The current checkpoint completes the first **factual baseline** implementation without introducing market interpretation.
-
-The next stage is **Baseline / Market Memory completion**, specifically expectation and pricing baseline contracts, followed by verification before moving to Market Snapshot.
-
-Target sequence:
+## 5. Immediate remediation sequence
 
 ```text
-Context
-      ↓
-Factual Baseline          ← current checkpoint
-      ↓
-Expectation Baseline
-      ↓
-Pricing Baseline
-      ↓
-Market Memory / Snapshot
-      ↓
-Cross-Asset Transmission
-      ↓
-State
-      ↓
-Risk
-      ↓
-Intelligence
-      ↓
-Market Briefing
+SSOT reconciliation                         ← this checkpoint
+  ↓
+Context taxonomy repair
+  ↓
+Historical Observation repository contract
+  ↓
+Durable history adapters
+  ↓
+Independent ingestion/backfill ownership
+  ↓
+Repository-backed Factual Baseline
+  ↓
+Temporal/provenance/freshness hardening
+  ↓
+Manual cache invalidation repair
+  ↓
+Remaining qualified factual gaps
+  ↓
+Expectation baseline lifecycle
+  ↓
+Market Snapshot
+  ↓
+Pricing baseline
+  ↓
+Cross-asset temporal comparison/transmission
+  ↓
+State → Risk → Intelligence → Briefing
 ```
 
-One stage at a time. One isolated change at a time. One verification checkpoint at a time.
+This order is dependency-driven. A later reasoning layer must not be activated to compensate for an unresolved earlier foundation dependency.
 
----
+## 6. Documentation authority
 
-## 7. Source of truth for project direction
+For **current repository state**, use this document. For **development sequencing**, use `P365-ROADMAP-v0.1.md`. For the **verified defect inventory and completion gates**, use `P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md`. Product/user requirements are defined by `P365-USER-DECISION-SUPPORT-CONTRACT.md` and architecture invariants by `P365-ARCHITECTURE.md`.
 
-For product direction and sequencing, use:
-
-- `docs/P365-ARCHITECTURE.md`
-- `docs/P365-ROADMAP-v0.1.md`
-- `docs/P365-DATA-REQUIREMENTS-MATRIX-v0.1.md`
-- `docs/P365-DATA-SOURCE-ARCHITECTURE-v0.1.md`
-- `docs/P365-MARKET-REASONING-BASELINE-v0.2.md`
-- `docs/P365-MARKET-SNAPSHOT-CONTRACT-v0.1.md`
-- `docs/P365-MARKET-MEMORY-GOVERNANCE-v0.1.md`
-
-This Current State document records **where the repository is now**. It does not override the architecture or roadmap when implementation changes later.
+Older audit/design documents are retained for history. Where their current-state claims conflict with this SSOT or F0, they are superseded rather than silently rewritten.
