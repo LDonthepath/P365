@@ -18,13 +18,15 @@ type YahooChartResponse = {
         regularMarketPrice?: number;
         regularMarketTime?: number;
         currency?: string;
+        chartPreviousClose?: number;
+        previousClose?: number;
       };
     }>;
     error?: { code?: string; description?: string } | null;
   };
 };
 
-type YahooQuote = { price: number; observedAt: string };
+type YahooQuote = { price: number; observedAt: string; previousClose: number | null; change: number | null; changePct: number | null };
 
 async function fetchYahooQuote(symbol: string): Promise<{ quote: YahooQuote } | { error: string }> {
   const url = `${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
@@ -49,7 +51,11 @@ async function fetchYahooQuote(symbol: string): Promise<{ quote: YahooQuote } | 
       return { error: `Yahoo Finance returned no quote for ${symbol}` };
     }
 
-    return { quote: { price: Number(price), observedAt: new Date(Number(time) * 1000).toISOString() } };
+    const previousCloseRaw = Number.isFinite(meta?.chartPreviousClose) ? Number(meta?.chartPreviousClose) : Number.isFinite(meta?.previousClose) ? Number(meta?.previousClose) : null;
+    const change = previousCloseRaw === null ? null : Number(price) - previousCloseRaw;
+    const changePct = previousCloseRaw === null || previousCloseRaw === 0 ? null : (change! / previousCloseRaw) * 100;
+
+    return { quote: { price: Number(price), observedAt: new Date(Number(time) * 1000).toISOString(), previousClose: previousCloseRaw, change, changePct } };
   } catch (error) {
     return { error: error instanceof Error ? error.message : `Yahoo Finance request failed for ${symbol}` };
   }
@@ -71,7 +77,13 @@ async function fetchYahooObservation(
     observedAt: result.quote.observedAt,
     retrievedAt,
     source: "Yahoo Finance",
-    metadata,
+    metadata: {
+      ...metadata,
+      previousClose: result.quote.previousClose,
+      change: result.quote.change,
+      changePct: result.quote.changePct,
+      changeBasis: result.quote.previousClose === null ? null : "previous_close",
+    },
   }]);
 }
 

@@ -9,9 +9,10 @@ import type { Context, DataQuality, Evidence, Observation, ProviderHealth } from
 import { buildBaselinePresentations, type BaselinePresentation } from "@/lib/presentation/baseline";
 import { logout, refreshDashboardData } from "./actions";
 
-type Menu = "overview" | "macro" | "crypto" | "context" | "intelligence" | "evidence";
+type Menu = "overview" | "heatmap" | "macro" | "crypto" | "context" | "intelligence" | "evidence";
 const menuItems: { id: Menu; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "heatmap", label: "Heatmap" },
   { id: "macro", label: "Macro" },
   { id: "crypto", label: "Crypto" },
   { id: "context", label: "Context" },
@@ -27,6 +28,25 @@ const MACRO_CONTEXT_LABELS: Record<string, string> = {
   MACRO_RATES: "Rates",
   MACRO_USD: "USD",
   MACRO_GROWTH: "Growth",
+};
+
+const MACRO_HEADLINE_SERIES: Record<string, string> = {
+  MACRO_MONETARY_POLICY: "EFFR",
+  MACRO_LIQUIDITY: "RRPONTSYD",
+  MACRO_INFLATION: "CPIAUCSL",
+  MACRO_LABOR: "ICSA",
+  MACRO_RATES: "DGS10",
+  MACRO_USD: "DTWEXBGS",
+  MACRO_GROWTH: "GDPC1",
+};
+
+const MACRO_SERIES_LABELS: Record<string, string> = {
+  FEDFUNDS: "Federal Funds Rate", EFFR: "Effective Fed Funds Rate", WALCL: "Fed Balance Sheet", WRESBAL: "Reserve Balances",
+  M2SL: "M2 Money Stock", WTREGEN: "Treasury General Account", RRPONTSYD: "Overnight Reverse Repo",
+  CPIAUCSL: "Headline CPI", CPILFESL: "Core CPI", PCEPI: "PCE Price Index", PCEPILFE: "Core PCE",
+  UNRATE: "Unemployment Rate", PAYEMS: "Nonfarm Payrolls", ICSA: "Initial Claims", CCSA: "Continued Claims", JTSJOL: "Job Openings", JTSQUR: "Quits Rate", SAHMREALTIME: "Sahm Rule",
+  DGS2: "US Treasury 2Y", DGS10: "US Treasury 10Y", DFII10: "US 10Y Real Yield", T10YIE: "10Y Breakeven Inflation", T10Y2Y: "10Y–2Y Spread", BAMLC0A0CM: "US Corporate Credit Spread", BAMLH0A0HYM2: "US High Yield Spread",
+  DTWEXBGS: "Fed Broad USD Index", GDPC1: "Real GDP",
 };
 
 type ContextGroup = { id: string; label: string; contexts: Context[] };
@@ -83,14 +103,37 @@ function formatMacroValue(value: string, unit: string): string {
   return value;
 }
 
-function MacroObservationRow({ item, baseline }: { item: Observation; baseline: BaselinePresentation | null }) {
-  const metadata = item.metadata ?? {};
-  const unit = String(metadata.unit ?? "");
-  const delta = baseline?.changeValue ?? null;
-  return <article className="calendar-row">
-    <div className="macro-tile-header"><span className="macro-frequency">{String(metadata.frequency ?? "UNKNOWN")}</span><span className="macro-quality">{item.quality}</span></div>
-    <div className="macro-tile-main"><h3>{item.subject}</h3><strong className="macro-value">{formatMacroValue(item.value, unit)}</strong></div>
-    <div className="macro-tile-footer"><span>{String(metadata.seriesId ?? "")}</span><span>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroValue(baseline.baselineValue, unit)} · Δ ${formatBaselineDelta(delta)}` : `Ref ${baseline?.status ?? "MISSING"}`}</span></div>
+function macroThemeItems(context: Context, observations: Observation[]): Observation[] {
+  return context.observationIds.map((id) => observations.find((item) => item.id === id)).filter((item): item is Observation => Boolean(item));
+}
+
+function macroHeadline(context: Context, items: Observation[]): Observation | undefined {
+  const preferred = MACRO_HEADLINE_SERIES[context.scope];
+  return items.find((item) => String(item.metadata?.seriesId ?? "") === preferred)
+    ?? [...items].sort((a, b) => ({ DAILY: 0, WEEKLY: 1, MONTHLY: 2, QUARTERLY: 3 }[String(a.metadata?.frequency)] ?? 9) - ({ DAILY: 0, WEEKLY: 1, MONTHLY: 2, QUARTERLY: 3 }[String(b.metadata?.frequency)] ?? 9))[0];
+}
+
+function MacroThemeCard({ context, observations, baselines, expanded, onToggle }: { context: Context; observations: Observation[]; baselines: Map<string, BaselinePresentation>; expanded: boolean; onToggle: () => void }) {
+  const items = macroThemeItems(context, observations);
+  const headline = macroHeadline(context, items);
+  if (!headline) return null;
+  const headlineUnit = String(headline.metadata?.unit ?? "");
+  const label = MACRO_CONTEXT_LABELS[context.scope] ?? context.scope;
+  const headlineSeries = String(headline.metadata?.seriesId ?? "");
+
+  return <article className={`macro-theme-card${expanded ? " expanded" : ""}`}>
+    <button type="button" className="macro-theme-summary" aria-expanded={expanded} onClick={onToggle}>
+      <div className="macro-tile-header"><span className="macro-frequency">{label.toUpperCase()}</span><span className="macro-quality">{headline.quality}</span></div>
+      <div className="macro-tile-main"><div><h3>{MACRO_SERIES_LABELS[headlineSeries] ?? headline.subject}</h3><small>{headlineSeries} · {String(headline.metadata?.frequency ?? "")}</small></div><strong className="macro-value">{formatMacroValue(headline.value, headlineUnit)}</strong></div>
+      <div className="macro-tile-footer"><span>{items.length} INDIKATOR</span><span>{expanded ? "TUTUP ↑" : "LIHAT DETAIL ↓"}</span></div>
+    </button>
+    {expanded && <div className="macro-theme-detail">{items.map((item) => {
+      const metadata = item.metadata ?? {};
+      const unit = String(metadata.unit ?? "");
+      const seriesId = String(metadata.seriesId ?? "");
+      const baseline = baselines.get(seriesId) ?? null;
+      return <div className="macro-detail-row" key={item.id}><div><strong>{MACRO_SERIES_LABELS[seriesId] ?? item.subject}</strong><small>{seriesId} · {String(metadata.frequency ?? "UNKNOWN")} · {item.quality}</small></div><div className="macro-detail-values"><strong>{formatMacroValue(item.value, unit)}</strong><small>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroValue(baseline.baselineValue, unit)} · Δ ${formatBaselineDelta(baseline.changeValue)}` : `Baseline ${baseline?.status ?? "MISSING"}`}</small></div></div>;
+    })}<div className="macro-theme-metadata"><span>Series canonical tetap terpisah; kartu ini hanya mengelompokkan presentasi.</span><span>Sumber · FRED</span></div></div>}
   </article>;
 }
 
@@ -189,6 +232,61 @@ function CrossAssetMarketPanel({ observations }: { observations: Observation[] }
   </section>;
 }
 
+type HeatmapTile = {
+  id: string;
+  label: string;
+  group: "CROSS-ASSET" | "MACRO" | "CRYPTO";
+  value: string;
+  delta: number | null;
+  deltaUnit: "ABSOLUTE" | "PERCENT";
+  changeBasis?: string;
+  source: string;
+};
+
+function MarketHeatmap({ observations, baselines }: { observations: Observation[]; baselines: BaselinePresentation[] }) {
+  const baselineBySeries = new Map(baselines.map((item) => [item.seriesId, item]));
+  const definitions = [
+    { id: "gold.futures.usd", label: "GOLD", group: "CROSS-ASSET" as const, source: "Yahoo · GC=F" },
+    { id: "russell2000.index.usd", label: "RUSSELL 2000", group: "CROSS-ASSET" as const, source: "Yahoo · ^RUT" },
+    { id: "dxy.index.usd", label: "DXY · ICE", group: "CROSS-ASSET" as const, source: "Yahoo · DX-Y.NYB" },
+    { id: "btc.spot.usd", label: "BITCOIN", group: "CRYPTO" as const, source: "CoinGecko" },
+    { id: "eth.spot.usd", label: "ETHEREUM", group: "CRYPTO" as const, source: "CoinGecko" },
+    { id: "crypto.btc_dominance.pct", label: "BTC DOMINANCE", group: "CRYPTO" as const, source: "CoinGecko" },
+  ];
+  const marketTiles: HeatmapTile[] = definitions.flatMap((definition) => {
+    const observation = observations.find((item) => item.subject === definition.id);
+    if (!observation) return [];
+    const rawChangePct = observation.metadata?.changePct;
+    const hasProviderChange = rawChangePct !== null && rawChangePct !== undefined && Number.isFinite(Number(rawChangePct));
+    const providerChangePct = hasProviderChange ? Number(rawChangePct) : null;
+    return [{ ...definition, value: observation.value, delta: providerChangePct, deltaUnit: "PERCENT" as const, changeBasis: hasProviderChange ? String(observation.metadata?.changeBasis ?? "provider_reference") : undefined }];
+  });
+  const macroScopes = ["MACRO_MONETARY_POLICY", "MACRO_LIQUIDITY", "MACRO_INFLATION", "MACRO_LABOR", "MACRO_RATES", "MACRO_USD", "MACRO_GROWTH"];
+  const macroTiles: HeatmapTile[] = macroScopes.flatMap((scope) => {
+    const preferredSeries = MACRO_HEADLINE_SERIES[scope];
+    const observation = observations.find((item) => item.domain === "MACRO" && String(item.metadata?.seriesId ?? "") === preferredSeries);
+    if (!observation) return [];
+    const seriesId = String(observation.metadata?.seriesId ?? "");
+    const baseline = baselineBySeries.get(seriesId);
+    return [{ id: scope, label: MACRO_CONTEXT_LABELS[scope] ?? scope, group: "MACRO" as const, value: formatMacroValue(observation.value, String(observation.metadata?.unit ?? "")), delta: baseline?.status === "VALID" ? baseline.changeValue : null, deltaUnit: "ABSOLUTE" as const, source: `${MACRO_SERIES_LABELS[seriesId] ?? seriesId} · ${seriesId}` }];
+  });
+  const tiles = [...marketTiles, ...macroTiles];
+  const groups: Array<HeatmapTile["group"]> = ["CROSS-ASSET", "MACRO", "CRYPTO"];
+
+  return <section className="heatmap-view" aria-labelledby="heatmap-title">
+    <div className="heatmap-heading"><div><div className="panel-label"><span>PETA PASAR</span><span>FAKTUAL · NON-PRESKRIPTIF</span></div><h2 id="heatmap-title">Heatmap Pasar</h2><p className="lead-copy">Warna hanya menunjukkan perubahan faktual terhadap baseline valid. Tanpa baseline yang valid, tile tetap netral.</p></div><div className="heatmap-legend"><span><i className="heatmap-dot up" /> Naik</span><span><i className="heatmap-dot down" /> Turun</span><span><i className="heatmap-dot neutral" /> Netral / belum ada baseline</span></div></div>
+    <div className="heatmap-groups">{groups.map((group) => {
+      const items = tiles.filter((tile) => tile.group === group);
+      if (!items.length) return null;
+      return <section className="heatmap-group" key={group}><div className="heatmap-group-head"><strong>{group}</strong><span>{items.length} METRIC</span></div><div className="heatmap-grid">{items.map((tile) => {
+        const direction = tile.delta === null || tile.delta === 0 ? "neutral" : tile.delta > 0 ? "up" : "down";
+        return <article className={`heatmap-tile ${direction}`} key={tile.id}><span className="heatmap-name">{tile.label}</span><strong>{tile.delta === null ? "—" : `${tile.delta > 0 ? "+" : ""}${tile.delta.toFixed(2)}${tile.deltaUnit === "PERCENT" ? "%" : ""}`}</strong><span className="heatmap-value">{tile.value}</span><small>{tile.source}{tile.changeBasis ? ` · ${tile.changeBasis.replace("_", " ")}` : ""}</small></article>;
+      })}</div></section>;
+    })}</div>
+    <div className="heatmap-semantic-note"><strong>USD INDEX SEMANTICS</strong><span>DXY · ICE = DX-Y.NYB. FED BROAD USD = DTWEXBGS. Keduanya merupakan metric berbeda dan tidak diperlakukan sebagai substitusi.</span></div>
+  </section>;
+}
+
 function CryptoMetricCard({ metric }: { metric: CryptoMetric }) {
   return <article className="panel" style={{ margin: 0 }}><div className="panel-label"><span>{metric.label}</span><span>{metric.quality}</span></div><strong style={{ display: "block", fontSize: "clamp(1.45rem, 3vw, 2.2rem)", lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: "0.45rem" }}>{metric.unit === "USD" ? formatMoney(metric.value) : formatPercent(metric.value)}</strong><p className="muted" style={{ marginBottom: 0 }}>CoinGecko · {relativeTimeID(metric.observedAt)}</p></article>;
 }
@@ -256,6 +354,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [expandedMacroTheme, setExpandedMacroTheme] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const { macroNews, cryptoNews, calendarEvents, calendarProviderMessage, unavailableSources, observations, macroObservations, macroBaselines, contexts, evidence, providerHealth } = data;
@@ -299,7 +398,8 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
 
     <div className="dashboard-content" role="tabpanel">
       {activeMenu === "overview" && <><section className="market-state panel" aria-labelledby="state-title"><div className="panel-label"><span>01 / STATUS PASAR GLOBAL</span><StatusBadge value="PENDING" /></div><div className="state-grid"><div><h2 id="state-title">Belum ada kesimpulan status pasar.</h2><p>{observations.length ? "Observasi pasar tersedia, tetapi P365 belum memiliki aturan domain spesifik untuk menggabungkannya menjadi satu status pasar." : "Tidak ada observasi pasar yang dapat diverifikasi pada request ini, sehingga P365 tidak menampilkan status pasar."}</p></div><div className="state-meta"><div><span>CONFIDENCE</span><strong>BELUM ADA</strong></div><div><span>OBSERVASI</span><strong>{observations.length} · {STATUS_LABEL_ID[marketStatus]}</strong></div><div><span>EVIDENCE KANONIK</span><strong>{evidence.length} item</strong></div><div><span>EVENT MENDATANG</span><strong>{calendarEvents.length}</strong></div></div></div></section><OverviewWhatChanged observations={observations} baselines={baselinePresentations} /><OverviewContext contextGroups={contextGroups} selectedContextId={selectedContextId} selectedContext={selectedContext} onSelect={(id) => setSelectedContextId(selectedContextId === id ? null : id)} /><section className="overview-grid"><section className="panel market-watch"><div className="panel-label"><span>CAKUPAN DOMAIN</span><span>RINGKASAN</span></div><h2>Cakupan data</h2>{[["Evidence berita makro", macroNews.length, macroNews.length ? "FRESH" : "PENDING"], ["Evidence berita crypto", cryptoNews.length, cryptoNews.length ? "FRESH" : "PENDING"], ["Observasi pasar", observations.length, marketStatus], ["Provider", `${healthyProviderCount}/${providerHealth.length}`, providerRowStatus]].map(([label, count, status]) => <div className="watch-row" key={String(label)}><span>{label}</span><strong>{count}</strong><StatusBadge value={status as "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE"} /></div>)}</section><section className="panel calendar"><div className="panel-label"><span>EVENT MENDATANG</span><span>{calendarEvents.length} ITEM</span></div><h2>Agenda penting</h2>{calendarEvents.length ? calendarEvents.map((item) => <CalendarRow item={item} key={item.id} />) : <><EmptyPanelNote label="kalender ekonomi" />{calendarProviderMessage && <p className="muted">Diagnostic Forex Factory: {calendarProviderMessage}</p>}</>}</section></section></>}
-      {activeMenu === "macro" && <div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar"><div className="panel-label"><span>OBSERVASI MAKRO</span><span>{macroObservations.length} ITEM · {baselinePresentations.length} BASELINE</span></div><h2>Monitor data makro</h2>{macroObservations.length ? macroObservations.map((item) => <MacroObservationRow item={item} baseline={baselinesBySeries.get(String(item.metadata?.seriesId ?? "")) ?? null} key={item.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div>}
+      {activeMenu === "heatmap" && <MarketHeatmap observations={observations} baselines={baselinePresentations} />}
+      {activeMenu === "macro" && <div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar"><div className="panel-label"><span>OBSERVASI MAKRO</span><span>{macroContexts.length} THEME · {macroObservations.length} METRIC</span></div><h2>Monitor data makro</h2>{macroObservations.length ? macroContexts.map((context) => <MacroThemeCard context={context} observations={macroObservations} baselines={baselinesBySeries} expanded={expandedMacroTheme === context.id} onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)} key={context.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div>}
       {activeMenu === "crypto" && <div className="menu-grid"><CryptoMarketPanel observations={observations} providerHealth={providerHealth} />{showNews(cryptoNews, "BERITA CRYPTO")}</div>}
       {activeMenu === "context" && <div className="menu-grid context-menu"><section className="panel intelligence-panel"><div className="panel-label"><span>MARKET CONTEXT</span><span>{contexts.length} CONTEXT</span></div><h2>Context explorer</h2><p className="lead-copy">Context adalah layer pengelompokan evidence. Pilih grup untuk membuka context di dalamnya, lalu klik context untuk melihat traceability.</p><div className="context-groups">{contextGroups.length ? contextGroups.map((group) => { const isExpanded = expandedGroup === group.id; return <section className={`context-group${isExpanded ? " expanded" : ""}`} key={group.id}><button type="button" className="context-group-button" aria-expanded={isExpanded} onClick={() => setExpandedGroup(isExpanded ? null : group.id)}><span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span><span>{group.contexts.length} CONTEXT {isExpanded ? "↑" : "→"}</span></button>{isExpanded && <div className="context-list">{group.contexts.map((context) => { const label = context.scope === "CRYPTO_MARKET" ? context.id.replace("context-crypto-", "").toUpperCase() : context.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " "); return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => setSelectedContextId(selectedContextId === context.id ? null : context.id)} key={context.id} />; })}</div>}</section>; }) : <EmptyPanelNote label="context" />}</div></section>{selectedContext ? <ContextDetail context={selectedContext} label={selectedLabel} /> : <section className="panel context-detail-empty"><div className="panel-label"><span>CONTEXT DETAIL</span><span>WAITING</span></div><h2>Pilih context</h2><p className="lead-copy">Klik salah satu context untuk membuka detail dan melihat hubungan langsungnya ke canonical observation/event.</p></section>}</div>}
       {activeMenu === "intelligence" && <div className="menu-grid"><section className="panel intelligence-panel"><div className="panel-label"><span>INTELLIGENCE</span><span>SEMANTIC LAYER</span></div><h2>Intelligence yang terverifikasi</h2><p className="lead-copy">Intelligence akan menjelaskan WHAT, WHY, evidence yang mengonfirmasi atau bertentangan, invalidation, monitoring, dan confidence. Context tidak ditampilkan sebagai intelligence.</p><div className="monitor-list"><div><strong>Context</strong><span>Dipisahkan ke menu Context sebagai canonical grouping layer.</span></div><div><strong>Evidence</strong><span>{evidence.length} evidence canonical tersedia sebagai dasar reasoning.</span></div><div><strong>Inference</strong><span>Belum ada kesimpulan regime, sentiment, liquidity, capital flow, atau price prediction.</span></div></div></section><section className="panel"><div className="panel-label"><span>MONITOR</span><span>STATUS OPERASIONAL</span></div><h2>Apa yang perlu dipantau?</h2><div className="monitor-list"><div><strong>Observasi pasar</strong><span>{observations.length} observasi · kualitas {STATUS_LABEL_ID[marketStatus]}.</span></div><div><strong>Event makro</strong><span>{highImpactEvents} event berdampak tinggi terdeteksi.</span></div><div><strong>Provider</strong><span>{healthyProviderCount}/{providerHealth.length} provider sehat · status {STATUS_LABEL_ID[providerRowStatus]}.</span></div><div><strong>Unavailable</strong><span>{unavailableSources.length ? unavailableSources.join(" · ") : "Tidak ada provider yang ditandai unavailable."}</span></div></div></section></div>}
