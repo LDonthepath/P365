@@ -2,7 +2,7 @@ import type { Observation } from "../domain/types";
 import type { ObservationHistoryQuery } from "../repositories/types";
 import { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
 
-type StoredRow = { record_type: string; effective_at: string; captured_at: string; payload: unknown };
+type StoredRow = { id: string; record_type: string; effective_at: string; captured_at: string; payload: unknown };
 
 function assertEqual(actual: unknown, expected: unknown, label: string): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -46,6 +46,7 @@ function observation(
 function row(payload: unknown, recordType = "OBSERVATION", capturedAt = "2026-09-10T00:00:00.000Z"): StoredRow {
   const candidate = payload as Partial<Observation>;
   return {
+    id: `row-${candidate.id ?? "malformed"}`,
     record_type: recordType,
     effective_at: candidate.observedAt ?? capturedAt,
     captured_at: capturedAt,
@@ -69,14 +70,14 @@ function fakePostgrest(rows: StoredRow[]): typeof fetch {
     const sourceFilter = params.get("payload->>sourceId");
     const sourceId = sourceFilter?.replace(/^eq\./, "");
     const effectiveBounds = params.getAll("effective_at");
-    const retrievedFilter = params.get("payload->>retrievedAt");
     const direction = params.get("order")?.includes(".desc") ? -1 : 1;
     const limit = Number(params.get("limit"));
+    const offset = Number(params.get("offset"));
 
     const result = rows.filter((stored) => {
       if (stored.record_type !== "OBSERVATION") return false;
       const payload = stored.payload as Partial<Observation>;
-      if (payload.domain !== domain || !payload.id || !payload.observedAt || !payload.retrievedAt) return false;
+      if (payload.domain !== domain) return false;
       const metadata = payload.metadata ?? {};
       if (metadata.seriesId !== seriesKey && metadata.metricId !== seriesKey) return false;
       if (sourceFilter?.startsWith("eq.") && payload.sourceId !== unquote(sourceId ?? "")) return false;
@@ -86,17 +87,13 @@ function fakePostgrest(rows: StoredRow[]): typeof fetch {
         if (bound.startsWith("gte.") && effective < boundary) return false;
         if (bound.startsWith("lte.") && effective > boundary) return false;
       }
-      if (retrievedFilter?.startsWith("lte.") && Date.parse(payload.retrievedAt) > Date.parse(retrievedFilter.slice(4))) return false;
       return true;
     }).sort((left, right) => {
-      const a = left.payload as Observation;
-      const b = right.payload as Observation;
       return direction * (
-        Date.parse(a.observedAt) - Date.parse(b.observedAt)
-        || Date.parse(a.retrievedAt) - Date.parse(b.retrievedAt)
-        || a.id.localeCompare(b.id)
+        Date.parse(left.effective_at) - Date.parse(right.effective_at)
+        || left.id.localeCompare(right.id)
       );
-    }).slice(0, limit).map(({ effective_at, payload }) => ({ effective_at, payload }));
+    }).slice(offset, offset + limit).map(({ id, effective_at, payload }) => ({ id, effective_at, payload }));
 
     return new Response(JSON.stringify(result), { status: 200, headers: { "Content-Type": "application/json" } });
   }) as typeof fetch;
@@ -125,11 +122,16 @@ async function main(): Promise<void> {
       subject: "Gold futures renamed",
     })),
     row({ id: "legacy", domain: "MACRO", observedAt: "2026-05-01T00:00:00.000Z", metadata: { seriesId: "CPIAUCSL" } }),
+    row(observation("offset-earlier", "OTHER", "offset-order", "2026-08-01T00:00:00.000Z", "2026-09-01T00:30:00+01:00")),
+    row(observation("tie-a", "OTHER", "offset-order", "2026-07-31T20:00:00-04:00", "2026-08-31T23:45:00Z")),
+    row(observation("tie-z", "OTHER", "offset-order", "2026-08-01T09:00:00+09:00", "2026-09-01T00:45:00+01:00")),
     row(observation("not-observation", "MACRO", "CPIAUCSL", "2026-09-01T00:00:00.000Z", "2026-09-01T00:01:00.000Z"), "EVIDENCE"),
   ];
   const repository = new SupabaseHistoricalObservationRepository({
     fetch: fakePostgrest(rows),
     config: () => ({ url: "https://example.supabase.co", key: "server-only-test-key" }),
+    candidateBatchSize: 2,
+    maxCandidateScan: 50,
   });
   const query = (overrides: Partial<ObservationHistoryQuery> = {}): ObservationHistoryQuery => ({
     identity: { domain: "MACRO", seriesKey: "CPIAUCSL" }, order: "ASC", limit: 20, ...overrides,
@@ -148,12 +150,27 @@ async function main(): Promise<void> {
     ["fred-old", "fred-original"], "retrieval cutoff excludes unavailable correction independent of captured_at");
   assertEqual((await repository.findHistory(query({ order: "DESC", limit: 2 }))).map((item) => item.id),
     ["alternate-source", "fred-correction"], "deterministic descending order and limit");
+  assertEqual((await repository.findHistory(query({ limit: 2 }))).map((item) => item.id),
+    ["fred-old", "fred-original"], "malformed pre-limit candidate does not hide later valid history");
   assertEqual((await repository.findHistory({ identity: { domain: "ASSET", seriesKey: "btc.spot.usd" }, order: "ASC", limit: 20 })).map((item) => item.id),
     ["btc", "btc-other-source"], "CoinGecko semantic history across provenance");
   assertEqual((await repository.findHistory({ identity: { domain: "ASSET", seriesKey: "gold.futures.usd" }, order: "ASC", limit: 20 })).map((item) => item.id),
     ["gold"], "Yahoo semantic history");
   assertEqual(await repository.findHistory(query({ identity: { domain: "MACRO", seriesKey: "MISSING" } })), [], "missing history");
   assertEqual((await repository.findHistory(query({ identity: { domain: "MACRO", seriesKey: "CPILFESL" } }))).map((item) => item.id), ["core-cpi"], "series isolation");
+  const offsetIdentity = { domain: "OTHER" as const, seriesKey: "offset-order" };
+  assertEqual((await repository.findHistory({ identity: offsetIdentity, order: "ASC", limit: 3 })).map((item) => item.id),
+    ["offset-earlier", "tie-a", "tie-z"], "ASC uses timestamp instants then id, not lexical timestamp text");
+  assertEqual((await repository.findHistory({ identity: offsetIdentity, order: "DESC", limit: 3 })).map((item) => item.id),
+    ["tie-z", "tie-a", "offset-earlier"], "DESC reverses instant and id tie ordering deterministically");
+
+  const boundedRepository = new SupabaseHistoricalObservationRepository({
+    fetch: fakePostgrest(rows),
+    config: () => ({ url: "https://example.supabase.co", key: "server-only-test-key" }),
+    candidateBatchSize: 1,
+    maxCandidateScan: 1,
+  });
+  await assertRejects("bounded candidate scan fails rather than returning an unproven result", () => boundedRepository.findHistory(query({ limit: 1 })));
 
   await assertRejects("empty series key", () => repository.findHistory(query({ identity: { domain: "MACRO", seriesKey: " " } })));
   await assertRejects("invalid domain", () => repository.findHistory(query({ identity: { domain: "INVALID" as "MACRO", seriesKey: "CPIAUCSL" } })));
