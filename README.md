@@ -118,8 +118,9 @@ Untuk deployment Vercel, atur nilai tersebut pada Project Settings → Environme
 
 ## Documentation
 
-- [`docs/P365-ARCHITECTURE.md`](docs/P365-ARCHITECTURE.md) — product boundary, domain model, pipeline, invariants, dan roadmap.
-- [`docs/MACRO-DATA-FOUNDATION-v0.1.md`](docs/MACRO-DATA-FOUNDATION-v0.1.md) — Macro Data Foundation dan P0 series registry.
-- [`docs/P365-CONTEXT-STATE-RISK.md`](docs/P365-CONTEXT-STATE-RISK.md) — Context → State → Risk contract.
-- [`docs/P365-CONTEXT-STATE-RISK-AUDIT.md`](docs/P365-CONTEXT-STATE-RISK-AUDIT.md) — audit kontrak Context → State → Risk.
-- [`docs/P365-INTELLIGENCE-CONTRACT.md`](docs/P365-INTELLIGENCE-CONTRACT.md) — semantic contract untuk Intelligence.
+Dokumentasi operasional fondasi menggunakan satu SSOT:
+
+- `docs/P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md` — **master foundation SSOT**: current state, audit F0, FND-001…FND-019, remediation sequence, completion gates, dan checkpoint history.
+- `docs/P365-ARCHITECTURE.md` — kontrak arsitektur/invariants yang stabil.
+- `docs/P365-USER-DECISION-SUPPORT-CONTRACT.md` — kontrak kebutuhan pengguna dan user-value gate.
+- Dokumen requirement/governance khusus tetap terpisah hanya bila bersifat normatif, bukan sebagai competing current-state document.
