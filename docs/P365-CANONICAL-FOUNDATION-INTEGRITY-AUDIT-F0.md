@@ -1,10 +1,25 @@
-# P365 Foundation End-to-End Audit v0.1
+# P365 Foundation Master — SSOT v0.1
 
-**Status:** Architecture / implementation audit checkpoint  
+**Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
 **Audited ref:** `main@85b82b2e1827e77ba36af571e2396d8fbadebb68`  
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 18 Sep 2026 against the exact base SHA, PR diff, repository-wide code search, canonical/domain/provider/repository/application paths, current governance docs, and PR status. Findings below distinguish confirmed defects, architecture blockers, and documentation debt.
+**Verification pass:** Re-verified 18 Sep 2026 against the exact base SHA, repository-wide code search, canonical/domain/provider/repository/application paths, governance docs, and merged F0 audit.
+
+## Documentation authority
+
+This is the **single operational SSOT for foundation development**. It owns:
+
+- current implementation state;
+- verified F0 findings (`FND-001`…`FND-019`);
+- current factual coverage/gaps;
+- remediation priority and sequencing;
+- foundation completion gates;
+- checkpoint history.
+
+Normative contracts remain separate only where they define stable rules rather than project status: `P365-ARCHITECTURE.md`, `P365-USER-DECISION-SUPPORT-CONTRACT.md`, `P365-DATA-REQUIREMENTS-MATRIX-v0.1.md`, `P365-MARKET-SNAPSHOT-CONTRACT-v0.1.md`, and Market Memory governance/implementation contracts. `AGENTS.md` remains repository governance.
+
+Older status, roadmap, gap-analysis, and audit documents are removed rather than kept as competing sources of current truth. Historical decisions are summarized in the checkpoint history at the end of this document.
 
 ## 1. Executive verdict
 
@@ -44,6 +59,37 @@ The current system can ingest and normalize factual data, create evidence-backed
 | UI/presentation | PASS / PARTIAL | UI mostly presents canonical facts and explicit pending states; several English/internal labels remain presentation debt. |
 | Documentation SSOT | **HIGH GAP** | Multiple docs describe pre-fix repository state and conflict with current code/roadmap. |
 | Test/build governance | PARTIAL | Cache test exists, but foundation contracts lack broad automated tests; package has no explicit test script. |
+
+
+## Current implementation snapshot
+
+```text
+Product/user contract        COMPLETE
+Canonical provider pipeline  IMPLEMENTED / PARTIAL HARDENING
+Macro factual foundation     IMPLEMENTED
+Crypto factual foundation    PARTIAL
+Cross-asset factual data     PARTIAL
+Economic event results       TRIAL / PARTIAL
+Context                      IMPLEMENTED / DEFECT OPEN (FND-004)
+Durable Market Memory        FOUNDATION IMPLEMENTED
+Historical retrieval         MISSING (FND-001)
+Factual baseline             IMPLEMENTED / NOT REPOSITORY-BACKED (FND-002)
+Independent ingestion        MISSING (FND-003)
+Expectation baseline         MISSING lifecycle
+Pricing baseline             MISSING
+Market Snapshot              DESIGN ONLY
+Transmission reasoning       MISSING
+State / Regime / Risk        DEFERRED
+Intelligence / Briefing      DEFERRED
+```
+
+### Current factual coverage
+
+- **Macro:** FRED covers the approved monetary-policy, liquidity, inflation, labor, rates, broad-USD and growth foundation.
+- **Crypto:** CoinGecko covers BTC/ETH spot, BTC/ETH market cap, total crypto market cap, total volume and BTC/ETH dominance. Stablecoin market cap and a defined basic-volatility metric remain open.
+- **Cross-asset:** S&P 500, Nasdaq, Russell 2000, US 2Y, US 10Y, 10Y real yield, DXY, broad USD, Gold futures, WTI, VIX and IG/HY credit spreads are available. DXY and broad USD remain separate instruments. MOVE remains open.
+- **Economic events:** Forex Factory provides scheduled-calendar awareness, Federal Reserve official FOMC date anchors, and Biquote trial structured event results. Production qualification/release semantics remain open.
+- **Evidence:** Alpha Vantage and CoinDesk news remain Evidence and are not promoted into Observation/Intelligence.
 
 ## 2. End-to-end runtime path
 
@@ -483,6 +529,39 @@ The audit PR itself was re-checked before merge:
 - there are no submitted code reviews or unresolved review threads at verification time.
 
 Because this PR is documentation-only, the meaningful acceptance criterion is **audit accuracy and scope integrity**, not runtime behavior change. Runtime/build verification remains mandatory on each remediation PR.
+
+## Checkpoint history
+
+| Date | Checkpoint | Result |
+|---|---|---|
+| 16 Sep 2026 | Canonical/domain/data foundation | Provider → normalization → canonical Observation/Event/Evidence foundation established. |
+| 17 Sep 2026 | Factual baseline + Market Memory foundation | FRED multi-observation baseline and durable append-only Supabase storage established; historical semantic retrieval still missing. |
+| 17 Sep 2026 | Cross-asset/provider expansion | Yahoo Gold/Russell/DXY and broader cross-asset dashboard coverage integrated; DXY kept distinct from broad USD. |
+| 17 Sep 2026 | Cache cadence migration | Fast/medium/slow cache groups implemented; manual invalidation defect remains FND-009. |
+| 18 Sep 2026 | Retail trader/investor decision-support contract | Product value gate documented without introducing advisory/execution behavior. |
+| 18 Sep 2026 | F0 end-to-end audit | 19 foundation findings established; higher-order reasoning remains blocked pending foundation remediation. |
+| 18 Sep 2026 | Documentation consolidation | This file becomes the single operational foundation SSOT; redundant current-state/audit/roadmap docs retired. |
+
+## Active remediation sequence
+
+```text
+1. Documentation consolidation / SSOT          ← current checkpoint
+2. FND-004 Context taxonomy repair
+3. FND-001 Historical Observation repository contract
+4. Durable history query adapters
+5. FND-003 Independent ingestion/backfill ownership
+6. FND-002 Repository-backed Factual Baseline
+7. Temporal/provenance/freshness hardening
+8. FND-009 Manual cache invalidation repair
+9. Remaining qualified factual gaps
+10. Expectation Baseline lifecycle
+11. Market Snapshot implementation
+12. Pricing Baseline / market-implied layer
+13. Cross-asset temporal comparison/transmission
+14. State → Risk → Intelligence → Briefing only after gates pass
+```
+
+One logical remediation = one PR = one verification checkpoint. This sequence may only change when a verified dependency requires it; changes must be recorded here.
 
 ## 22. Final audit conclusion
 
