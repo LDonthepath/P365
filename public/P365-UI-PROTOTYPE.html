@@ -761,11 +761,7 @@
       background: #030405;
     }
 
-    .app {
-      background:
-        linear-gradient(90deg, rgba(199,165,92,.018) 0, rgba(199,165,92,0) 26%),
-        var(--bg);
-    }
+    .app { background: var(--bg); }
 
     .sidebar {
       background: #050607;
@@ -1225,12 +1221,14 @@
       .mobile-menu { display: block; }
       .command-btn { min-width: 34px; width: 34px; justify-content: center; padding: 0; }
       .command-btn span:first-child { display: none; }
-      .example-chip { display: none; }
       .clock { min-width: 75px; }
       main { padding: 20px 11px 40px; }
       .page-head { align-items: flex-start; flex-direction: column; gap: 12px; }
       .session-meta { text-align: left; }
-      .change-row { grid-template-columns: 58px minmax(0, 1fr); }
+      .change-rank { display: none; }
+      .change-row { grid-template-columns: 62px minmax(0, 1fr); }
+      .change-time { grid-column: 1; }
+      .change-main { grid-column: 2; }
       .change-tag { display: none; }
       .secondary-grid { margin-top: 14px; }
       .context-strip { grid-template-columns: 1fr 1fr; }
