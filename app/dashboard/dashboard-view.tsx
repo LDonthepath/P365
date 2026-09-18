@@ -256,9 +256,10 @@ function MarketHeatmap({ observations, baselines }: { observations: Observation[
   const marketTiles: HeatmapTile[] = definitions.flatMap((definition) => {
     const observation = observations.find((item) => item.subject === definition.id);
     if (!observation) return [];
-    const providerChangePct = Number(observation.metadata?.changePct);
-    const hasProviderChange = Number.isFinite(providerChangePct);
-    return [{ ...definition, value: observation.value, delta: hasProviderChange ? providerChangePct : null, deltaUnit: "PERCENT" as const, changeBasis: hasProviderChange ? String(observation.metadata?.changeBasis ?? "provider_reference") : undefined }];
+    const rawChangePct = observation.metadata?.changePct;
+    const hasProviderChange = rawChangePct !== null && rawChangePct !== undefined && Number.isFinite(Number(rawChangePct));
+    const providerChangePct = hasProviderChange ? Number(rawChangePct) : null;
+    return [{ ...definition, value: observation.value, delta: providerChangePct, deltaUnit: "PERCENT" as const, changeBasis: hasProviderChange ? String(observation.metadata?.changeBasis ?? "provider_reference") : undefined }];
   });
   const macroScopes = ["MACRO_MONETARY_POLICY", "MACRO_LIQUIDITY", "MACRO_INFLATION", "MACRO_LABOR", "MACRO_RATES", "MACRO_USD", "MACRO_GROWTH"];
   const macroTiles: HeatmapTile[] = macroScopes.flatMap((scope) => {
