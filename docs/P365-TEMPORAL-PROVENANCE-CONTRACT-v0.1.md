@@ -1,3 +1,6 @@
+> **HISTORICAL CHECKPOINT — SUPERSEDED FOR CURRENT-STATE CLAIMS (18 Sep 2026)**
+> This document is retained as an audit/design record. For current implementation status and remediation priority, use `docs/P365-CURRENT-STATE-v0.1.md`, `docs/P365-ROADMAP-v0.1.md`, and `docs/P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md`. Do not treat older “current”, “missing”, or “next step” statements below as repository truth.
+
 # P365 Temporal & Provenance Contract v0.1
 
 **Status:** Phase 1A design checkpoint  
