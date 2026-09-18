@@ -5,32 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>P365 — UI Prototype</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
     :root {
-      --bg: #07090b;
-      --sidebar: #090c0f;
-      --surface: #0d1114;
-      --surface-2: #11161a;
-      --surface-3: #151b20;
-      --border: #222a30;
-      --border-strong: #303a42;
-      --text: #ece9e2;
-      --text-2: #bbc0c4;
-      --muted: #7d878f;
-      --faint: #545d65;
+      --bg: #07090a;
+      --sidebar: #090b0d;
+      --surface: #0c0f11;
+      --surface-2: #101417;
+      --surface-3: #14191d;
+      --border: #20262b;
+      --border-strong: #303840;
+      --text: #eeeae2;
+      --text-2: #c4c5c2;
+      --muted: #858c91;
+      --faint: #596168;
       --gold: #d0b15a;
-      --gold-soft: #8f7a43;
-      --green: #67b58a;
-      --red: #c97a7a;
-      --amber: #c89b61;
-      --sidebar-w: 228px;
-      --inspector-w: 332px;
-      --header-h: 58px;
+      --gold-dim: #75653b;
+      --green: #6fa688;
+      --amber: #b98b56;
+      --red: #b96e72;
+      --sidebar-w: 216px;
+      --inspector-w: 306px;
+      --header-h: 56px;
     }
 
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
     body {
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Hanken Grotesk", Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 14px;
       line-height: 1.45;
       overflow-x: hidden;
@@ -38,7 +40,8 @@
 
     button, input { font: inherit; }
     button { color: inherit; }
-    .mono { font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace; font-variant-numeric: tabular-nums; }
+    button:focus-visible, input:focus-visible { outline: 1px solid var(--gold); outline-offset: 2px; }
+    .mono { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace; font-variant-numeric: tabular-nums; }
 
     .app {
       min-height: 100vh;
@@ -48,6 +51,7 @@
       background: var(--bg);
     }
 
+    /* Shell */
     .sidebar {
       grid-row: 1 / 3;
       grid-column: 1;
@@ -66,18 +70,19 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 0 18px;
+      padding: 0 16px;
       border-bottom: 1px solid var(--border);
     }
 
     .brand-mark {
-      width: 28px;
-      height: 28px;
-      border: 1px solid var(--gold-soft);
+      width: 27px;
+      height: 27px;
+      border: 1px solid var(--gold-dim);
       display: grid;
       place-items: center;
       color: var(--gold);
-      background: #0d1012;
+      background: #0b0e10;
+      flex: 0 0 auto;
     }
 
     .brand-mark svg { width: 17px; height: 17px; display: block; }
@@ -86,7 +91,7 @@
       display: block;
       color: var(--gold);
       font-size: 13px;
-      letter-spacing: .12em;
+      letter-spacing: .1em;
       font-weight: 700;
     }
     .brand-copy span {
@@ -94,27 +99,27 @@
       margin-top: 1px;
       color: var(--faint);
       font-size: 9px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
+      letter-spacing: .035em;
     }
 
-    .nav { padding: 18px 12px; display: grid; gap: 20px; }
-    .nav-group { display: grid; gap: 4px; }
+    .nav { padding: 18px 11px; display: grid; gap: 19px; }
+    .nav-group { display: grid; gap: 3px; }
     .nav-label {
-      padding: 0 9px 7px;
+      padding: 0 10px 7px;
       color: var(--faint);
       font-size: 9px;
-      letter-spacing: .14em;
+      letter-spacing: .09em;
       text-transform: uppercase;
-      font-weight: 700;
+      font-weight: 600;
     }
 
     .nav button {
       width: 100%;
-      min-height: 34px;
-      display: flex;
+      min-height: 35px;
+      display: grid;
+      grid-template-columns: 11px minmax(0, 1fr) auto;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
       border: 0;
       border-left: 2px solid transparent;
       background: transparent;
@@ -122,22 +127,24 @@
       cursor: pointer;
       text-align: left;
       color: var(--muted);
-      transition: background .15s ease, color .15s ease, border-color .15s ease;
+      transition: background .14s ease, color .14s ease, border-color .14s ease;
     }
-    .nav button:hover { background: #0f1418; color: var(--text-2); }
-    .nav button.active { color: var(--text); background: #101519; border-left-color: var(--gold); }
-    .nav .icon {
-      width: 15px; height: 15px; border: 1px solid currentColor; opacity: .72; display: inline-grid; place-items: center; font-size: 8px;
-    }
+    .nav button:hover { background: #0e1215; color: var(--text-2); }
+    .nav button.active { color: var(--text); background: #101417; border-left-color: var(--gold); }
+    .nav button.future { color: #616970; }
+    .nav button.future:hover { color: #777f85; background: #0c0f11; }
+    .nav-dot { width: 5px; height: 5px; border: 1px solid currentColor; display: block; }
+    .nav button.active .nav-dot { background: var(--gold); border-color: var(--gold); }
+    .nav-state { color: #4f565c; font-size: 8px; }
 
     .sidebar-foot {
       margin-top: auto;
-      padding: 14px 16px 18px;
+      padding: 13px 15px 17px;
       border-top: 1px solid var(--border);
     }
-    .system-line { display: flex; justify-content: space-between; gap: 12px; color: var(--faint); font-size: 10px; }
+    .system-line { display: flex; justify-content: space-between; gap: 12px; color: var(--faint); font-size: 9px; }
     .system-line strong { color: var(--text-2); font-weight: 500; }
-    .status-dot { width: 6px; height: 6px; background: var(--green); display: inline-block; margin-right: 6px; }
+    .status-dot { width: 5px; height: 5px; background: var(--green); display: inline-block; margin-right: 6px; }
 
     .header {
       grid-column: 2;
@@ -148,44 +155,52 @@
       align-items: center;
       justify-content: space-between;
       gap: 18px;
-      padding: 0 22px;
-      background: #080b0d;
+      padding: 0 20px;
+      background: #080a0c;
       position: sticky;
       top: 0;
       z-index: 15;
     }
 
-    .breadcrumb { min-width: 0; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
-    .breadcrumb strong { color: var(--text); font-weight: 600; }
-    .slash { color: var(--faint); }
-
-    .header-actions { display: flex; align-items: center; gap: 9px; }
-    .prototype-badge {
-      color: var(--gold);
-      border: 1px solid #4b422b;
-      background: #15130e;
-      padding: 5px 8px;
-      font-size: 9px;
-      letter-spacing: .1em;
-      text-transform: uppercase;
+    .header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .mobile-menu {
+      display: none;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
     }
-    .clock { color: var(--muted); font-size: 10px; min-width: 82px; text-align: right; }
+    .breadcrumb { min-width: 0; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+    .breadcrumb strong { color: var(--text); font-weight: 600; }
+    .slash { color: #434a50; }
 
-    .command-btn {
-      min-width: 190px;
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .clock { color: var(--muted); font-size: 9px; min-width: 82px; text-align: right; }
+    .example-chip {
+      color: #8d846a;
+      border: 1px solid #3d3828;
+      padding: 4px 7px;
+      font-size: 8px;
+      letter-spacing: .04em;
+    }
+
+    .command-btn, .inspector-toggle {
       height: 30px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
-      background: #0c1013;
+      gap: 12px;
+      background: #0b0e10;
       color: var(--muted);
       border: 1px solid var(--border);
       padding: 0 9px;
       cursor: pointer;
     }
-    .command-btn:hover { border-color: var(--border-strong); color: var(--text-2); }
-    .key { color: var(--faint); font-size: 9px; }
+    .command-btn { min-width: 184px; }
+    .command-btn:hover, .inspector-toggle:hover { border-color: var(--border-strong); color: var(--text-2); }
+    .key { color: var(--faint); font-size: 8px; }
 
     .workspace {
       grid-column: 2;
@@ -194,55 +209,77 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr) var(--inspector-w);
       min-height: calc(100vh - var(--header-h));
+      transition: grid-template-columns .18s ease;
+    }
+    .workspace.inspector-closed { grid-template-columns: minmax(0, 1fr) 0; }
+
+    main {
+      min-width: 0;
+      padding: 26px 28px 56px;
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
     }
 
-    main { min-width: 0; padding: 28px 30px 60px; }
     .inspector {
       border-left: 1px solid var(--border);
-      background: #090c0f;
-      padding: 22px 18px 36px;
+      background: #090b0d;
+      padding: 21px 17px 34px;
       min-width: 0;
+      overflow: hidden;
+      transition: opacity .14s ease, padding .18s ease;
+    }
+    .workspace.inspector-closed .inspector {
+      opacity: 0;
+      padding-left: 0;
+      padding-right: 0;
+      border-left-color: transparent;
+      pointer-events: none;
     }
 
+    /* Page hierarchy */
     .page-head {
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
       gap: 24px;
-      padding-bottom: 22px;
+      padding-bottom: 19px;
       border-bottom: 1px solid var(--border);
     }
     .eyebrow {
       color: var(--gold);
       font-size: 9px;
-      letter-spacing: .15em;
+      letter-spacing: .09em;
       text-transform: uppercase;
-      font-weight: 700;
+      font-weight: 600;
     }
     h1 {
-      font-size: clamp(30px, 4vw, 46px);
+      font-size: clamp(31px, 3.4vw, 41px);
       line-height: 1;
-      letter-spacing: -.05em;
-      margin: 8px 0 8px;
-      font-weight: 620;
+      letter-spacing: -.045em;
+      margin: 7px 0 7px;
+      font-weight: 600;
     }
-    .page-head p { margin: 0; color: var(--muted); max-width: 650px; font-size: 12px; }
-    .session-meta { text-align: right; color: var(--faint); font-size: 9px; line-height: 1.75; white-space: nowrap; }
+    .page-head p { margin: 0; color: var(--muted); max-width: 660px; font-size: 12px; }
+    .session-meta { text-align: right; color: var(--faint); font-size: 9px; line-height: 1.65; white-space: nowrap; }
+    .session-meta strong { color: var(--text-2); font-weight: 500; }
 
-    .section { margin-top: 26px; }
+    .section { margin-top: 24px; }
     .section-head {
       display: flex;
       align-items: end;
       justify-content: space-between;
       gap: 16px;
-      margin-bottom: 10px;
+      margin-bottom: 9px;
     }
-    .section-head h2 { margin: 0; font-size: 15px; font-weight: 640; letter-spacing: -.02em; }
-    .section-head span { color: var(--faint); font-size: 9px; }
+    .section-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.015em; }
+    .section-head span { color: var(--faint); font-size: 8px; }
 
+    /* Important changes */
     .important-list {
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
+      background: #090c0e;
     }
 
     .change-row {
@@ -253,33 +290,55 @@
       text-align: left;
       padding: 0;
       display: grid;
-      grid-template-columns: 86px minmax(0, 1fr) 110px;
-      gap: 18px;
+      grid-template-columns: 72px minmax(0, 1fr) 102px;
+      gap: 15px;
       cursor: pointer;
-      transition: background .15s ease;
+      transition: background .14s ease;
     }
     .change-row:last-child { border-bottom: 0; }
-    .change-row:hover { background: #0c1013; }
-    .change-row.selected { background: #101418; box-shadow: inset 2px 0 0 var(--gold); }
+    .change-row:hover { background: #0d1113; }
+    .change-row.selected {
+      background: var(--surface-2);
+      box-shadow: inset 2px 0 0 var(--gold);
+    }
 
-    .change-time { padding: 15px 0 15px 14px; color: var(--faint); font-size: 10px; }
-    .change-main { padding: 13px 0 14px; min-width: 0; }
-    .change-main strong { display: block; color: var(--text); font-size: 13px; font-weight: 600; line-height: 1.35; }
-    .change-main p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; max-width: 760px; }
-    .change-tag { padding: 15px 14px 15px 0; color: var(--faint); font-size: 9px; text-align: right; }
+    .change-time { padding: 12px 0 12px 12px; color: var(--faint); font-size: 9px; }
+    .change-main { padding: 10px 0 11px; min-width: 0; }
+    .change-main strong {
+      display: block;
+      color: var(--text-2);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.38;
+      transition: color .14s ease, font-size .14s ease;
+    }
+    .change-summary {
+      display: none;
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      max-width: 780px;
+    }
+    .change-row.selected .change-main { padding-top: 14px; padding-bottom: 15px; }
+    .change-row.selected .change-main strong { color: var(--text); font-size: 15px; line-height: 1.36; }
+    .change-row.selected .change-summary { display: block; }
+    .change-row.selected .change-time { padding-top: 16px; color: #8f8467; }
+    .change-tag { padding: 12px 12px 12px 0; color: var(--faint); font-size: 8px; text-align: right; }
     .change-tag span {
       display: inline-block;
       border: 1px solid var(--border);
       padding: 4px 6px;
-      color: var(--text-2);
-      background: #0b0f12;
+      color: var(--muted);
+      background: #0a0d0f;
     }
+    .change-row.selected .change-tag span { color: #bbaa7b; border-color: #4a402a; }
 
     .secondary-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.12fr) minmax(290px, .88fr);
-      gap: 18px;
-      margin-top: 24px;
+      grid-template-columns: minmax(0, 1.15fr) minmax(290px, .85fr);
+      gap: 14px;
+      margin-top: 20px;
     }
 
     .panel {
@@ -287,87 +346,112 @@
       background: var(--surface);
       min-width: 0;
     }
-    .panel-head { min-height: 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 13px; }
-    .panel-head strong { font-size: 11px; font-weight: 620; letter-spacing: .01em; }
-    .panel-head span { color: var(--faint); font-size: 9px; }
-    .panel-body { padding: 14px 14px 15px; }
+    .panel-head {
+      min-height: 38px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 12px;
+    }
+    .panel-head strong { font-size: 11px; font-weight: 600; }
+    .panel-head span { color: var(--faint); font-size: 8px; }
+    .panel-body { padding: 13px 13px 14px; }
 
     .matter-lead {
       margin: 0;
-      font-size: 17px;
+      font-size: 16px;
       line-height: 1.48;
-      letter-spacing: -.025em;
+      letter-spacing: -.02em;
       color: var(--text);
       max-width: 720px;
     }
-    .matter-note { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .matter-note { margin: 10px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 
     .monitor-list { display: grid; }
     .monitor-row {
       display: grid;
-      grid-template-columns: 92px minmax(0, 1fr);
-      gap: 12px;
-      padding: 10px 0;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 11px;
+      padding: 9px 0;
       border-bottom: 1px solid var(--border);
     }
     .monitor-row:last-child { border-bottom: 0; }
-    .monitor-row strong { color: var(--text-2); font-size: 10px; font-weight: 600; }
-    .monitor-row span { color: var(--muted); font-size: 11px; }
+    .monitor-row strong { color: var(--text-2); font-size: 9px; font-weight: 600; }
+    .monitor-row span { color: var(--muted); font-size: 10px; }
 
+    /* Context */
     .context-strip {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       border: 1px solid var(--border);
       background: var(--surface);
     }
-    .context-cell { min-width: 0; padding: 12px 13px; border-right: 1px solid var(--border); }
+    .context-cell { min-width: 0; padding: 11px 12px; border-right: 1px solid var(--border); }
     .context-cell:last-child { border-right: 0; }
-    .context-cell span { display: block; color: var(--faint); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
-    .context-cell strong { display: block; margin-top: 6px; font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
-    .context-cell small { display: block; color: var(--muted); font-size: 9px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .context-cell span { display: block; color: var(--faint); font-size: 8px; letter-spacing: .06em; }
+    .context-cell strong { display: block; margin-top: 5px; font-size: 14px; font-weight: 600; letter-spacing: -.015em; }
+    .context-cell small { display: block; color: var(--muted); font-size: 8px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    .calendar {
-      border-top: 1px solid var(--border);
-    }
+    /* Calendar */
+    .calendar { border-top: 1px solid var(--border); }
     .event-row {
       display: grid;
-      grid-template-columns: 72px 52px minmax(0, 1fr) 74px 74px 74px;
+      grid-template-columns: 68px 66px minmax(0, 1fr) 72px 72px 72px;
       gap: 10px;
       align-items: center;
-      min-height: 44px;
+      min-height: 42px;
       border-bottom: 1px solid var(--border);
       font-size: 10px;
     }
+    .event-row.next { box-shadow: inset 2px 0 0 var(--gold-dim); background: #0b0f11; }
     .event-row > * { min-width: 0; }
     .event-time { color: var(--text-2); }
     .event-ccy { color: var(--faint); }
     .event-name { color: var(--text); font-size: 11px; }
     .event-val { color: var(--muted); text-align: right; }
-    .event-head { color: var(--faint); text-transform: uppercase; letter-spacing: .08em; font-size: 8px; min-height: 30px; }
+    .event-head { color: var(--faint); letter-spacing: .04em; font-size: 8px; min-height: 29px; }
 
-    .inspector-label { color: var(--faint); font-size: 8px; letter-spacing: .14em; text-transform: uppercase; }
-    .inspector h2 { margin: 9px 0 7px; font-size: 18px; line-height: 1.3; letter-spacing: -.03em; }
-    .inspector-intro { color: var(--muted); margin: 0; font-size: 11px; line-height: 1.55; }
+    /* Inspector */
+    .inspector-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .inspector-label { color: var(--faint); font-size: 8px; letter-spacing: .09em; text-transform: uppercase; }
+    .inspector-close {
+      width: 26px;
+      height: 26px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--faint);
+      cursor: pointer;
+    }
+    .inspector-close:hover { color: var(--text-2); border-color: var(--border-strong); }
+    .inspector h2 { margin: 10px 0 7px; font-size: 17px; line-height: 1.3; letter-spacing: -.025em; }
+    .inspector-intro { color: var(--muted); margin: 0; font-size: 10px; line-height: 1.55; }
 
-    .inspect-block { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 14px; }
-    .inspect-block h3 { color: var(--text-2); margin: 0 0 10px; font-size: 10px; font-weight: 620; letter-spacing: .05em; text-transform: uppercase; }
-    .fact-grid { display: grid; gap: 9px; }
-    .fact-row { display: flex; justify-content: space-between; gap: 16px; font-size: 10px; }
+    .inspect-block { border-top: 1px solid var(--border); margin-top: 17px; padding-top: 13px; }
+    .inspect-block h3 { color: var(--text-2); margin: 0 0 9px; font-size: 9px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    .fact-grid { display: grid; gap: 8px; }
+    .fact-row { display: flex; justify-content: space-between; gap: 15px; font-size: 9px; }
     .fact-row span { color: var(--faint); }
     .fact-row strong { color: var(--text-2); font-weight: 500; text-align: right; }
 
-    .evidence-list { display: grid; gap: 8px; }
+    .evidence-list { display: grid; gap: 6px; }
     .evidence-item {
       width: 100%;
       text-align: left;
       border: 1px solid var(--border);
-      background: #0c1013;
-      padding: 10px;
+      background: #0b0e10;
+      padding: 9px;
       cursor: pointer;
     }
-    .evidence-item:hover { border-color: var(--border-strong); }
+    .evidence-item:hover { border-color: var(--border-strong); background: #0d1114; }
     .evidence-item strong { display: block; font-size: 10px; font-weight: 600; color: var(--text-2); }
-    .evidence-item span { display: block; margin-top: 4px; color: var(--faint); font-size: 9px; }
+    .evidence-item span { display: block; margin-top: 3px; color: var(--faint); font-size: 8px; }
 
     .disclosure {
       width: 100%;
@@ -378,24 +462,25 @@
       display: flex;
       justify-content: space-between;
       cursor: pointer;
-      margin-top: 10px;
-      font-size: 10px;
+      margin-top: 8px;
+      font-size: 9px;
     }
     .disclosure:hover { color: var(--text-2); border-color: var(--border-strong); }
-    .details { display: none; margin-top: 10px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .details { display: none; margin-top: 9px; color: var(--muted); font-size: 9px; line-height: 1.55; }
     .details.open { display: block; }
 
+    /* Command palette + feedback */
     .command-palette {
       position: fixed;
       inset: 0;
       z-index: 100;
       display: none;
       place-items: start center;
-      padding-top: 14vh;
-      background: rgba(0,0,0,.62);
+      padding-top: 13vh;
+      background: rgba(0,0,0,.66);
     }
     .command-palette.open { display: grid; }
-    .command-box { width: min(620px, calc(100vw - 28px)); border: 1px solid var(--border-strong); background: #0c1013; }
+    .command-box { width: min(610px, calc(100vw - 28px)); border: 1px solid var(--border-strong); background: #0b0e10; }
     .command-box input {
       width: 100%;
       height: 44px;
@@ -406,59 +491,97 @@
       outline: none;
       padding: 0 13px;
     }
-    .command-results { padding: 8px; }
-    .command-result { padding: 10px 8px; border: 1px solid transparent; color: var(--muted); font-size: 11px; }
-    .command-result.active { border-color: var(--border); background: var(--surface-2); color: var(--text-2); }
+    .command-results { padding: 7px; }
+    .command-result { padding: 9px 8px; border: 1px solid transparent; color: var(--muted); font-size: 10px; }
+    .command-result.active, .command-result:hover { border-color: var(--border); background: var(--surface-2); color: var(--text-2); }
+    .command-result.hidden { display: none; }
+
+    .toast {
+      position: fixed;
+      left: calc(var(--sidebar-w) + 18px);
+      bottom: 18px;
+      z-index: 90;
+      border: 1px solid var(--border-strong);
+      background: #0d1114;
+      color: var(--text-2);
+      padding: 9px 11px;
+      font-size: 10px;
+      opacity: 0;
+      transform: translateY(6px);
+      pointer-events: none;
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
 
     .footer-note {
-      margin-top: 24px;
+      margin-top: 22px;
       color: var(--faint);
-      font-size: 9px;
+      font-size: 8px;
       border-top: 1px solid var(--border);
-      padding-top: 12px;
+      padding-top: 11px;
     }
 
     @media (max-width: 1180px) {
-      :root { --inspector-w: 290px; }
+      :root { --inspector-w: 286px; }
       .context-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .context-cell:nth-child(3) { border-right: 0; }
       .context-cell:nth-child(n+4) { border-top: 1px solid var(--border); }
-      .event-row { grid-template-columns: 66px 44px minmax(0, 1fr) 64px 64px 64px; }
+      .event-row { grid-template-columns: 62px 58px minmax(0, 1fr) 62px 62px 62px; }
     }
 
     @media (max-width: 980px) {
-      :root { --sidebar-w: 194px; }
-      .workspace { grid-template-columns: minmax(0, 1fr); }
-      .inspector { border-left: 0; border-top: 1px solid var(--border); }
+      :root { --sidebar-w: 190px; }
+      .workspace, .workspace.inspector-closed { grid-template-columns: minmax(0, 1fr); }
+      .inspector { display: none; }
       .secondary-grid { grid-template-columns: 1fr; }
-      .command-btn { min-width: 140px; }
+      .command-btn { min-width: 144px; }
+      .inspector-toggle { display: none; }
     }
 
     @media (max-width: 760px) {
       .app { grid-template-columns: 1fr; }
-      .sidebar { display: none; }
+      .sidebar {
+        display: flex;
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: min(270px, 84vw);
+        transform: translateX(-102%);
+        transition: transform .18s ease;
+        box-shadow: 10px 0 28px rgba(0,0,0,.35);
+      }
+      .app.mobile-nav-open .sidebar { transform: translateX(0); }
       .header, .workspace { grid-column: 1; }
-      .header { padding: 0 12px; }
-      .command-btn { min-width: 38px; width: 38px; justify-content: center; }
+      .header { padding: 0 11px; }
+      .header-left { gap: 8px; }
+      .mobile-menu { display: block; }
+      .command-btn { min-width: 34px; width: 34px; justify-content: center; padding: 0; }
       .command-btn span:first-child { display: none; }
-      .prototype-badge { display: none; }
-      main { padding: 20px 12px 42px; }
-      .page-head { align-items: flex-start; flex-direction: column; }
+      .example-chip { display: none; }
+      .clock { min-width: 75px; }
+      main { padding: 20px 11px 40px; }
+      .page-head { align-items: flex-start; flex-direction: column; gap: 12px; }
       .session-meta { text-align: left; }
-      .change-row { grid-template-columns: 62px minmax(0, 1fr); }
+      .change-row { grid-template-columns: 58px minmax(0, 1fr); }
       .change-tag { display: none; }
+      .secondary-grid { margin-top: 14px; }
       .context-strip { grid-template-columns: 1fr 1fr; }
       .context-cell { border-right: 1px solid var(--border) !important; border-top: 1px solid var(--border); }
       .context-cell:nth-child(1), .context-cell:nth-child(2) { border-top: 0; }
       .context-cell:nth-child(even) { border-right: 0 !important; }
       .calendar { overflow-x: auto; }
-      .event-row { min-width: 680px; }
+      .event-row { min-width: 670px; }
+      .toast { left: 11px; right: 11px; bottom: 11px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
+  <div class="app" id="app">
+    <aside class="sidebar" aria-label="Navigasi P365">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
@@ -469,117 +592,126 @@
         </div>
         <div class="brand-copy">
           <strong>P365</strong>
-          <span>Market Intelligence</span>
+          <span>Market Intelligence System</span>
         </div>
       </div>
 
       <nav class="nav" aria-label="Navigasi utama">
         <div class="nav-group">
-          <div class="nav-label">Workspace</div>
-          <button class="active" data-view="hari-ini"><span class="icon">•</span>Hari Ini</button>
-          <button data-view="regime"><span class="icon">R</span>Regime</button>
-          <button data-view="likuiditas"><span class="icon">L</span>Likuiditas</button>
-          <button data-view="risiko"><span class="icon">K</span>Risiko</button>
+          <div class="nav-label">Ruang kerja</div>
+          <button class="active" data-view="hari-ini"><span class="nav-dot"></span><span>Hari Ini</span><span></span></button>
+          <button class="future" data-view="regime"><span class="nav-dot"></span><span>Rezim Pasar</span><span class="nav-state">nanti</span></button>
+          <button class="future" data-view="likuiditas"><span class="nav-dot"></span><span>Likuiditas</span><span class="nav-state">nanti</span></button>
+          <button class="future" data-view="risiko"><span class="nav-dot"></span><span>Risiko</span><span class="nav-state">nanti</span></button>
         </div>
+
         <div class="nav-group">
           <div class="nav-label">Riset</div>
-          <button data-view="catatan"><span class="icon">N</span>Catatan</button>
-          <button data-view="snapshot"><span class="icon">S</span>Snapshot</button>
+          <button class="future" data-view="catatan"><span class="nav-dot"></span><span>Catatan</span><span class="nav-state">nanti</span></button>
+          <button class="future" data-view="snapshot"><span class="nav-dot"></span><span>Snapshot</span><span class="nav-state">nanti</span></button>
         </div>
+
         <div class="nav-group">
           <div class="nav-label">Sistem</div>
-          <button data-view="kesehatan"><span class="icon">H</span>Kesehatan</button>
-          <button data-view="pengaturan"><span class="icon">⚙</span>Pengaturan</button>
+          <button class="future" data-view="kesehatan"><span class="nav-dot"></span><span>Kesehatan</span><span class="nav-state">nanti</span></button>
+          <button class="future" data-view="pengaturan"><span class="nav-dot"></span><span>Pengaturan</span><span class="nav-state">nanti</span></button>
         </div>
       </nav>
 
       <div class="sidebar-foot">
-        <div class="system-line"><span><i class="status-dot"></i>Pipeline</span><strong>ONLINE</strong></div>
-        <div class="system-line" style="margin-top:7px"><span>Mode</span><strong>PROTOTIPE</strong></div>
+        <div class="system-line"><span><i class="status-dot"></i>Data foundation</span><strong>AKTIF</strong></div>
+        <div class="system-line" style="margin-top:7px"><span>Layer reasoning</span><strong>DITUNDA</strong></div>
       </div>
     </aside>
 
     <header class="header">
-      <div class="breadcrumb"><span>P365</span><span class="slash">/</span><strong>Hari Ini</strong></div>
+      <div class="header-left">
+        <button class="mobile-menu" id="mobileMenu" aria-label="Buka navigasi">☰</button>
+        <div class="breadcrumb"><span>P365</span><span class="slash">/</span><strong>Hari Ini</strong></div>
+      </div>
+
       <div class="header-actions">
-        <button class="command-btn" id="commandOpen"><span>Cari atau buka perintah</span><span class="key mono">⌘ K</span></button>
-        <span class="prototype-badge">Design branch</span>
+        <button class="command-btn" id="commandOpen"><span>Cari atau buka</span><span class="key mono">⌘ K</span></button>
+        <button class="inspector-toggle" id="inspectorToggle">Bukti</button>
+        <span class="example-chip">contoh data</span>
         <span class="clock mono" id="utcClock">00:00:00 UTC</span>
       </div>
     </header>
 
-    <div class="workspace">
+    <div class="workspace" id="workspace">
       <main>
         <div class="page-head">
           <div>
-            <div class="eyebrow">Market understanding workspace</div>
+            <div class="eyebrow">Ringkasan pasar</div>
             <h1>Hari Ini</h1>
-            <p>Ringkasan perubahan penting, konteks yang perlu dipahami, dan hal yang perlu dimonitor—tanpa memberi instruksi trading.</p>
+            <p>Mulai dari perubahan yang paling relevan, pahami konteksnya, lalu tentukan apa yang perlu dimonitor. Keputusan trading tetap milik pengguna.</p>
           </div>
-          <div class="session-meta mono">
-            DATA PROTOTIPE<br/>
-            BASELINE UI: CURRENT MAIN<br/>
-            DESKTOP 1440
+          <div class="session-meta">
+            <span id="localDate">—</span><br/>
+            <strong id="localSession">WIB</strong>
           </div>
         </div>
 
         <section class="section" aria-labelledby="important-title">
           <div class="section-head">
             <h2 id="important-title">Perubahan Penting</h2>
-            <span class="mono">4 ITEM · DIPILIH BERDASARKAN RELEVANSI</span>
+            <span class="mono">PILIH ITEM UNTUK MEMBUKA KONTEKS</span>
           </div>
 
           <div class="important-list" id="importantList">
             <button class="change-row selected" data-id="rates">
-              <div class="change-time mono">08:30 UTC</div>
+              <div class="change-time mono">15:30 WIB</div>
               <div class="change-main">
-                <strong>Yield AS bergerak lebih tinggi sementara dolar menguat terhadap baseline terdekat.</strong>
-                <p>Perubahan terlihat bersamaan pada US 2Y, US 10Y, dan DXY. Belum ada inferensi arah aset berisiko pada layer ini.</p>
+                <strong>Yield AS bergerak lebih tinggi sementara dolar menguat terhadap referensi terdekat.</strong>
+                <p class="change-summary">Perubahan terlihat bersamaan pada US 2Y, US 10Y, dan DXY. Ketiganya tetap diperlakukan sebagai observasi terpisah; belum ada inferensi arah aset berisiko.</p>
               </div>
-              <div class="change-tag"><span>RATES · USD</span></div>
+              <div class="change-tag"><span>Rates · USD</span></div>
             </button>
+
             <button class="change-row" data-id="liquidity">
-              <div class="change-time mono">07:00 UTC</div>
+              <div class="change-time mono">14:00 WIB</div>
               <div class="change-main">
-                <strong>Komponen likuiditas dolar menunjukkan perubahan dibanding pembacaan sebelumnya.</strong>
-                <p>Fokus pada perubahan TGA, reserve balances, dan ON RRP sebagai fakta terpisah sebelum menarik kesimpulan lebih lanjut.</p>
+                <strong>Beberapa komponen likuiditas dolar berubah dibanding pembacaan sebelumnya.</strong>
+                <p class="change-summary">TGA, reserve balances, dan ON RRP dibaca satu per satu. Prototype tidak menghasilkan liquidity score atau regime label.</p>
               </div>
-              <div class="change-tag"><span>LIQUIDITY</span></div>
+              <div class="change-tag"><span>Likuiditas</span></div>
             </button>
+
             <button class="change-row" data-id="crypto">
-              <div class="change-time mono">06:45 UTC</div>
+              <div class="change-time mono">13:45 WIB</div>
               <div class="change-main">
-                <strong>BTC dan ETH bergerak, sementara dominance tetap perlu dibaca sebagai metrik terpisah.</strong>
-                <p>Perubahan harga, market cap, volume, dan dominance tidak digabung menjadi sinyal tunggal.</p>
+                <strong>BTC dan ETH bergerak; price, market cap, volume, dan dominance tetap dipisahkan.</strong>
+                <p class="change-summary">Perubahan pada metric CoinGecko tidak dilebur menjadi satu sinyal. Setiap series tetap memiliki identity dan evidence sendiri.</p>
               </div>
-              <div class="change-tag"><span>CRYPTO</span></div>
+              <div class="change-tag"><span>Crypto</span></div>
             </button>
+
             <button class="change-row" data-id="event">
-              <div class="change-time mono">14:00 UTC</div>
+              <div class="change-time mono">21:00 WIB</div>
               <div class="change-main">
-                <strong>Rilis ekonomi terjadwal menjadi anchor utama untuk sesi berikutnya.</strong>
-                <p>Expectation dan actual hanya dibandingkan jika data release yang terverifikasi tersedia; prototipe tidak memalsukan surprise.</p>
+                <strong>Rilis ekonomi terjadwal menjadi anchor utama untuk bagian sesi berikutnya.</strong>
+                <p class="change-summary">Actual vs expectation hanya sah setelah release terverifikasi dan temporal semantics memadai. Prototype tidak memalsukan surprise.</p>
               </div>
-              <div class="change-tag"><span>EVENT</span></div>
+              <div class="change-tag"><span>Event</span></div>
             </button>
           </div>
         </section>
 
         <div class="secondary-grid">
           <section class="panel">
-            <div class="panel-head"><strong>Apa yang Penting</strong><span class="mono">KONTEKS · BUKAN REKOMENDASI</span></div>
+            <div class="panel-head"><strong>Apa yang Penting</strong><span class="mono">KONTEKS</span></div>
             <div class="panel-body">
-              <p class="matter-lead">Perubahan lintas rates dan USD layak menjadi konteks utama sebelum membaca pergerakan aset lain secara terpisah.</p>
-              <p class="matter-note">Tujuan panel ini adalah memperkecil beban analisis: menampilkan hubungan yang perlu diperiksa, bukan menghasilkan keputusan atau label bullish/bearish.</p>
+              <p class="matter-lead" id="matterLead">Rates dan USD sedang berubah pada waktu yang berdekatan. Baca keduanya bersama sebelum menilai pergerakan aset lain.</p>
+              <p class="matter-note" id="matterNote">Ini adalah contoh presentasi reasoning untuk desain. Sistem produksi saat ini belum mengklaim cross-asset transmission atau market briefing.</p>
             </div>
           </section>
 
           <section class="panel">
-            <div class="panel-head"><strong>Monitor</strong><span class="mono">SESI BERJALAN</span></div>
-            <div class="panel-body monitor-list">
+            <div class="panel-head"><strong>Monitor</strong><span class="mono">BERIKUTNYA</span></div>
+            <div class="panel-body monitor-list" id="monitorList">
               <div class="monitor-row"><strong>US 2Y / 10Y</strong><span>Apakah perubahan yield bertahan setelah data berikutnya.</span></div>
-              <div class="monitor-row"><strong>DXY</strong><span>Konfirmasi atau kontradiksi terhadap perubahan rates.</span></div>
-              <div class="monitor-row"><strong>EVENT</strong><span>Actual vs forecast hanya setelah release terverifikasi.</span></div>
+              <div class="monitor-row"><strong>DXY</strong><span>Apakah dolar mengonfirmasi atau bertentangan dengan perubahan rates.</span></div>
+              <div class="monitor-row"><strong>Event</strong><span>Tunggu actual terverifikasi sebelum membandingkan dengan forecast.</span></div>
             </div>
           </section>
         </div>
@@ -587,62 +719,92 @@
         <section class="section" aria-labelledby="context-title">
           <div class="section-head">
             <h2 id="context-title">Konteks Pasar</h2>
-            <span class="mono">OBSERVASI RINGKAS · FAKTUAL</span>
+            <span class="mono">OBSERVASI RINGKAS</span>
           </div>
+
           <div class="context-strip">
-            <div class="context-cell"><span>US 10Y</span><strong class="mono">4.21%</strong><small>FRED · pembacaan terbaru</small></div>
-            <div class="context-cell"><span>DXY</span><strong class="mono">103.42</strong><small>Yahoo · indeks terpisah</small></div>
-            <div class="context-cell"><span>Gold</span><strong class="mono">$2,614</strong><small>COMEX front-month</small></div>
+            <div class="context-cell"><span>US 2Y</span><strong class="mono">4.03%</strong><small>FRED · DGS2</small></div>
+            <div class="context-cell"><span>US 10Y</span><strong class="mono">4.21%</strong><small>FRED · DGS10</small></div>
+            <div class="context-cell"><span>DXY</span><strong class="mono">103.42</strong><small>Yahoo · DX-Y.NYB</small></div>
+            <div class="context-cell"><span>Gold</span><strong class="mono">$2,614</strong><small>Yahoo · GC=F</small></div>
             <div class="context-cell"><span>BTC</span><strong class="mono">$62,840</strong><small>CoinGecko · spot USD</small></div>
-            <div class="context-cell"><span>Liquidity</span><strong>Campuran</strong><small>komponen tidak digabung</small></div>
           </div>
         </section>
 
         <section class="section" aria-labelledby="calendar-title">
           <div class="section-head">
             <h2 id="calendar-title">Kalender Ekonomi</h2>
-            <span class="mono">UPCOMING · COMPACT VIEW</span>
+            <span class="mono">EVENT TERDEKAT</span>
           </div>
+
           <div class="calendar">
-            <div class="event-row event-head mono"><div>Waktu</div><div>CCY</div><div>Event</div><div>Actual</div><div>Forecast</div><div>Previous</div></div>
-            <div class="event-row"><div class="event-time mono">12:30</div><div class="event-ccy mono">USD</div><div class="event-name">Initial Jobless Claims</div><div class="event-val mono">—</div><div class="event-val mono">232K</div><div class="event-val mono">230K</div></div>
-            <div class="event-row"><div class="event-time mono">14:00</div><div class="event-ccy mono">USD</div><div class="event-name">Existing Home Sales</div><div class="event-val mono">—</div><div class="event-val mono">3.90M</div><div class="event-val mono">3.95M</div></div>
-            <div class="event-row"><div class="event-time mono">18:00</div><div class="event-ccy mono">USD</div><div class="event-name">Fed Speaker / Scheduled Event</div><div class="event-val mono">—</div><div class="event-val mono">—</div><div class="event-val mono">—</div></div>
+            <div class="event-row event-head mono">
+              <div>Waktu</div><div>Mata uang</div><div>Event</div><div>Aktual</div><div>Konsensus</div><div>Sebelumnya</div>
+            </div>
+            <div class="event-row next">
+              <div class="event-time mono">19:30</div>
+              <div class="event-ccy mono">USD</div>
+              <div class="event-name">Initial Jobless Claims</div>
+              <div class="event-val mono">—</div>
+              <div class="event-val mono">232K</div>
+              <div class="event-val mono">230K</div>
+            </div>
+            <div class="event-row">
+              <div class="event-time mono">21:00</div>
+              <div class="event-ccy mono">USD</div>
+              <div class="event-name">Existing Home Sales</div>
+              <div class="event-val mono">—</div>
+              <div class="event-val mono">3.90M</div>
+              <div class="event-val mono">3.95M</div>
+            </div>
+            <div class="event-row">
+              <div class="event-time mono">01:00</div>
+              <div class="event-ccy mono">USD</div>
+              <div class="event-name">Fed Speaker / Scheduled Event</div>
+              <div class="event-val mono">—</div>
+              <div class="event-val mono">—</div>
+              <div class="event-val mono">—</div>
+            </div>
           </div>
         </section>
 
-        <div class="footer-note mono">DESIGN PROTOTYPE ONLY · STATIC EXAMPLE DATA · NO PRODUCTION CAPABILITY CLAIM</div>
+        <div class="footer-note mono">PROTOTYPE DESAIN · NILAI HANYA CONTOH · TIDAK MENGKLAIM CAPABILITY PRODUKSI</div>
       </main>
 
-      <aside class="inspector" aria-label="Evidence inspector">
-        <div class="inspector-label">Evidence Inspector</div>
-        <h2 id="inspectTitle">Rates & USD bergerak bersamaan</h2>
-        <p class="inspector-intro" id="inspectIntro">Detail evidence untuk item yang dipilih. Inspector tetap ringkas dan hanya membuka metadata jika dibutuhkan.</p>
+      <aside class="inspector" aria-label="Bukti pendukung">
+        <div class="inspector-top">
+          <div class="inspector-label">Bukti pendukung</div>
+          <button class="inspector-close" id="inspectorClose" aria-label="Tutup panel bukti">×</button>
+        </div>
+
+        <h2 id="inspectTitle">Rates & USD bergerak berdekatan</h2>
+        <p class="inspector-intro" id="inspectIntro">Evidence untuk item terpilih ditampilkan secara ringkas. Metadata teknis tetap berada satu level lebih dalam.</p>
 
         <div class="inspect-block">
-          <h3>Ringkasan faktual</h3>
+          <h3>Ringkasan data</h3>
           <div class="fact-grid" id="factGrid">
             <div class="fact-row"><span>Scope</span><strong>RATES · USD</strong></div>
-            <div class="fact-row"><span>Status</span><strong>OBSERVED</strong></div>
-            <div class="fact-row"><span>Baseline</span><strong>AVAILABLE</strong></div>
-            <div class="fact-row"><span>Confidence</span><strong>DATA ONLY</strong></div>
+            <div class="fact-row"><span>Status</span><strong>TERAMATI</strong></div>
+            <div class="fact-row"><span>Referensi</span><strong>TERSEDIA</strong></div>
+            <div class="fact-row"><span>Inferensi</span><strong>TIDAK ADA</strong></div>
           </div>
         </div>
 
         <div class="inspect-block">
-          <h3>Evidence</h3>
+          <h3>Sumber</h3>
           <div class="evidence-list" id="evidenceList">
             <button class="evidence-item"><strong>US 10Y Treasury</strong><span>FRED · DGS10 · canonical observation</span></button>
             <button class="evidence-item"><strong>US 2Y Treasury</strong><span>FRED · DGS2 · canonical observation</span></button>
-            <button class="evidence-item"><strong>DXY</strong><span>Yahoo Finance · DX-Y.NYB · separate instrument</span></button>
+            <button class="evidence-item"><strong>DXY</strong><span>Yahoo Finance · DX-Y.NYB · instrumen terpisah</span></button>
           </div>
+
           <button class="disclosure" id="detailToggle"><span>Lihat metadata</span><span>＋</span></button>
-          <div class="details" id="detailsBox">ObservedAt, retrievedAt, source identity, dan canonical series identity akan ditampilkan di layer detail. captured_at tidak digunakan sebagai pengganti retrievedAt.</div>
+          <div class="details" id="detailsBox">ObservedAt, retrievedAt, source identity, dan canonical series identity berada di detail teknis. captured_at tidak menggantikan retrievedAt.</div>
         </div>
 
         <div class="inspect-block">
-          <h3>Monitor berikutnya</h3>
-          <p class="inspector-intro" id="inspectMonitor">Periksa apakah rates dan USD tetap bergerak searah setelah rilis data berikutnya. Tidak ada instruksi posisi.</p>
+          <h3>Monitor selanjutnya</h3>
+          <p class="inspector-intro" id="inspectMonitor">Periksa apakah rates dan USD tetap bergerak berdekatan setelah rilis data berikutnya. Tidak ada instruksi posisi.</p>
         </div>
       </aside>
     </div>
@@ -650,54 +812,80 @@
 
   <div class="command-palette" id="commandPalette" aria-hidden="true">
     <div class="command-box">
-      <input id="commandInput" type="text" placeholder="Cari halaman, metrik, atau evidence…" autocomplete="off" />
-      <div class="command-results">
-        <div class="command-result active">Buka Hari Ini</div>
-        <div class="command-result">Cari DGS10 / US 10Y</div>
-        <div class="command-result">Buka Kalender Ekonomi</div>
-        <div class="command-result">Buka Kesehatan Data</div>
+      <input id="commandInput" type="text" placeholder="Cari halaman, metrik, atau bukti…" autocomplete="off" />
+      <div class="command-results" id="commandResults">
+        <div class="command-result active" data-search="hari ini ringkasan">Buka Hari Ini</div>
+        <div class="command-result" data-search="dgs10 us 10y treasury rates">Cari DGS10 / US 10Y</div>
+        <div class="command-result" data-search="kalender ekonomi event">Buka Kalender Ekonomi</div>
+        <div class="command-result" data-search="kesehatan data provider">Buka Kesehatan Data</div>
       </div>
     </div>
   </div>
 
+  <div class="toast" id="toast" role="status" aria-live="polite">Prototype saat ini hanya mencakup halaman Hari Ini.</div>
+
   <script>
     const evidenceData = {
       rates: {
-        title: "Rates & USD bergerak bersamaan",
-        intro: "Perubahan pada US 2Y, US 10Y, dan DXY dibaca sebagai observasi terpisah sebelum diuji sebagai hubungan lintas aset.",
-        facts: [["Scope","RATES · USD"],["Status","OBSERVED"],["Baseline","AVAILABLE"],["Confidence","DATA ONLY"]],
-        evidence: [["US 10Y Treasury","FRED · DGS10 · canonical observation"],["US 2Y Treasury","FRED · DGS2 · canonical observation"],["DXY","Yahoo Finance · DX-Y.NYB · separate instrument"]],
-        monitor: "Periksa apakah rates dan USD tetap bergerak searah setelah rilis data berikutnya. Tidak ada instruksi posisi."
+        title: "Rates & USD bergerak berdekatan",
+        intro: "Perubahan pada US 2Y, US 10Y, dan DXY dibaca sebagai observasi terpisah. Hubungan lintas aset belum diklaim sebagai capability produksi.",
+        facts: [["Scope","RATES · USD"],["Status","TERAMATI"],["Referensi","TERSEDIA"],["Inferensi","TIDAK ADA"]],
+        evidence: [["US 10Y Treasury","FRED · DGS10 · canonical observation"],["US 2Y Treasury","FRED · DGS2 · canonical observation"],["DXY","Yahoo Finance · DX-Y.NYB · instrumen terpisah"]],
+        matter: "Rates dan USD sedang berubah pada waktu yang berdekatan. Baca keduanya bersama sebelum menilai pergerakan aset lain.",
+        note: "Ini adalah contoh presentasi reasoning untuk desain. Sistem produksi saat ini belum mengklaim cross-asset transmission atau market briefing.",
+        monitor: [["US 2Y / 10Y","Apakah perubahan yield bertahan setelah data berikutnya."],["DXY","Apakah dolar mengonfirmasi atau bertentangan dengan perubahan rates."],["Event","Tunggu actual terverifikasi sebelum membandingkan dengan forecast."]],
+        monitorText: "Periksa apakah rates dan USD tetap bergerak berdekatan setelah rilis data berikutnya. Tidak ada instruksi posisi."
       },
       liquidity: {
         title: "Komponen likuiditas berubah",
-        intro: "TGA, reserve balances, dan ON RRP dipertahankan sebagai fakta individual. Prototipe tidak mengubahnya menjadi liquidity score.",
-        facts: [["Scope","MACRO · LIQUIDITY"],["Status","OBSERVED"],["Series","MULTIPLE"],["Inference","NONE"]],
+        intro: "TGA, reserve balances, dan ON RRP dipertahankan sebagai fakta individual. Tidak ada liquidity score atau regime label.",
+        facts: [["Scope","MACRO · LIQUIDITY"],["Status","TERAMATI"],["Series","TERPISAH"],["Inferensi","TIDAK ADA"]],
         evidence: [["Treasury General Account","FRED · WTREGEN"],["Reserve Balances","FRED · WRESBAL"],["ON RRP","FRED · RRPONTSYD"]],
-        monitor: "Pantau pembaruan masing-masing seri sesuai cadence-nya; jangan menyamakan freshness threshold dengan ingestion cadence."
+        matter: "Perubahan likuiditas perlu dibaca per komponen, bukan disederhanakan menjadi satu skor atau label kondisi.",
+        note: "TGA, reserve balances, dan ON RRP memiliki cadence dan arti yang berbeda. Prototype mempertahankan pemisahan tersebut.",
+        monitor: [["TGA","Pembaruan seri berikutnya sesuai cadence publikasi."],["Reserves","Apakah perubahan reserve balances berlanjut."],["ON RRP","Perubahan penggunaan fasilitas pada observasi berikutnya."]],
+        monitorText: "Pantau pembaruan masing-masing seri sesuai cadence-nya; freshness threshold bukan ingestion cadence."
       },
       crypto: {
-        title: "Crypto metrics tetap terpisah",
+        title: "Metric crypto tetap terpisah",
         intro: "Spot price, market cap, volume, dan dominance tidak dilebur menjadi satu label arah pasar.",
-        facts: [["Scope","CRYPTO_MARKET"],["Status","OBSERVED"],["Provider","COINGECKO"],["Inference","NONE"]],
+        facts: [["Scope","CRYPTO_MARKET"],["Status","TERAMATI"],["Provider","COINGECKO"],["Inferensi","TIDAK ADA"]],
         evidence: [["BTC Spot","CoinGecko · btc.spot.usd"],["ETH Spot","CoinGecko · eth.spot.usd"],["BTC Dominance","CoinGecko · crypto.btc_dominance.pct"]],
-        monitor: "Bandingkan perubahan factual metrics dengan baseline yang valid setelah historical continuity tersedia."
+        matter: "Perubahan crypto sebaiknya dimulai dari metric yang benar-benar berubah, lalu dibandingkan dengan konteks lain secara terpisah.",
+        note: "Current-state data belum sama dengan durable historical continuity; design tidak menyembunyikan batas tersebut.",
+        monitor: [["BTC / ETH","Perubahan spot pada observasi berikutnya."],["Volume","Apakah volume berubah tanpa menggabungkannya menjadi sinyal."],["Dominance","Baca sebagai metric terpisah dari harga."]],
+        monitorText: "Gunakan baseline valid setelah historical continuity tersedia; jangan mengganti history dengan previousValue."
       },
       event: {
-        title: "Scheduled economic event",
-        intro: "Event terjadwal menjadi anchor. Surprise hanya valid jika actual dan expectation tersedia dengan temporal semantics yang benar.",
-        facts: [["Scope","ECONOMIC EVENT"],["Status","SCHEDULED"],["Expectation","TRIAL / PARTIAL"],["Surprise","NOT CLAIMED"]],
+        title: "Event ekonomi terjadwal",
+        intro: "Event menjadi anchor waktu. Surprise hanya sah jika actual, expectation, dan timestamp release memiliki semantics yang benar.",
+        facts: [["Scope","ECONOMIC EVENT"],["Status","TERJADWAL"],["Expectation","TRIAL / PARTIAL"],["Surprise","BELUM DIKLAIM"]],
         evidence: [["Calendar awareness","Forex Factory · scheduled event"],["Official anchor","Federal Reserve · FOMC schedule"],["Structured result trial","Biquote · actual/forecast/previous"]],
-        monitor: "Tunggu actual terverifikasi dan timestamp release yang qualified sebelum membandingkan dengan forecast."
+        matter: "Sebelum event, fokusnya adalah expectation yang tersedia dan apa yang sedang dimonitor—bukan memprediksi hasil release.",
+        note: "Actual-vs-expected dan repricing belum dianggap authoritative sampai lifecycle expectation dan temporal semantics selesai.",
+        monitor: [["Waktu release","Pastikan timestamp release terverifikasi."],["Actual","Tunggu data actual sebelum menghitung surprise."],["Market response","Repricing membutuhkan pre/post reference yang valid."]],
+        monitorText: "Tunggu actual terverifikasi dan release timestamp yang qualified sebelum membandingkan dengan forecast."
       }
     };
 
+    const app = document.getElementById("app");
+    const workspace = document.getElementById("workspace");
     const rows = [...document.querySelectorAll(".change-row")];
     const inspectTitle = document.getElementById("inspectTitle");
     const inspectIntro = document.getElementById("inspectIntro");
     const factGrid = document.getElementById("factGrid");
     const evidenceList = document.getElementById("evidenceList");
     const inspectMonitor = document.getElementById("inspectMonitor");
+    const matterLead = document.getElementById("matterLead");
+    const matterNote = document.getElementById("matterNote");
+    const monitorList = document.getElementById("monitorList");
+    const toast = document.getElementById("toast");
+
+    function renderMonitor(items) {
+      monitorList.innerHTML = items.map(([label, copy]) =>
+        '<div class="monitor-row"><strong>' + label + '</strong><span>' + copy + '</span></div>'
+      ).join("");
+    }
 
     function selectEvidence(id) {
       const data = evidenceData[id];
@@ -705,18 +893,49 @@
       rows.forEach(row => row.classList.toggle("selected", row.dataset.id === id));
       inspectTitle.textContent = data.title;
       inspectIntro.textContent = data.intro;
-      factGrid.innerHTML = data.facts.map(([k,v]) => '<div class="fact-row"><span>' + k + '</span><strong>' + v + '</strong></div>').join("");
-      evidenceList.innerHTML = data.evidence.map(([k,v]) => '<button class="evidence-item"><strong>' + k + '</strong><span>' + v + '</span></button>').join("");
-      inspectMonitor.textContent = data.monitor;
+      factGrid.innerHTML = data.facts.map(([k,v]) =>
+        '<div class="fact-row"><span>' + k + '</span><strong>' + v + '</strong></div>'
+      ).join("");
+      evidenceList.innerHTML = data.evidence.map(([k,v]) =>
+        '<button class="evidence-item"><strong>' + k + '</strong><span>' + v + '</span></button>'
+      ).join("");
+      inspectMonitor.textContent = data.monitorText;
+      matterLead.textContent = data.matter;
+      matterNote.textContent = data.note;
+      renderMonitor(data.monitor);
+
+      if (window.innerWidth > 980) workspace.classList.remove("inspector-closed");
     }
+
     rows.forEach(row => row.addEventListener("click", () => selectEvidence(row.dataset.id)));
+
+    let toastTimer;
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
 
     document.querySelectorAll(".nav button").forEach(btn => {
       btn.addEventListener("click", () => {
+        if (btn.dataset.view !== "hari-ini") {
+          showToast("Prototype saat ini hanya mencakup halaman Hari Ini.");
+          return;
+        }
         document.querySelectorAll(".nav button").forEach(item => item.classList.remove("active"));
         btn.classList.add("active");
+        app.classList.remove("mobile-nav-open");
       });
     });
+
+    const inspectorToggle = document.getElementById("inspectorToggle");
+    const inspectorClose = document.getElementById("inspectorClose");
+    inspectorToggle.addEventListener("click", () => workspace.classList.toggle("inspector-closed"));
+    inspectorClose.addEventListener("click", () => workspace.classList.add("inspector-closed"));
+
+    const mobileMenu = document.getElementById("mobileMenu");
+    mobileMenu.addEventListener("click", () => app.classList.toggle("mobile-nav-open"));
 
     const detailToggle = document.getElementById("detailToggle");
     const detailsBox = document.getElementById("detailsBox");
@@ -728,20 +947,77 @@
     const palette = document.getElementById("commandPalette");
     const commandOpen = document.getElementById("commandOpen");
     const commandInput = document.getElementById("commandInput");
-    function openPalette() { palette.classList.add("open"); palette.setAttribute("aria-hidden","false"); setTimeout(() => commandInput.focus(), 0); }
-    function closePalette() { palette.classList.remove("open"); palette.setAttribute("aria-hidden","true"); commandInput.value = ""; }
+    const commandItems = [...document.querySelectorAll(".command-result")];
+
+    function openPalette() {
+      palette.classList.add("open");
+      palette.setAttribute("aria-hidden","false");
+      commandItems.forEach(item => item.classList.remove("hidden"));
+      setTimeout(() => commandInput.focus(), 0);
+    }
+
+    function closePalette() {
+      palette.classList.remove("open");
+      palette.setAttribute("aria-hidden","true");
+      commandInput.value = "";
+      commandItems.forEach(item => item.classList.remove("hidden"));
+    }
+
     commandOpen.addEventListener("click", openPalette);
     palette.addEventListener("click", e => { if (e.target === palette) closePalette(); });
+    commandInput.addEventListener("input", () => {
+      const query = commandInput.value.trim().toLowerCase();
+      commandItems.forEach(item => {
+        const haystack = (item.dataset.search || item.textContent).toLowerCase();
+        item.classList.toggle("hidden", query && !haystack.includes(query));
+      });
+    });
+
+    commandItems.forEach(item => {
+      item.addEventListener("click", () => {
+        closePalette();
+        showToast(item.textContent.trim() + " — interaksi lanjutan belum diaktifkan pada prototype.");
+      });
+    });
+
     document.addEventListener("keydown", e => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); }
-      if (e.key === "Escape") closePalette();
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        openPalette();
+      }
+      if (e.key === "Escape") {
+        closePalette();
+        app.classList.remove("mobile-nav-open");
+      }
     });
 
     const utcClock = document.getElementById("utcClock");
+    const localDate = document.getElementById("localDate");
+    const localSession = document.getElementById("localSession");
+
     function tick() {
       const now = new Date();
-      utcClock.textContent = now.toLocaleTimeString("en-GB", { timeZone: "UTC", hour12: false }) + " UTC";
+      utcClock.textContent = now.toLocaleTimeString("en-GB", {
+        timeZone: "UTC",
+        hour12: false
+      }) + " UTC";
+
+      localDate.textContent = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }).format(now);
+
+      localSession.textContent = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).format(now) + " WIB";
     }
+
     tick();
     setInterval(tick, 1000);
   </script>
