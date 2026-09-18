@@ -1,6 +1,7 @@
 import "server-only";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
 import type { ContextRepository, EventRepository, EvidenceRepository, ObservationRepository } from "../repositories/types";
+import { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
 
 type CanonicalRecord = Observation | Event | Evidence | Context;
 type RecordType = "OBSERVATION" | "EVENT" | "EVIDENCE" | "CONTEXT";
@@ -115,3 +116,6 @@ export const supabaseCanonicalRepositories = {
   evidence: new SupabaseRepository<Evidence>("EVIDENCE") satisfies EvidenceRepository,
   contexts: new SupabaseRepository<Context>("CONTEXT") satisfies ContextRepository,
 };
+
+export const supabaseHistoricalObservationRepository = new SupabaseHistoricalObservationRepository({ config: requireConfig });
+export { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
