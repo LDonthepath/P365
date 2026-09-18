@@ -271,6 +271,9 @@
     .session-meta strong { color: var(--text-2); font-weight: 500; }
 
     .section { margin-top: 22px; }
+    .section.tertiary { margin-top: 19px; }
+    .section.tertiary .section-head h2 { font-size: 13px; color: var(--text-2); }
+    .section.tertiary .section-head span { color: #50585e; }
     .section-head {
       display: flex;
       align-items: end;
@@ -710,7 +713,7 @@
               <div class="change-time mono">14:00 WIB</div>
               <div class="change-main">
                 <strong>Beberapa komponen likuiditas dolar berubah dibanding pembacaan sebelumnya.</strong>
-                <p class="change-summary">TGA, reserve balances, dan ON RRP dibaca satu per satu. Prototype tidak menghasilkan liquidity score atau regime label.</p>
+                <p class="change-summary">TGA, reserve balances, dan ON RRP dibaca satu per satu. Komponen tersebut tidak digabung menjadi satu skor atau label kondisi.</p>
               </div>
               <div class="change-tag"><span>Likuiditas</span></div>
             </button>
@@ -718,8 +721,8 @@
             <button class="change-row" data-id="crypto" aria-pressed="false">
               <div class="change-time mono">13:45 WIB</div>
               <div class="change-main">
-                <strong>BTC dan ETH bergerak; price, market cap, volume, dan dominance tetap dipisahkan.</strong>
-                <p class="change-summary">Perubahan pada metric CoinGecko tidak dilebur menjadi satu sinyal. Setiap series tetap memiliki identity dan evidence sendiri.</p>
+                <strong>BTC dan ETH bergerak; harga, market cap, volume, dan dominance tetap dipisahkan.</strong>
+                <p class="change-summary">Perubahan metrik CoinGecko tidak dilebur menjadi satu sinyal. Setiap seri tetap dibaca dengan sumber dan konteksnya sendiri.</p>
               </div>
               <div class="change-tag"><span>Crypto</span></div>
             </button>
@@ -727,8 +730,8 @@
             <button class="change-row" data-id="event" aria-pressed="false">
               <div class="change-time mono">21:00 WIB</div>
               <div class="change-main">
-                <strong>Rilis ekonomi terjadwal menjadi anchor utama untuk bagian sesi berikutnya.</strong>
-                <p class="change-summary">Actual vs expectation hanya sah setelah release terverifikasi dan temporal semantics memadai. Prototype tidak memalsukan surprise.</p>
+                <strong>Rilis ekonomi terjadwal menjadi acuan utama untuk bagian sesi berikutnya.</strong>
+                <p class="change-summary">Data aktual hanya dibandingkan dengan ekspektasi setelah waktu rilis terverifikasi. Sebelum itu, tidak ada klaim kejutan atau repricing.</p>
               </div>
               <div class="change-tag"><span>Event</span></div>
             </button>
@@ -749,12 +752,12 @@
             <div class="panel-body monitor-list" id="monitorList">
               <div class="monitor-row"><strong>US 2Y / 10Y</strong><span>Apakah perubahan yield bertahan setelah data berikutnya.</span></div>
               <div class="monitor-row"><strong>DXY</strong><span>Apakah dolar mengonfirmasi atau bertentangan dengan perubahan rates.</span></div>
-              <div class="monitor-row"><strong>Event</strong><span>Tunggu actual terverifikasi sebelum membandingkan dengan forecast.</span></div>
+              <div class="monitor-row"><strong>Peristiwa</strong><span>Tunggu data aktual terverifikasi sebelum membandingkannya dengan forecast.</span></div>
             </div>
           </section>
         </div>
 
-        <section class="section" aria-labelledby="context-title">
+        <section class="section tertiary" aria-labelledby="context-title">
           <div class="section-head">
             <h2 id="context-title">Konteks Pasar</h2>
             <span class="mono">CONTOH OBSERVASI · PENDUKUNG</span>
@@ -769,7 +772,7 @@
           </div>
         </section>
 
-        <section class="section" aria-labelledby="calendar-title">
+        <section class="section tertiary" aria-labelledby="calendar-title">
           <div class="section-head">
             <h2 id="calendar-title">Kalender Ekonomi</h2>
             <span class="mono">CONTOH JADWAL · PENDUKUNG</span>
@@ -866,20 +869,20 @@
     const evidenceData = {
       rates: {
         title: "Rates & USD bergerak berdekatan",
-        intro: "Perubahan pada US 2Y, US 10Y, dan DXY dibaca sebagai observasi terpisah. Hubungan lintas aset belum diklaim sebagai capability produksi.",
+        intro: "Perubahan pada US 2Y, US 10Y, dan DXY dibaca sebagai observasi terpisah. Kedekatan waktunya belum dianggap sebagai hubungan sebab-akibat.",
         facts: [["Cakupan","RATES · USD"],["Status","TERAMATI"],["Referensi","TERSEDIA"],["Inferensi","TIDAK ADA"]],
         evidence: [["US 10Y Treasury","FRED · DGS10 · observasi kanonik"],["US 2Y Treasury","FRED · DGS2 · observasi kanonik"],["DXY","Yahoo Finance · DX-Y.NYB · instrumen terpisah"]],
         matter: "Rates dan USD sedang berubah pada waktu yang berdekatan. Baca keduanya bersama sebelum menilai pergerakan aset lain.",
         note: "Timing yang berdekatan belum berarti sebab-akibat. Gunakan panel Bukti untuk memeriksa observasi yang mendasari konteks ini.",
-        monitor: [["US 2Y / 10Y","Apakah perubahan yield bertahan setelah data berikutnya."],["DXY","Apakah dolar mengonfirmasi atau bertentangan dengan perubahan rates."],["Event","Tunggu actual terverifikasi sebelum membandingkan dengan forecast."]],
+        monitor: [["US 2Y / 10Y","Apakah perubahan yield bertahan setelah data berikutnya."],["DXY","Apakah dolar mengonfirmasi atau bertentangan dengan perubahan rates."],["Peristiwa","Tunggu data aktual terverifikasi sebelum membandingkannya dengan forecast."]],
         monitorText: "Periksa apakah rates dan USD tetap bergerak berdekatan setelah rilis data berikutnya. Tidak ada instruksi posisi."
       },
       liquidity: {
         title: "Komponen likuiditas berubah",
-        intro: "TGA, reserve balances, dan ON RRP dipertahankan sebagai fakta individual. Tidak ada liquidity score atau regime label.",
+        intro: "TGA, reserve balances, dan ON RRP dipertahankan sebagai fakta individual. Ketiganya tidak digabung menjadi satu skor atau label kondisi.",
         facts: [["Cakupan","MAKRO · LIKUIDITAS"],["Status","TERAMATI"],["Seri","TERPISAH"],["Inferensi","TIDAK ADA"]],
         evidence: [["Treasury General Account","FRED · WTREGEN"],["Reserve Balances","FRED · WRESBAL"],["ON RRP","FRED · RRPONTSYD"]],
-        matter: "Perubahan likuiditas perlu dibaca per komponen, bukan disederhanakan menjadi satu skor atau label kondisi.",
+        matter: "Perubahan likuiditas perlu dibaca per komponen, bukan disederhanakan menjadi satu skor atau satu kesimpulan kondisi.",
         note: "TGA, reserve balances, dan ON RRP memiliki cadence dan arti yang berbeda. Baca perubahannya satu per satu sebelum menyusun konteks.",
         monitor: [["TGA","Pembaruan seri berikutnya sesuai cadence publikasi."],["Reserves","Apakah perubahan reserve balances berlanjut."],["ON RRP","Perubahan penggunaan fasilitas pada observasi berikutnya."]],
         monitorText: "Pantau pembaruan tiap seri sesuai cadence publikasinya; batas freshness bukan jadwal ingestion."
@@ -899,7 +902,7 @@
         intro: "Event menjadi anchor waktu. Surprise hanya sah jika actual, expectation, dan timestamp release memiliki semantics yang benar.",
         facts: [["Cakupan","PERISTIWA EKONOMI"],["Status","TERJADWAL"],["Ekspektasi","TERBATAS"],["Kejutan","BELUM DIKLAIM"]],
         evidence: [["Jadwal kalender","Forex Factory · peristiwa terjadwal"],["Rujukan resmi","Federal Reserve · jadwal FOMC"],["Hasil terstruktur","Biquote · aktual/forecast/sebelumnya · uji coba"]],
-        matter: "Sebelum peristiwa, fokusnya adalah ekspektasi yang tersedia dan apa yang sedang dimonitor—bukan memprediksi hasil rilis.",
+        matter: "Sebelum peristiwa, fokusnya adalah ekspektasi yang tersedia dan apa yang perlu dimonitor—bukan memprediksi hasil rilis.",
         note: "Pisahkan apa yang dijadwalkan, apa yang diharapkan, dan apa yang benar-benar dirilis sebelum menilai respons pasar.",
         monitor: [["Waktu rilis","Pastikan timestamp rilis terverifikasi."],["Aktual","Tunggu data aktual sebelum menghitung kejutan."],["Respons pasar","Repricing membutuhkan referensi sebelum/sesudah yang valid."]],
         monitorText: "Tunggu data aktual dan timestamp rilis yang terverifikasi sebelum membandingkannya dengan forecast."
