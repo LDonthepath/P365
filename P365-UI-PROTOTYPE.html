@@ -226,8 +226,13 @@
       background: #090b0d;
       padding: 21px 17px 34px;
       min-width: 0;
-      overflow: hidden;
-      transition: opacity .14s ease, padding .18s ease;
+      overflow-x: hidden;
+      overflow-y: auto;
+      position: sticky;
+      top: var(--header-h);
+      align-self: start;
+      height: calc(100vh - var(--header-h));
+      transition: opacity .14s ease, padding .18s ease, transform .18s ease;
     }
     .workspace.inspector-closed .inspector {
       opacity: 0;
@@ -264,7 +269,7 @@
     .session-meta { text-align: right; color: var(--faint); font-size: 9px; line-height: 1.65; white-space: nowrap; }
     .session-meta strong { color: var(--text-2); font-weight: 500; }
 
-    .section { margin-top: 24px; }
+    .section { margin-top: 22px; }
     .section-head {
       display: flex;
       align-items: end;
@@ -336,9 +341,9 @@
 
     .secondary-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(290px, .85fr);
+      grid-template-columns: minmax(0, 1.2fr) minmax(290px, .8fr);
       gap: 14px;
-      margin-top: 20px;
+      margin-top: 17px;
     }
 
     .panel {
@@ -532,10 +537,30 @@
     @media (max-width: 980px) {
       :root { --sidebar-w: 190px; }
       .workspace, .workspace.inspector-closed { grid-template-columns: minmax(0, 1fr); }
-      .inspector { display: none; }
+      .inspector {
+        display: block;
+        position: fixed;
+        top: var(--header-h);
+        right: 0;
+        width: min(330px, 88vw);
+        height: calc(100vh - var(--header-h));
+        z-index: 42;
+        transform: translateX(0);
+        opacity: 1;
+        border-left: 1px solid var(--border-strong);
+        box-shadow: -18px 0 36px rgba(0,0,0,.34);
+      }
+      .workspace.inspector-closed .inspector {
+        transform: translateX(102%);
+        opacity: 1;
+        padding-left: 17px;
+        padding-right: 17px;
+        border-left-color: var(--border-strong);
+        pointer-events: none;
+      }
       .secondary-grid { grid-template-columns: 1fr; }
       .command-btn { min-width: 144px; }
-      .inspector-toggle { display: none; }
+      .inspector-toggle { display: flex; }
     }
 
     @media (max-width: 760px) {
@@ -600,27 +625,27 @@
         <div class="nav-group">
           <div class="nav-label">Ruang kerja</div>
           <button class="active" data-view="hari-ini"><span class="nav-dot"></span><span>Hari Ini</span><span></span></button>
-          <button class="future" data-view="regime"><span class="nav-dot"></span><span>Rezim Pasar</span><span class="nav-state">nanti</span></button>
-          <button class="future" data-view="likuiditas"><span class="nav-dot"></span><span>Likuiditas</span><span class="nav-state">nanti</span></button>
-          <button class="future" data-view="risiko"><span class="nav-dot"></span><span>Risiko</span><span class="nav-state">nanti</span></button>
+          <button class="future" data-view="regime" aria-label="Rezim Pasar — belum masuk prototype"><span class="nav-dot"></span><span>Rezim Pasar</span><span></span></button>
+          <button class="future" data-view="likuiditas" aria-label="Likuiditas — belum masuk prototype"><span class="nav-dot"></span><span>Likuiditas</span><span></span></button>
+          <button class="future" data-view="risiko" aria-label="Risiko — belum masuk prototype"><span class="nav-dot"></span><span>Risiko</span><span></span></button>
         </div>
 
         <div class="nav-group">
           <div class="nav-label">Riset</div>
-          <button class="future" data-view="catatan"><span class="nav-dot"></span><span>Catatan</span><span class="nav-state">nanti</span></button>
-          <button class="future" data-view="snapshot"><span class="nav-dot"></span><span>Snapshot</span><span class="nav-state">nanti</span></button>
+          <button class="future" data-view="catatan" aria-label="Catatan — belum masuk prototype"><span class="nav-dot"></span><span>Catatan</span><span></span></button>
+          <button class="future" data-view="snapshot" aria-label="Snapshot — belum masuk prototype"><span class="nav-dot"></span><span>Snapshot</span><span></span></button>
         </div>
 
         <div class="nav-group">
           <div class="nav-label">Sistem</div>
-          <button class="future" data-view="kesehatan"><span class="nav-dot"></span><span>Kesehatan</span><span class="nav-state">nanti</span></button>
-          <button class="future" data-view="pengaturan"><span class="nav-dot"></span><span>Pengaturan</span><span class="nav-state">nanti</span></button>
+          <button class="future" data-view="kesehatan" aria-label="Kesehatan — belum masuk prototype"><span class="nav-dot"></span><span>Kesehatan</span><span></span></button>
+          <button class="future" data-view="pengaturan" aria-label="Pengaturan — belum masuk prototype"><span class="nav-dot"></span><span>Pengaturan</span><span></span></button>
         </div>
       </nav>
 
       <div class="sidebar-foot">
-        <div class="system-line"><span><i class="status-dot"></i>Data foundation</span><strong>AKTIF</strong></div>
-        <div class="system-line" style="margin-top:7px"><span>Layer reasoning</span><strong>DITUNDA</strong></div>
+        <div class="system-line"><span><i class="status-dot"></i>P365</span><strong>PROTOTIPE</strong></div>
+        <div class="system-line" style="margin-top:7px"><span>Workspace</span><strong>HARI INI</strong></div>
       </div>
     </aside>
 
@@ -633,7 +658,6 @@
       <div class="header-actions">
         <button class="command-btn" id="commandOpen"><span>Cari atau buka</span><span class="key mono">⌘ K</span></button>
         <button class="inspector-toggle" id="inspectorToggle">Bukti</button>
-        <span class="example-chip">contoh data</span>
         <span class="clock mono" id="utcClock">00:00:00 UTC</span>
       </div>
     </header>
@@ -648,7 +672,7 @@
           </div>
           <div class="session-meta">
             <span id="localDate">—</span><br/>
-            <strong id="localSession">WIB</strong>
+            <strong id="localSession">— WIB</strong>
           </div>
         </div>
 
@@ -702,7 +726,7 @@
             <div class="panel-head"><strong>Apa yang Penting</strong><span class="mono">KONTEKS</span></div>
             <div class="panel-body">
               <p class="matter-lead" id="matterLead">Rates dan USD sedang berubah pada waktu yang berdekatan. Baca keduanya bersama sebelum menilai pergerakan aset lain.</p>
-              <p class="matter-note" id="matterNote">Ini adalah contoh presentasi reasoning untuk desain. Sistem produksi saat ini belum mengklaim cross-asset transmission atau market briefing.</p>
+              <p class="matter-note" id="matterNote">Timing yang berdekatan belum berarti sebab-akibat. Gunakan panel Bukti untuk memeriksa data yang mendasari konteks ini.</p>
             </div>
           </section>
 
@@ -793,8 +817,8 @@
         <div class="inspect-block">
           <h3>Sumber</h3>
           <div class="evidence-list" id="evidenceList">
-            <button class="evidence-item"><strong>US 10Y Treasury</strong><span>FRED · DGS10 · canonical observation</span></button>
-            <button class="evidence-item"><strong>US 2Y Treasury</strong><span>FRED · DGS2 · canonical observation</span></button>
+            <button class="evidence-item"><strong>US 10Y Treasury</strong><span>FRED · DGS10 · observasi kanonik</span></button>
+            <button class="evidence-item"><strong>US 2Y Treasury</strong><span>FRED · DGS2 · observasi kanonik</span></button>
             <button class="evidence-item"><strong>DXY</strong><span>Yahoo Finance · DX-Y.NYB · instrumen terpisah</span></button>
           </div>
 
@@ -832,7 +856,7 @@
         facts: [["Scope","RATES · USD"],["Status","TERAMATI"],["Referensi","TERSEDIA"],["Inferensi","TIDAK ADA"]],
         evidence: [["US 10Y Treasury","FRED · DGS10 · canonical observation"],["US 2Y Treasury","FRED · DGS2 · canonical observation"],["DXY","Yahoo Finance · DX-Y.NYB · instrumen terpisah"]],
         matter: "Rates dan USD sedang berubah pada waktu yang berdekatan. Baca keduanya bersama sebelum menilai pergerakan aset lain.",
-        note: "Ini adalah contoh presentasi reasoning untuk desain. Sistem produksi saat ini belum mengklaim cross-asset transmission atau market briefing.",
+        note: "Timing yang berdekatan belum berarti sebab-akibat. Gunakan panel Bukti untuk memeriksa observasi yang mendasari konteks ini.",
         monitor: [["US 2Y / 10Y","Apakah perubahan yield bertahan setelah data berikutnya."],["DXY","Apakah dolar mengonfirmasi atau bertentangan dengan perubahan rates."],["Event","Tunggu actual terverifikasi sebelum membandingkan dengan forecast."]],
         monitorText: "Periksa apakah rates dan USD tetap bergerak berdekatan setelah rilis data berikutnya. Tidak ada instruksi posisi."
       },
@@ -842,7 +866,7 @@
         facts: [["Scope","MACRO · LIQUIDITY"],["Status","TERAMATI"],["Series","TERPISAH"],["Inferensi","TIDAK ADA"]],
         evidence: [["Treasury General Account","FRED · WTREGEN"],["Reserve Balances","FRED · WRESBAL"],["ON RRP","FRED · RRPONTSYD"]],
         matter: "Perubahan likuiditas perlu dibaca per komponen, bukan disederhanakan menjadi satu skor atau label kondisi.",
-        note: "TGA, reserve balances, dan ON RRP memiliki cadence dan arti yang berbeda. Prototype mempertahankan pemisahan tersebut.",
+        note: "TGA, reserve balances, dan ON RRP memiliki cadence dan arti yang berbeda. Baca perubahannya satu per satu sebelum menyusun konteks.",
         monitor: [["TGA","Pembaruan seri berikutnya sesuai cadence publikasi."],["Reserves","Apakah perubahan reserve balances berlanjut."],["ON RRP","Perubahan penggunaan fasilitas pada observasi berikutnya."]],
         monitorText: "Pantau pembaruan masing-masing seri sesuai cadence-nya; freshness threshold bukan ingestion cadence."
       },
@@ -852,7 +876,7 @@
         facts: [["Scope","CRYPTO_MARKET"],["Status","TERAMATI"],["Provider","COINGECKO"],["Inferensi","TIDAK ADA"]],
         evidence: [["BTC Spot","CoinGecko · btc.spot.usd"],["ETH Spot","CoinGecko · eth.spot.usd"],["BTC Dominance","CoinGecko · crypto.btc_dominance.pct"]],
         matter: "Perubahan crypto sebaiknya dimulai dari metric yang benar-benar berubah, lalu dibandingkan dengan konteks lain secara terpisah.",
-        note: "Current-state data belum sama dengan durable historical continuity; design tidak menyembunyikan batas tersebut.",
+        note: "Harga, market cap, volume, dan dominance menjawab pertanyaan yang berbeda. Hindari menyatukannya menjadi satu arah pasar.",
         monitor: [["BTC / ETH","Perubahan spot pada observasi berikutnya."],["Volume","Apakah volume berubah tanpa menggabungkannya menjadi sinyal."],["Dominance","Baca sebagai metric terpisah dari harga."]],
         monitorText: "Gunakan baseline valid setelah historical continuity tersedia; jangan mengganti history dengan previousValue."
       },
@@ -862,7 +886,7 @@
         facts: [["Scope","ECONOMIC EVENT"],["Status","TERJADWAL"],["Expectation","TRIAL / PARTIAL"],["Surprise","BELUM DIKLAIM"]],
         evidence: [["Calendar awareness","Forex Factory · scheduled event"],["Official anchor","Federal Reserve · FOMC schedule"],["Structured result trial","Biquote · actual/forecast/previous"]],
         matter: "Sebelum event, fokusnya adalah expectation yang tersedia dan apa yang sedang dimonitor—bukan memprediksi hasil release.",
-        note: "Actual-vs-expected dan repricing belum dianggap authoritative sampai lifecycle expectation dan temporal semantics selesai.",
+        note: "Pisahkan apa yang dijadwalkan, apa yang diharapkan, dan apa yang benar-benar dirilis sebelum menilai respons pasar.",
         monitor: [["Waktu release","Pastikan timestamp release terverifikasi."],["Actual","Tunggu data actual sebelum menghitung surprise."],["Market response","Repricing membutuhkan pre/post reference yang valid."]],
         monitorText: "Tunggu actual terverifikasi dan release timestamp yang qualified sebelum membandingkan dengan forecast."
       }
@@ -904,7 +928,7 @@
       matterNote.textContent = data.note;
       renderMonitor(data.monitor);
 
-      if (window.innerWidth > 980) workspace.classList.remove("inspector-closed");
+      workspace.classList.remove("inspector-closed");
     }
 
     rows.forEach(row => row.addEventListener("click", () => selectEvidence(row.dataset.id)));
@@ -920,7 +944,7 @@
     document.querySelectorAll(".nav button").forEach(btn => {
       btn.addEventListener("click", () => {
         if (btn.dataset.view !== "hari-ini") {
-          showToast("Prototype saat ini hanya mencakup halaman Hari Ini.");
+          showToast("Halaman ini belum masuk checkpoint desain. Fokus saat ini: Hari Ini.");
           return;
         }
         document.querySelectorAll(".nav button").forEach(item => item.classList.remove("active"));
@@ -928,6 +952,8 @@
         app.classList.remove("mobile-nav-open");
       });
     });
+
+    if (window.innerWidth <= 980) workspace.classList.add("inspector-closed");
 
     const inspectorToggle = document.getElementById("inspectorToggle");
     const inspectorClose = document.getElementById("inspectorClose");
