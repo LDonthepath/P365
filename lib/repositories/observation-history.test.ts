@@ -38,46 +38,73 @@ function observation(
   };
 }
 
-function identity(domain: ObservationDomain, sourceId: string, seriesKey: string): ObservationHistoryIdentity {
-  return { domain, sourceId, seriesKey };
+function identity(domain: ObservationDomain, seriesKey: string): ObservationHistoryIdentity {
+  return { domain, seriesKey };
 }
 
 async function main(): Promise<void> {
   const repository = new InMemoryObservationRepository();
   await repository.saveMany([
-    observation("june", "2026-06-01T00:00:00.000Z", "2026-07-01T00:00:00.000Z"),
-    observation("july-old", "2026-07-01T00:00:00.000Z", "2026-08-01T00:00:00.000Z"),
-    observation("july-correction", "2026-07-01T00:00:00.000Z", "2026-09-01T00:00:00.000Z", {
+    observation("cpi-june-fred", "2026-06-01T00:00:00.000Z", "2026-07-01T00:00:00.000Z"),
+    observation("cpi-july-fred", "2026-07-01T00:00:00.000Z", "2026-08-01T00:00:00.000Z"),
+    observation("cpi-july-correction", "2026-07-01T00:00:00.000Z", "2026-09-01T00:00:00.000Z", {
       subject: "Renamed CPI label",
     }),
-    observation("august", "2026-08-01T00:00:00.000Z", "2026-09-02T00:00:00.000Z"),
-    observation("other-fred-series", "2026-08-01T00:00:00.000Z", "2026-09-02T00:00:00.000Z", {
+    observation("cpi-august-alternate", "2026-08-01T00:00:00.000Z", "2026-09-02T00:00:00.000Z", {
+      sourceId: "qualified-macro-alternate",
+      subject: "Alternate provider CPI label",
+    }),
+    observation("core-cpi", "2026-08-01T00:00:00.000Z", "2026-09-02T00:00:00.000Z", {
       metadata: { seriesId: "CPILFESL" },
     }),
-    observation("coingecko-btc", "2026-08-01T00:00:00.000Z", "2026-08-01T00:01:00.000Z", {
+    observation("btc-coingecko", "2026-08-01T00:00:00.000Z", "2026-08-01T00:01:00.000Z", {
       domain: "ASSET",
       sourceId: "coingecko-market",
       subject: "Bitcoin spot price",
       metadata: { metricId: "btc.spot.usd", symbol: "BTC" },
     }),
-    observation("coingecko-eth", "2026-08-01T00:00:00.000Z", "2026-08-01T00:01:00.000Z", {
+    observation("btc-alternate", "2026-08-02T00:00:00.000Z", "2026-08-02T00:01:00.000Z", {
+      domain: "ASSET",
+      sourceId: "qualified-crypto-alternate",
+      subject: "BTC/USD",
+      metadata: { metricId: "btc.spot.usd", symbol: "BTC" },
+    }),
+    observation("eth-coingecko", "2026-08-01T00:00:00.000Z", "2026-08-01T00:01:00.000Z", {
       domain: "ASSET",
       sourceId: "coingecko-market",
       metadata: { metricId: "eth.spot.usd", symbol: "ETH" },
     }),
+    observation("gold-yahoo", "2026-08-01T00:00:00.000Z", "2026-08-01T00:01:00.000Z", {
+      domain: "ASSET",
+      sourceId: "yahoo-finance",
+      metadata: { metricId: "gold.futures.usd", symbol: "GC=F" },
+    }),
+    observation("unkeyed-cpi-subject", "2026-05-01T00:00:00.000Z", "2026-06-01T00:00:00.000Z", {
+      metadata: {},
+    }),
   ]);
 
-  const cpi = identity("MACRO", "fred", "CPIAUCSL");
+  const cpi = identity("MACRO", "CPIAUCSL");
 
   assertEqual(
     (await repository.findHistory({ identity: cpi, order: "ASC", limit: 10 })).map((item) => item.id),
-    ["june", "july-old", "july-correction", "august"],
-    "ascending deterministic ordering and correction order",
+    ["cpi-june-fred", "cpi-july-fred", "cpi-july-correction", "cpi-august-alternate"],
+    "same semantic series continues across source, subject, and canonical ID changes",
   );
   assertEqual(
     (await repository.findHistory({ identity: cpi, order: "DESC", limit: 3 })).map((item) => item.id),
-    ["august", "july-correction", "july-old"],
+    ["cpi-august-alternate", "cpi-july-correction", "cpi-july-fred"],
     "descending deterministic ordering",
+  );
+  assertEqual(
+    (await repository.findHistory({
+      identity: cpi,
+      sourceId: "fred",
+      order: "ASC",
+      limit: 10,
+    })).map((item) => item.id),
+    ["cpi-june-fred", "cpi-july-fred", "cpi-july-correction"],
+    "optional source filter qualifies provenance without defining identity",
   );
   assertEqual(
     (await repository.findHistory({
@@ -87,7 +114,7 @@ async function main(): Promise<void> {
       order: "ASC",
       limit: 10,
     })).map((item) => item.id),
-    ["july-old", "july-correction"],
+    ["cpi-july-fred", "cpi-july-correction"],
     "inclusive effective-time bounds",
   );
   assertEqual(
@@ -97,33 +124,57 @@ async function main(): Promise<void> {
       order: "ASC",
       limit: 10,
     })).map((item) => item.id),
-    ["june", "july-old"],
-    "as-of excludes later correction and later measurement",
+    ["cpi-june-fred", "cpi-july-fred"],
+    "as-of excludes later correction and observation",
   );
   assertEqual(
     (await repository.findHistory({
-      identity: identity("ASSET", "coingecko-market", "btc.spot.usd"),
+      identity: identity("ASSET", "btc.spot.usd"),
       order: "ASC",
       limit: 10,
     })).map((item) => item.id),
-    ["coingecko-btc"],
-    "stable metric identity excludes unrelated series",
+    ["btc-coingecko", "btc-alternate"],
+    "CoinGecko metric semantics continue across providers",
   );
   assertEqual(
-    await repository.findHistory({ identity: identity("MACRO", "fred", "MISSING"), order: "ASC", limit: 10 }),
+    (await repository.findHistory({
+      identity: identity("ASSET", "gold.futures.usd"),
+      order: "ASC",
+      limit: 10,
+    })).map((item) => item.id),
+    ["gold-yahoo"],
+    "Yahoo cross-asset metric semantics remain queryable",
+  );
+  assertEqual(
+    (await repository.findHistory({
+      identity: identity("MACRO", "CPILFESL"),
+      order: "ASC",
+      limit: 10,
+    })).map((item) => item.id),
+    ["core-cpi"],
+    "different FRED series remains isolated",
+  );
+  assertEqual(
+    await repository.findHistory({ identity: identity("MACRO", "MISSING"), order: "ASC", limit: 10 }),
     [],
-    "missing history remains explicit",
+    "missing history returns empty without subject fallback",
   );
 
-  await assertRejects("empty series key", () => repository.findHistory({
-    identity: identity("MACRO", "fred", " "), order: "ASC", limit: 10,
+  await assertRejects("empty semantic series key", () => repository.findHistory({
+    identity: identity("MACRO", " "), order: "ASC", limit: 10,
+  }));
+  await assertRejects("empty provenance filter", () => repository.findHistory({
+    identity: cpi, sourceId: " ", order: "ASC", limit: 10,
+  }));
+  await assertRejects("invalid order", () => repository.findHistory({
+    identity: cpi, order: "SIDEWAYS" as "ASC", limit: 10,
   }));
   await assertRejects("invalid limit", () => repository.findHistory({ identity: cpi, order: "ASC", limit: 0 }));
   await assertRejects("excessive limit", () => repository.findHistory({ identity: cpi, order: "ASC", limit: 501 }));
   await assertRejects("invalid availability cutoff", () => repository.findHistory({
     identity: cpi, retrievedAtOnOrBefore: "not-a-time", order: "ASC", limit: 10,
   }));
-  await assertRejects("reversed bounds", () => repository.findHistory({
+  await assertRejects("reversed effective bounds", () => repository.findHistory({
     identity: cpi,
     observedAtOnOrAfter: "2026-08-01T00:00:00.000Z",
     observedAtOnOrBefore: "2026-07-01T00:00:00.000Z",

@@ -10,8 +10,11 @@ function timestamp(value: string, field: string): number {
 }
 
 function validateHistoryQuery(query: ObservationHistoryQuery): { from?: number; through?: number; retrievedThrough?: number } {
-  if (!query.identity.sourceId.trim() || !query.identity.seriesKey.trim()) {
-    throw new Error("Observation history identity requires non-empty sourceId and seriesKey.");
+  if (!query.identity.seriesKey.trim()) {
+    throw new Error("Observation history identity requires a non-empty seriesKey.");
+  }
+  if (query.sourceId !== undefined && !query.sourceId.trim()) {
+    throw new Error("Observation history sourceId filter must be non-empty when supplied.");
   }
   if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > MAX_OBSERVATION_HISTORY_LIMIT) {
     throw new Error(`Observation history limit must be an integer between 1 and ${MAX_OBSERVATION_HISTORY_LIMIT}.`);
@@ -35,7 +38,7 @@ function validateHistoryQuery(query: ObservationHistoryQuery): { from?: number; 
   return { from, through, retrievedThrough };
 }
 
-function observationSeriesKey(observation: Observation): string | null {
+function observationSemanticSeriesKey(observation: Observation): string | null {
   const seriesId = observation.metadata?.seriesId;
   if (typeof seriesId === "string" && seriesId.trim()) return seriesId;
   const metricId = observation.metadata?.metricId;
@@ -63,8 +66,8 @@ export class InMemoryObservationRepository implements ObservationRepository, His
     const matches = [...this.items.values()].filter((observation) => {
       if (
         observation.domain !== query.identity.domain
-        || observation.sourceId !== query.identity.sourceId
-        || observationSeriesKey(observation) !== query.identity.seriesKey
+        || observationSemanticSeriesKey(observation) !== query.identity.seriesKey
+        || (query.sourceId !== undefined && observation.sourceId !== query.sourceId)
       ) return false;
 
       const observedAt = timestamp(observation.observedAt, "Observation.observedAt");

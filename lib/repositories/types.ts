@@ -4,14 +4,15 @@ import type { Context, Event, Evidence, Observation, ObservationDomain } from ".
 export type ObservationHistoryOrder = "ASC" | "DESC";
 
 /**
- * Stable semantic identity for an Observation series. `seriesKey` is the
- * source-native machine identity already retained by canonical normalization:
- * metadata.seriesId for FRED or metadata.metricId for CoinGecko/Yahoo.
- * Descriptive subjects and per-measurement canonical IDs are not identities.
+ * Provider-independent logical identity for an Observation series.
+ * `seriesKey` reuses the machine semantic key retained by normalization:
+ * metadata.seriesId for current FRED observations or metadata.metricId for
+ * current market observations. Providers that represent the same logical
+ * series must normalize to the same key. Descriptive subjects, source IDs,
+ * and per-measurement canonical IDs are not semantic-series identity.
  */
 export type ObservationHistoryIdentity = {
   domain: ObservationDomain;
-  sourceId: string;
   seriesKey: string;
 };
 
@@ -33,6 +34,8 @@ export type ObservationHistoryIdentity = {
  */
 export type ObservationHistoryQuery = {
   identity: ObservationHistoryIdentity;
+  /** Optional provenance qualification; never part of logical-series identity. */
+  sourceId?: string;
   observedAtOnOrAfter?: string;
   observedAtOnOrBefore?: string;
   retrievedAtOnOrBefore?: string;

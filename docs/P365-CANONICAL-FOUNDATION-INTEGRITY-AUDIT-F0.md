@@ -44,7 +44,7 @@ The current system can ingest and normalize factual data, create evidence-backed
 | Freshness/quality | PARTIAL | Typed families and per-series macro windows exist, but quality is observation-age centric and does not yet model publication cadence/market-hours uniformly. |
 | Context | PASS for grouping | Neutral grouping is evidence-backed and does not infer direction. |
 | Market Memory persistence | PARTIAL | Append-only durable adapter exists; operational readiness depends on deployment configuration and ingestion invocation. |
-| Historical retrieval | CONTRACT IMPLEMENTED / ADAPTER PENDING | FND-001 defines stable semantic-series matching, effective-time bounds, availability/as-of cutoff, ordering, and bounded results; durable query wiring remains pending. |
+| Historical retrieval | CONTRACT IMPLEMENTED / ADAPTER PENDING | FND-001 defines provider-independent semantic-series matching with optional provenance qualification, effective-time bounds, availability/as-of cutoff, ordering, and bounded results; durable query wiring remains pending. |
 | Historical continuity | **HIGH GAP** | Persistence is triggered by dashboard reads; no independent collection/backfill ownership is defined. |
 | Factual baseline | PASS in isolation / PARTIAL E2E | Selector is defensively implemented, but active baseline input is current-fetch history, not repository history. |
 | Expectation baseline | MISSING | Event forecast exists as EventResult data, but no baseline contract/selection lifecycle exists. |
@@ -296,7 +296,7 @@ Required correction: CRYPTO_MARKET grouping must use explicit crypto identity/me
 
 ### HIGH gaps
 
-1. The historical Observation repository contract now defines query identity, effective-time bounds, deterministic ordering, and a bounded result size.
+1. The historical Observation repository contract now separates provider-independent semantic-series identity from optional source provenance and defines effective-time/as-of bounds, deterministic ordering, and a bounded result size.
 2. The durable Supabase adapter does not implement that contract yet; historical reads are therefore not wired into the active repository bundle.
 3. Dashboard read is also the ingestion/persistence trigger.
 4. No scheduled ingestion/backfill owner is defined.
@@ -444,7 +444,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 
 | ID | Severity | Finding |
 |---|---|---|
-| FND-001 | **HIGH / CONTRACT REMEDIATED IN THIS CHECKPOINT** | Semantic historical Observation query contract now defines machine-stable series identity, inclusive effective-time bounds, an inclusive retrieval/as-of cutoff, deterministic revision ordering, and bounded results. The durable Supabase query adapter remains the next isolated checkpoint. |
+| FND-001 | **HIGH / CONTRACT REMEDIATED IN THIS CHECKPOINT** | Semantic historical Observation query contract now defines provider-independent logical-series identity separately from optional source provenance, inclusive effective-time bounds, an inclusive retrieval/as-of cutoff, deterministic revision ordering, and bounded results. The durable Supabase query adapter remains the next isolated checkpoint. |
 | FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
 | FND-003 | **HIGH** | Historical ingestion/persistence depends on dashboard access; no independent cadence/backfill owner. |
 | FND-004 | **HIGH / REMEDIATED IN PR #36** | Context taxonomy repaired: CRYPTO_MARKET now selects qualified CoinGecko `crypto.*` observations across ASSET and MARKET domains and excludes Yahoo/FRED cross-assets. Runtime verification remains part of PR #36 gate. |
