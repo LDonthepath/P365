@@ -47,7 +47,7 @@ Setiap layer, data source, model, dan UI harus dapat dipertanggungjawabkan terha
 
 Implementasi aktif saat ini berfokus pada **Macro + Crypto**. Fondasi domain dibuat market-agnostic agar domain pasar lain dapat ditambahkan kemudian tanpa mengubah kontrak inti.
 
-Pipeline canonical saat ini:
+Pipeline canonical dan reasoning boundary:
 
 ```text
 Provider
@@ -60,14 +60,18 @@ Observation / Event / Evidence
   ↓
 Context
   ↓
-State / Risk
+Baseline / Market Memory / Market Snapshot
+  ↓
+State / Repricing / Regime Analysis
   ↓
 Intelligence
   ↓
-Briefing
+Market Briefing
   ↓
 UI
 ```
+
+Implementasi aktif belum melewati fondasi Baseline/Market Memory; State, Risk, Intelligence, dan Market Briefing tetap deferred.
 
 Current implementation sudah mencakup:
 
@@ -76,8 +80,10 @@ Current implementation sudah mencakup:
 - Forex Factory weekly economic calendar sebagai Event + Evidence.
 - Federal Reserve FOMC calendar sebagai Event + Evidence.
 - FRED structured macro observations untuk 19 P0 series.
-- Alpha Vantage BTC/USD dan ETH/USD market observations.
-- Canonical Context grouping untuk Crypto Market, Macro, dan Economic Events.
+- CoinGecko sebagai provider utama factual crypto market observations (BTC/ETH price, market cap, total market cap/volume, dominance).
+- FRED + Yahoo Finance untuk factual cross-asset coverage yang sudah qualified pada foundation saat ini.
+- Biquote sebagai trial provider untuk structured economic-event results.
+- Canonical Context grouping untuk Macro, Crypto Market, dan Economic Events; audit F0 menemukan taxonomy defect pada Crypto Market yang masih harus diperbaiki.
 - Provider health dengan status `HEALTHY`, `EMPTY`, `ERROR`, `UNAVAILABLE`, dan `STALE`.
 - Evidence traceability dari canonical observations/events.
 
@@ -105,6 +111,8 @@ News juga belum otomatis dianggap sebagai intelligence. Interpretation hanya bol
 | `DASHBOARD_ACCESS_PASSWORD` | Password akun tersebut. |
 | `ALPHA_VANTAGE_API_KEY` | API key server-side untuk Alpha Vantage news dan market data. |
 | `FRED_API_KEY` | API key server-side untuk observasi makro FRED. |
+| `SUPABASE_URL` | URL server-side untuk durable Market Memory. |
+| `SUPABASE_SECRET_KEY` / `P365_MEMORY_WRITE_KEY` | Server-only write credential untuk Market Memory. |
 
 Untuk deployment Vercel, atur nilai tersebut pada Project Settings → Environment Variables. Jangan commit `.env.local` atau nilai rahasia lain ke repository.
 
