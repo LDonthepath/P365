@@ -30,6 +30,25 @@ const MACRO_CONTEXT_LABELS: Record<string, string> = {
   MACRO_GROWTH: "Growth",
 };
 
+const MACRO_HEADLINE_SERIES: Record<string, string> = {
+  MACRO_MONETARY_POLICY: "EFFR",
+  MACRO_LIQUIDITY: "RRPONTSYD",
+  MACRO_INFLATION: "CPIAUCSL",
+  MACRO_LABOR: "ICSA",
+  MACRO_RATES: "DGS10",
+  MACRO_USD: "DTWEXBGS",
+  MACRO_GROWTH: "GDPC1",
+};
+
+const MACRO_SERIES_LABELS: Record<string, string> = {
+  FEDFUNDS: "Federal Funds Rate", EFFR: "Effective Fed Funds Rate", WALCL: "Fed Balance Sheet", WRESBAL: "Reserve Balances",
+  M2SL: "M2 Money Stock", WTREGEN: "Treasury General Account", RRPONTSYD: "Overnight Reverse Repo",
+  CPIAUCSL: "Headline CPI", CPILFESL: "Core CPI", PCEPI: "PCE Price Index", PCEPILFE: "Core PCE",
+  UNRATE: "Unemployment Rate", PAYEMS: "Nonfarm Payrolls", ICSA: "Initial Claims", CCSA: "Continued Claims", JTSJOL: "Job Openings", JTSQUR: "Quits Rate", SAHMREALTIME: "Sahm Rule",
+  DGS2: "US Treasury 2Y", DGS10: "US Treasury 10Y", DFII10: "US 10Y Real Yield", T10YIE: "10Y Breakeven Inflation", T10Y2Y: "10Y–2Y Spread", BAMLC0A0CM: "US Corporate Credit Spread", BAMLH0A0HYM2: "US High Yield Spread",
+  DTWEXBGS: "Fed Broad USD Index", GDPC1: "Real GDP",
+};
+
 type ContextGroup = { id: string; label: string; contexts: Context[] };
 
 type CryptoMetric = {
@@ -84,33 +103,37 @@ function formatMacroValue(value: string, unit: string): string {
   return value;
 }
 
+function macroThemeItems(context: Context, observations: Observation[]): Observation[] {
+  return context.observationIds.map((id) => observations.find((item) => item.id === id)).filter((item): item is Observation => Boolean(item));
+}
+
+function macroHeadline(context: Context, items: Observation[]): Observation | undefined {
+  const preferred = MACRO_HEADLINE_SERIES[context.scope];
+  return items.find((item) => String(item.metadata?.seriesId ?? "") === preferred)
+    ?? [...items].sort((a, b) => ({ DAILY: 0, WEEKLY: 1, MONTHLY: 2, QUARTERLY: 3 }[String(a.metadata?.frequency)] ?? 9) - ({ DAILY: 0, WEEKLY: 1, MONTHLY: 2, QUARTERLY: 3 }[String(b.metadata?.frequency)] ?? 9))[0];
+}
+
 function MacroThemeCard({ context, observations, baselines, expanded, onToggle }: { context: Context; observations: Observation[]; baselines: Map<string, BaselinePresentation>; expanded: boolean; onToggle: () => void }) {
-  const items = context.observationIds.map((id) => observations.find((item) => item.id === id)).filter((item): item is Observation => Boolean(item));
-  const rank: Record<string, number> = { DAILY: 0, WEEKLY: 1, MONTHLY: 2, QUARTERLY: 3 };
-  const sorted = [...items].sort((a, b) => (rank[String(a.metadata?.frequency)] ?? 9) - (rank[String(b.metadata?.frequency)] ?? 9));
-  const headline = sorted[0];
+  const items = macroThemeItems(context, observations);
+  const headline = macroHeadline(context, items);
   if (!headline) return null;
   const headlineUnit = String(headline.metadata?.unit ?? "");
   const label = MACRO_CONTEXT_LABELS[context.scope] ?? context.scope;
-  const frequencies = ["DAILY", "WEEKLY", "MONTHLY", "QUARTERLY"];
+  const headlineSeries = String(headline.metadata?.seriesId ?? "");
 
   return <article className={`macro-theme-card${expanded ? " expanded" : ""}`}>
     <button type="button" className="macro-theme-summary" aria-expanded={expanded} onClick={onToggle}>
       <div className="macro-tile-header"><span className="macro-frequency">{label.toUpperCase()}</span><span className="macro-quality">{headline.quality}</span></div>
-      <div className="macro-tile-main"><div><h3>{headline.subject}</h3><small>{String(headline.metadata?.seriesId ?? "")} · {String(headline.metadata?.frequency ?? "")}</small></div><strong className="macro-value">{formatMacroValue(headline.value, headlineUnit)}</strong></div>
-      <div className="macro-tile-footer"><span>{items.length} METRIC · {new Set(items.map((item) => String(item.metadata?.frequency ?? ""))).size} CADENCE</span><span>{expanded ? "TUTUP ↑" : "DETAIL ↓"}</span></div>
+      <div className="macro-tile-main"><div><h3>{MACRO_SERIES_LABELS[headlineSeries] ?? headline.subject}</h3><small>{headlineSeries} · {String(headline.metadata?.frequency ?? "")}</small></div><strong className="macro-value">{formatMacroValue(headline.value, headlineUnit)}</strong></div>
+      <div className="macro-tile-footer"><span>{items.length} INDIKATOR</span><span>{expanded ? "TUTUP ↑" : "LIHAT DETAIL ↓"}</span></div>
     </button>
-    {expanded && <div className="macro-theme-detail">{frequencies.map((frequency) => {
-      const cadenceItems = sorted.filter((item) => String(item.metadata?.frequency ?? "") === frequency);
-      if (!cadenceItems.length) return null;
-      return <section className="macro-cadence-group" key={frequency}><div className="macro-cadence-head"><strong>{frequency}</strong><span>{cadenceItems.length} METRIC</span></div>{cadenceItems.map((item) => {
-        const metadata = item.metadata ?? {};
-        const unit = String(metadata.unit ?? "");
-        const seriesId = String(metadata.seriesId ?? "");
-        const baseline = baselines.get(seriesId) ?? null;
-        return <div className="macro-detail-row" key={item.id}><div><strong>{item.subject}</strong><small>{seriesId} · {item.quality}</small></div><div className="macro-detail-values"><strong>{formatMacroValue(item.value, unit)}</strong><small>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroValue(baseline.baselineValue, unit)} · Δ ${formatBaselineDelta(baseline.changeValue)}` : `Ref ${baseline?.status ?? "MISSING"}`}</small></div></div>;
-      })}</section>;
-    })}<div className="macro-theme-metadata"><span>Canonical observations tetap terpisah per series dan cadence.</span><span>Source: FRED</span></div></div>}
+    {expanded && <div className="macro-theme-detail">{items.map((item) => {
+      const metadata = item.metadata ?? {};
+      const unit = String(metadata.unit ?? "");
+      const seriesId = String(metadata.seriesId ?? "");
+      const baseline = baselines.get(seriesId) ?? null;
+      return <div className="macro-detail-row" key={item.id}><div><strong>{MACRO_SERIES_LABELS[seriesId] ?? item.subject}</strong><small>{seriesId} · {String(metadata.frequency ?? "UNKNOWN")} · {item.quality}</small></div><div className="macro-detail-values"><strong>{formatMacroValue(item.value, unit)}</strong><small>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroValue(baseline.baselineValue, unit)} · Δ ${formatBaselineDelta(baseline.changeValue)}` : `Baseline ${baseline?.status ?? "MISSING"}`}</small></div></div>;
+    })}<div className="macro-theme-metadata"><span>Series canonical tetap terpisah; kartu ini hanya mengelompokkan presentasi.</span><span>Sumber · FRED</span></div></div>}
   </article>;
 }
 
@@ -237,17 +260,20 @@ function MarketHeatmap({ observations, baselines }: { observations: Observation[
     const hasProviderChange = Number.isFinite(providerChangePct);
     return [{ ...definition, value: observation.value, delta: hasProviderChange ? providerChangePct : null, deltaUnit: "PERCENT" as const, changeBasis: hasProviderChange ? String(observation.metadata?.changeBasis ?? "provider_reference") : undefined }];
   });
-  const macroTiles: HeatmapTile[] = observations.filter((item) => item.domain === "MACRO").flatMap((observation) => {
+  const macroScopes = ["MACRO_MONETARY_POLICY", "MACRO_LIQUIDITY", "MACRO_INFLATION", "MACRO_LABOR", "MACRO_RATES", "MACRO_USD", "MACRO_GROWTH"];
+  const macroTiles: HeatmapTile[] = macroScopes.flatMap((scope) => {
+    const preferredSeries = MACRO_HEADLINE_SERIES[scope];
+    const observation = observations.find((item) => item.domain === "MACRO" && String(item.metadata?.seriesId ?? "") === preferredSeries);
+    if (!observation) return [];
     const seriesId = String(observation.metadata?.seriesId ?? "");
-    if (!seriesId) return [];
     const baseline = baselineBySeries.get(seriesId);
-    return [{ id: seriesId, label: seriesId === "DTWEXBGS" ? "FED BROAD USD" : seriesId, group: "MACRO" as const, value: formatMacroValue(observation.value, String(observation.metadata?.unit ?? "")), delta: baseline?.status === "VALID" ? baseline.changeValue : null, deltaUnit: "ABSOLUTE" as const, source: observation.sourceId }];
+    return [{ id: scope, label: MACRO_CONTEXT_LABELS[scope] ?? scope, group: "MACRO" as const, value: formatMacroValue(observation.value, String(observation.metadata?.unit ?? "")), delta: baseline?.status === "VALID" ? baseline.changeValue : null, deltaUnit: "ABSOLUTE" as const, source: `${MACRO_SERIES_LABELS[seriesId] ?? seriesId} · ${seriesId}` }];
   });
   const tiles = [...marketTiles, ...macroTiles];
   const groups: Array<HeatmapTile["group"]> = ["CROSS-ASSET", "MACRO", "CRYPTO"];
 
   return <section className="heatmap-view" aria-labelledby="heatmap-title">
-    <div className="heatmap-heading"><div><div className="panel-label"><span>MARKET MAP</span><span>FACTUAL · NON-PRESCRIPTIVE</span></div><h2 id="heatmap-title">Market Heatmap</h2><p className="lead-copy">Warna hanya menunjukkan perubahan faktual terhadap baseline valid. Tanpa baseline yang valid, tile tetap netral.</p></div><div className="heatmap-legend"><span><i className="heatmap-dot up" /> Naik</span><span><i className="heatmap-dot down" /> Turun</span><span><i className="heatmap-dot neutral" /> Netral / belum ada baseline</span></div></div>
+    <div className="heatmap-heading"><div><div className="panel-label"><span>PETA PASAR</span><span>FAKTUAL · NON-PRESKRIPTIF</span></div><h2 id="heatmap-title">Heatmap Pasar</h2><p className="lead-copy">Warna hanya menunjukkan perubahan faktual terhadap baseline valid. Tanpa baseline yang valid, tile tetap netral.</p></div><div className="heatmap-legend"><span><i className="heatmap-dot up" /> Naik</span><span><i className="heatmap-dot down" /> Turun</span><span><i className="heatmap-dot neutral" /> Netral / belum ada baseline</span></div></div>
     <div className="heatmap-groups">{groups.map((group) => {
       const items = tiles.filter((tile) => tile.group === group);
       if (!items.length) return null;
