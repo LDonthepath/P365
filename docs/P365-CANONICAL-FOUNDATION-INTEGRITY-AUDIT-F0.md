@@ -70,7 +70,7 @@ Macro factual foundation     IMPLEMENTED
 Crypto factual foundation    PARTIAL
 Cross-asset factual data     PARTIAL
 Economic event results       TRIAL / PARTIAL
-Context                      IMPLEMENTED / DEFECT OPEN (FND-004)
+Context                      IMPLEMENTED / FND-004 REMEDIATED IN PR #36
 Durable Market Memory        FOUNDATION IMPLEMENTED
 Historical retrieval         MISSING (FND-001)
 Factual baseline             IMPLEMENTED / NOT REPOSITORY-BACKED (FND-002)
@@ -447,7 +447,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-001 | **HIGH** | No semantic historical Observation repository query. |
 | FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
 | FND-003 | **HIGH** | Historical ingestion/persistence depends on dashboard access; no independent cadence/backfill owner. |
-| FND-004 | **HIGH** | Confirmed Context taxonomy defect: CRYPTO_MARKET excludes CoinGecko MARKET metrics while admitting Yahoo/FRED ASSET cross-assets. |
+| FND-004 | **HIGH / REMEDIATED IN PR #36** | Context taxonomy repaired: CRYPTO_MARKET now selects qualified CoinGecko `crypto.*` observations across ASSET and MARKET domains and excludes Yahoo/FRED cross-assets. Runtime verification remains part of PR #36 gate. |
 | FND-005 | **HIGH** | Documentation SSOT materially drifts from current code. |
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
 | FND-007 | **HIGH** | No Pricing baseline/market-implied layer; pricing surprise/repricing conclusions are not allowed. |
@@ -541,12 +541,13 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 18 Sep 2026 | Retail trader/investor decision-support contract | Product value gate documented without introducing advisory/execution behavior. |
 | 18 Sep 2026 | F0 end-to-end audit | 19 foundation findings established; higher-order reasoning remains blocked pending foundation remediation. |
 | 18 Sep 2026 | Documentation consolidation | This file becomes the single operational foundation SSOT; redundant current-state/audit/roadmap docs retired. |
+| 18 Sep 2026 | FND-004 Context taxonomy repair | CRYPTO_MARKET selection changed from broad ASSET-domain grouping to qualified CoinGecko `crypto.*` taxonomy; cross-assets excluded and global crypto metrics included. |
 
 ## Active remediation sequence
 
 ```text
 1. Documentation consolidation / SSOT          ← current checkpoint
-2. FND-004 Context taxonomy repair
+2. FND-004 Context taxonomy repair              ← implemented in PR #36
 3. FND-001 Historical Observation repository contract
 4. Durable history query adapters
 5. FND-003 Independent ingestion/backfill ownership
