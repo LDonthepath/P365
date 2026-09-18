@@ -10,6 +10,12 @@ type FredObservation = { date?: string; value?: string; realtime_start?: string;
 type FredResponse = { observations?: FredObservation[]; error_message?: string };
 type ValidFredObservation = FredObservation & { date: string; value: string };
 
+export type FredObservationQuery = {
+  observationStart?: string;
+  observationEnd?: string;
+  limit?: number;
+};
+
 /**
  * Source-native temporal fields are explicit. FRED's standard observations
  * response does not provide a per-observation publication/release timestamp,
@@ -40,13 +46,15 @@ function isValidCurrentOrPastDate(value: string): boolean {
   return isDateOnly(value) && value <= new Date().toISOString().slice(0, 10);
 }
 
-async function fetchSeries(series: MacroSeriesDefinition, apiKey: string): Promise<ProviderResult<MacroObservationInput>> {
+async function fetchSeries(series: MacroSeriesDefinition, apiKey: string, query: FredObservationQuery = {}): Promise<ProviderResult<MacroObservationInput>> {
   const url = new URL(FRED_OBSERVATIONS_URL);
   url.searchParams.set("series_id", series.seriesId);
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("file_type", "json");
   url.searchParams.set("sort_order", "desc");
-  url.searchParams.set("limit", "8");
+  url.searchParams.set("limit", String(query.limit ?? 8));
+  if (query.observationStart) url.searchParams.set("observation_start", query.observationStart);
+  if (query.observationEnd) url.searchParams.set("observation_end", query.observationEnd);
 
   try {
     const response = await fetch(url, {
@@ -93,11 +101,23 @@ async function fetchSeries(series: MacroSeriesDefinition, apiKey: string): Promi
   }
 }
 
-export async function fetchFredMacroObservations(): Promise<ProviderResult<MacroObservationInput>> {
+export async function fetchFredMacroObservations(query: FredObservationQuery = {}): Promise<ProviderResult<MacroObservationInput>> {
+  if (query.limit !== undefined && (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > 100)) {
+    return providerResult("fred", "ERROR", [], "FRED observation limit must be an integer between 1 and 100");
+  }
+  if (query.observationStart !== undefined && !isDateOnly(query.observationStart)) {
+    return providerResult("fred", "ERROR", [], "FRED observation_start must be YYYY-MM-DD");
+  }
+  if (query.observationEnd !== undefined && !isDateOnly(query.observationEnd)) {
+    return providerResult("fred", "ERROR", [], "FRED observation_end must be YYYY-MM-DD");
+  }
+  if (query.observationStart && query.observationEnd && query.observationStart > query.observationEnd) {
+    return providerResult("fred", "ERROR", [], "FRED observation_start must not be after observation_end");
+  }
   const apiKey = process.env.FRED_API_KEY;
   if (!apiKey) return providerResult("fred", "UNAVAILABLE", [], "FRED_API_KEY is not configured");
 
-  const results = await Promise.all(MACRO_SERIES_REGISTRY.map((series) => fetchSeries(series, apiKey)));
+  const results = await Promise.all(MACRO_SERIES_REGISTRY.map((series) => fetchSeries(series, apiKey, query)));
   const data = results.flatMap((result) => result.data);
   const failures = results.filter((result) => result.status === "ERROR").map((result) => result.message).filter(Boolean);
   const emptyCount = results.filter((result) => result.status === "EMPTY").length;

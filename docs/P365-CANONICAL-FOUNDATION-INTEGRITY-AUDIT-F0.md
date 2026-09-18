@@ -27,7 +27,7 @@ Older status, roadmap, gap-analysis, and audit documents are removed rather than
 
 P365 has a credible canonical-data architecture and the active code generally respects the product boundary. The principal problem is now **foundation continuity**, not absence of architecture.
 
-The current system can ingest and normalize factual data, create evidence-backed Context, persist canonical records, query contract-compliant Observation history from durable Market Memory, and compute a factual macro baseline from the provider's current retrieval window. It cannot yet guarantee historical continuity because independent ingestion/backfill remains missing, the baseline is not repository-backed, and it cannot yet perform temporally valid event repricing/transmission analysis.
+The current system can ingest and normalize factual data, create evidence-backed Context, persist canonical records, query contract-compliant Observation history from durable Market Memory, and expose an independent bounded ingestion boundary for selected factual providers. It cannot yet guarantee full historical continuity because the Hobby-plan production cron and server credentials require deployment activation, provider coverage/backfill remain bounded, the baseline is not repository-backed, and it cannot yet perform temporally valid event repricing/transmission analysis.
 
 ### Foundation readiness by layer
 
@@ -45,7 +45,7 @@ The current system can ingest and normalize factual data, create evidence-backed
 | Context | PASS for grouping | Neutral grouping is evidence-backed and does not infer direction. |
 | Market Memory persistence | PARTIAL | Append-only durable adapter exists; operational readiness depends on deployment configuration and ingestion invocation. |
 | Historical retrieval | CONTRACT + DURABLE ADAPTER IMPLEMENTED / PRODUCTION E2E PENDING | FND-001 semantics are implemented against persisted canonical Observation payloads. Production REST E2E still requires the server-only deployment credential; independent ingestion/backfill remains FND-003. |
-| Historical continuity | **HIGH GAP** | Persistence is triggered by dashboard reads; no independent collection/backfill ownership is defined. |
+| Historical continuity | **HIGH / FND-003 PARTIAL** | Independent server-side ingestion ownership and a bounded FRED backfill boundary are implemented; production cron activation and broader provider backfill remain pending/limited. |
 | Factual baseline | PASS in isolation / PARTIAL E2E | Selector is defensively implemented, but active baseline input is current-fetch history, not repository history. |
 | Expectation baseline | MISSING | Event forecast exists as EventResult data, but no baseline contract/selection lifecycle exists. |
 | Pricing baseline | MISSING | No canonical market-implied pricing layer. |
@@ -295,10 +295,12 @@ PR #36 replaced that broad-domain selector with qualified CoinGecko provenance p
 2. The durable Supabase adapter implements that contract for persisted canonical Observation rows: FRED uses `payload.metadata.seriesId`; CoinGecko/Yahoo use `payload.metadata.metricId`; `effective_at` is the indexed effective-time filter; the retrieval cutoff uses canonical `payload.retrievedAt`, never `captured_at`.
 3. Legacy Observation rows that predate canonical `retrievedAt` cannot participate in contract-compliant history/as-of queries and are excluded rather than assigned a fabricated availability time. Current writes retain `retrievedAt` in the immutable JSONB payload.
 4. The existing append-only dedupe strategy retains corrections when their canonical IDs differ, including current FRED value revisions. FND-018 remains open for record families whose canonical ID strategy may not distinguish every future correction/revision case.
-5. Dashboard read is also the ingestion/persistence trigger.
-6. No scheduled ingestion/backfill owner is defined.
-7. Baseline does not read Market Memory.
-8. `findById` uses `limit=1` without an explicit order. Canonical IDs are intended to be stable enough for a unique logical record, but revisions/version semantics should not depend on unspecified row order.
+5. Dashboard read remains an ingestion/persistence trigger for the dashboard path, but FND-003 now adds an independent server-side ingestion owner at `/api/cron/historical-ingestion`.
+6. The owner uses the existing provider fetchers and canonical observation normalizers, persists through the existing durable repositories, is protected by `CRON_SECRET`, and is configured as a daily Vercel cron. The project is on Hobby, so realtime 15-minute activation is not claimed.
+7. FRED bounded backfill accepts explicit date bounds and a maximum of 100 observations per series. CoinGecko and Yahoo current quote adapters do not provide historical backfill and remain documented limitations. FRED vintage availability is not fabricated.
+8. Cross-provider partial failure is reported while successful provider writes remain durable; repeated execution relies on existing append-only dedupe/idempotency. Distributed overlap locking is not introduced in this checkpoint; duplicate concurrent writes remain safe at the repository boundary.
+9. Baseline does not read Market Memory.
+10. `findById` uses `limit=1` without an explicit order. Canonical IDs are intended to be stable enough for a unique logical record, but revisions/version semantics should not depend on unspecified row order.
 
 Market Memory therefore has durable storage plus semantic Observation history retrieval, but is not yet a complete historical reasoning subsystem until FND-003 supplies independent continuity/backfill and FND-002 moves factual baseline selection onto repository history. Production Supabase REST E2E remains pending until the deployment environment supplies the server-only key.
 
@@ -443,7 +445,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 |---|---|---|
 | FND-001 | **HIGH / CONTRACT + DURABLE ADAPTER REMEDIATED** | Semantic historical Observation query contract and durable Supabase adapter now implement provider-independent logical-series identity separately from optional source provenance, inclusive effective-time bounds, canonical retrieval/as-of cutoff, deterministic revision ordering, and bounded results. Production REST E2E is pending deployment credentials; FND-002/FND-003 remain separate. |
 | FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
-| FND-003 | **HIGH** | Historical ingestion/persistence depends on dashboard access; no independent cadence/backfill owner. |
+| FND-003 | **HIGH / PARTIAL REMEDIATION IN THIS CHECKPOINT** | Independent server-side ingestion ownership, canonical provider reuse, durable persistence boundary, bounded FRED backfill, auth, daily Hobby-plan cron configuration, and focused service tests are implemented. Production cron activation/CRON_SECRET and Supabase E2E remain pending; CoinGecko/Yahoo historical backfill and realtime cadence are unsupported/limited. |
 | FND-004 | **HIGH / INITIAL REMEDIATION PR #36 / REGRESSION CORRECTED IN THIS CHECKPOINT** | Historical broad-ASSET mixing was removed in PR #36, but its `crypto.*` prefix excluded CoinGecko BTC/ETH asset-level metrics. The corrected selector now uses qualified CoinGecko provenance plus non-empty canonical `metricId`, with focused runtime-builder regression coverage. |
 | FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
@@ -542,6 +544,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 18 Sep 2026 | FND-001 Historical Observation repository contract | Added a provider-agnostic semantic history query contract and verified in-memory reference behavior; durable query adapter intentionally remains pending. |
 | 18 Sep 2026 | FND-004 Context taxonomy regression correction | Independent re-audit found the PR #36 prefix selector excluded CoinGecko asset-level metrics; corrected to qualified CoinGecko provenance plus canonical metric identity, retaining cross-asset exclusion. |
 | 18 Sep 2026 | Durable Historical Observation Query Adapter | Wired FND-001 to append-only Supabase Market Memory using semantic JSONB identity, effective-time bounds, canonical retrieval cutoff, deterministic revision ordering, and focused parity tests. Production REST E2E remains pending server-only deployment credentials; FND-002/FND-003 remain open. |
+| 18 Sep 2026 | FND-003 Independent ingestion/backfill ownership | Added an authenticated server-side ingestion boundary reusing provider acquisition and canonical Observation normalization, daily Hobby-plan cron configuration, bounded FRED date-range backfill, per-provider failure reporting, and durable repository writes. Production cron/credential activation remains pending; CoinGecko/Yahoo historical backfill remains unsupported. |
 
 ## Active remediation sequence
 
@@ -549,8 +552,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 1. Documentation consolidation / SSOT          ← implemented in PR #36
 2. FND-004 Context taxonomy repair              ← initial PR #36; regression corrected in this checkpoint
 3. FND-001 Historical Observation repository contract ← implemented in PR #37
-4. Durable history query adapter                      ← implemented in this checkpoint; production E2E pending
-5. FND-003 Independent ingestion/backfill ownership   ← next
+4. Durable history query adapter                      ← implemented; production E2E pending
+5. FND-003 Independent ingestion/backfill ownership   ← partial implementation in this checkpoint; production activation/backfill limits pending
 6. FND-002 Repository-backed Factual Baseline         ← pending
 7. Temporal/provenance/freshness hardening
 8. FND-009 Manual cache invalidation repair
