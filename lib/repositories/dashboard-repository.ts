@@ -1,8 +1,8 @@
 import type { Context, Event, Evidence, Observation } from "../domain/types";
-import { supabaseCanonicalRepositories } from "../data/market-memory-store";
+import { supabaseCanonicalRepositories, supabaseHistoricalObservationRepository } from "../data/market-memory-store";
 import { supabaseEconomicEventResultRepository } from "../data/economic-event-result-repository";
 import { InMemoryContextRepository, InMemoryEventRepository, InMemoryEvidenceRepository, InMemoryObservationRepository } from "./memory";
-import type { ContextRepository, EconomicEventResultRepository, EventRepository, EvidenceRepository, ObservationRepository } from "./types";
+import type { ContextRepository, EconomicEventResultRepository, EventRepository, EvidenceRepository, HistoricalObservationRepository, ObservationRepository } from "./types";
 
 export type CanonicalRepositories = {
   observations: ObservationRepository;
@@ -21,6 +21,11 @@ export const canonicalRepositories: CanonicalRepositories =
         contexts: new InMemoryContextRepository(),
       }
     : supabaseCanonicalRepositories;
+
+export const historicalObservationRepository: HistoricalObservationRepository =
+  process.env.P365_MEMORY_PERSISTENCE === "memory"
+    ? canonicalRepositories.observations as InMemoryObservationRepository
+    : supabaseHistoricalObservationRepository;
 
 export const economicEventResultRepository: EconomicEventResultRepository = supabaseEconomicEventResultRepository;
 
