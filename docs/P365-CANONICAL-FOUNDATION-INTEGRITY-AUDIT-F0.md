@@ -4,6 +4,8 @@
 **Audited ref:** `main@85b82b2e1827e77ba36af571e2396d8fbadebb68`  
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
+**Verification pass:** Re-verified 18 Sep 2026 against the exact base SHA, PR diff, repository-wide code search, canonical/domain/provider/repository/application paths, current governance docs, and PR status. Findings below distinguish confirmed defects, architecture blockers, and documentation debt.
+
 ## 1. Executive verdict
 
 **CHANGES REQUIRED**
@@ -217,17 +219,24 @@ Provider result states preserve failure semantics. Canonical quality distinguish
 
 ProviderHealth maps SUCCESS to HEALTHY regardless of canonical item quality, with a special FRED override when all normalized macro facts are stale. That means health and data quality are related but not uniformly composed across providers.
 
-Manual refresh currently invalidates only `p365-dashboard`, while cache-policy-enabled providers use `p365-fast`, `p365-medium`, and `p365-slow`. Unless provider fetches also carry `p365-dashboard`, manual refresh does not guarantee invalidation of all cadence-grouped provider caches. This is a **functional cache invalidation gap** that requires verification/fix.
+Manual refresh currently invalidates only `p365-dashboard`. Repository-wide verification confirms FRED, CoinGecko, CoinDesk and Yahoo use cadence-group tags (`p365-fast` / `p365-medium` / `p365-slow`) instead. Forex Factory, Biquote and FOMC still use `p365-dashboard`, while Alpha Vantage uses it directly. Therefore the button labelled **Muat ulang manual** does **not** invalidate the entire provider set and can return cached data for cadence-migrated providers. This is a **confirmed functional cache invalidation defect**, not merely a topology risk.
 
 ## 8. Context audit
 
 Current Context is a neutral grouping layer and correctly references canonical observation/event IDs.
 
-Important defect candidate: `buildDashboardContexts` names its variable `cryptoObservations` but filters `domain === "ASSET"`. Because Yahoo and FRED cross-asset instruments are also ASSET, they can be grouped into `CRYPTO_MARKET` contexts by symbol. This violates scope semantics.
+**Confirmed semantic defect:** `buildDashboardContexts` names its variable `cryptoObservations` but filters `domain === "ASSET"`. This is worse than a broad grouping bug:
+
+- CoinGecko BTC/ETH spot observations normalize as `ASSET` and are therefore grouped into `CRYPTO_MARKET`.
+- CoinGecko global crypto metrics (`crypto.total_market_cap.usd`, total volume, BTC/ETH dominance) normalize as `MARKET` and are therefore **excluded** from `CRYPTO_MARKET` Context.
+- Yahoo Gold/Russell/DXY normalize as `ASSET` and are therefore **included incorrectly** in `CRYPTO_MARKET` Context.
+- FRED cross-asset observations are also `ASSET`; where no symbol metadata exists the fallback derives a pseudo-symbol from the subject and can create additional false crypto contexts.
+
+The active Context layer therefore both omits valid crypto-market facts and admits unrelated cross-asset facts. This violates scope semantics and directly affects user-visible Context.
 
 **Severity: HIGH.**
 
-Required correction: CRYPTO_MARKET grouping must use explicit crypto identity/metric taxonomy, not the broad ASSET domain.
+Required correction: CRYPTO_MARKET grouping must use explicit crypto identity/metric taxonomy, not the broad ASSET domain. Cross-asset observations require their own neutral scope/taxonomy before transmission reasoning.
 
 ## 9. Persistence and Market Memory audit
 
@@ -392,12 +401,12 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-001 | **HIGH** | No semantic historical Observation repository query. |
 | FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
 | FND-003 | **HIGH** | Historical ingestion/persistence depends on dashboard access; no independent cadence/backfill owner. |
-| FND-004 | **HIGH** | `ASSET` observations can be incorrectly grouped into `CRYPTO_MARKET` Context. |
+| FND-004 | **HIGH** | Confirmed Context taxonomy defect: CRYPTO_MARKET excludes CoinGecko MARKET metrics while admitting Yahoo/FRED ASSET cross-assets. |
 | FND-005 | **HIGH** | Documentation SSOT materially drifts from current code. |
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
 | FND-007 | **HIGH** | No Pricing baseline/market-implied layer; pricing surprise/repricing conclusions are not allowed. |
 | FND-008 | MEDIUM | Biquote `time` → releasedAt/occurredAt semantic requires provider qualification. |
-| FND-009 | MEDIUM | Manual refresh tag topology may not invalidate cadence-grouped provider caches. |
+| FND-009 | **HIGH** | Confirmed manual-refresh defect: `p365-dashboard` invalidation does not clear cadence-tagged FRED/CoinGecko/CoinDesk/Yahoo fetches. |
 | FND-010 | MEDIUM | Canonical provenance identity remains partly free-form metadata. |
 | FND-011 | MEDIUM | Freshness is not fully release-calendar/market-hours aware. |
 | FND-012 | MEDIUM | Non-crypto Yahoo adapter reuses `CryptoMarketObservationInput`. |
@@ -406,6 +415,8 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-015 | MEDIUM | Foundation-critical automated tests are sparse. |
 | FND-016 | LOW | UI still has English/raw-status governance leakage. |
 | FND-017 | MEDIUM | Known Next.js dependency security remediation remains open per roadmap. |
+| FND-018 | MEDIUM | Canonical ID strategy is hash-derived from mutable values/timestamps for several record families; correction/revision identity and lineage policy must be locked before history becomes authoritative. |
+| FND-019 | MEDIUM | Current Event aggregation can represent the same real economic event from Forex Factory and Biquote as separate canonical Events; provider-independent event identity/reconciliation is not yet defined. |
 
 ## 19. Repair order
 
@@ -426,7 +437,7 @@ F. Repository-backed Factual Baseline
    ↓
 G. Temporal/provenance + freshness hardening
    ↓
-H. Cache invalidation topology verification/fix
+H. Fix manual refresh to invalidate the canonical cadence groups
    ↓
 I. Complete remaining factual gaps (MOVE; approved crypto gaps)
    ↓
@@ -460,7 +471,20 @@ Do not call the foundation complete until:
 - tests cover the foundation invariants;
 - build/lint pass for every implementation checkpoint.
 
-## 21. Final audit conclusion
+## 21. Pre-merge verification of this audit PR
+
+The audit PR itself was re-checked before merge:
+
+- base is exactly `main@85b82b2e1827e77ba36af571e2396d8fbadebb68`;
+- branch is 2 commits ahead and 0 behind;
+- diff contains exactly one added documentation file; no runtime/source file is modified;
+- PR is mergeable and GitHub reports a clean merge state;
+- Vercel status on the audit head is successful/READY;
+- there are no submitted code reviews or unresolved review threads at verification time.
+
+Because this PR is documentation-only, the meaningful acceptance criterion is **audit accuracy and scope integrity**, not runtime behavior change. Runtime/build verification remains mandatory on each remediation PR.
+
+## 22. Final audit conclusion
 
 P365 should **not** restart its architecture and should **not** add a reasoning engine yet.
 
