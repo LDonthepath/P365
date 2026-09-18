@@ -25,8 +25,8 @@ export type ObservationHistoryIdentity = {
  *
  * This canonical contract uses Observation.retrievedAt (when P365 obtained
  * the provider record). Durable Market Memory captured_at is a later storage
- * write timestamp and remains an adapter concern. Until that adapter exists,
- * this contract does not claim durable point-in-time reconstruction.
+ * write timestamp and remains an adapter concern. The durable adapter uses
+ * canonical retrievedAt for this cutoff and never substitutes captured_at.
  *
  * Results use observedAt as the primary sort key, retrievedAt as the revision
  * tie-breaker, and id as the final deterministic tie-breaker. Invalid
