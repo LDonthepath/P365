@@ -135,8 +135,6 @@
     .nav button.future:hover { color: #777f85; background: #0c0f11; }
     .nav-dot { width: 5px; height: 5px; border: 1px solid currentColor; display: block; }
     .nav button.active .nav-dot { background: var(--gold); border-color: var(--gold); }
-    .nav-state { color: #4f565c; font-size: 8px; }
-
     .sidebar-foot {
       margin-top: auto;
       padding: 13px 15px 17px;
@@ -178,14 +176,6 @@
 
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .clock { color: var(--muted); font-size: 9px; min-width: 82px; text-align: right; }
-    .example-chip {
-      color: #8d846a;
-      border: 1px solid #3d3828;
-      padding: 4px 7px;
-      font-size: 8px;
-      letter-spacing: .04em;
-    }
-
     .command-btn, .inspector-toggle {
       height: 30px;
       display: flex;
@@ -657,7 +647,7 @@
 
       <div class="header-actions">
         <button class="command-btn" id="commandOpen"><span>Cari atau buka</span><span class="key mono">⌘ K</span></button>
-        <button class="inspector-toggle" id="inspectorToggle">Bukti</button>
+        <button class="inspector-toggle" id="inspectorToggle" aria-expanded="true" aria-controls="evidenceInspector">Bukti</button>
         <span class="clock mono" id="utcClock">00:00:00 UTC</span>
       </div>
     </header>
@@ -683,7 +673,7 @@
           </div>
 
           <div class="important-list" id="importantList">
-            <button class="change-row selected" data-id="rates">
+            <button class="change-row selected" data-id="rates" aria-pressed="true">
               <div class="change-time mono">15:30 WIB</div>
               <div class="change-main">
                 <strong>Yield AS bergerak lebih tinggi sementara dolar menguat terhadap referensi terdekat.</strong>
@@ -692,7 +682,7 @@
               <div class="change-tag"><span>Rates · USD</span></div>
             </button>
 
-            <button class="change-row" data-id="liquidity">
+            <button class="change-row" data-id="liquidity" aria-pressed="false">
               <div class="change-time mono">14:00 WIB</div>
               <div class="change-main">
                 <strong>Beberapa komponen likuiditas dolar berubah dibanding pembacaan sebelumnya.</strong>
@@ -701,7 +691,7 @@
               <div class="change-tag"><span>Likuiditas</span></div>
             </button>
 
-            <button class="change-row" data-id="crypto">
+            <button class="change-row" data-id="crypto" aria-pressed="false">
               <div class="change-time mono">13:45 WIB</div>
               <div class="change-main">
                 <strong>BTC dan ETH bergerak; price, market cap, volume, dan dominance tetap dipisahkan.</strong>
@@ -710,7 +700,7 @@
               <div class="change-tag"><span>Crypto</span></div>
             </button>
 
-            <button class="change-row" data-id="event">
+            <button class="change-row" data-id="event" aria-pressed="false">
               <div class="change-time mono">21:00 WIB</div>
               <div class="change-main">
                 <strong>Rilis ekonomi terjadwal menjadi anchor utama untuk bagian sesi berikutnya.</strong>
@@ -763,7 +753,7 @@
 
           <div class="calendar">
             <div class="event-row event-head mono">
-              <div>Waktu</div><div>Mata uang</div><div>Event</div><div>Aktual</div><div>Konsensus</div><div>Sebelumnya</div>
+              <div>Waktu</div><div>Mata uang</div><div>Peristiwa</div><div>Aktual</div><div>Konsensus</div><div>Sebelumnya</div>
             </div>
             <div class="event-row next">
               <div class="event-time mono">19:30</div>
@@ -795,7 +785,7 @@
         <div class="footer-note mono">PROTOTYPE DESAIN · NILAI HANYA CONTOH · TIDAK MENGKLAIM CAPABILITY PRODUKSI</div>
       </main>
 
-      <aside class="inspector" aria-label="Bukti pendukung">
+      <aside class="inspector" id="evidenceInspector" aria-label="Bukti pendukung">
         <div class="inspector-top">
           <div class="inspector-label">Bukti pendukung</div>
           <button class="inspector-close" id="inspectorClose" aria-label="Tutup panel bukti">×</button>
@@ -807,7 +797,7 @@
         <div class="inspect-block">
           <h3>Ringkasan data</h3>
           <div class="fact-grid" id="factGrid">
-            <div class="fact-row"><span>Scope</span><strong>RATES · USD</strong></div>
+            <div class="fact-row"><span>Cakupan</span><strong>RATES · USD</strong></div>
             <div class="fact-row"><span>Status</span><strong>TERAMATI</strong></div>
             <div class="fact-row"><span>Referensi</span><strong>TERSEDIA</strong></div>
             <div class="fact-row"><span>Inferensi</span><strong>TIDAK ADA</strong></div>
@@ -853,8 +843,8 @@
       rates: {
         title: "Rates & USD bergerak berdekatan",
         intro: "Perubahan pada US 2Y, US 10Y, dan DXY dibaca sebagai observasi terpisah. Hubungan lintas aset belum diklaim sebagai capability produksi.",
-        facts: [["Scope","RATES · USD"],["Status","TERAMATI"],["Referensi","TERSEDIA"],["Inferensi","TIDAK ADA"]],
-        evidence: [["US 10Y Treasury","FRED · DGS10 · canonical observation"],["US 2Y Treasury","FRED · DGS2 · canonical observation"],["DXY","Yahoo Finance · DX-Y.NYB · instrumen terpisah"]],
+        facts: [["Cakupan","RATES · USD"],["Status","TERAMATI"],["Referensi","TERSEDIA"],["Inferensi","TIDAK ADA"]],
+        evidence: [["US 10Y Treasury","FRED · DGS10 · observasi kanonik"],["US 2Y Treasury","FRED · DGS2 · observasi kanonik"],["DXY","Yahoo Finance · DX-Y.NYB · instrumen terpisah"]],
         matter: "Rates dan USD sedang berubah pada waktu yang berdekatan. Baca keduanya bersama sebelum menilai pergerakan aset lain.",
         note: "Timing yang berdekatan belum berarti sebab-akibat. Gunakan panel Bukti untuk memeriksa observasi yang mendasari konteks ini.",
         monitor: [["US 2Y / 10Y","Apakah perubahan yield bertahan setelah data berikutnya."],["DXY","Apakah dolar mengonfirmasi atau bertentangan dengan perubahan rates."],["Event","Tunggu actual terverifikasi sebelum membandingkan dengan forecast."]],
@@ -863,32 +853,32 @@
       liquidity: {
         title: "Komponen likuiditas berubah",
         intro: "TGA, reserve balances, dan ON RRP dipertahankan sebagai fakta individual. Tidak ada liquidity score atau regime label.",
-        facts: [["Scope","MACRO · LIQUIDITY"],["Status","TERAMATI"],["Series","TERPISAH"],["Inferensi","TIDAK ADA"]],
+        facts: [["Cakupan","MAKRO · LIKUIDITAS"],["Status","TERAMATI"],["Seri","TERPISAH"],["Inferensi","TIDAK ADA"]],
         evidence: [["Treasury General Account","FRED · WTREGEN"],["Reserve Balances","FRED · WRESBAL"],["ON RRP","FRED · RRPONTSYD"]],
         matter: "Perubahan likuiditas perlu dibaca per komponen, bukan disederhanakan menjadi satu skor atau label kondisi.",
         note: "TGA, reserve balances, dan ON RRP memiliki cadence dan arti yang berbeda. Baca perubahannya satu per satu sebelum menyusun konteks.",
         monitor: [["TGA","Pembaruan seri berikutnya sesuai cadence publikasi."],["Reserves","Apakah perubahan reserve balances berlanjut."],["ON RRP","Perubahan penggunaan fasilitas pada observasi berikutnya."]],
-        monitorText: "Pantau pembaruan masing-masing seri sesuai cadence-nya; freshness threshold bukan ingestion cadence."
+        monitorText: "Pantau pembaruan tiap seri sesuai cadence publikasinya; batas freshness bukan jadwal ingestion."
       },
       crypto: {
         title: "Metric crypto tetap terpisah",
         intro: "Spot price, market cap, volume, dan dominance tidak dilebur menjadi satu label arah pasar.",
-        facts: [["Scope","CRYPTO_MARKET"],["Status","TERAMATI"],["Provider","COINGECKO"],["Inferensi","TIDAK ADA"]],
+        facts: [["Cakupan","CRYPTO MARKET"],["Status","TERAMATI"],["Penyedia","COINGECKO"],["Inferensi","TIDAK ADA"]],
         evidence: [["BTC Spot","CoinGecko · btc.spot.usd"],["ETH Spot","CoinGecko · eth.spot.usd"],["BTC Dominance","CoinGecko · crypto.btc_dominance.pct"]],
-        matter: "Perubahan crypto sebaiknya dimulai dari metric yang benar-benar berubah, lalu dibandingkan dengan konteks lain secara terpisah.",
+        matter: "Perubahan crypto sebaiknya dimulai dari metrik yang benar-benar berubah, lalu dibandingkan dengan konteks lain secara terpisah.",
         note: "Harga, market cap, volume, dan dominance menjawab pertanyaan yang berbeda. Hindari menyatukannya menjadi satu arah pasar.",
         monitor: [["BTC / ETH","Perubahan spot pada observasi berikutnya."],["Volume","Apakah volume berubah tanpa menggabungkannya menjadi sinyal."],["Dominance","Baca sebagai metric terpisah dari harga."]],
-        monitorText: "Gunakan baseline valid setelah historical continuity tersedia; jangan mengganti history dengan previousValue."
+        monitorText: "Gunakan baseline yang valid setelah riwayat berkelanjutan tersedia; jangan mengganti riwayat dengan nilai sebelumnya."
       },
       event: {
         title: "Event ekonomi terjadwal",
         intro: "Event menjadi anchor waktu. Surprise hanya sah jika actual, expectation, dan timestamp release memiliki semantics yang benar.",
-        facts: [["Scope","ECONOMIC EVENT"],["Status","TERJADWAL"],["Expectation","TRIAL / PARTIAL"],["Surprise","BELUM DIKLAIM"]],
-        evidence: [["Calendar awareness","Forex Factory · scheduled event"],["Official anchor","Federal Reserve · FOMC schedule"],["Structured result trial","Biquote · actual/forecast/previous"]],
-        matter: "Sebelum event, fokusnya adalah expectation yang tersedia dan apa yang sedang dimonitor—bukan memprediksi hasil release.",
+        facts: [["Cakupan","PERISTIWA EKONOMI"],["Status","TERJADWAL"],["Ekspektasi","TERBATAS"],["Kejutan","BELUM DIKLAIM"]],
+        evidence: [["Jadwal kalender","Forex Factory · peristiwa terjadwal"],["Rujukan resmi","Federal Reserve · jadwal FOMC"],["Hasil terstruktur","Biquote · aktual/forecast/sebelumnya · uji coba"]],
+        matter: "Sebelum peristiwa, fokusnya adalah ekspektasi yang tersedia dan apa yang sedang dimonitor—bukan memprediksi hasil rilis.",
         note: "Pisahkan apa yang dijadwalkan, apa yang diharapkan, dan apa yang benar-benar dirilis sebelum menilai respons pasar.",
-        monitor: [["Waktu release","Pastikan timestamp release terverifikasi."],["Actual","Tunggu data actual sebelum menghitung surprise."],["Market response","Repricing membutuhkan pre/post reference yang valid."]],
-        monitorText: "Tunggu actual terverifikasi dan release timestamp yang qualified sebelum membandingkan dengan forecast."
+        monitor: [["Waktu rilis","Pastikan timestamp rilis terverifikasi."],["Aktual","Tunggu data aktual sebelum menghitung kejutan."],["Respons pasar","Repricing membutuhkan referensi sebelum/sesudah yang valid."]],
+        monitorText: "Tunggu data aktual dan timestamp rilis yang terverifikasi sebelum membandingkannya dengan forecast."
       }
     };
 
@@ -914,7 +904,11 @@
     function selectEvidence(id) {
       const data = evidenceData[id];
       if (!data) return;
-      rows.forEach(row => row.classList.toggle("selected", row.dataset.id === id));
+      rows.forEach(row => {
+        const selected = row.dataset.id === id;
+        row.classList.toggle("selected", selected);
+        row.setAttribute("aria-pressed", String(selected));
+      });
       inspectTitle.textContent = data.title;
       inspectIntro.textContent = data.intro;
       factGrid.innerHTML = data.facts.map(([k,v]) =>
@@ -928,7 +922,7 @@
       matterNote.textContent = data.note;
       renderMonitor(data.monitor);
 
-      workspace.classList.remove("inspector-closed");
+      setInspectorOpen(true);
     }
 
     rows.forEach(row => row.addEventListener("click", () => selectEvidence(row.dataset.id)));
@@ -950,18 +944,31 @@
         document.querySelectorAll(".nav button").forEach(item => item.classList.remove("active"));
         btn.classList.add("active");
         app.classList.remove("mobile-nav-open");
+        mobileMenu?.setAttribute("aria-expanded", "false");
       });
     });
 
-    if (window.innerWidth <= 980) workspace.classList.add("inspector-closed");
-
     const inspectorToggle = document.getElementById("inspectorToggle");
+    if (window.innerWidth <= 980) {
+      workspace.classList.add("inspector-closed");
+      inspectorToggle.setAttribute("aria-expanded", "false");
+    }
     const inspectorClose = document.getElementById("inspectorClose");
-    inspectorToggle.addEventListener("click", () => workspace.classList.toggle("inspector-closed"));
-    inspectorClose.addEventListener("click", () => workspace.classList.add("inspector-closed"));
+    function setInspectorOpen(open) {
+      workspace.classList.toggle("inspector-closed", !open);
+      inspectorToggle.setAttribute("aria-expanded", String(open));
+    }
+
+    inspectorToggle.addEventListener("click", () => setInspectorOpen(workspace.classList.contains("inspector-closed")));
+    inspectorClose.addEventListener("click", () => setInspectorOpen(false));
 
     const mobileMenu = document.getElementById("mobileMenu");
-    mobileMenu.addEventListener("click", () => app.classList.toggle("mobile-nav-open"));
+    mobileMenu.setAttribute("aria-expanded", "false");
+    mobileMenu.addEventListener("click", () => {
+      const open = !app.classList.contains("mobile-nav-open");
+      app.classList.toggle("mobile-nav-open", open);
+      mobileMenu.setAttribute("aria-expanded", String(open));
+    });
 
     const detailToggle = document.getElementById("detailToggle");
     const detailsBox = document.getElementById("detailsBox");
@@ -1014,6 +1021,7 @@
       if (e.key === "Escape") {
         closePalette();
         app.classList.remove("mobile-nav-open");
+        mobileMenu?.setAttribute("aria-expanded", "false");
       }
     });
 
