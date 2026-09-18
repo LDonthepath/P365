@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>P365 — UI Prototype</title>
+  <style>
+    :root {
+      --bg: #07090b;
+      --sidebar: #090c0f;
+      --surface: #0d1114;
+      --surface-2: #11161a;
+      --surface-3: #151b20;
+      --border: #222a30;
+      --border-strong: #303a42;
+      --text: #ece9e2;
+      --text-2: #bbc0c4;
+      --muted: #7d878f;
+      --faint: #545d65;
+      --gold: #d0b15a;
+      --gold-soft: #8f7a43;
+      --green: #67b58a;
+      --red: #c97a7a;
+      --amber: #c89b61;
+      --sidebar-w: 228px;
+      --inspector-w: 332px;
+      --header-h: 58px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
+    body {
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      overflow-x: hidden;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .mono { font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+      grid-template-rows: var(--header-h) minmax(0, 1fr);
+      background: var(--bg);
+    }
+
+    .sidebar {
+      grid-row: 1 / 3;
+      grid-column: 1;
+      min-height: 100vh;
+      border-right: 1px solid var(--border);
+      background: var(--sidebar);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .brand {
+      height: var(--header-h);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--gold-soft);
+      display: grid;
+      place-items: center;
+      color: var(--gold);
+      background: #0d1012;
+    }
+
+    .brand-mark svg { width: 17px; height: 17px; display: block; }
+    .brand-copy { min-width: 0; }
+    .brand-copy strong {
+      display: block;
+      color: var(--gold);
+      font-size: 13px;
+      letter-spacing: .12em;
+      font-weight: 700;
+    }
+    .brand-copy span {
+      display: block;
+      margin-top: 1px;
+      color: var(--faint);
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .nav { padding: 18px 12px; display: grid; gap: 20px; }
+    .nav-group { display: grid; gap: 4px; }
+    .nav-label {
+      padding: 0 9px 7px;
+      color: var(--faint);
+      font-size: 9px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .nav button {
+      width: 100%;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 0;
+      border-left: 2px solid transparent;
+      background: transparent;
+      padding: 8px 9px;
+      cursor: pointer;
+      text-align: left;
+      color: var(--muted);
+      transition: background .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .nav button:hover { background: #0f1418; color: var(--text-2); }
+    .nav button.active { color: var(--text); background: #101519; border-left-color: var(--gold); }
+    .nav .icon {
+      width: 15px; height: 15px; border: 1px solid currentColor; opacity: .72; display: inline-grid; place-items: center; font-size: 8px;
+    }
+
+    .sidebar-foot {
+      margin-top: auto;
+      padding: 14px 16px 18px;
+      border-top: 1px solid var(--border);
+    }
+    .system-line { display: flex; justify-content: space-between; gap: 12px; color: var(--faint); font-size: 10px; }
+    .system-line strong { color: var(--text-2); font-weight: 500; }
+    .status-dot { width: 6px; height: 6px; background: var(--green); display: inline-block; margin-right: 6px; }
+
+    .header {
+      grid-column: 2;
+      grid-row: 1;
+      height: var(--header-h);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 0 22px;
+      background: #080b0d;
+      position: sticky;
+      top: 0;
+      z-index: 15;
+    }
+
+    .breadcrumb { min-width: 0; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+    .breadcrumb strong { color: var(--text); font-weight: 600; }
+    .slash { color: var(--faint); }
+
+    .header-actions { display: flex; align-items: center; gap: 9px; }
+    .prototype-badge {
+      color: var(--gold);
+      border: 1px solid #4b422b;
+      background: #15130e;
+      padding: 5px 8px;
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .clock { color: var(--muted); font-size: 10px; min-width: 82px; text-align: right; }
+
+    .command-btn {
+      min-width: 190px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: #0c1013;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 0 9px;
+      cursor: pointer;
+    }
+    .command-btn:hover { border-color: var(--border-strong); color: var(--text-2); }
+    .key { color: var(--faint); font-size: 9px; }
+
+    .workspace {
+      grid-column: 2;
+      grid-row: 2;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) var(--inspector-w);
+      min-height: calc(100vh - var(--header-h));
+    }
+
+    main { min-width: 0; padding: 28px 30px 60px; }
+    .inspector {
+      border-left: 1px solid var(--border);
+      background: #090c0f;
+      padding: 22px 18px 36px;
+      min-width: 0;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--border);
+    }
+    .eyebrow {
+      color: var(--gold);
+      font-size: 9px;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    h1 {
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1;
+      letter-spacing: -.05em;
+      margin: 8px 0 8px;
+      font-weight: 620;
+    }
+    .page-head p { margin: 0; color: var(--muted); max-width: 650px; font-size: 12px; }
+    .session-meta { text-align: right; color: var(--faint); font-size: 9px; line-height: 1.75; white-space: nowrap; }
+
+    .section { margin-top: 26px; }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    .section-head h2 { margin: 0; font-size: 15px; font-weight: 640; letter-spacing: -.02em; }
+    .section-head span { color: var(--faint); font-size: 9px; }
+
+    .important-list {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .change-row {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      text-align: left;
+      padding: 0;
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr) 110px;
+      gap: 18px;
+      cursor: pointer;
+      transition: background .15s ease;
+    }
+    .change-row:last-child { border-bottom: 0; }
+    .change-row:hover { background: #0c1013; }
+    .change-row.selected { background: #101418; box-shadow: inset 2px 0 0 var(--gold); }
+
+    .change-time { padding: 15px 0 15px 14px; color: var(--faint); font-size: 10px; }
+    .change-main { padding: 13px 0 14px; min-width: 0; }
+    .change-main strong { display: block; color: var(--text); font-size: 13px; font-weight: 600; line-height: 1.35; }
+    .change-main p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; max-width: 760px; }
+    .change-tag { padding: 15px 14px 15px 0; color: var(--faint); font-size: 9px; text-align: right; }
+    .change-tag span {
+      display: inline-block;
+      border: 1px solid var(--border);
+      padding: 4px 6px;
+      color: var(--text-2);
+      background: #0b0f12;
+    }
+
+    .secondary-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(290px, .88fr);
+      gap: 18px;
+      margin-top: 24px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      min-width: 0;
+    }
+    .panel-head { min-height: 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 13px; }
+    .panel-head strong { font-size: 11px; font-weight: 620; letter-spacing: .01em; }
+    .panel-head span { color: var(--faint); font-size: 9px; }
+    .panel-body { padding: 14px 14px 15px; }
+
+    .matter-lead {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.48;
+      letter-spacing: -.025em;
+      color: var(--text);
+      max-width: 720px;
+    }
+    .matter-note { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+
+    .monitor-list { display: grid; }
+    .monitor-row {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .monitor-row:last-child { border-bottom: 0; }
+    .monitor-row strong { color: var(--text-2); font-size: 10px; font-weight: 600; }
+    .monitor-row span { color: var(--muted); font-size: 11px; }
+
+    .context-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .context-cell { min-width: 0; padding: 12px 13px; border-right: 1px solid var(--border); }
+    .context-cell:last-child { border-right: 0; }
+    .context-cell span { display: block; color: var(--faint); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
+    .context-cell strong { display: block; margin-top: 6px; font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+    .context-cell small { display: block; color: var(--muted); font-size: 9px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .calendar {
+      border-top: 1px solid var(--border);
+    }
+    .event-row {
+      display: grid;
+      grid-template-columns: 72px 52px minmax(0, 1fr) 74px 74px 74px;
+      gap: 10px;
+      align-items: center;
+      min-height: 44px;
+      border-bottom: 1px solid var(--border);
+      font-size: 10px;
+    }
+    .event-row > * { min-width: 0; }
+    .event-time { color: var(--text-2); }
+    .event-ccy { color: var(--faint); }
+    .event-name { color: var(--text); font-size: 11px; }
+    .event-val { color: var(--muted); text-align: right; }
+    .event-head { color: var(--faint); text-transform: uppercase; letter-spacing: .08em; font-size: 8px; min-height: 30px; }
+
+    .inspector-label { color: var(--faint); font-size: 8px; letter-spacing: .14em; text-transform: uppercase; }
+    .inspector h2 { margin: 9px 0 7px; font-size: 18px; line-height: 1.3; letter-spacing: -.03em; }
+    .inspector-intro { color: var(--muted); margin: 0; font-size: 11px; line-height: 1.55; }
+
+    .inspect-block { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 14px; }
+    .inspect-block h3 { color: var(--text-2); margin: 0 0 10px; font-size: 10px; font-weight: 620; letter-spacing: .05em; text-transform: uppercase; }
+    .fact-grid { display: grid; gap: 9px; }
+    .fact-row { display: flex; justify-content: space-between; gap: 16px; font-size: 10px; }
+    .fact-row span { color: var(--faint); }
+    .fact-row strong { color: var(--text-2); font-weight: 500; text-align: right; }
+
+    .evidence-list { display: grid; gap: 8px; }
+    .evidence-item {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--border);
+      background: #0c1013;
+      padding: 10px;
+      cursor: pointer;
+    }
+    .evidence-item:hover { border-color: var(--border-strong); }
+    .evidence-item strong { display: block; font-size: 10px; font-weight: 600; color: var(--text-2); }
+    .evidence-item span { display: block; margin-top: 4px; color: var(--faint); font-size: 9px; }
+
+    .disclosure {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 9px;
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+      margin-top: 10px;
+      font-size: 10px;
+    }
+    .disclosure:hover { color: var(--text-2); border-color: var(--border-strong); }
+    .details { display: none; margin-top: 10px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .details.open { display: block; }
+
+    .command-palette {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      place-items: start center;
+      padding-top: 14vh;
+      background: rgba(0,0,0,.62);
+    }
+    .command-palette.open { display: grid; }
+    .command-box { width: min(620px, calc(100vw - 28px)); border: 1px solid var(--border-strong); background: #0c1013; }
+    .command-box input {
+      width: 100%;
+      height: 44px;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      outline: none;
+      padding: 0 13px;
+    }
+    .command-results { padding: 8px; }
+    .command-result { padding: 10px 8px; border: 1px solid transparent; color: var(--muted); font-size: 11px; }
+    .command-result.active { border-color: var(--border); background: var(--surface-2); color: var(--text-2); }
+
+    .footer-note {
+      margin-top: 24px;
+      color: var(--faint);
+      font-size: 9px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+
+    @media (max-width: 1180px) {
+      :root { --inspector-w: 290px; }
+      .context-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .context-cell:nth-child(3) { border-right: 0; }
+      .context-cell:nth-child(n+4) { border-top: 1px solid var(--border); }
+      .event-row { grid-template-columns: 66px 44px minmax(0, 1fr) 64px 64px 64px; }
+    }
+
+    @media (max-width: 980px) {
+      :root { --sidebar-w: 194px; }
+      .workspace { grid-template-columns: minmax(0, 1fr); }
+      .inspector { border-left: 0; border-top: 1px solid var(--border); }
+      .secondary-grid { grid-template-columns: 1fr; }
+      .command-btn { min-width: 140px; }
+    }
+
+    @media (max-width: 760px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .header, .workspace { grid-column: 1; }
+      .header { padding: 0 12px; }
+      .command-btn { min-width: 38px; width: 38px; justify-content: center; }
+      .command-btn span:first-child { display: none; }
+      .prototype-badge { display: none; }
+      main { padding: 20px 12px 42px; }
+      .page-head { align-items: flex-start; flex-direction: column; }
+      .session-meta { text-align: left; }
+      .change-row { grid-template-columns: 62px minmax(0, 1fr); }
+      .change-tag { display: none; }
+      .context-strip { grid-template-columns: 1fr 1fr; }
+      .context-cell { border-right: 1px solid var(--border) !important; border-top: 1px solid var(--border); }
+      .context-cell:nth-child(1), .context-cell:nth-child(2) { border-top: 0; }
+      .context-cell:nth-child(even) { border-right: 0 !important; }
+      .calendar { overflow-x: auto; }
+      .event-row { min-width: 680px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 2.5 19 5v5.8c0 4.6-2.5 8-7 10.7-4.5-2.7-7-6.1-7-10.7V5l7-2.5Z" stroke="currentColor" stroke-width="1.5"/>
+            <path d="m8.5 13 3-3 2 2 3-3" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M14.5 9h2v2" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="brand-copy">
+          <strong>P365</strong>
+          <span>Market Intelligence</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Navigasi utama">
+        <div class="nav-group">
+          <div class="nav-label">Workspace</div>
+          <button class="active" data-view="hari-ini"><span class="icon">•</span>Hari Ini</button>
+          <button data-view="regime"><span class="icon">R</span>Regime</button>
+          <button data-view="likuiditas"><span class="icon">L</span>Likuiditas</button>
+          <button data-view="risiko"><span class="icon">K</span>Risiko</button>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Riset</div>
+          <button data-view="catatan"><span class="icon">N</span>Catatan</button>
+          <button data-view="snapshot"><span class="icon">S</span>Snapshot</button>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Sistem</div>
+          <button data-view="kesehatan"><span class="icon">H</span>Kesehatan</button>
+          <button data-view="pengaturan"><span class="icon">⚙</span>Pengaturan</button>
+        </div>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="system-line"><span><i class="status-dot"></i>Pipeline</span><strong>ONLINE</strong></div>
+        <div class="system-line" style="margin-top:7px"><span>Mode</span><strong>PROTOTIPE</strong></div>
+      </div>
+    </aside>
+
+    <header class="header">
+      <div class="breadcrumb"><span>P365</span><span class="slash">/</span><strong>Hari Ini</strong></div>
+      <div class="header-actions">
+        <button class="command-btn" id="commandOpen"><span>Cari atau buka perintah</span><span class="key mono">⌘ K</span></button>
+        <span class="prototype-badge">Design branch</span>
+        <span class="clock mono" id="utcClock">00:00:00 UTC</span>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <main>
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Market understanding workspace</div>
+            <h1>Hari Ini</h1>
+            <p>Ringkasan perubahan penting, konteks yang perlu dipahami, dan hal yang perlu dimonitor—tanpa memberi instruksi trading.</p>
+          </div>
+          <div class="session-meta mono">
+            DATA PROTOTIPE<br/>
+            BASELINE UI: CURRENT MAIN<br/>
+            DESKTOP 1440
+          </div>
+        </div>
+
+        <section class="section" aria-labelledby="important-title">
+          <div class="section-head">
+            <h2 id="important-title">Perubahan Penting</h2>
+            <span class="mono">4 ITEM · DIPILIH BERDASARKAN RELEVANSI</span>
+          </div>
+
+          <div class="important-list" id="importantList">
+            <button class="change-row selected" data-id="rates">
+              <div class="change-time mono">08:30 UTC</div>
+              <div class="change-main">
+                <strong>Yield AS bergerak lebih tinggi sementara dolar menguat terhadap baseline terdekat.</strong>
+                <p>Perubahan terlihat bersamaan pada US 2Y, US 10Y, dan DXY. Belum ada inferensi arah aset berisiko pada layer ini.</p>
+              </div>
+              <div class="change-tag"><span>RATES · USD</span></div>
+            </button>
+            <button class="change-row" data-id="liquidity">
+              <div class="change-time mono">07:00 UTC</div>
+              <div class="change-main">
+                <strong>Komponen likuiditas dolar menunjukkan perubahan dibanding pembacaan sebelumnya.</strong>
+                <p>Fokus pada perubahan TGA, reserve balances, dan ON RRP sebagai fakta terpisah sebelum menarik kesimpulan lebih lanjut.</p>
+              </div>
+              <div class="change-tag"><span>LIQUIDITY</span></div>
+            </button>
+            <button class="change-row" data-id="crypto">
+              <div class="change-time mono">06:45 UTC</div>
+              <div class="change-main">
+                <strong>BTC dan ETH bergerak, sementara dominance tetap perlu dibaca sebagai metrik terpisah.</strong>
+                <p>Perubahan harga, market cap, volume, dan dominance tidak digabung menjadi sinyal tunggal.</p>
+              </div>
+              <div class="change-tag"><span>CRYPTO</span></div>
+            </button>
+            <button class="change-row" data-id="event">
+              <div class="change-time mono">14:00 UTC</div>
+              <div class="change-main">
+                <strong>Rilis ekonomi terjadwal menjadi anchor utama untuk sesi berikutnya.</strong>
+                <p>Expectation dan actual hanya dibandingkan jika data release yang terverifikasi tersedia; prototipe tidak memalsukan surprise.</p>
+              </div>
+              <div class="change-tag"><span>EVENT</span></div>
+            </button>
+          </div>
+        </section>
+
+        <div class="secondary-grid">
+          <section class="panel">
+            <div class="panel-head"><strong>Apa yang Penting</strong><span class="mono">KONTEKS · BUKAN REKOMENDASI</span></div>
+            <div class="panel-body">
+              <p class="matter-lead">Perubahan lintas rates dan USD layak menjadi konteks utama sebelum membaca pergerakan aset lain secara terpisah.</p>
+              <p class="matter-note">Tujuan panel ini adalah memperkecil beban analisis: menampilkan hubungan yang perlu diperiksa, bukan menghasilkan keputusan atau label bullish/bearish.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head"><strong>Monitor</strong><span class="mono">SESI BERJALAN</span></div>
+            <div class="panel-body monitor-list">
+              <div class="monitor-row"><strong>US 2Y / 10Y</strong><span>Apakah perubahan yield bertahan setelah data berikutnya.</span></div>
+              <div class="monitor-row"><strong>DXY</strong><span>Konfirmasi atau kontradiksi terhadap perubahan rates.</span></div>
+              <div class="monitor-row"><strong>EVENT</strong><span>Actual vs forecast hanya setelah release terverifikasi.</span></div>
+            </div>
+          </section>
+        </div>
+
+        <section class="section" aria-labelledby="context-title">
+          <div class="section-head">
+            <h2 id="context-title">Konteks Pasar</h2>
+            <span class="mono">OBSERVASI RINGKAS · FAKTUAL</span>
+          </div>
+          <div class="context-strip">
+            <div class="context-cell"><span>US 10Y</span><strong class="mono">4.21%</strong><small>FRED · pembacaan terbaru</small></div>
+            <div class="context-cell"><span>DXY</span><strong class="mono">103.42</strong><small>Yahoo · indeks terpisah</small></div>
+            <div class="context-cell"><span>Gold</span><strong class="mono">$2,614</strong><small>COMEX front-month</small></div>
+            <div class="context-cell"><span>BTC</span><strong class="mono">$62,840</strong><small>CoinGecko · spot USD</small></div>
+            <div class="context-cell"><span>Liquidity</span><strong>Campuran</strong><small>komponen tidak digabung</small></div>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="calendar-title">
+          <div class="section-head">
+            <h2 id="calendar-title">Kalender Ekonomi</h2>
+            <span class="mono">UPCOMING · COMPACT VIEW</span>
+          </div>
+          <div class="calendar">
+            <div class="event-row event-head mono"><div>Waktu</div><div>CCY</div><div>Event</div><div>Actual</div><div>Forecast</div><div>Previous</div></div>
+            <div class="event-row"><div class="event-time mono">12:30</div><div class="event-ccy mono">USD</div><div class="event-name">Initial Jobless Claims</div><div class="event-val mono">—</div><div class="event-val mono">232K</div><div class="event-val mono">230K</div></div>
+            <div class="event-row"><div class="event-time mono">14:00</div><div class="event-ccy mono">USD</div><div class="event-name">Existing Home Sales</div><div class="event-val mono">—</div><div class="event-val mono">3.90M</div><div class="event-val mono">3.95M</div></div>
+            <div class="event-row"><div class="event-time mono">18:00</div><div class="event-ccy mono">USD</div><div class="event-name">Fed Speaker / Scheduled Event</div><div class="event-val mono">—</div><div class="event-val mono">—</div><div class="event-val mono">—</div></div>
+          </div>
+        </section>
+
+        <div class="footer-note mono">DESIGN PROTOTYPE ONLY · STATIC EXAMPLE DATA · NO PRODUCTION CAPABILITY CLAIM</div>
+      </main>
+
+      <aside class="inspector" aria-label="Evidence inspector">
+        <div class="inspector-label">Evidence Inspector</div>
+        <h2 id="inspectTitle">Rates & USD bergerak bersamaan</h2>
+        <p class="inspector-intro" id="inspectIntro">Detail evidence untuk item yang dipilih. Inspector tetap ringkas dan hanya membuka metadata jika dibutuhkan.</p>
+
+        <div class="inspect-block">
+          <h3>Ringkasan faktual</h3>
+          <div class="fact-grid" id="factGrid">
+            <div class="fact-row"><span>Scope</span><strong>RATES · USD</strong></div>
+            <div class="fact-row"><span>Status</span><strong>OBSERVED</strong></div>
+            <div class="fact-row"><span>Baseline</span><strong>AVAILABLE</strong></div>
+            <div class="fact-row"><span>Confidence</span><strong>DATA ONLY</strong></div>
+          </div>
+        </div>
+
+        <div class="inspect-block">
+          <h3>Evidence</h3>
+          <div class="evidence-list" id="evidenceList">
+            <button class="evidence-item"><strong>US 10Y Treasury</strong><span>FRED · DGS10 · canonical observation</span></button>
+            <button class="evidence-item"><strong>US 2Y Treasury</strong><span>FRED · DGS2 · canonical observation</span></button>
+            <button class="evidence-item"><strong>DXY</strong><span>Yahoo Finance · DX-Y.NYB · separate instrument</span></button>
+          </div>
+          <button class="disclosure" id="detailToggle"><span>Lihat metadata</span><span>＋</span></button>
+          <div class="details" id="detailsBox">ObservedAt, retrievedAt, source identity, dan canonical series identity akan ditampilkan di layer detail. captured_at tidak digunakan sebagai pengganti retrievedAt.</div>
+        </div>
+
+        <div class="inspect-block">
+          <h3>Monitor berikutnya</h3>
+          <p class="inspector-intro" id="inspectMonitor">Periksa apakah rates dan USD tetap bergerak searah setelah rilis data berikutnya. Tidak ada instruksi posisi.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="command-palette" id="commandPalette" aria-hidden="true">
+    <div class="command-box">
+      <input id="commandInput" type="text" placeholder="Cari halaman, metrik, atau evidence…" autocomplete="off" />
+      <div class="command-results">
+        <div class="command-result active">Buka Hari Ini</div>
+        <div class="command-result">Cari DGS10 / US 10Y</div>
+        <div class="command-result">Buka Kalender Ekonomi</div>
+        <div class="command-result">Buka Kesehatan Data</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const evidenceData = {
+      rates: {
+        title: "Rates & USD bergerak bersamaan",
+        intro: "Perubahan pada US 2Y, US 10Y, dan DXY dibaca sebagai observasi terpisah sebelum diuji sebagai hubungan lintas aset.",
+        facts: [["Scope","RATES · USD"],["Status","OBSERVED"],["Baseline","AVAILABLE"],["Confidence","DATA ONLY"]],
+        evidence: [["US 10Y Treasury","FRED · DGS10 · canonical observation"],["US 2Y Treasury","FRED · DGS2 · canonical observation"],["DXY","Yahoo Finance · DX-Y.NYB · separate instrument"]],
+        monitor: "Periksa apakah rates dan USD tetap bergerak searah setelah rilis data berikutnya. Tidak ada instruksi posisi."
+      },
+      liquidity: {
+        title: "Komponen likuiditas berubah",
+        intro: "TGA, reserve balances, dan ON RRP dipertahankan sebagai fakta individual. Prototipe tidak mengubahnya menjadi liquidity score.",
+        facts: [["Scope","MACRO · LIQUIDITY"],["Status","OBSERVED"],["Series","MULTIPLE"],["Inference","NONE"]],
+        evidence: [["Treasury General Account","FRED · WTREGEN"],["Reserve Balances","FRED · WRESBAL"],["ON RRP","FRED · RRPONTSYD"]],
+        monitor: "Pantau pembaruan masing-masing seri sesuai cadence-nya; jangan menyamakan freshness threshold dengan ingestion cadence."
+      },
+      crypto: {
+        title: "Crypto metrics tetap terpisah",
+        intro: "Spot price, market cap, volume, dan dominance tidak dilebur menjadi satu label arah pasar.",
+        facts: [["Scope","CRYPTO_MARKET"],["Status","OBSERVED"],["Provider","COINGECKO"],["Inference","NONE"]],
+        evidence: [["BTC Spot","CoinGecko · btc.spot.usd"],["ETH Spot","CoinGecko · eth.spot.usd"],["BTC Dominance","CoinGecko · crypto.btc_dominance.pct"]],
+        monitor: "Bandingkan perubahan factual metrics dengan baseline yang valid setelah historical continuity tersedia."
+      },
+      event: {
+        title: "Scheduled economic event",
+        intro: "Event terjadwal menjadi anchor. Surprise hanya valid jika actual dan expectation tersedia dengan temporal semantics yang benar.",
+        facts: [["Scope","ECONOMIC EVENT"],["Status","SCHEDULED"],["Expectation","TRIAL / PARTIAL"],["Surprise","NOT CLAIMED"]],
+        evidence: [["Calendar awareness","Forex Factory · scheduled event"],["Official anchor","Federal Reserve · FOMC schedule"],["Structured result trial","Biquote · actual/forecast/previous"]],
+        monitor: "Tunggu actual terverifikasi dan timestamp release yang qualified sebelum membandingkan dengan forecast."
+      }
+    };
+
+    const rows = [...document.querySelectorAll(".change-row")];
+    const inspectTitle = document.getElementById("inspectTitle");
+    const inspectIntro = document.getElementById("inspectIntro");
+    const factGrid = document.getElementById("factGrid");
+    const evidenceList = document.getElementById("evidenceList");
+    const inspectMonitor = document.getElementById("inspectMonitor");
+
+    function selectEvidence(id) {
+      const data = evidenceData[id];
+      if (!data) return;
+      rows.forEach(row => row.classList.toggle("selected", row.dataset.id === id));
+      inspectTitle.textContent = data.title;
+      inspectIntro.textContent = data.intro;
+      factGrid.innerHTML = data.facts.map(([k,v]) => '<div class="fact-row"><span>' + k + '</span><strong>' + v + '</strong></div>').join("");
+      evidenceList.innerHTML = data.evidence.map(([k,v]) => '<button class="evidence-item"><strong>' + k + '</strong><span>' + v + '</span></button>').join("");
+      inspectMonitor.textContent = data.monitor;
+    }
+    rows.forEach(row => row.addEventListener("click", () => selectEvidence(row.dataset.id)));
+
+    document.querySelectorAll(".nav button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".nav button").forEach(item => item.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+
+    const detailToggle = document.getElementById("detailToggle");
+    const detailsBox = document.getElementById("detailsBox");
+    detailToggle.addEventListener("click", () => {
+      const open = detailsBox.classList.toggle("open");
+      detailToggle.lastElementChild.textContent = open ? "−" : "＋";
+    });
+
+    const palette = document.getElementById("commandPalette");
+    const commandOpen = document.getElementById("commandOpen");
+    const commandInput = document.getElementById("commandInput");
+    function openPalette() { palette.classList.add("open"); palette.setAttribute("aria-hidden","false"); setTimeout(() => commandInput.focus(), 0); }
+    function closePalette() { palette.classList.remove("open"); palette.setAttribute("aria-hidden","true"); commandInput.value = ""; }
+    commandOpen.addEventListener("click", openPalette);
+    palette.addEventListener("click", e => { if (e.target === palette) closePalette(); });
+    document.addEventListener("keydown", e => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); }
+      if (e.key === "Escape") closePalette();
+    });
+
+    const utcClock = document.getElementById("utcClock");
+    function tick() {
+      const now = new Date();
+      utcClock.textContent = now.toLocaleTimeString("en-GB", { timeZone: "UTC", hour12: false }) + " UTC";
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
