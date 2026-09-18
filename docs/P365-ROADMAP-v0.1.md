@@ -4,7 +4,7 @@
 **Product:** P365 Market Intelligence System  
 **Current implementation scope:** Macro + Crypto  
 **Long-term scope:** Multi-market / cross-asset market intelligence  
-**Last audited against actual codebase:** 17 Sep 2026 — see per-phase "Current Status" blocks below. Audited by reading source directly, not by trusting prior commit messages or docs.
+**Last audited against actual codebase:** 18 Sep 2026 — F0 end-to-end audit merged in PR #35. Current remediation baseline: `docs/P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md`.
 
 ---
 
@@ -166,7 +166,7 @@ Establish qualified observations for:
 |---|---|---|
 | Macro | ✅ COMPLETE | FRED registry and adapter cover the approved factual macro foundation, including monetary policy, liquidity, inflation, labor, rates, USD broad index, and growth series. |
 | Crypto | 🟡 PARTIAL | `lib/data/crypto-market.ts` (CoinGecko). Have: BTC/ETH price, market cap, dominance, total market cap, total volume. **Missing:** stablecoin market cap and basic volatility. |
-| Cross-asset | 🟡 PARTIAL | S&P 500, Nasdaq, VIX, WTI Oil, US2Y, US10Y, 10Y real yield, Gold, Russell 2000, and DXY are now implemented/covered. Gold, Russell 2000, and DXY now use Yahoo Finance (`GC=F` gold futures, `^RUT` real index — no longer the `IWM` proxy, `DX-Y.NYB` authoritative DXY). `DTWEXBGS` (FRED) remains the separate USD broad index and must not be represented as DXY. **Remaining gaps:** MOVE and credit spread coverage. |
+| Cross-asset | 🟡 PARTIAL | S&P 500, Nasdaq, VIX, WTI Oil, US2Y, US10Y, 10Y real yield, Gold, Russell 2000, and DXY are now implemented/covered. Gold, Russell 2000, and DXY now use Yahoo Finance (`GC=F` gold futures, `^RUT` real index — no longer the `IWM` proxy, `DX-Y.NYB` authoritative DXY). `DTWEXBGS` (FRED) remains the separate USD broad index and must not be represented as DXY. **Remaining gap in the target cross-asset universe:** MOVE. IG/HY credit spread coverage is already present in the FRED registry. |
 | Evidence | ✅ COMPLETE | News and source records are normalized into Evidence with provenance and timestamps. |
 | Economic events / calendar | 🟡 IMPLEMENTED / TRIAL PROVIDER | Canonical `Event` plus `EconomicEventResult` now supports actual, expected, expected type, previous, revised previous, revision, release/retrieval timestamps, source, and evidence lineage. Biquote is connected to trial ingestion and persistence. Forex Factory remains scheduled-calendar coverage. Production provider licensing remains a later activation gate. |
 | Pipeline architecture | ✅ COMPLETE | Provider → Ingestion → Normalization → canonical records → persistence is implemented for the current foundation. `dashboard-query.ts` orchestrates ingestion, normalization, canonical persistence, and economic-event-result persistence. |
@@ -325,7 +325,7 @@ Completed checkpoints:
 1. ✅ Audit current data paths against the Data Requirements Matrix.
 2. ✅ Separate CORRECT / PARTIAL / SEMANTICALLY WRONG / DUPLICATE / MISSING / DEFERRED.
 3. ✅ Implement qualified initial cross-asset coverage for Gold and Russell 2000 via Alpha Vantage, while keeping provider semantics explicit.
-4. 🟡 Continue closing canonical coverage gaps: authoritative DXY, MOVE, credit spreads, stablecoin market cap, and crypto volatility.
+4. 🟡 Continue closing qualified factual gaps: MOVE, stablecoin market cap, and a defined crypto-volatility metric. DXY and IG/HY credit spreads are already covered.
 5. 🟡 Durable Market Memory foundation is implemented; historical retrieval, backfill/retention, and broader query semantics remain before Phase 2 completion.
 6. 🔴 Market Snapshot — no implementation exists.
 7. 🔴 Cross-asset transmission reasoning — Context grouping exists, transmission logic does not.
@@ -362,7 +362,7 @@ Concrete, currently-true bugs — not roadmap gaps, just things that are broken 
 
 
 ## 10. Cache Cadence & Invalidation Topology
-**Status: CHECKPOINT 1 COMPLETE / IMPLEMENTATION PENDING**
+**Status: PROVIDER MIGRATION IMPLEMENTED / MANUAL INVALIDATION DEFECT OPEN (FND-009)**
 
 The cache topology work standardizes Next.js fetch cache tags across all current providers while preserving each provider's existing revalidate cadence.
 
@@ -398,15 +398,15 @@ A dedicated `p365_operational_metrics` Supabase table is planned for cache inval
 ### Checkpoint sequence
 
 1. **Roadmap update** — complete.
-2. **General cache policy module** — next; stop for review after implementation/diff.
-3. **FRED migration** — after approval; run typecheck/build and stop for review.
-4. **CoinGecko migration**.
-5. **CoinDesk migration**.
+2. **General cache policy module** — complete.
+3. **FRED migration** — complete.
+4. **CoinGecko migration** — complete.
+5. **CoinDesk migration** — complete.
 6. **Alpha Vantage news migration**.
 7. **Biquote / Forex Factory migration**.
-8. **Gold / Russell migration**.
+8. **Yahoo Gold / Russell / DXY migration** — complete.
 9. **FOMC migration**.
-10. **Manual refresh action migration**.
+10. **Manual refresh action migration** — **open defect FND-009**: current action still invalidates only `p365-dashboard` and does not clear all cadence-group tags.
 11. **Operational telemetry implementation after DDL approval**.
 12. **Audit**.
 13. **Typecheck/build**.
