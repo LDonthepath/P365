@@ -72,7 +72,7 @@ Cross-asset factual data     PARTIAL
 Economic event results       TRIAL / PARTIAL
 Context                      IMPLEMENTED / FND-004 REMEDIATED IN PR #36
 Durable Market Memory        FOUNDATION IMPLEMENTED
-Historical retrieval         MISSING (FND-001)
+Historical retrieval         CONTRACT IMPLEMENTED / DURABLE ADAPTER PENDING
 Factual baseline             IMPLEMENTED / NOT REPOSITORY-BACKED (FND-002)
 Independent ingestion        MISSING (FND-003)
 Expectation baseline         MISSING lifecycle
@@ -296,14 +296,14 @@ Required correction: CRYPTO_MARKET grouping must use explicit crypto identity/me
 
 ### HIGH gaps
 
-1. Repository contracts expose only `findById`.
-2. No query exists for history by canonical metric/series and effective time.
+1. The historical Observation repository contract now defines query identity, effective-time bounds, deterministic ordering, and a bounded result size.
+2. The durable Supabase adapter does not implement that contract yet; historical reads are therefore not wired into the active repository bundle.
 3. Dashboard read is also the ingestion/persistence trigger.
 4. No scheduled ingestion/backfill owner is defined.
 5. Baseline does not read Market Memory.
 6. `findById` uses `limit=1` without an explicit order. Canonical IDs are intended to be stable enough for a unique logical record, but revisions/version semantics should not depend on unspecified row order.
 
-Market Memory therefore exists as durable storage, but is not yet a complete historical reasoning subsystem.
+Market Memory therefore exists as durable storage and now has an explicit historical Observation read contract, but is not yet a complete historical reasoning subsystem until the durable adapter and later continuity checkpoints are implemented.
 
 ## 10. Baseline audit
 
@@ -444,7 +444,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 
 | ID | Severity | Finding |
 |---|---|---|
-| FND-001 | **HIGH** | No semantic historical Observation repository query. |
+| FND-001 | **HIGH / CONTRACT REMEDIATED IN THIS CHECKPOINT** | Semantic historical Observation query contract now defines exact identity, inclusive effective-time bounds, deterministic ordering, and bounded results. The durable Supabase query adapter remains the next isolated checkpoint. |
 | FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
 | FND-003 | **HIGH** | Historical ingestion/persistence depends on dashboard access; no independent cadence/backfill owner. |
 | FND-004 | **HIGH / REMEDIATED IN PR #36** | Context taxonomy repaired: CRYPTO_MARKET now selects qualified CoinGecko `crypto.*` observations across ASSET and MARKET domains and excludes Yahoo/FRED cross-assets. Runtime verification remains part of PR #36 gate. |
@@ -542,14 +542,15 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 18 Sep 2026 | F0 end-to-end audit | 19 foundation findings established; higher-order reasoning remains blocked pending foundation remediation. |
 | 18 Sep 2026 | Documentation consolidation | This file becomes the single operational foundation SSOT; redundant current-state/audit/roadmap docs retired. |
 | 18 Sep 2026 | FND-004 Context taxonomy repair | CRYPTO_MARKET selection changed from broad ASSET-domain grouping to qualified CoinGecko `crypto.*` taxonomy; cross-assets excluded and global crypto metrics included. |
+| 18 Sep 2026 | FND-001 Historical Observation repository contract | Added a provider-agnostic semantic history query contract and verified in-memory reference behavior; durable query adapter intentionally remains pending. |
 
 ## Active remediation sequence
 
 ```text
 1. Documentation consolidation / SSOT          ← current checkpoint
 2. FND-004 Context taxonomy repair              ← implemented in PR #36
-3. FND-001 Historical Observation repository contract
-4. Durable history query adapters
+3. FND-001 Historical Observation repository contract ← implemented in this checkpoint
+4. Durable history query adapters                    ← next
 5. FND-003 Independent ingestion/backfill ownership
 6. FND-002 Repository-backed Factual Baseline
 7. Temporal/provenance/freshness hardening
