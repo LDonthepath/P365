@@ -70,7 +70,7 @@ Macro factual foundation     IMPLEMENTED
 Crypto factual foundation    PARTIAL
 Cross-asset factual data     PARTIAL
 Economic event results       TRIAL / PARTIAL
-Context                      IMPLEMENTED / FND-004 REMEDIATED IN PR #36
+Context                      IMPLEMENTED / FND-004 REGRESSION CORRECTED
 Durable Market Memory        FOUNDATION IMPLEMENTED
 Historical retrieval         CONTRACT IMPLEMENTED / DURABLE ADAPTER PENDING
 Factual baseline             IMPLEMENTED / NOT REPOSITORY-BACKED (FND-002)
@@ -271,18 +271,13 @@ Manual refresh currently invalidates only `p365-dashboard`. Repository-wide veri
 
 Current Context is a neutral grouping layer and correctly references canonical observation/event IDs.
 
-**Confirmed semantic defect:** `buildDashboardContexts` names its variable `cryptoObservations` but filters `domain === "ASSET"`. This is worse than a broad grouping bug:
+**Historical FND-004 defect:** the original `buildDashboardContexts` grouped the broad `ASSET` domain, mixing Yahoo/FRED cross-assets into `CRYPTO_MARKET` while omitting CoinGecko global metrics.
 
-- CoinGecko BTC/ETH spot observations normalize as `ASSET` and are therefore grouped into `CRYPTO_MARKET`.
-- CoinGecko global crypto metrics (`crypto.total_market_cap.usd`, total volume, BTC/ETH dominance) normalize as `MARKET` and are therefore **excluded** from `CRYPTO_MARKET` Context.
-- Yahoo Gold/Russell/DXY normalize as `ASSET` and are therefore **included incorrectly** in `CRYPTO_MARKET` Context.
-- FRED cross-asset observations are also `ASSET`; where no symbol metadata exists the fallback derives a pseudo-symbol from the subject and can create additional false crypto contexts.
+PR #36 replaced that broad-domain selector with qualified CoinGecko provenance plus a `crypto.*` metric prefix. Independent re-audit after FND-001 found a regression in that remediation: CoinGecko asset-level metrics such as `btc.spot.usd`, `eth.spot.usd`, and their market-cap metrics do not use the `crypto.*` prefix and were therefore excluded.
 
-The active Context layer therefore both omits valid crypto-market facts and admits unrelated cross-asset facts. This violates scope semantics and directly affects user-visible Context.
+**Current correction:** `CRYPTO_MARKET` selects canonical observations with CoinGecko market provenance and a non-empty machine `metricId`, across both `ASSET` and `MARKET` domains. This includes the complete current CoinGecko factual family while continuing to exclude Yahoo and FRED cross-assets. Context remains neutral grouping only.
 
-**Severity: HIGH.**
-
-Required correction: CRYPTO_MARKET grouping must use explicit crypto identity/metric taxonomy, not the broad ASSET domain. Cross-asset observations require their own neutral scope/taxonomy before transmission reasoning.
+**Severity: HIGH / CORRECTED IN THIS CHECKPOINT.**
 
 ## 9. Persistence and Market Memory audit
 
@@ -447,7 +442,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-001 | **HIGH / CONTRACT REMEDIATED IN THIS CHECKPOINT** | Semantic historical Observation query contract now defines provider-independent logical-series identity separately from optional source provenance, inclusive effective-time bounds, an inclusive retrieval/as-of cutoff, deterministic revision ordering, and bounded results. The durable Supabase query adapter remains the next isolated checkpoint. |
 | FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
 | FND-003 | **HIGH** | Historical ingestion/persistence depends on dashboard access; no independent cadence/backfill owner. |
-| FND-004 | **HIGH / REMEDIATED IN PR #36** | Context taxonomy repaired: CRYPTO_MARKET now selects qualified CoinGecko `crypto.*` observations across ASSET and MARKET domains and excludes Yahoo/FRED cross-assets. Runtime verification remains part of PR #36 gate. |
+| FND-004 | **HIGH / INITIAL REMEDIATION PR #36 / REGRESSION CORRECTED IN THIS CHECKPOINT** | Historical broad-ASSET mixing was removed in PR #36, but its `crypto.*` prefix excluded CoinGecko BTC/ETH asset-level metrics. The corrected selector now uses qualified CoinGecko provenance plus non-empty canonical `metricId`, with focused runtime-builder regression coverage. |
 | FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
 | FND-007 | **HIGH** | No Pricing baseline/market-implied layer; pricing surprise/repricing conclusions are not allowed. |
@@ -543,12 +538,13 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 18 Sep 2026 | Documentation consolidation | This file becomes the single operational foundation SSOT; redundant current-state/audit/roadmap docs retired. |
 | 18 Sep 2026 | FND-004 Context taxonomy repair | CRYPTO_MARKET selection changed from broad ASSET-domain grouping to qualified CoinGecko `crypto.*` taxonomy; cross-assets excluded and global crypto metrics included. |
 | 18 Sep 2026 | FND-001 Historical Observation repository contract | Added a provider-agnostic semantic history query contract and verified in-memory reference behavior; durable query adapter intentionally remains pending. |
+| 18 Sep 2026 | FND-004 Context taxonomy regression correction | Independent re-audit found the PR #36 prefix selector excluded CoinGecko asset-level metrics; corrected to qualified CoinGecko provenance plus canonical metric identity, retaining cross-asset exclusion. |
 
 ## Active remediation sequence
 
 ```text
 1. Documentation consolidation / SSOT          ← implemented in PR #36
-2. FND-004 Context taxonomy repair              ← implemented in PR #36
+2. FND-004 Context taxonomy repair              ← initial PR #36; regression corrected in this checkpoint
 3. FND-001 Historical Observation repository contract ← implemented in this checkpoint
 4. Durable history query adapters                    ← next
 5. FND-003 Independent ingestion/backfill ownership

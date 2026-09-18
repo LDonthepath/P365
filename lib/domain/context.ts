@@ -58,7 +58,7 @@ export function buildDashboardContexts(input: {
   const cryptoObservations = input.observations.filter(
     (item) => item.sourceId === "coingecko-market"
       && typeof item.metadata?.metricId === "string"
-      && item.metadata.metricId.startsWith("crypto."),
+      && item.metadata.metricId.trim().length > 0,
   );
 
   if (cryptoObservations.length > 0) {
