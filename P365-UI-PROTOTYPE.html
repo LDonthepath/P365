@@ -24,8 +24,8 @@
       --green: #6fa688;
       --amber: #b98b56;
       --red: #b96e72;
-      --sidebar-w: 216px;
-      --inspector-w: 306px;
+      --sidebar-w: 212px;
+      --inspector-w: 292px;
       --header-h: 56px;
     }
 
@@ -37,6 +37,17 @@
       line-height: 1.45;
       overflow-x: hidden;
     }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      pointer-events: none;
+      opacity: .024;
+      mix-blend-mode: screen;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E");
+    }
+
 
     button, input { font: inherit; }
     button { color: inherit; }
@@ -131,8 +142,8 @@
     }
     .nav button:hover { background: #0e1215; color: var(--text-2); }
     .nav button.active { color: var(--text); background: #101417; border-left-color: var(--gold); }
-    .nav button.future { color: #616970; }
-    .nav button.future:hover { color: #777f85; background: #0c0f11; }
+    .nav button.future { color: #5b6369; opacity: .78; }
+    .nav button.future:hover { color: #747c82; background: #0c0f11; opacity: 1; }
     .nav-dot { width: 5px; height: 5px; border: 1px solid currentColor; display: block; }
     .nav button.active .nav-dot { background: var(--gold); border-color: var(--gold); }
     .sidebar-foot {
@@ -205,7 +216,7 @@
 
     main {
       min-width: 0;
-      padding: 26px 28px 56px;
+      padding: 24px 24px 52px;
       max-width: 1280px;
       width: 100%;
       margin: 0 auto;
@@ -249,7 +260,7 @@
       font-weight: 600;
     }
     h1 {
-      font-size: clamp(31px, 3.4vw, 41px);
+      font-size: clamp(31px, 3.2vw, 39px);
       line-height: 1;
       letter-spacing: -.045em;
       margin: 7px 0 7px;
@@ -269,6 +280,19 @@
     }
     .section-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.015em; }
     .section-head span { color: var(--faint); font-size: 8px; }
+    .section-order {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--gold) !important;
+      letter-spacing: .04em;
+    }
+    .section-order::after {
+      content: "";
+      width: 22px;
+      height: 1px;
+      background: var(--gold-dim);
+    }
 
     /* Important changes */
     .important-list {
@@ -302,7 +326,7 @@
     .change-main strong {
       display: block;
       color: var(--text-2);
-      font-size: 12px;
+      font-size: 11.25px;
       font-weight: 600;
       line-height: 1.38;
       transition: color .14s ease, font-size .14s ease;
@@ -316,7 +340,7 @@
       max-width: 780px;
     }
     .change-row.selected .change-main { padding-top: 14px; padding-bottom: 15px; }
-    .change-row.selected .change-main strong { color: var(--text); font-size: 15px; line-height: 1.36; }
+    .change-row.selected .change-main strong { color: var(--text); font-size: 16px; line-height: 1.34; letter-spacing: -.012em; }
     .change-row.selected .change-summary { display: block; }
     .change-row.selected .change-time { padding-top: 16px; color: #8f8467; }
     .change-tag { padding: 12px 12px 12px 0; color: var(--faint); font-size: 8px; text-align: right; }
@@ -331,7 +355,7 @@
 
     .secondary-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(290px, .8fr);
+      grid-template-columns: minmax(0, 1.28fr) minmax(270px, .72fr);
       gap: 14px;
       margin-top: 17px;
     }
@@ -356,8 +380,8 @@
 
     .matter-lead {
       margin: 0;
-      font-size: 16px;
-      line-height: 1.48;
+      font-size: 16.5px;
+      line-height: 1.45;
       letter-spacing: -.02em;
       color: var(--text);
       max-width: 720px;
@@ -517,7 +541,7 @@
     }
 
     @media (max-width: 1180px) {
-      :root { --inspector-w: 286px; }
+      :root { --inspector-w: 280px; }
       .context-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .context-cell:nth-child(3) { border-right: 0; }
       .context-cell:nth-child(n+4) { border-top: 1px solid var(--border); }
@@ -656,20 +680,20 @@
       <main>
         <div class="page-head">
           <div>
-            <div class="eyebrow">Ringkasan pasar</div>
+            <div class="eyebrow">Ringkasan pasar · contoh prototipe</div>
             <h1>Hari Ini</h1>
             <p>Mulai dari perubahan yang paling relevan, pahami konteksnya, lalu tentukan apa yang perlu dimonitor. Keputusan trading tetap milik pengguna.</p>
           </div>
           <div class="session-meta">
-            <span id="localDate">—</span><br/>
-            <strong id="localSession">— WIB</strong>
+            <span>Sesi contoh</span><br/>
+            <strong>Waktu lokal · WIB</strong>
           </div>
         </div>
 
         <section class="section" aria-labelledby="important-title">
           <div class="section-head">
             <h2 id="important-title">Perubahan Penting</h2>
-            <span class="mono">PILIH ITEM UNTUK MEMBUKA KONTEKS</span>
+            <span class="section-order mono">01 · APA YANG BERUBAH</span>
           </div>
 
           <div class="important-list" id="importantList">
@@ -713,7 +737,7 @@
 
         <div class="secondary-grid">
           <section class="panel">
-            <div class="panel-head"><strong>Apa yang Penting</strong><span class="mono">KONTEKS</span></div>
+            <div class="panel-head"><strong>Apa yang Penting</strong><span class="section-order mono">02 · ARTI</span></div>
             <div class="panel-body">
               <p class="matter-lead" id="matterLead">Rates dan USD sedang berubah pada waktu yang berdekatan. Baca keduanya bersama sebelum menilai pergerakan aset lain.</p>
               <p class="matter-note" id="matterNote">Timing yang berdekatan belum berarti sebab-akibat. Gunakan panel Bukti untuk memeriksa data yang mendasari konteks ini.</p>
@@ -721,7 +745,7 @@
           </section>
 
           <section class="panel">
-            <div class="panel-head"><strong>Monitor</strong><span class="mono">BERIKUTNYA</span></div>
+            <div class="panel-head"><strong>Monitor</strong><span class="section-order mono">03 · BERIKUTNYA</span></div>
             <div class="panel-body monitor-list" id="monitorList">
               <div class="monitor-row"><strong>US 2Y / 10Y</strong><span>Apakah perubahan yield bertahan setelah data berikutnya.</span></div>
               <div class="monitor-row"><strong>DXY</strong><span>Apakah dolar mengonfirmasi atau bertentangan dengan perubahan rates.</span></div>
@@ -733,7 +757,7 @@
         <section class="section" aria-labelledby="context-title">
           <div class="section-head">
             <h2 id="context-title">Konteks Pasar</h2>
-            <span class="mono">OBSERVASI RINGKAS</span>
+            <span class="mono">CONTOH OBSERVASI · PENDUKUNG</span>
           </div>
 
           <div class="context-strip">
@@ -748,7 +772,7 @@
         <section class="section" aria-labelledby="calendar-title">
           <div class="section-head">
             <h2 id="calendar-title">Kalender Ekonomi</h2>
-            <span class="mono">EVENT TERDEKAT</span>
+            <span class="mono">CONTOH JADWAL · PENDUKUNG</span>
           </div>
 
           <div class="calendar">
@@ -1026,30 +1050,12 @@
     });
 
     const utcClock = document.getElementById("utcClock");
-    const localDate = document.getElementById("localDate");
-    const localSession = document.getElementById("localSession");
-
     function tick() {
       const now = new Date();
       utcClock.textContent = now.toLocaleTimeString("en-GB", {
         timeZone: "UTC",
         hour12: false
       }) + " UTC";
-
-      localDate.textContent = new Intl.DateTimeFormat("id-ID", {
-        timeZone: "Asia/Jakarta",
-        weekday: "long",
-        day: "2-digit",
-        month: "long",
-        year: "numeric"
-      }).format(now);
-
-      localSession.textContent = new Intl.DateTimeFormat("id-ID", {
-        timeZone: "Asia/Jakarta",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      }).format(now) + " WIB";
     }
 
     tick();
