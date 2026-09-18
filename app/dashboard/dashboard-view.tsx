@@ -197,6 +197,7 @@ type HeatmapTile = {
   value: string;
   delta: number | null;
   deltaUnit: "ABSOLUTE" | "PERCENT";
+  changeBasis?: string;
   source: string;
 };
 
@@ -213,7 +214,9 @@ function MarketHeatmap({ observations, baselines }: { observations: Observation[
   const marketTiles: HeatmapTile[] = definitions.flatMap((definition) => {
     const observation = observations.find((item) => item.subject === definition.id);
     if (!observation) return [];
-    return [{ ...definition, value: observation.value, delta: null, deltaUnit: "ABSOLUTE" as const }];
+    const providerChangePct = Number(observation.metadata?.changePct);
+    const hasProviderChange = Number.isFinite(providerChangePct);
+    return [{ ...definition, value: observation.value, delta: hasProviderChange ? providerChangePct : null, deltaUnit: "PERCENT" as const, changeBasis: hasProviderChange ? String(observation.metadata?.changeBasis ?? "provider_reference") : undefined }];
   });
   const macroTiles: HeatmapTile[] = observations.filter((item) => item.domain === "MACRO").flatMap((observation) => {
     const seriesId = String(observation.metadata?.seriesId ?? "");
@@ -231,7 +234,7 @@ function MarketHeatmap({ observations, baselines }: { observations: Observation[
       if (!items.length) return null;
       return <section className="heatmap-group" key={group}><div className="heatmap-group-head"><strong>{group}</strong><span>{items.length} METRIC</span></div><div className="heatmap-grid">{items.map((tile) => {
         const direction = tile.delta === null || tile.delta === 0 ? "neutral" : tile.delta > 0 ? "up" : "down";
-        return <article className={`heatmap-tile ${direction}`} key={tile.id}><span className="heatmap-name">{tile.label}</span><strong>{tile.delta === null ? "—" : `${tile.delta > 0 ? "+" : ""}${tile.delta.toFixed(2)}`}</strong><span className="heatmap-value">{tile.value}</span><small>{tile.source}</small></article>;
+        return <article className={`heatmap-tile ${direction}`} key={tile.id}><span className="heatmap-name">{tile.label}</span><strong>{tile.delta === null ? "—" : `${tile.delta > 0 ? "+" : ""}${tile.delta.toFixed(2)}${tile.deltaUnit === "PERCENT" ? "%" : ""}`}</strong><span className="heatmap-value">{tile.value}</span><small>{tile.source}{tile.changeBasis ? ` · ${tile.changeBasis.replace("_", " ")}` : ""}</small></article>;
       })}</div></section>;
     })}</div>
     <div className="heatmap-semantic-note"><strong>USD INDEX SEMANTICS</strong><span>DXY · ICE = DX-Y.NYB. FED BROAD USD = DTWEXBGS. Keduanya merupakan metric berbeda dan tidak diperlakukan sebagai substitusi.</span></div>
