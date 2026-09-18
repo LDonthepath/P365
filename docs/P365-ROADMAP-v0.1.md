@@ -359,3 +359,57 @@ Concrete, currently-true bugs — not roadmap gaps, just things that are broken 
 1. ✅ **Fixed (17 Sep 2026, commit `f426c0b`).** Raw English status was leaking into Indonesian UI in `app/dashboard/dashboard-view.tsx` (4 spots found on this pass, including one new one in the Intelligence tab's Provider line that didn't exist in the first fix). Reapplied via the shared `STATUS_LABEL_ID` map. If this regresses a third time, that is a strong signal the agent doing the work is not reading this file first.
 2. ✅ **Fixed (17 Sep 2026, commit `f426c0b`).** The "Provider" row (Overview panel and Intelligence tab) showed the total provider count paired with the worst-case aggregate badge. Now shows a healthy/total ratio (e.g. "3/4") with a matching badge.
 3. 🔴 **Still open.** `next@15.3.6` has a known security vulnerability per `npm install` output. Needs a version bump; unrelated to the agent-chaos incidents, just noted here so it isn't lost.
+
+
+## 10. Cache Cadence & Invalidation Topology
+**Status: CHECKPOINT 1 COMPLETE / IMPLEMENTATION PENDING**
+
+The cache topology work standardizes Next.js fetch cache tags across all current providers while preserving each provider's existing revalidate cadence.
+
+### Canonical cadence distribution
+
+The FRED macro registry contains **33 series**:
+
+| Cadence | Series count |
+|---|---:|
+| 6 hours | 16 |
+| 12 hours | 16 |
+| 24 hours | 1 |
+| **Total** | **33** |
+
+### Cache groups
+
+| Cadence | Cache group |
+|---|---|
+| 5m / 15m / 30m / 1h / 6h | `p365-fast` |
+| 12h | `p365-medium` |
+| 24h | `p365-slow` |
+
+`cacheTagForRevalidate()` will be the single general resolver in `lib/data/cache-policy.ts` and will be used by FRED and all non-FRED providers. No provider-specific cache-tag resolver is planned.
+
+### Manual invalidation
+
+The existing dashboard refresh action will remain full-dashboard refresh behavior during the initial migration, invalidating `p365-fast`, `p365-medium`, and `p365-slow`.
+
+### Operational verification
+
+A dedicated `p365_operational_metrics` Supabase table is planned for cache invalidation and provider-fetch telemetry. The DDL will be reviewed before execution against Supabase. `market_memory` will remain reserved for canonical market records and will not be used for operational telemetry.
+
+### Checkpoint sequence
+
+1. **Roadmap update** — complete.
+2. **General cache policy module** — next; stop for review after implementation/diff.
+3. **FRED migration** — after approval; run typecheck/build and stop for review.
+4. **CoinGecko migration**.
+5. **CoinDesk migration**.
+6. **Alpha Vantage news migration**.
+7. **Biquote / Forex Factory migration**.
+8. **Gold / Russell migration**.
+9. **FOMC migration**.
+10. **Manual refresh action migration**.
+11. **Operational telemetry implementation after DDL approval**.
+12. **Audit**.
+13. **Typecheck/build**.
+14. **Runtime verification / final audit**.
+
+No later checkpoint should auto-run without explicit approval after the designated stop points.

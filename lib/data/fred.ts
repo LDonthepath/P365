@@ -2,6 +2,7 @@ import "server-only";
 import { MACRO_SERIES_REGISTRY, type MacroSeriesDefinition } from "./macro-registry";
 import type { ProviderResult } from "./types";
 import { providerResult } from "./types";
+import { cacheTagForRevalidate } from "./cache-policy";
 
 const FRED_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations";
 
@@ -49,7 +50,7 @@ async function fetchSeries(series: MacroSeriesDefinition, apiKey: string): Promi
 
   try {
     const response = await fetch(url, {
-      next: { revalidate: series.revalidateSeconds, tags: ["p365-dashboard"] },
+      next: { revalidate: series.revalidateSeconds, tags: [cacheTagForRevalidate(series.revalidateSeconds)] },
       signal: AbortSignal.timeout(10_000),
     });
     const retrievedAt = new Date().toISOString();
