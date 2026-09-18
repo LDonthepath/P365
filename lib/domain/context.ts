@@ -52,25 +52,21 @@ export function buildDashboardContexts(input: {
 }): Context[] {
   const createdAt = input.createdAt ?? new Date().toISOString();
   const contexts: Context[] = [];
-  const cryptoObservations = input.observations.filter((item) => item.domain === "ASSET");
+  // CRYPTO_MARKET is a provider-qualified market scope, not a synonym for the
+  // broad ASSET domain. CoinGecko emits both per-asset and market-wide crypto
+  // observations, so keep them together and exclude Yahoo/FRED cross-assets.
+  const cryptoObservations = input.observations.filter(
+    (item) => item.sourceId === "coingecko-market"
+      && typeof item.metadata?.metricId === "string"
+      && item.metadata.metricId.startsWith("crypto."),
+  );
 
-  const cryptoByAsset = new Map<string, Observation[]>();
-  for (const observation of cryptoObservations) {
-    const symbol = typeof observation.metadata?.symbol === "string"
-      ? observation.metadata.symbol
-      : observation.subject.split("/")[0];
-    if (!symbol) continue;
-    const group = cryptoByAsset.get(symbol) ?? [];
-    group.push(observation);
-    cryptoByAsset.set(symbol, group);
-  }
-
-  for (const [symbol, observations] of cryptoByAsset.entries()) {
+  if (cryptoObservations.length > 0) {
     contexts.push(buildContext({
-      id: `context-crypto-${symbol.toLowerCase()}`,
+      id: "context-crypto-market",
       scope: "CRYPTO_MARKET",
-      statement: `${symbol}/USD market observations grouped as part of the Crypto Market context.`,
-      observations,
+      statement: "Qualified crypto market observations grouped for neutral market monitoring.",
+      observations: cryptoObservations,
       events: [],
       createdAt,
     }));
