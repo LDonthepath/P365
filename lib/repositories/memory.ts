@@ -9,12 +9,9 @@ function timestamp(value: string, field: string): number {
   return parsed;
 }
 
-function validateHistoryQuery(query: ObservationHistoryQuery): { from?: number; through?: number } {
-  if (!query.identity.subject.trim() || !query.identity.sourceId.trim()) {
-    throw new Error("Observation history identity requires non-empty subject and sourceId.");
-  }
-  if (query.identity.seriesId !== undefined && !query.identity.seriesId.trim()) {
-    throw new Error("Observation history seriesId must be non-empty when supplied.");
+function validateHistoryQuery(query: ObservationHistoryQuery): { from?: number; through?: number; retrievedThrough?: number } {
+  if (!query.identity.sourceId.trim() || !query.identity.seriesKey.trim()) {
+    throw new Error("Observation history identity requires non-empty sourceId and seriesKey.");
   }
   if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > MAX_OBSERVATION_HISTORY_LIMIT) {
     throw new Error(`Observation history limit must be an integer between 1 and ${MAX_OBSERVATION_HISTORY_LIMIT}.`);
@@ -29,10 +26,21 @@ function validateHistoryQuery(query: ObservationHistoryQuery): { from?: number; 
   const through = query.observedAtOnOrBefore === undefined
     ? undefined
     : timestamp(query.observedAtOnOrBefore, "observedAtOnOrBefore");
+  const retrievedThrough = query.retrievedAtOnOrBefore === undefined
+    ? undefined
+    : timestamp(query.retrievedAtOnOrBefore, "retrievedAtOnOrBefore");
   if (from !== undefined && through !== undefined && from > through) {
     throw new Error("Observation history lower time bound must not be after its upper bound.");
   }
-  return { from, through };
+  return { from, through, retrievedThrough };
+}
+
+function observationSeriesKey(observation: Observation): string | null {
+  const seriesId = observation.metadata?.seriesId;
+  if (typeof seriesId === "string" && seriesId.trim()) return seriesId;
+  const metricId = observation.metadata?.metricId;
+  if (typeof metricId === "string" && metricId.trim()) return metricId;
+  return null;
 }
 
 function compareObservationHistory(a: Observation, b: Observation): number {
@@ -51,17 +59,19 @@ export class InMemoryObservationRepository implements ObservationRepository, His
   async findById(id: string): Promise<Observation | null> { return this.items.get(id) ?? null; }
 
   async findHistory(query: ObservationHistoryQuery): Promise<Observation[]> {
-    const { from, through } = validateHistoryQuery(query);
+    const { from, through, retrievedThrough } = validateHistoryQuery(query);
     const matches = [...this.items.values()].filter((observation) => {
       if (
         observation.domain !== query.identity.domain
-        || observation.subject !== query.identity.subject
         || observation.sourceId !== query.identity.sourceId
+        || observationSeriesKey(observation) !== query.identity.seriesKey
       ) return false;
-      if (query.identity.seriesId !== undefined && observation.metadata?.seriesId !== query.identity.seriesId) return false;
 
       const observedAt = timestamp(observation.observedAt, "Observation.observedAt");
-      return (from === undefined || observedAt >= from) && (through === undefined || observedAt <= through);
+      const retrievedAt = timestamp(observation.retrievedAt, "Observation.retrievedAt");
+      return (from === undefined || observedAt >= from)
+        && (through === undefined || observedAt <= through)
+        && (retrievedThrough === undefined || retrievedAt <= retrievedThrough);
     });
     matches.sort(compareObservationHistory);
     if (query.order === "DESC") matches.reverse();

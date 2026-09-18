@@ -44,7 +44,7 @@ The current system can ingest and normalize factual data, create evidence-backed
 | Freshness/quality | PARTIAL | Typed families and per-series macro windows exist, but quality is observation-age centric and does not yet model publication cadence/market-hours uniformly. |
 | Context | PASS for grouping | Neutral grouping is evidence-backed and does not infer direction. |
 | Market Memory persistence | PARTIAL | Append-only durable adapter exists; operational readiness depends on deployment configuration and ingestion invocation. |
-| Historical retrieval | **HIGH GAP** | No semantic history query exists in repository contracts. |
+| Historical retrieval | CONTRACT IMPLEMENTED / ADAPTER PENDING | FND-001 defines stable semantic-series matching, effective-time bounds, availability/as-of cutoff, ordering, and bounded results; durable query wiring remains pending. |
 | Historical continuity | **HIGH GAP** | Persistence is triggered by dashboard reads; no independent collection/backfill ownership is defined. |
 | Factual baseline | PASS in isolation / PARTIAL E2E | Selector is defensively implemented, but active baseline input is current-fetch history, not repository history. |
 | Expectation baseline | MISSING | Event forecast exists as EventResult data, but no baseline contract/selection lifecycle exists. |
@@ -57,7 +57,7 @@ The current system can ingest and normalize factual data, create evidence-backed
 | State/Regime/Risk/Intelligence | DEFERRED / PASS boundary | Builder files exist but are not active pipeline owners. |
 | Market Briefing | DEFERRED | Correctly not fabricated. |
 | UI/presentation | PASS / PARTIAL | UI mostly presents canonical facts and explicit pending states; several English/internal labels remain presentation debt. |
-| Documentation SSOT | **HIGH GAP** | Multiple docs describe pre-fix repository state and conflict with current code/roadmap. |
+| Documentation SSOT | REMEDIATED IN PR #36 | Consolidation completed; this master file is the current operational SSOT. Historical drift remains recorded as FND-005 below. |
 | Test/build governance | PARTIAL | Cache test exists, but foundation contracts lack broad automated tests; package has no explicit test script. |
 
 
@@ -444,11 +444,11 @@ Do not compensate for missing tests with broader architectural rewrites.
 
 | ID | Severity | Finding |
 |---|---|---|
-| FND-001 | **HIGH / CONTRACT REMEDIATED IN THIS CHECKPOINT** | Semantic historical Observation query contract now defines exact identity, inclusive effective-time bounds, deterministic ordering, and bounded results. The durable Supabase query adapter remains the next isolated checkpoint. |
+| FND-001 | **HIGH / CONTRACT REMEDIATED IN THIS CHECKPOINT** | Semantic historical Observation query contract now defines machine-stable series identity, inclusive effective-time bounds, an inclusive retrieval/as-of cutoff, deterministic revision ordering, and bounded results. The durable Supabase query adapter remains the next isolated checkpoint. |
 | FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
 | FND-003 | **HIGH** | Historical ingestion/persistence depends on dashboard access; no independent cadence/backfill owner. |
 | FND-004 | **HIGH / REMEDIATED IN PR #36** | Context taxonomy repaired: CRYPTO_MARKET now selects qualified CoinGecko `crypto.*` observations across ASSET and MARKET domains and excludes Yahoo/FRED cross-assets. Runtime verification remains part of PR #36 gate. |
-| FND-005 | **HIGH** | Documentation SSOT materially drifts from current code. |
+| FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
 | FND-007 | **HIGH** | No Pricing baseline/market-implied layer; pricing surprise/repricing conclusions are not allowed. |
 | FND-008 | MEDIUM | Biquote `time` → releasedAt/occurredAt semantic requires provider qualification. |
@@ -547,7 +547,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 ## Active remediation sequence
 
 ```text
-1. Documentation consolidation / SSOT          ← current checkpoint
+1. Documentation consolidation / SSOT          ← implemented in PR #36
 2. FND-004 Context taxonomy repair              ← implemented in PR #36
 3. FND-001 Historical Observation repository contract ← implemented in this checkpoint
 4. Durable history query adapters                    ← next

@@ -4,31 +4,38 @@ import type { Context, Event, Evidence, Observation, ObservationDomain } from ".
 export type ObservationHistoryOrder = "ASC" | "DESC";
 
 /**
- * Stable semantic identity for an Observation history query. The query does
- * not use canonical object IDs because IDs may vary across measurements or
- * source corrections.
+ * Stable semantic identity for an Observation series. `seriesKey` is the
+ * source-native machine identity already retained by canonical normalization:
+ * metadata.seriesId for FRED or metadata.metricId for CoinGecko/Yahoo.
+ * Descriptive subjects and per-measurement canonical IDs are not identities.
  */
 export type ObservationHistoryIdentity = {
   domain: ObservationDomain;
-  subject: string;
   sourceId: string;
-  /** Required when the provider exposes a canonical series identifier. */
-  seriesId?: string;
+  seriesKey: string;
 };
 
 /**
  * Historical Observation query contract.
  *
- * Time bounds are inclusive and apply to Observation.observedAt (the
- * canonical effective time), never retrievedAt or Market Memory captured_at.
- * Results must use observedAt as the primary sort key, retrievedAt as the
- * correction/version tie-breaker, and id as the final deterministic
- * tie-breaker. Invalid timestamps or limits must be rejected explicitly.
+ * Effective-time bounds are inclusive and apply to Observation.observedAt.
+ * `retrievedAtOnOrBefore` is an inclusive availability/as-of cutoff: records
+ * retrieved later must not appear in an earlier point-in-time view.
+ *
+ * This canonical contract uses Observation.retrievedAt (when P365 obtained
+ * the provider record). Durable Market Memory captured_at is a later storage
+ * write timestamp and remains an adapter concern. Until that adapter exists,
+ * this contract does not claim durable point-in-time reconstruction.
+ *
+ * Results use observedAt as the primary sort key, retrievedAt as the revision
+ * tie-breaker, and id as the final deterministic tie-breaker. Invalid
+ * timestamps or limits must be rejected explicitly.
  */
 export type ObservationHistoryQuery = {
   identity: ObservationHistoryIdentity;
   observedAtOnOrAfter?: string;
   observedAtOnOrBefore?: string;
+  retrievedAtOnOrBefore?: string;
   order: ObservationHistoryOrder;
   /** Positive integer capped at 500 records per query. */
   limit: number;
