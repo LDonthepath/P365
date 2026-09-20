@@ -56,6 +56,13 @@ async function main(): Promise<void> {
     "2020-01-02",
     "2020-01-01",
   ]);
+  assert.deepEqual(completed.data[0]?.provenance, {
+    version: "v1",
+    providerResource: "/fred/series/observations",
+    nativeSeriesId: series.seriesId,
+    observationDate: "2020-01-03",
+  });
+  assert.equal(completed.data[0]?.releasedAt, null, "FRED adapter must not fabricate a release timestamp");
   assert.deepEqual(completedUrls.map((url) => url.searchParams.get("offset")), ["0", "2"]);
 
   const truncated = await fetchFredSeriesObservations(series, "test-api-key", bounds, fetchPages([

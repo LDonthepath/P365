@@ -107,6 +107,27 @@ export type ObservationIdentity = {
   /** SHA-256 factual-version fingerprint; excludes retrieval availability. */
   revisionFingerprint: string;
 };
+
+/**
+ * Additive source-native provenance for Observation writes created after
+ * FND-010A. `sourceId` remains the canonical provider identity; this object
+ * records only provider-native resource and identifier details.
+ */
+export type ObservationProvenance = {
+  version: "v1";
+  /** Stable provider endpoint/resource path without query credentials. */
+  providerResource: string;
+  /** Provider-native series identity, when the source exposes one. */
+  nativeSeriesId?: string;
+  /** Provider-native instrument/asset identity, when the source exposes one. */
+  nativeInstrumentId?: string;
+  /** Provider-native symbol, when the source exposes one. */
+  nativeSymbol?: string;
+  /** Provider observation/effective date, not a release timestamp. */
+  observationDate?: string;
+  /** Provider vintage/realtime date, not a release timestamp. */
+  vintageDate?: string;
+};
 export type EventStatus = "UPCOMING" | "ACTIVE" | "PAST" | "UNKNOWN";
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
 
@@ -151,6 +172,8 @@ export type Observation = {
   evidenceId: string;
   /** Additive revision lineage. Optional for legacy persisted records. */
   identity?: ObservationIdentity;
+  /** Additive typed source-native provenance. Optional for legacy records. */
+  provenance?: ObservationProvenance;
   /** Additive semantic dimensions. Optional for legacy persisted records. */
   semantics?: ObservationSemantics;
   metadata?: Record<string, string | number | boolean | null>;

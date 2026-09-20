@@ -2,6 +2,8 @@ import type { MacroSeriesDefinition } from "./macro-registry";
 import type { ProviderResult } from "./types";
 import { providerResult } from "./types";
 import { providerFetchPolicy, type ProviderAcquisitionMode } from "./provider-fetch-policy";
+import type { ObservationProvenance } from "../domain/types";
+import { OBSERVATION_PROVIDER_RESOURCES } from "../domain/observation-provenance";
 
 const FRED_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations";
 
@@ -32,6 +34,7 @@ export type MacroObservationInput = {
   vintageDate: string | null;
   releasedAt: string | null;
   retrievedAt: string;
+  provenance: ObservationProvenance;
 };
 
 function isDateOnly(value: string | undefined): value is string {
@@ -155,16 +158,26 @@ export async function fetchFredSeriesObservations(
   return providerResult(
     "fred",
     "SUCCESS",
-    valid.map((item, index) => ({
-      series,
-      value: item.observation.value,
-      observationDate: item.observation.date,
-      previousValue: valid[index + 1]?.observation.value ?? null,
-      vintageDate: item.observation.realtime_start && isDateOnly(item.observation.realtime_start)
+    valid.map((item, index) => {
+      const vintageDate = item.observation.realtime_start && isDateOnly(item.observation.realtime_start)
         ? item.observation.realtime_start
-        : null,
-      releasedAt: null,
-      retrievedAt: item.retrievedAt,
-    })),
+        : null;
+      return {
+        series,
+        value: item.observation.value,
+        observationDate: item.observation.date,
+        previousValue: valid[index + 1]?.observation.value ?? null,
+        vintageDate,
+        releasedAt: null,
+        retrievedAt: item.retrievedAt,
+        provenance: {
+          version: "v1",
+          providerResource: OBSERVATION_PROVIDER_RESOURCES.fredObservations,
+          nativeSeriesId: series.seriesId,
+          observationDate: item.observation.date,
+          ...(vintageDate ? { vintageDate } : {}),
+        },
+      };
+    }),
   );
 }
