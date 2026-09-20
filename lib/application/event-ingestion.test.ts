@@ -114,6 +114,44 @@ async function main(): Promise<void> {
     parseEventIngestionRequest(new URLSearchParams("providers=biquote,BIQUOTE,forex-factory&jurisdictions=us,CHINA,US,JAPAN")),
     { ok: true, options: { providers: ["biquote", "forex-factory"], jurisdictions: ["US", "CHINA", "JAPAN"] } },
   );
+  assert.deepEqual(
+    parseEventIngestionRequest(new URLSearchParams(
+      "providers=biquote&jurisdictions=US,CHINA,JAPAN&biquoteFrom=2026-09-20T03:00:00Z&biquoteTo=2026-09-20T15:00:00Z&biquoteImportance=HIGH&biquoteLimit=20",
+    )),
+    {
+      ok: true,
+      options: {
+        providers: ["biquote"],
+        jurisdictions: ["US", "CHINA", "JAPAN"],
+        biquote: {
+          from: "2026-09-20T03:00:00.000Z",
+          to: "2026-09-20T15:00:00.000Z",
+          importance: "high",
+          limit: 20,
+        },
+      },
+    },
+  );
+  assert.deepEqual(
+    parseEventIngestionRequest(new URLSearchParams("providers=forex-factory&jurisdictions=US&biquoteLimit=20")),
+    { ok: false, error: "Biquote filters require providers to include biquote" },
+  );
+  assert.deepEqual(
+    parseEventIngestionRequest(new URLSearchParams("providers=biquote&jurisdictions=US&biquoteFrom=2026-09-20T03:00:00Z")),
+    { ok: false, error: "biquoteFrom and biquoteTo must be provided together" },
+  );
+  assert.deepEqual(
+    parseEventIngestionRequest(new URLSearchParams("providers=biquote&jurisdictions=US&biquoteFrom=bad&biquoteTo=2026-09-20T15:00:00Z")),
+    { ok: false, error: "biquoteFrom/biquoteTo must be valid ordered timestamps" },
+  );
+  assert.deepEqual(
+    parseEventIngestionRequest(new URLSearchParams("providers=biquote&jurisdictions=US&biquoteImportance=critical")),
+    { ok: false, error: "biquoteImportance must be low, medium, or high" },
+  );
+  assert.deepEqual(
+    parseEventIngestionRequest(new URLSearchParams("providers=biquote&jurisdictions=US&biquoteLimit=501")),
+    { ok: false, error: "biquoteLimit must be an integer from 1 to 500" },
+  );
 
   assert.equal(forexFactoryJurisdiction("USD"), "US");
   assert.equal(forexFactoryJurisdiction("CNY"), "CHINA");
@@ -274,6 +312,38 @@ async function main(): Promise<void> {
     { countries: ["US", "CN", "JP"], limit: 500, acquisitionMode: "FRESH" },
     [undefined, "FRESH"],
   ]);
+
+  const boundedFetchCalls: unknown[] = [];
+  const bounded = createEventIngestionAcquisition(
+    {
+      providers: ["biquote"],
+      jurisdictions: ["US", "CHINA", "JAPAN"],
+      biquote: {
+        from: "2026-09-20T03:00:00.000Z",
+        to: "2026-09-20T15:00:00.000Z",
+        importance: "high",
+        limit: 20,
+      },
+    },
+    {
+      fetchEconomicCalendar: async () => providerResult("forex-factory", "EMPTY", []),
+      fetchBiquoteEconomicCalendar: async (options) => {
+        boundedFetchCalls.push(options);
+        return providerResult("biquote", "EMPTY", []);
+      },
+      fetchFomcEvents: async () => providerResult("federal-reserve", "EMPTY", []),
+    },
+  );
+  await bounded.biquote();
+  assert.deepEqual(boundedFetchCalls, [{
+    countries: ["US", "CN", "JP"],
+    from: "2026-09-20T03:00:00.000Z",
+    to: "2026-09-20T15:00:00.000Z",
+    importance: "high",
+    limit: 20,
+    acquisitionMode: "FRESH",
+  }]);
+
   assert.deepEqual(providerFetchPolicy("FRESH", 3600), { cache: "no-store" });
   assert.deepEqual(providerFetchPolicy("CACHED", 3600), { next: { revalidate: 3600, tags: ["p365-fast"] } });
 
