@@ -144,6 +144,8 @@ export type Event = {
   id: string;
   subject: string;
   description: string;
+  /** Additive canonical jurisdiction. Optional for legacy persisted Events. */
+  jurisdiction?: Jurisdiction;
   /** Actual occurrence time, when known. */
   occurredAt?: string;
   /** Scheduled event time, when known. */

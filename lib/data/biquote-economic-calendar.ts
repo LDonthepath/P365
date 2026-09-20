@@ -1,7 +1,6 @@
 import "server-only";
-import { createHash } from "node:crypto";
-import type { EconomicEventResult } from "../domain/event-result";
-import type { Evidence, Event } from "../domain/types";
+import type { ProviderAcquisitionMode } from "./provider-fetch-policy";
+import { providerFetchPolicy } from "./provider-fetch-policy";
 import type { ProviderResult } from "./types";
 import { providerResult } from "./types";
 
@@ -27,12 +26,6 @@ export type BiquoteEconomicCalendarRecord = {
   timeMode?: string | null;
   sourceUrl?: string | null;
   source?: string | null;
-};
-
-export type BiquoteEconomicCalendarCanonical = {
-  event: Event;
-  result: EconomicEventResult;
-  evidence: Evidence;
 };
 
 function isFiniteNumber(value: unknown): value is number {
@@ -85,123 +78,13 @@ function parseRecord(value: unknown): BiquoteEconomicCalendarRecord | null {
   };
 }
 
-function mapImportance(value: string): Event["importance"] {
-  const normalized = value.toUpperCase();
-  if (normalized === "HIGH") return "HIGH";
-  if (normalized === "MEDIUM") return "MEDIUM";
-  return "LOW";
-}
-
-function mapStatus(record: BiquoteEconomicCalendarRecord, now: Date): Event["status"] {
-  if (record.actual !== null && record.actual !== undefined) return "PAST";
-  return Date.parse(record.time) > now.getTime() ? "UPCOMING" : "ACTIVE";
-}
-
-/**
- * SHA-256 fingerprint for provider snapshots.
- * The identity is based on normalized result content, not retrieval time, so
- * identical observations dedupe while later provider revisions get a new id.
- */
-function snapshotFingerprint(record: BiquoteEconomicCalendarRecord): string {
-  const canonical = JSON.stringify([
-    record.eventId,
-    record.time,
-    record.period ?? null,
-    record.unit ?? null,
-    record.multiplier ?? null,
-    record.actual ?? null,
-    record.forecast ?? null,
-    record.previous ?? null,
-    record.revisedPrevious ?? null,
-    record.revision ?? null,
-    record.sourceUrl ?? null,
-  ]);
-
-  return createHash("sha256").update(canonical, "utf8").digest("hex");
-}
-
-export function normalizeBiquoteEconomicCalendar(
-  records: BiquoteEconomicCalendarRecord[],
-  retrievedAt: string,
-): BiquoteEconomicCalendarCanonical[] {
-  return records.map((record) => {
-    const evidenceId = `biquote-economic-event-evidence-${record.id}`;
-    const eventId = `biquote-economic-event-${record.id}`;
-    const hasActual = record.actual !== null && record.actual !== undefined;
-    const resultId = `biquote-economic-event-result-${record.id}-${snapshotFingerprint(record)}`;
-    const evidence: Evidence = {
-      id: evidenceId,
-      sourceId: "biquote",
-      kind: "EVENT",
-      subject: record.name,
-      content: JSON.stringify({
-        providerEventId: record.eventId,
-        actual: record.actual ?? null,
-        forecast: record.forecast ?? null,
-        previous: record.previous ?? null,
-        revisedPrevious: record.revisedPrevious ?? null,
-        revision: record.revision ?? null,
-        unit: record.unit ?? null,
-        period: record.period ?? null,
-        sourceUrl: record.sourceUrl ?? null,
-      }),
-      retrievedAt,
-      capturedAt: retrievedAt,
-      ...(hasActual ? { releasedAt: record.time } : {}),
-      metadata: {
-        providerEventId: record.eventId,
-        countryCode: record.countryCode,
-        currency: record.currency ?? null,
-        type: record.type,
-        multiplier: record.multiplier ?? null,
-        timeMode: record.timeMode ?? null,
-        sourceUrl: record.sourceUrl ?? null,
-      },
-    };
-
-    const event: Event = {
-      id: eventId,
-      subject: record.name,
-      description: `${record.countryCode} ${record.name}`,
-      scheduledAt: record.time,
-      ...(hasActual ? { occurredAt: record.time, releasedAt: record.time } : {}),
-      retrievedAt,
-      status: mapStatus(record, new Date(retrievedAt)),
-      importance: mapImportance(record.importance),
-      sourceId: "biquote",
-      evidenceId,
-    };
-
-    const result: EconomicEventResult = {
-      id: resultId,
-      eventId,
-      ...(isFiniteNumber(record.actual) ? { actual: record.actual } : {}),
-      ...(isFiniteNumber(record.forecast)
-        ? { expected: record.forecast, expectedType: "FORECAST" as const }
-        : {}),
-      ...(isFiniteNumber(record.previous) ? { previous: record.previous } : {}),
-      ...(isFiniteNumber(record.revisedPrevious)
-        ? { revisedPrevious: record.revisedPrevious }
-        : {}),
-      ...(isFiniteNumber(record.revision) ? { revision: record.revision } : {}),
-      ...(record.unit ? { unit: record.unit } : {}),
-      ...(record.period ? { period: record.period } : {}),
-      ...(hasActual ? { releasedAt: record.time } : {}),
-      retrievedAt,
-      sourceId: "biquote",
-      evidenceId,
-    };
-
-    return { event, result, evidence };
-  });
-}
-
 export async function fetchBiquoteEconomicCalendar(options: {
   from?: string;
   to?: string;
   countries?: string[];
   importance?: "low" | "medium" | "high";
   limit?: number;
+  acquisitionMode?: ProviderAcquisitionMode;
 } = {}): Promise<ProviderResult<BiquoteEconomicCalendarRecord>> {
   const params = new URLSearchParams();
   if (options.from) params.set("from", options.from);
@@ -214,7 +97,7 @@ export async function fetchBiquoteEconomicCalendar(options: {
 
   try {
     const response = await fetch(`${BIQUOTE_CALENDAR_URL}?${params.toString()}`, {
-      next: { revalidate: 3600, tags: ["p365-dashboard"] },
+      ...providerFetchPolicy(options.acquisitionMode ?? "CACHED", 3600),
       signal: AbortSignal.timeout(10_000),
       headers: { Accept: "application/json" },
     });
@@ -248,7 +131,11 @@ export async function fetchBiquoteEconomicCalendar(options: {
       "biquote",
       records.length > 0 ? "SUCCESS" : "EMPTY",
       records,
-      records.length > 0 ? undefined : "Biquote calendar returned no matching events",
+      records.length > 0
+        ? options.limit !== undefined && records.length >= options.limit
+          ? `Biquote returned the requested limit (${options.limit}); provider-window completeness is not proven`
+          : undefined
+        : "Biquote calendar returned no matching events",
       undefined,
       retrievedAt,
     );

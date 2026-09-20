@@ -28,6 +28,11 @@ export type EconomicEventResult = {
   evidenceId: string;
 };
 
+/** Stable durable identity for one normalized provider result snapshot. */
+export function economicEventResultDedupeKey(result: EconomicEventResult): string {
+  return `EVENT_RESULT:${result.id}`;
+}
+
 function assertTimestamp(field: string, value: string | undefined, required = false): void {
   if (value === undefined) {
     if (required) throw new Error(`Economic event result requires ${field}.`);

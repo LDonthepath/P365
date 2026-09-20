@@ -5,7 +5,7 @@ import type { EconomicEventResult } from "../domain/event-result";
 import type { FactualBaseline } from "../domain/baseline";
 import { buildMacroFactualBaselines } from "../domain/baseline";
 import { buildDashboardContexts } from "../domain/context";
-import { normalizeBiquoteEconomicCalendar } from "../data/biquote-economic-calendar";
+import { normalizeBiquoteEconomicCalendar } from "./biquote-economic-calendar";
 import { calendarToCanonicalRecords, cryptoMarketToObservations, fomcToCanonicalRecords, macroToCanonicalRecords, newsToEvidence, providerHealthForResult, P365_SOURCES } from "../domain/normalize";
 export type NormalizedDashboardData = { macroNews: NewsItem[]; cryptoNews: NewsItem[]; calendarEvents: CalendarEvent[]; calendarProviderMessage?: string; unavailableSources: string[]; observations: Observation[]; macroObservations: Observation[]; events: Event[]; economicEventResults: EconomicEventResult[]; contexts: Context[]; macroBaselines: Record<string, FactualBaseline>; evidence: Evidence[]; providerHealth: ProviderHealth[] };
 function normalizeNewsUrl(url: string): string { return url.trim().replace(/#.*$/, "").replace(/\/+$/, "").toLowerCase(); }
