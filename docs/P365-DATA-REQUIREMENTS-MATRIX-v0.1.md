@@ -169,7 +169,7 @@ Economic events establish the temporal anchor for surprise and repricing analysi
 
 ### 4.3 Crypto factual observations
 
-For the current Macro + Crypto scope, the minimum factual crypto layer is:
+For the MVP Macro + Crypto + Gold scope, the minimum factual crypto layer is:
 
 - BTC price
 - ETH price
@@ -515,6 +515,27 @@ What existing canonical object consumes it?
 ```
 
 If these questions cannot be answered, the provider/model change is premature.
+
+### MVP vertical-slice gate
+
+Before approving a **new first-class asset class** beyond Macro + Crypto + Gold, P365 must demonstrate the complete intelligence chain on the existing MVP:
+
+```text
+Macro change
+→ correct factual / expectation / pricing baseline
+→ event surprise when applicable
+→ market repricing
+→ rates / real yields / USD / liquidity transmission
+→ Crypto response
+→ Gold response
+→ confirmation / contradiction from qualified evidence
+→ historical context
+→ next catalyst / invalidation
+```
+
+If that chain is not reliable and auditable, additional asset-class breadth is deferred.
+
+Supporting evidence from an already available non-MVP asset does not violate this gate as long as it does not create a new first-class product module.
 
 ---
 
