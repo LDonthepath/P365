@@ -2,7 +2,7 @@
 
 **Status:** Active current-implementation requirements matrix, rebaselined under the financial-market ontology  
 **Scope:** MVP = **Macro + Crypto + Gold** within a future-compatible global multi-asset architecture  
-**Purpose:** Define field-level requirements and sequencing for the currently implemented foundation. The full product-domain universe and semantic classification are governed by `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`.
+**Purpose:** Define field-level requirements and sequencing for the currently implemented foundation. The full product-domain universe and semantic classification are governed by `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`. The MVP driver/evidence requirements for Bitcoin and Gold are governed by `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`.
 
 ---
 
@@ -442,8 +442,10 @@ Minimum crypto coverage should support:
 - market capitalization / volume / dominance;
 - historical comparison;
 - stablecoin liquidity where a qualified source is approved;
-- crypto ETF flow where required by an approved reasoning question;
-- funding/OI/basis only when provider, time semantics and historical continuity qualify.
+- BTC spot-ETF flow where required by an approved reasoning question;
+- stablecoin liquidity where qualified;
+- funding/OI/basis/liquidations/options evidence only when provider, time semantics and historical continuity qualify;
+- CME/COT positioning where relevant and qualified.
 
 ### Gold
 
@@ -452,7 +454,7 @@ Minimum Gold coverage should support:
 - canonical Gold spot/futures pricing;
 - durable history and factual baseline;
 - interaction with real yields, USD, rates, inflation pricing and liquidity context;
-- qualified ETF/positioning data only when required by an approved reasoning question.
+- qualified Gold ETF flow/holdings and COMEX/CFTC positioning only when required by an approved reasoning question.
 
 ### Supporting cross-asset evidence
 
