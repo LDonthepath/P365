@@ -7,7 +7,7 @@ import { fetchBiquoteEconomicCalendar, type BiquoteEconomicCalendarRecord } from
 import { fetchCryptoMarketObservations, type CryptoMarketObservationInput } from "../data/crypto-market";
 import { fetchFredMacroObservations, type MacroObservationInput } from "../data/fred";
 import { fetchFomcEvents, type FomcEventInput } from "../data/federal-reserve-events";
-import { providerResult, type CalendarEvent, type NewsItem, type ProviderResult } from "../data/types";
+import { ECONOMIC_CALENDAR_LIMIT, providerResult, type CalendarEvent, type NewsItem, type ProviderResult } from "../data/types";
 
 export type DashboardIngestion = {
   macroNews: ProviderResult<NewsItem>;
@@ -53,7 +53,7 @@ export async function ingestDashboardData(): Promise<DashboardIngestion> {
     fetchMacroNews(6),
     fetchAlphaVantageCryptoNews(4),
     fetchCoinDeskNews(6),
-    fetchEconomicCalendar(6),
+    fetchEconomicCalendar(ECONOMIC_CALENDAR_LIMIT),
     fetchBiquoteEconomicCalendar({ limit: 50 }),
     fetchCryptoMarketObservations(["BTC", "ETH"]),
     fetchGoldFuturesSpot(),
