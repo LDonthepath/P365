@@ -98,6 +98,8 @@ Unless required as supporting evidence for Macro/Crypto/Gold reasoning, defer fi
 
 The broader ontology remains deliberate future compatibility, not an MVP delivery mandate.
 
+The normative evidence requirements for the MVP traded markets are defined in `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`. That contract owns the shared Macro driver map, BTC-specific flow/derivatives evidence, Gold-specific flow/positioning evidence, relationship methodology, and event-window evidence requirements.
+
 ### 1.3 MVP operating thesis
 
 The MVP is intentionally a **vertical slice**, not a broad terminal.
