@@ -2,6 +2,7 @@ import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { MacroObservationInput } from "../data/fred";
 import type { FomcEventInput } from "../data/federal-reserve-events";
+import { forexFactoryJurisdiction } from "../data/event-jurisdiction";
 import type { DataQuality, Evidence, Event, Observation, ObservationSemantics, ProviderHealth, SourceHealthStatus } from "./types";
 import { requireObservationSemantics } from "./observation-semantics";
 import { qualityFromFreshness, freshnessPolicyForFamily } from "./freshness";
@@ -67,6 +68,7 @@ export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: str
     id: hashId("event", `${sourceId}:${item.id}`),
     subject: item.event,
     description: `${item.country} economic event`,
+    jurisdiction: forexFactoryJurisdiction(item.country),
     scheduledAt: new Date(item.dateISO).toISOString(),
     retrievedAt,
     status: item.status === "PAST" ? "PAST" as const : "UPCOMING" as const,
@@ -175,6 +177,7 @@ export function fomcToCanonicalRecords(items: FomcEventInput[], sourceId: string
     id: hashId("event", `${sourceId}:fomc:${item.scheduledAt}`),
     subject: "FOMC meeting",
     description: `Federal Open Market Committee meeting (${item.label})`,
+    jurisdiction: "US" as const,
     scheduledAt: item.scheduledAt,
     retrievedAt,
     status: "UPCOMING" as const,

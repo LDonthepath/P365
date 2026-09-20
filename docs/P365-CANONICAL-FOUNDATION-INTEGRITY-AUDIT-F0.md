@@ -1,10 +1,10 @@
 # P365 Foundation Master — SSOT v0.1
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
-**Audited ref:** `main@82db8d6f4a6ca8934027591c524e93c06f83dc6e`  
+**Audited ref:** FND-003B implementation based on `main@fb7a6f4be6c3ff8606a86befa501c850640f884a`
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 20 Sep 2026 against `main@82db8d6f4a6ca8934027591c524e93c06f83dc6e` after PR #42, then audited the additive semantic-dimensions compatibility implementation against the current canonical/domain/normalization/history paths. FND-003A was implemented from exact base `main@936d102fb0e04be06f9ad3a250933046929e3705`; this does not claim completion of FND-003B event ingestion or FND-003C production scheduling/activation.
+**Verification pass:** Re-verified 20 Sep 2026 from `main@fb7a6f4be6c3ff8606a86befa501c850640f884a` after PR #45. FND-003A is merged. FND-003B adds an independently verified local Event/EventResult ingestion boundary for the US + China + Japan jurisdiction MVP. This does not claim that FND-003 is complete: external cadence, deployment activation, credentials and production E2E remain FND-003C.
 
 ## Documentation authority
 
@@ -27,7 +27,7 @@ Older status, roadmap, gap-analysis, and audit documents are removed rather than
 
 P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Historical continuity remains the dominant foundation blocker. The coarse legacy `MARKET / MACRO / ASSET / OTHER` classification is now preserved only as a compatibility field while approved current Observations receive additive market-domain/information-class semantics. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
 
-The current system can ingest and normalize factual data, create evidence-backed Context, persist canonical records, query contract-compliant Observation history from durable Market Memory, and compute a factual macro baseline from the provider's current retrieval window. It cannot yet guarantee historical continuity because independent ingestion/backfill remains missing, the baseline is not repository-backed, and it cannot yet perform temporally valid event repricing/transmission analysis.
+The current system can independently ingest and normalize selected factual Observations and Events, create evidence-backed Context, persist canonical records, query contract-compliant Observation history from durable Market Memory, and compute a factual macro baseline from the provider's current retrieval window. It cannot yet guarantee operational historical continuity because external cadence/production activation remains missing, the baseline is not repository-backed, and it cannot yet perform temporally valid event repricing/transmission analysis.
 
 ### Foundation readiness by layer
 
@@ -38,14 +38,14 @@ The current system can ingest and normalize factual data, create evidence-backed
 | Source qualification | PARTIAL | Several source documents are stale relative to actual Yahoo/Biquote/FRED coverage. |
 | Provider result semantics | PASS | SUCCESS/EMPTY/ERROR/UNAVAILABLE and retrieval timestamps are explicit. |
 | Canonical observations | PASS / PARTIAL | Current factual families canonicalize cleanly; provenance is still partly free-form metadata. |
-| Events / event results | PARTIAL | Biquote provides actual/forecast/previous/revision, but release semantics rely on provider `time` and production qualification remains trial-only. |
+| Events / event results | PARTIAL | Biquote provides actual/forecast/previous/revision. Only `timeMode=exact` currently qualifies provider `time` for occurrence/release timestamps; broader production qualification remains trial-only. |
 | Evidence | PASS / PARTIAL | Publication/retrieval separation exists; source-native identity/endpoint is not uniformly first-class. |
 | Temporal semantics | PASS / PARTIAL | Major overloads have been corrected; exact release/availability semantics remain incomplete for macro/event families. |
 | Freshness/quality | PARTIAL | Typed families and per-series macro windows exist, but quality is observation-age centric and does not yet model publication cadence/market-hours uniformly. |
 | Context | PASS for grouping | Neutral grouping is evidence-backed and does not infer direction. |
 | Market Memory persistence | PARTIAL | Append-only durable adapter exists; operational readiness depends on deployment configuration and ingestion invocation. |
 | Historical retrieval | CONTRACT + DURABLE ADAPTER IMPLEMENTED / PRODUCTION E2E PENDING | FND-001 semantics are implemented against persisted canonical Observation payloads. Production REST E2E still requires the server-only deployment credential; independent ingestion/backfill remains FND-003. |
-| Historical continuity | **PARTIAL / HIGH GAP REMAINS** | FND-003A adds a fail-closed authenticated, provider-selective Observation worker with fresh acquisition and exhaustive FRED-only bounded backfill. Event ingestion, external intraday scheduling, and production execution proof remain missing. |
+| Historical continuity | **PARTIAL / HIGH GAP REMAINS** | FND-003A provides independent Observation ingestion/backfill and FND-003B provides independent Event/EventResult ingestion for US/China/Japan. External intraday scheduling and production execution proof remain missing. |
 | Factual baseline | PASS in isolation / PARTIAL E2E | Selector is defensively implemented, but active baseline input is current-fetch history, not repository history. |
 | Expectation baseline | MISSING | Event forecast exists as EventResult data, but no baseline contract/selection lifecycle exists. |
 | Pricing baseline | MISSING | No canonical market-implied pricing layer. |
@@ -74,7 +74,7 @@ Context                      IMPLEMENTED / FND-004 REGRESSION CORRECTED
 Durable Market Memory        FOUNDATION IMPLEMENTED
 Historical retrieval         CONTRACT + DURABLE ADAPTER IMPLEMENTED / PRODUCTION E2E PENDING
 Factual baseline             IMPLEMENTED / NOT REPOSITORY-BACKED (FND-002)
-Independent ingestion        PARTIAL (FND-003A implemented; FND-003B/C pending)
+Independent ingestion        PARTIAL (FND-003A merged; FND-003B implemented locally; FND-003C pending)
 Expectation baseline         MISSING lifecycle
 Pricing baseline             MISSING
 Market Snapshot              DESIGN ONLY
@@ -91,7 +91,7 @@ Intelligence / Briefing      DEFERRED
 - **Macro:** FRED covers the approved monetary-policy, liquidity, inflation, labor, rates, broad-USD and growth foundation.
 - **Crypto:** CoinGecko covers BTC/ETH spot, BTC/ETH market cap, total crypto market cap, total volume and BTC/ETH dominance. Stablecoin market cap and a defined basic-volatility metric remain open.
 - **Cross-asset:** S&P 500, Nasdaq, Russell 2000, US 2Y, US 10Y, 10Y real yield, DXY, broad USD, Gold futures, WTI, VIX and IG/HY credit spreads are available. DXY and broad USD remain separate instruments. MOVE remains open.
-- **Economic events:** Forex Factory provides scheduled-calendar awareness, Federal Reserve official FOMC date anchors, and Biquote trial structured event results. Production qualification/release semantics remain open.
+- **Economic events:** Forex Factory provides a weekly scheduled calendar, Federal Reserve provides official FOMC date anchors, and Biquote trial data provides structured schedules/results for verified US, China and Japan examples. Biquote remains trial-only; response-window completeness and release-time qualification remain open.
 - **Event risk window (presentation only):** the overview lists HIGH-importance canonical Events from 30 minutes ago to 24 hours ahead, grouped by scheduled minute, as schedule facts only (no direction, no advice). Federal Reserve dates are date anchors and are shown without a countdown. The Forex Factory list is capped at the nearest `ECONOMIC_CALENDAR_LIMIT` events of any impact, so the panel states when events beyond its last loaded event are unknown; absence in the panel is not evidence of absence. Cross-provider duplicate titles (FND-019) are not reconciled.
 - **Semantic breadth:** the FRED registry contains 33 series and current Yahoo/CoinGecko market metrics now receive additive `Observation.semantics` during normalization. Legacy `ObservationDomain` remains unchanged for history compatibility; old Market Memory rows can resolve approved semantics from stable `seriesId`/`metricId` without rewrite.
 - **MVP coverage gaps:** Macro still lacks complete global-policy/expectation/pricing coverage; Crypto lacks qualified stablecoin/ETF-flow/derivatives coverage; Gold has pricing but not a complete durable-history/baseline/flow-positioning reasoning chain.
@@ -157,6 +157,22 @@ append-only Observation + Evidence persistence
 
 `providers` is mandatory. `BACKFILL` is explicitly limited to FRED with valid inclusive date bounds; current-state CoinGecko/Yahoo adapters must not be represented as historical backfill sources. No Vercel cron schedule is installed by this checkpoint.
 
+FND-003B establishes a separate scheduler-agnostic event boundary:
+
+```text
+Authenticated external caller
+  ↓ explicit providers + jurisdictions
+/api/cron/event-ingestion
+  ↓ FRESH acquisition (no Next.js data cache)
+selected Forex Factory / Biquote / Federal Reserve adapter only
+  ↓ explicit native-code → canonical jurisdiction mapping
+append-only Event + Evidence + EconomicEventResult persistence
+```
+
+Runtime jurisdictions are deliberately restricted to `US`, `CHINA`, and `JAPAN`. Forex Factory mappings are `USD/CNY/JPY`; Biquote mappings are `US/CN/JP`; unknown codes do not default to an approved jurisdiction. `Event.jurisdiction` is optional for backward compatibility with legacy rows. The independent Forex Factory/Federal Reserve paths do not inherit the six-event dashboard cap, while dashboard calls retain cached defaults. Biquote requests up to its current approved limit and explicitly reports when that limit is reached, so a bounded provider response is not represented as proven calendar completeness.
+
+Live read-only verification on 20 Sep 2026 found representative Biquote coverage for US inflation/labor/growth/FOMC, China GDP/industrial production/retail sales/official and Caixin PMI/CPI/PPI/M2/new loans, and Japan BoJ policy events/CPI/GDP/industrial production/retail sales/PMI/Tankan/wages/labor. China trade, aggregate financing, LPR, MLF and RRR families were not verified in the inspected window. Some China and BoJ records use provider `timeMode=tentative`; `tentative`, `date`, `notime`, missing, and otherwise unqualified modes retain the provider time only as the existing calendar anchor/provenance and are not promoted to exact `occurredAt`/`releasedAt`. Actual/result values remain durable when exact release time is unknown. Forex Factory's current weekly feed contained `USD`, `CNY` and `JPY` records but is not evidence of complete family coverage.
+
 ## 3. Product and governance audit
 
 ### PASS
@@ -218,11 +234,11 @@ Useful for scheduled event awareness. It is not sufficient for expectation/surpr
 
 Useful foundation for `EconomicEventResult`: actual, forecast, previous, revised previous, revision, unit, period and evidence lineage.
 
-Important limitation: when actual exists, normalization assigns provider `record.time` to `occurredAt` and `releasedAt`. This is valid only if Biquote's `time` is contractually the release/result time. That semantic must be verified before production-grade surprise timing is claimed.
+When actual exists and Biquote supplies `timeMode=exact`, normalization may assign provider `record.time` to canonical `occurredAt` and `releasedAt`. For `tentative`, `date`, `notime`, missing, or otherwise unqualified modes, the clock component is not promoted into an exact occurrence/release timestamp; actual, forecast, previous and revision values remain durable without one. Biquote remains trial/partially qualified, and FND-008 remains open for broader provider release-time qualification before production-grade surprise timing is claimed.
 
 ### Federal Reserve — PASS for schedule / PARTIAL for event completion
 
-Official FOMC schedule is kept as a date anchor. It correctly does not fabricate a decision release time. Event-result/publication ingestion remains missing.
+Official FOMC schedule is kept as a date anchor. It correctly does not fabricate a decision release time. FND-003B can persist these schedule facts independently; exact decision-result/publication ingestion remains missing from the official-source path.
 
 ### News — PASS role
 
@@ -245,7 +261,7 @@ Gap: important provider identity, unit, endpoint, series ID and observation-date
 
 ### Event — PASS / PARTIAL
 
-Schedule, occurrence, release and retrieval concepts are distinct. Source-native event identity is not uniformly first-class.
+Schedule, occurrence, release and retrieval concepts are distinct. New FND-003B Events carry optional canonical jurisdiction when determinable; legacy Events remain valid without it. Source-native event identity is not uniformly first-class.
 
 ### Evidence — PASS / PARTIAL
 
@@ -323,7 +339,7 @@ The new financial-market ontology therefore defines market domain and informatio
 3. Legacy Observation rows that predate canonical `retrievedAt` cannot participate in contract-compliant history/as-of queries and are excluded rather than assigned a fabricated availability time. Current writes retain `retrievedAt` in the immutable JSONB payload.
 4. The existing append-only dedupe strategy retains corrections when their canonical IDs differ, including current FRED value revisions. FND-018 remains open for record families whose canonical ID strategy may not distinguish every future correction/revision case.
 5. Dashboard read remains one ingestion/persistence trigger, but FND-003A adds an authenticated independent Observation endpoint that can be invoked without rendering the dashboard.
-6. FND-003A supports explicit provider selection, cache-bypassing forward acquisition, and FRED-only bounded backfill that follows provider pagination until range exhaustion is proven. Missing or inconsistent completeness metadata and per-series failures remain explicit `ERROR`/partial execution results rather than successful backfills. `CRON_SECRET` fails closed and Bearer authorization behavior has focused regression coverage. Independent Event ingestion, the external intraday clock, deployment credentials, and production execution evidence remain FND-003B/C gaps.
+6. FND-003A supports explicit provider selection, cache-bypassing forward acquisition, and FRED-only bounded backfill that follows provider pagination until range exhaustion is proven. FND-003B adds explicit provider/jurisdiction selection, fresh Event acquisition and append-only Event/Evidence/EventResult writes for US/China/Japan. Missing or inconsistent completeness metadata and provider failures remain explicit. `CRON_SECRET` fails closed and Bearer authorization behavior has focused regression coverage. The external intraday clock, deployment credentials, and production execution evidence remain FND-003C gaps.
 7. Baseline does not read Market Memory.
 8. `findById` uses `limit=1` without an explicit order. Canonical IDs are intended to be stable enough for a unique logical record, but revisions/version semantics should not depend on unspecified row order.
 
@@ -470,19 +486,19 @@ Do not compensate for missing tests with broader architectural rewrites.
 |---|---|---|
 | FND-001 | **HIGH / CONTRACT + DURABLE ADAPTER REMEDIATED** | Semantic historical Observation query contract and durable Supabase adapter now implement provider-independent logical-series identity separately from optional source provenance, inclusive effective-time bounds, canonical retrieval/as-of cutoff, deterministic revision ordering, and bounded results. Production REST E2E is pending deployment credentials; FND-002/FND-003 remain separate. |
 | FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
-| FND-003 | **HIGH / PARTIAL — FND-003A IMPLEMENTED** | Observation ingestion no longer has to depend on dashboard access: a fail-closed authenticated endpoint requires explicit providers, bypasses provider cache, isolates partial failures, and permits exhaustive bounded FRED-only backfill with explicit incomplete/failure reporting. Independent Event/FOMC ingestion, external cadence ownership, production credentials, and live write/dedupe proof remain required before FND-003 is complete. |
+| FND-003 | **HIGH / PARTIAL — FND-003A MERGED; FND-003B IMPLEMENTED LOCALLY** | Observation and Event/EventResult ingestion no longer have to depend on dashboard access. Both boundaries fail closed, require explicit selection, bypass provider cache and isolate provider failures. Event ingestion supports the approved US/China/Japan MVP and preserves schedule/result separation. External cadence ownership, production credentials and production write/E2E proof remain required before FND-003 is complete. |
 | FND-004 | **HIGH / INITIAL REMEDIATION PR #36 / REGRESSION CORRECTED IN THIS CHECKPOINT** | Historical broad-ASSET mixing was removed in PR #36, but its `crypto.*` prefix excluded CoinGecko BTC/ETH asset-level metrics. The corrected selector now uses qualified CoinGecko provenance plus non-empty canonical `metricId`, with focused runtime-builder regression coverage. |
 | FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
 | FND-007 | **HIGH** | No Pricing baseline/market-implied layer; pricing surprise/repricing conclusions are not allowed. |
-| FND-008 | MEDIUM | Biquote `time` → releasedAt/occurredAt semantic requires provider qualification. |
+| FND-008 | MEDIUM | FND-003B now gates Biquote `time` → `releasedAt`/`occurredAt` promotion on `timeMode=exact`; broader provider release-time semantics and production qualification remain open. |
 | FND-009 | **HIGH** | Confirmed manual-refresh defect: `p365-dashboard` invalidation does not clear cadence-tagged FRED/CoinGecko/CoinDesk/Yahoo fetches. |
 | FND-010 | MEDIUM | Canonical provenance identity remains partly free-form metadata. |
 | FND-011 | MEDIUM | Freshness is not fully release-calendar/market-hours aware. |
 | FND-012 | MEDIUM | Non-crypto Yahoo adapter reuses `CryptoMarketObservationInput`. |
 | FND-013 | MEDIUM | MOVE remains absent from target cross-asset universe. |
 | FND-014 | MEDIUM | Expectation data exists at trial event-result level but has no baseline lifecycle. |
-| FND-015 | MEDIUM | Foundation-critical automated tests are sparse. |
+| FND-015 | MEDIUM | Foundation-critical coverage remains incomplete, although FND-003A/B now have focused runner, auth, normalization, cache-policy, idempotency and failure-isolation regression tests. |
 | FND-016 | LOW | UI still has English/raw-status governance leakage. |
 | FND-017 | MEDIUM | Known Next.js dependency security remediation remains open per roadmap. |
 | FND-018 | MEDIUM | Canonical ID strategy is hash-derived from mutable values/timestamps for several record families; correction/revision identity and lineage policy must be locked before history becomes authoritative. |
@@ -596,6 +612,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 20 Sep 2026 | BTC + XAU Evidence & Relationship Map v0.1 | Defined the normative shared Macro driver stack, BTC-specific flow/derivatives evidence, Gold-specific flow/positioning evidence, relationship-statistic contract, event-window evidence model, and readiness gate without adding providers or runtime reasoning. |
 | 20 Sep 2026 | Additive canonical semantic dimensions | Added optional versioned semantic dimensions to canonical Observation writes, explicit mappings for all active FRED/Yahoo/CoinGecko series, and legacy read-time resolution without rewriting Market Memory or changing FND-001 history identity. |
 | 20 Sep 2026 | FND-003A intraday ingestion control | Added a fail-closed authenticated scheduler-agnostic Observation worker with mandatory provider selection, explicit FORWARD/BACKFILL modes, fresh no-cache acquisition, per-provider reporting/failure isolation, and exhaustive FRED-only bounded backfill. Pagination/range completeness and Bearer authorization are covered by focused regression tests. Event ingestion, scheduler activation and production proof remain separate checkpoints. |
+| 20 Sep 2026 | FND-003B multi-jurisdiction Event ingestion | Added a fail-closed provider-selective Event/EventResult worker for the US + China + Japan MVP, explicit native jurisdiction mappings, fresh acquisition, uncapped durable Forex Factory/FOMC windows, append-only Biquote result snapshots and provider-failure isolation. Biquote remains trial-only; provider-window and China/Japan family gaps stay explicit. FND-019 reconciliation and FND-003C scheduling/production activation remain open. |
 
 ## Active remediation sequence
 
@@ -605,9 +622,9 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 3. FND-001 Historical Observation repository contract     ← PR #37
 4. Durable history query adapter                          ← PR #39; production E2E pending
 5. Financial Market Ontology & Data Foundation v0.1       ← PR #42 merged
-6. Additive semantic-dimensions compatibility contract    ← implemented in this checkpoint
-7. FND-003A selective fresh Observation worker             ← implemented in this checkpoint
-8. FND-003B independent Event/FOMC ingestion               ← next
+6. Additive semantic-dimensions compatibility contract    ← merged before PR #45
+7. FND-003A selective fresh Observation worker             ← PR #45 merged
+8. FND-003B independent US/China/Japan Event ingestion     ← implemented in this checkpoint
 9. FND-003C external cadence + production verification     ← pending
 10. FND-002 Repository-backed Factual Baseline             ← pending
 11. Temporal/provenance/freshness + ID lineage hardening

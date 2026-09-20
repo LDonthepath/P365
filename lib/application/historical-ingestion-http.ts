@@ -4,13 +4,12 @@ import {
   type HistoricalIngestionOptions,
 } from "./historical-ingestion";
 import { parseHistoricalIngestionRequest } from "./historical-ingestion-request";
+import { isCronRequestAuthorized } from "./cron-auth";
 
 type HistoricalIngestionRunner = (options: HistoricalIngestionOptions) => Promise<HistoricalIngestionReport>;
 
 export function isHistoricalIngestionAuthorized(authorization: string | null, secret: string | undefined): boolean {
-  if (!secret || !authorization) return false;
-  const match = /^Bearer (.+)$/.exec(authorization);
-  return match !== null && match[1] === secret;
+  return isCronRequestAuthorized(authorization, secret);
 }
 
 export function createHistoricalIngestionHandler(

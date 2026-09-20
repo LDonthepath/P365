@@ -1,5 +1,5 @@
 import "server-only";
-import type { EconomicEventResult } from "../domain/event-result";
+import { economicEventResultDedupeKey, type EconomicEventResult } from "../domain/event-result";
 import type { EconomicEventResultRepository } from "../repositories/types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -20,7 +20,10 @@ function rowFor(result: EconomicEventResult) {
     canonical_id: result.id,
     effective_at: effectiveAt,
     captured_at: new Date().toISOString(),
-    dedupe_key: `EVENT_RESULT:${result.id}:${effectiveAt}`,
+    // The canonical id fingerprints normalized provider result content. Retrieval
+    // time remains factual payload/effective-time metadata, but must not turn an
+    // unchanged forecast snapshot into another durable row.
+    dedupe_key: economicEventResultDedupeKey(result),
     payload: result,
   };
 }
