@@ -38,7 +38,7 @@ The current system can independently ingest and normalize selected factual Obser
 | Source qualification | PARTIAL | Several source documents are stale relative to actual Yahoo/Biquote/FRED coverage. |
 | Provider result semantics | PASS | SUCCESS/EMPTY/ERROR/UNAVAILABLE and retrieval timestamps are explicit. |
 | Canonical observations | PASS / PARTIAL | Current factual families canonicalize cleanly; provenance is still partly free-form metadata. |
-| Events / event results | PARTIAL | Biquote provides actual/forecast/previous/revision, but release semantics rely on provider `time` and production qualification remains trial-only. |
+| Events / event results | PARTIAL | Biquote provides actual/forecast/previous/revision. Only `timeMode=exact` currently qualifies provider `time` for occurrence/release timestamps; broader production qualification remains trial-only. |
 | Evidence | PASS / PARTIAL | Publication/retrieval separation exists; source-native identity/endpoint is not uniformly first-class. |
 | Temporal semantics | PASS / PARTIAL | Major overloads have been corrected; exact release/availability semantics remain incomplete for macro/event families. |
 | Freshness/quality | PARTIAL | Typed families and per-series macro windows exist, but quality is observation-age centric and does not yet model publication cadence/market-hours uniformly. |
@@ -171,7 +171,7 @@ append-only Event + Evidence + EconomicEventResult persistence
 
 Runtime jurisdictions are deliberately restricted to `US`, `CHINA`, and `JAPAN`. Forex Factory mappings are `USD/CNY/JPY`; Biquote mappings are `US/CN/JP`; unknown codes do not default to an approved jurisdiction. `Event.jurisdiction` is optional for backward compatibility with legacy rows. The independent Forex Factory/Federal Reserve paths do not inherit the six-event dashboard cap, while dashboard calls retain cached defaults. Biquote requests up to its current approved limit and explicitly reports when that limit is reached, so a bounded provider response is not represented as proven calendar completeness.
 
-Live read-only verification on 20 Sep 2026 found representative Biquote coverage for US inflation/labor/growth/FOMC, China GDP/industrial production/retail sales/official and Caixin PMI/CPI/PPI/M2/new loans, and Japan BoJ policy events/CPI/GDP/industrial production/retail sales/PMI/Tankan/wages/labor. China trade, aggregate financing, LPR, MLF and RRR families were not verified in the inspected window. Some China and BoJ records use provider `timeMode=tentative`; provenance retains that value and no stronger exact-time claim is made. Forex Factory's current weekly feed contained `USD`, `CNY` and `JPY` records but is not evidence of complete family coverage.
+Live read-only verification on 20 Sep 2026 found representative Biquote coverage for US inflation/labor/growth/FOMC, China GDP/industrial production/retail sales/official and Caixin PMI/CPI/PPI/M2/new loans, and Japan BoJ policy events/CPI/GDP/industrial production/retail sales/PMI/Tankan/wages/labor. China trade, aggregate financing, LPR, MLF and RRR families were not verified in the inspected window. Some China and BoJ records use provider `timeMode=tentative`; `tentative`, `date`, `notime`, missing, and otherwise unqualified modes retain the provider time only as the existing calendar anchor/provenance and are not promoted to exact `occurredAt`/`releasedAt`. Actual/result values remain durable when exact release time is unknown. Forex Factory's current weekly feed contained `USD`, `CNY` and `JPY` records but is not evidence of complete family coverage.
 
 ## 3. Product and governance audit
 
@@ -234,7 +234,7 @@ Useful for scheduled event awareness. It is not sufficient for expectation/surpr
 
 Useful foundation for `EconomicEventResult`: actual, forecast, previous, revised previous, revision, unit, period and evidence lineage.
 
-Important limitation: when actual exists, normalization assigns provider `record.time` to `occurredAt` and `releasedAt`. This is valid only if Biquote's `time` is contractually the release/result time. That semantic must be verified before production-grade surprise timing is claimed.
+When actual exists and Biquote supplies `timeMode=exact`, normalization may assign provider `record.time` to canonical `occurredAt` and `releasedAt`. For `tentative`, `date`, `notime`, missing, or otherwise unqualified modes, the clock component is not promoted into an exact occurrence/release timestamp; actual, forecast, previous and revision values remain durable without one. Biquote remains trial/partially qualified, and FND-008 remains open for broader provider release-time qualification before production-grade surprise timing is claimed.
 
 ### Federal Reserve — PASS for schedule / PARTIAL for event completion
 
@@ -491,7 +491,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
 | FND-007 | **HIGH** | No Pricing baseline/market-implied layer; pricing surprise/repricing conclusions are not allowed. |
-| FND-008 | MEDIUM | Biquote `time` → releasedAt/occurredAt semantic requires provider qualification. |
+| FND-008 | MEDIUM | FND-003B now gates Biquote `time` → `releasedAt`/`occurredAt` promotion on `timeMode=exact`; broader provider release-time semantics and production qualification remain open. |
 | FND-009 | **HIGH** | Confirmed manual-refresh defect: `p365-dashboard` invalidation does not clear cadence-tagged FRED/CoinGecko/CoinDesk/Yahoo fetches. |
 | FND-010 | MEDIUM | Canonical provenance identity remains partly free-form metadata. |
 | FND-011 | MEDIUM | Freshness is not fully release-calendar/market-hours aware. |

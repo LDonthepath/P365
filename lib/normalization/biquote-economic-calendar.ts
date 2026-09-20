@@ -52,6 +52,7 @@ export function normalizeBiquoteEconomicCalendar(
     const evidenceId = `biquote-economic-event-evidence-${record.id}`;
     const eventId = `biquote-economic-event-${record.id}`;
     const hasActual = record.actual !== null && record.actual !== undefined;
+    const hasExactActualTime = hasActual && record.timeMode?.toLowerCase() === "exact";
     const resultId = `biquote-economic-event-result-${record.id}-${snapshotFingerprint(record)}`;
     const evidence: Evidence = {
       id: evidenceId,
@@ -72,7 +73,7 @@ export function normalizeBiquoteEconomicCalendar(
       }),
       retrievedAt,
       capturedAt: retrievedAt,
-      ...(hasActual ? { releasedAt: record.time } : {}),
+      ...(hasExactActualTime ? { releasedAt: record.time } : {}),
       metadata: {
         providerEventId: record.eventId,
         countryCode: record.countryCode,
@@ -89,8 +90,10 @@ export function normalizeBiquoteEconomicCalendar(
       subject: record.name,
       description: `${record.countryCode} ${record.name}`,
       jurisdiction: biquoteJurisdiction(record.countryCode),
+      // All provider time modes remain useful calendar anchors. Only `exact`
+      // qualifies the clock component for canonical occurrence/release fields.
       scheduledAt: record.time,
-      ...(hasActual ? { occurredAt: record.time, releasedAt: record.time } : {}),
+      ...(hasExactActualTime ? { occurredAt: record.time, releasedAt: record.time } : {}),
       retrievedAt,
       status: mapStatus(record, new Date(retrievedAt)),
       importance: mapImportance(record.importance),
@@ -107,7 +110,7 @@ export function normalizeBiquoteEconomicCalendar(
       ...(isFiniteNumber(record.revision) ? { revision: record.revision } : {}),
       ...(record.unit ? { unit: record.unit } : {}),
       ...(record.period ? { period: record.period } : {}),
-      ...(hasActual ? { releasedAt: record.time } : {}),
+      ...(hasExactActualTime ? { releasedAt: record.time } : {}),
       retrievedAt,
       sourceId: "biquote",
       evidenceId,

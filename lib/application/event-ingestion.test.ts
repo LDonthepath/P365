@@ -138,7 +138,32 @@ async function main(): Promise<void> {
     assert.equal(item.evidence.metadata?.timeMode, fixtures[index].timeMode);
     assert.equal(item.evidence.metadata?.source, fixtures[index].source);
   });
+  assert.equal(normalized[2].event.scheduledAt, fixtures[2].time);
   assert.equal(normalized[2].event.occurredAt, undefined, "tentative pre-event schedule must not fabricate an occurrence time");
+  assert.equal(normalized[2].event.releasedAt, undefined);
+  assert.equal(normalized[2].result.releasedAt, undefined);
+  assert.equal(normalized[2].evidence.releasedAt, undefined);
+
+  const exactResult = normalizeBiquoteEconomicCalendar([
+    biquoteRecord({ actual: 3.1, timeMode: "exact" }),
+  ], retrievedAt)[0];
+  assert.equal(exactResult.event.occurredAt, exactResult.event.scheduledAt);
+  assert.equal(exactResult.event.releasedAt, exactResult.event.scheduledAt);
+  assert.equal(exactResult.result.releasedAt, exactResult.event.scheduledAt);
+  assert.equal(exactResult.evidence.releasedAt, exactResult.event.scheduledAt);
+
+  for (const timeMode of ["tentative", "date", "notime", null, undefined, "unknown"] as const) {
+    const nonExactResult = normalizeBiquoteEconomicCalendar([
+      biquoteRecord({ id: `non-exact-${timeMode ?? "missing"}`, actual: 3.1, timeMode }),
+    ], retrievedAt)[0];
+    assert.equal(nonExactResult.event.scheduledAt, "2026-10-15T12:30:00.000Z");
+    assert.equal(nonExactResult.result.actual, 3.1, `${timeMode ?? "missing"} actual must persist`);
+    assert.equal(nonExactResult.event.occurredAt, undefined, `${timeMode ?? "missing"} must not fabricate occurredAt`);
+    assert.equal(nonExactResult.event.releasedAt, undefined, `${timeMode ?? "missing"} must not fabricate Event.releasedAt`);
+    assert.equal(nonExactResult.result.releasedAt, undefined, `${timeMode ?? "missing"} must not fabricate result.releasedAt`);
+    assert.equal(nonExactResult.evidence.releasedAt, undefined, `${timeMode ?? "missing"} must not fabricate Evidence.releasedAt`);
+    assert.equal(nonExactResult.evidence.metadata?.timeMode, timeMode ?? null);
+  }
 
   const officialFomc = fomcToCanonicalRecords(
     [{ scheduledAt: "2026-11-05T00:00:00.000Z", label: "November 4-5", sourceUrl: "https://federalreserve.gov" }],
@@ -162,6 +187,8 @@ async function main(): Promise<void> {
     "retrieval time must not defeat durable snapshot dedupe",
   );
   const actual = normalizeBiquoteEconomicCalendar([biquoteRecord({ id: "us-nfp", eventId: "nfp", name: "Nonfarm Payrolls", actual: 150 })], retrievedAt)[0];
+  assert.equal(actual.result.actual, 150);
+  assert.equal(actual.result.releasedAt, actual.event.scheduledAt);
   assert.notEqual(actual.result.id, preRelease.result.id, "a later actual must create a new result snapshot");
   assert.notEqual(economicEventResultDedupeKey(actual.result), economicEventResultDedupeKey(preRelease.result));
   const revised = normalizeBiquoteEconomicCalendar([biquoteRecord({ id: "us-nfp", eventId: "nfp", name: "Nonfarm Payrolls", actual: 150, revisedPrevious: 145, revision: -5 })], retrievedAt)[0];
