@@ -2,7 +2,8 @@ import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { MacroObservationInput } from "../data/fred";
 import type { FomcEventInput } from "../data/federal-reserve-events";
-import type { DataQuality, Evidence, Event, Observation, ProviderHealth, SourceHealthStatus } from "./types";
+import type { DataQuality, Evidence, Event, Observation, ObservationSemantics, ProviderHealth, SourceHealthStatus } from "./types";
+import { requireObservationSemantics } from "./observation-semantics";
 import { qualityFromFreshness, freshnessPolicyForFamily } from "./freshness";
 
 export const P365_SOURCES = {
@@ -102,6 +103,7 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
     // once-daily close), so gold, Russell 2000, and DXY all qualify as MARKET_REALTIME —
     // matched by a 15 min revalidate cadence in lib/data/yahoo-finance-markets.ts.
     freshnessFamily: "MARKET_REALTIME",
+    semantics: requireObservationSemantics(item.metricId),
     metadata: { symbol: item.symbol, metricId: item.metricId, ...item.metadata },
   }));
 
@@ -141,6 +143,7 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
     sourceId,
     quality: macroObservationQuality(item.observationDate, item.series.freshnessMs),
     evidenceId: evidence[index].id,
+    semantics: requireObservationSemantics(item.series.seriesId),
     metadata: {
       seriesId: item.series.seriesId,
       frequency: item.series.frequency,
@@ -191,6 +194,7 @@ export function observationFromCanonicalFact(input: {
   retrievedAt: string;
   sourceId: string;
   evidenceId: string;
+  semantics?: ObservationSemantics;
   /** Explicit freshness classification is required; domain must not imply provider cadence. */
   freshnessFamily: "FRED_MACRO" | "MARKET_REALTIME" | "MARKET_DAILY";
   metadata?: Record<string, string | number | boolean | null>;
