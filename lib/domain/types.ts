@@ -3,6 +3,96 @@ export type SourceHealthStatus = "HEALTHY" | "EMPTY" | "ERROR" | "UNAVAILABLE" |
 export type DataQuality = "FRESH" | "STALE" | "PARTIAL" | "UNKNOWN";
 export type Confidence = "CONFIRMED" | "LEANING" | "PENDING";
 export type ObservationDomain = "MARKET" | "MACRO" | "ASSET" | "OTHER";
+
+/**
+ * Additive financial-market semantics.
+ *
+ * ObservationDomain remains the legacy compatibility classification used by
+ * existing persistence/history contracts. These dimensions describe what the
+ * observation means without rewriting historical records.
+ */
+export type MarketDomain =
+  | "ECONOMY"
+  | "POLICY"
+  | "LIQUIDITY_FUNDING"
+  | "FISCAL_SOVEREIGN"
+  | "RATES"
+  | "FX"
+  | "EQUITY"
+  | "CREDIT"
+  | "COMMODITY"
+  | "VOLATILITY"
+  | "CRYPTO"
+  | "DERIVATIVES";
+
+export type InformationClass =
+  | "OBSERVATION"
+  | "EXPECTATION"
+  | "PRICING"
+  | "POSITIONING"
+  | "FLOW"
+  | "INVENTORY"
+  | "EVENT"
+  | "EVIDENCE"
+  | "DERIVED_METRIC"
+  | "MODEL_ESTIMATE"
+  | "DERIVED_STATE";
+
+export type Jurisdiction =
+  | "US"
+  | "EURO_AREA"
+  | "JAPAN"
+  | "CHINA"
+  | "UK"
+  | "CANADA"
+  | "AUSTRALIA"
+  | "GLOBAL"
+  | "OTHER";
+
+export type InstrumentType =
+  | "ECONOMIC_SERIES"
+  | "POLICY_RATE"
+  | "MONEY_MARKET_RATE"
+  | "BALANCE_SHEET"
+  | "CASH"
+  | "SOVEREIGN_BOND"
+  | "CREDIT_INDEX"
+  | "FX_INDEX"
+  | "FX_PAIR"
+  | "INDEX"
+  | "FUTURE"
+  | "OPTION"
+  | "SWAP"
+  | "ETF"
+  | "FUND"
+  | "COMMODITY_CONTRACT"
+  | "CRYPTO_SPOT"
+  | "CRYPTO_DERIVATIVE"
+  | "OTHER";
+
+export type ParticipantClass =
+  | "OFFICIAL"
+  | "BANK"
+  | "DEALER"
+  | "ASSET_MANAGER"
+  | "LEVERAGED_FUND"
+  | "PENSION_INSURER"
+  | "ETF_FUND"
+  | "CORPORATE"
+  | "HOUSEHOLD"
+  | "NONBANK"
+  | "OTHER";
+
+export type ObservationSemantics = {
+  ontologyVersion: "v0.1";
+  marketDomain: MarketDomain;
+  informationClass: InformationClass;
+  jurisdiction?: Jurisdiction;
+  instrument?: InstrumentType;
+  asset?: string;
+  participant?: ParticipantClass;
+  tenor?: string;
+};
 export type EventStatus = "UPCOMING" | "ACTIVE" | "PAST" | "UNKNOWN";
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
 
@@ -45,6 +135,8 @@ export type Observation = {
   sourceId: string;
   quality: DataQuality;
   evidenceId: string;
+  /** Additive semantic dimensions. Optional for legacy persisted records. */
+  semantics?: ObservationSemantics;
   metadata?: Record<string, string | number | boolean | null>;
 };
 
