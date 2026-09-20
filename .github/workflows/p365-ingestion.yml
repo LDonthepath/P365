@@ -5,8 +5,8 @@ on:
     paths:
       - ".github/workflows/p365-ingestion.yml"
   schedule:
-    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
-    - cron: "4,9,14,19,24,29,34,39,44,49,54,59 * * * *"
+    - cron: "2-57/5 * * * *"
+    - cron: "4-59/5 * * * *"
     - cron: "31 * * * *"
     - cron: "41 */6 * * *"
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
         run: echo "P365 ingestion workflow parsed; production calls are schedule/workflow_dispatch only."
 
   market-fast:
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.lane == 'market-fast') || (github.event_name == 'schedule' && github.event.schedule == '2,7,12,17,22,27,32,37,42,47,52,57 * * * *') }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.lane == 'market-fast') || (github.event_name == 'schedule' && github.event.schedule == '2-57/5 * * * *') }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     concurrency:
@@ -61,7 +61,7 @@ jobs:
             "${P365_BASE_URL%/}/api/cron/historical-ingestion?mode=FORWARD&providers=coingecko,gold,dxy"
 
   event-fast:
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.lane == 'event-fast') || (github.event_name == 'schedule' && github.event.schedule == '4,9,14,19,24,29,34,39,44,49,54,59 * * * *') }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.lane == 'event-fast') || (github.event_name == 'schedule' && github.event.schedule == '4-59/5 * * * *') }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     concurrency:
