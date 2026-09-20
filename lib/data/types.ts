@@ -86,3 +86,9 @@ export function providerResult<T>(
       : {}),
   };
 }
+
+/**
+ * Max upcoming events kept from the Forex Factory calendar (nearest first, all
+ * impacts). Shared so presentation code can tell when the list may be truncated.
+ */
+export const ECONOMIC_CALENDAR_LIMIT = 6;
