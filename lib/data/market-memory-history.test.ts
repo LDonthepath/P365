@@ -106,6 +106,12 @@ async function main(): Promise<void> {
     row(observation("fred-correction", "MACRO", "CPIAUCSL", "2026-07-01T00:00:00.000Z", "2026-09-01T00:00:00.000Z", {
       subject: "renamed subject",
       value: "corrected",
+      identity: {
+        version: "v1",
+        seriesKey: "CPIAUCSL",
+        measurementId: "measurement-v1-test",
+        revisionFingerprint: "a".repeat(64),
+      },
     }), "OBSERVATION", "2026-09-03T00:00:00.000Z"),
     row(observation("alternate-source", "MACRO", "CPIAUCSL", "2026-08-01T00:00:00.000Z", "2026-09-02T00:00:00.000Z", {
       sourceId: "qualified-alternate",
@@ -142,6 +148,8 @@ async function main(): Promise<void> {
     "FRED history retains subject/id/source changes and excludes malformed/non-Observation rows");
   assertEqual((await repository.findHistory(query({ sourceId: "fred" }))).map((item) => item.id),
     ["fred-old", "fred-original", "fred-correction"], "optional provenance filter");
+  assertEqual((await repository.findHistory(query({ sourceId: "fred" })))[2]?.identity?.version,
+    "v1", "versioned and legacy Observation payloads remain readable together");
   assertEqual((await repository.findHistory(query({
     observedAtOnOrAfter: "2026-07-01T00:00:00.000Z",
     observedAtOnOrBefore: "2026-07-01T00:00:00.000Z",

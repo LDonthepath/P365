@@ -2,12 +2,10 @@ import "server-only";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
 import type { ContextRepository, EventRepository, EvidenceRepository, ObservationRepository } from "../repositories/types";
 import { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
-
-type CanonicalRecord = Observation | Event | Evidence | Context;
-type RecordType = "OBSERVATION" | "EVENT" | "EVIDENCE" | "CONTEXT";
+import { marketMemoryDedupeKey, marketMemoryEffectiveAt, type CanonicalRecord, type MarketMemoryRecordType } from "./market-memory-record";
 
 type MarketMemoryRow = {
-  record_type: RecordType;
+  record_type: MarketMemoryRecordType;
   canonical_id: string;
   effective_at: string;
   captured_at: string;
@@ -26,18 +24,8 @@ function requireConfig(): { url: string; key: string } {
   return { url: SUPABASE_URL.replace(/\/$/, ""), key: SUPABASE_KEY };
 }
 
-function effectiveAt(recordType: RecordType, record: CanonicalRecord): string {
-  if (recordType === "OBSERVATION") return (record as Observation).observedAt;
-  if (recordType === "EVENT") {
-    const event = record as Event;
-    return event.occurredAt ?? event.scheduledAt ?? event.retrievedAt;
-  }
-  if (recordType === "EVIDENCE") return (record as Evidence).publishedAt ?? (record as Evidence).releasedAt ?? (record as Evidence).retrievedAt;
-  return (record as Context).createdAt;
-}
-
-function rowFor(recordType: RecordType, record: CanonicalRecord): MarketMemoryRow {
-  const effective = effectiveAt(recordType, record);
+function rowFor(recordType: MarketMemoryRecordType, record: CanonicalRecord): MarketMemoryRow {
+  const effective = marketMemoryEffectiveAt(recordType, record);
   return {
     record_type: recordType,
     canonical_id: record.id,
@@ -46,7 +34,7 @@ function rowFor(recordType: RecordType, record: CanonicalRecord): MarketMemoryRo
     // which is the record's own semantic time (when the fact was true, not
     // when P365 wrote it to memory).
     captured_at: new Date().toISOString(),
-    dedupe_key: `${recordType}:${record.id}:${effective}`,
+    dedupe_key: marketMemoryDedupeKey(recordType, record),
     payload: record,
   };
 }
@@ -72,7 +60,7 @@ async function insertMany(rows: MarketMemoryRow[]): Promise<void> {
   }
 }
 
-async function find<T extends CanonicalRecord>(recordType: RecordType, id: string): Promise<T | null> {
+async function find<T extends CanonicalRecord>(recordType: MarketMemoryRecordType, id: string): Promise<T | null> {
   const { url, key } = requireConfig();
   const params = new URLSearchParams({
     select: "payload",
@@ -95,7 +83,7 @@ async function find<T extends CanonicalRecord>(recordType: RecordType, id: strin
 }
 
 class SupabaseRepository<T extends CanonicalRecord> {
-  constructor(private readonly recordType: RecordType) {}
+  constructor(private readonly recordType: MarketMemoryRecordType) {}
 
   async save(item: T): Promise<void> {
     await insertMany([rowFor(this.recordType, item)]);
