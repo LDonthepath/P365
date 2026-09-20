@@ -12,9 +12,18 @@ import type { EconomicEventResultRepository } from "../repositories/types";
 export const EVENT_INGESTION_PROVIDERS = ["forex-factory", "biquote", "federal-reserve"] as const;
 export type EventIngestionProvider = typeof EVENT_INGESTION_PROVIDERS[number];
 
+export type EventIngestionBiquoteOptions = {
+  from?: string;
+  to?: string;
+  importance?: "low" | "medium" | "high";
+  limit?: number;
+};
+
 export type EventIngestionOptions = {
   providers: EventIngestionProvider[];
   jurisdictions: EventIngestionJurisdiction[];
+  /** Optional Biquote-only acquisition bounds for operational scheduler lanes. */
+  biquote?: EventIngestionBiquoteOptions;
 };
 
 export type EventIngestionAcquisition = {
@@ -54,7 +63,10 @@ type CanonicalEventRecords = { events: Event[]; evidence: Evidence[]; results: E
 type EventProviderClients = {
   fetchEconomicCalendar: (limit: number | undefined, mode: "FRESH") => Promise<ProviderResult<CalendarEvent>>;
   fetchBiquoteEconomicCalendar: (options: {
+    from?: string;
+    to?: string;
     countries: string[];
+    importance?: "low" | "medium" | "high";
     limit: number;
     acquisitionMode: "FRESH";
   }) => Promise<ProviderResult<BiquoteEconomicCalendarRecord>>;
@@ -69,7 +81,10 @@ export function createEventIngestionAcquisition(
     "forex-factory": () => clients.fetchEconomicCalendar(undefined, "FRESH"),
     biquote: () => clients.fetchBiquoteEconomicCalendar({
       countries: options.jurisdictions.map(biquoteCountryCode),
-      limit: 500,
+      ...(options.biquote?.from ? { from: options.biquote.from } : {}),
+      ...(options.biquote?.to ? { to: options.biquote.to } : {}),
+      ...(options.biquote?.importance ? { importance: options.biquote.importance } : {}),
+      limit: options.biquote?.limit ?? 500,
       acquisitionMode: "FRESH",
     }),
     "federal-reserve": () => clients.fetchFomcEvents(undefined, "FRESH"),
