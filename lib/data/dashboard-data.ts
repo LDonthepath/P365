@@ -1,7 +1,6 @@
 import "server-only";
 
-import { getDashboardData as getCanonicalDashboardData } from "../application/dashboard-query";
-import type { NormalizedDashboardData } from "../normalization/dashboard-normalization";
+import { getDashboardData as getCanonicalDashboardData, type DashboardData } from "../application/dashboard-query";
 
 /**
  * Compatibility boundary for existing dashboard consumers.
@@ -11,7 +10,7 @@ import type { NormalizedDashboardData } from "../normalization/dashboard-normali
  * Keep this module as a thin adapter so legacy imports cannot reintroduce a
  * second provider orchestration path.
  */
-export type DashboardData = NormalizedDashboardData;
+export type { DashboardData };
 
 export async function getDashboardData(): Promise<DashboardData> {
   return getCanonicalDashboardData();

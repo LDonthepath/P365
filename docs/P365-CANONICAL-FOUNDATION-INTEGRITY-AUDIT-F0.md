@@ -1,10 +1,10 @@
 # P365 Foundation Master — SSOT v0.1
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
-**Audited ref:** FND-003C implementation based on `main@1852d8f68dab060ebccebd7e01b1bd729313167f`
+**Audited ref:** FND-002 implementation based on `main@649f5fe0f6f789aba3cd3487f543756e85d9e544`
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 20 Sep 2026 from `main@1852d8f68dab060ebccebd7e01b1bd729313167f` after PR #46. FND-003A/B are merged. FND-003C prepares an external GitHub Actions trial clock with provider-specific lanes and bounded Biquote polling. This does not claim FND-003 complete: scheduled execution only activates from the default branch, and production GitHub/Vercel credential synchronization plus post-merge cadence/E2E evidence remain required.
+**Verification pass:** Re-verified 20 Sep 2026 from `main@649f5fe0f6f789aba3cd3487f543756e85d9e544`. FND-003A/B/C are operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002 moves the active factual macro baseline onto `HistoricalObservationRepository`; branch verification is an implementation pass and production dashboard E2E remains pending owner merge.
 
 ## Documentation authority
 
@@ -25,9 +25,9 @@ Older status, roadmap, gap-analysis, and audit documents are removed rather than
 
 **CHANGES REQUIRED**
 
-P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Historical continuity remains the dominant foundation blocker. The coarse legacy `MARKET / MACRO / ASSET / OTHER` classification is now preserved only as a compatibility field while approved current Observations receive additive market-domain/information-class semantics. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
+P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Durable historical continuity is operational; the remaining dominant foundation blockers are expectation/pricing baselines and immutable Market Snapshot. The coarse legacy `MARKET / MACRO / ASSET / OTHER` classification is now preserved only as a compatibility field while approved current Observations receive additive market-domain/information-class semantics. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
 
-The current system can independently ingest and normalize selected factual Observations and Events, create evidence-backed Context, persist canonical records, query contract-compliant Observation history from durable Market Memory, and compute a factual macro baseline from the provider's current retrieval window. It cannot yet guarantee operational historical continuity because external cadence/production activation remains missing, the baseline is not repository-backed, and it cannot yet perform temporally valid event repricing/transmission analysis.
+The current system can independently ingest and normalize selected factual Observations and Events, create evidence-backed Context, persist canonical records, query contract-compliant Observation history from durable Market Memory, and compute factual macro baselines from repository history. It cannot yet perform temporally valid event repricing/transmission analysis because expectation/pricing baselines and immutable Market Snapshot remain missing.
 
 ### Foundation readiness by layer
 
@@ -43,10 +43,10 @@ The current system can independently ingest and normalize selected factual Obser
 | Temporal semantics | PASS / PARTIAL | Major overloads have been corrected; exact release/availability semantics remain incomplete for macro/event families. |
 | Freshness/quality | PARTIAL | Typed families and per-series macro windows exist, but quality is observation-age centric and does not yet model publication cadence/market-hours uniformly. |
 | Context | PASS for grouping | Neutral grouping is evidence-backed and does not infer direction. |
-| Market Memory persistence | PARTIAL | Append-only durable adapter exists; operational readiness depends on deployment configuration and ingestion invocation. |
-| Historical retrieval | CONTRACT + DURABLE ADAPTER IMPLEMENTED / PRODUCTION E2E PENDING | FND-001 semantics are implemented against persisted canonical Observation payloads. Production REST E2E still requires the server-only deployment credential; independent ingestion/backfill remains FND-003. |
-| Historical continuity | **PARTIAL / HIGH GAP REMAINS** | FND-003A/B provide independent Observation and Event/EventResult ingestion. FND-003C now prepares provider-specific external GitHub Actions cadence, but default-branch activation, production secret/variable configuration, and observed cadence/write E2E proof remain pending. |
-| Factual baseline | PASS in isolation / PARTIAL E2E | Selector is defensively implemented, but active baseline input is current-fetch history, not repository history. |
+| Market Memory persistence | PASS for current canonical boundary | Append-only durable storage is active and read-only production verification confirms retrievable macro Observation history. |
+| Historical retrieval | PASS | FND-001 semantics are implemented against persisted canonical Observation payloads; read-only production verification found 29 contract-eligible FRED macro series with predecessor depth. |
+| Historical continuity | PASS for FND-003 operational boundary | Independent Observation/Event ingestion is driven by production Supabase `pg_cron` and persists to durable Market Memory. Scheduler redesign remains outside FND-002. |
+| Factual baseline | IMPLEMENTATION PASS / PRODUCTION E2E PENDING OWNER MERGE | Active application orchestration reads predecessor candidates only from `HistoricalObservationRepository`, with strict measurement and retrieval/as-of bounds and no provider-window fallback. |
 | Expectation baseline | MISSING | Event forecast exists as EventResult data, but no baseline contract/selection lifecycle exists. |
 | Pricing baseline | MISSING | No canonical market-implied pricing layer. |
 | Historical baseline | MISSING | No approved methodology/query implementation. |
@@ -72,9 +72,9 @@ Cross-asset factual data     PARTIAL
 Economic event results       TRIAL / PARTIAL
 Context                      IMPLEMENTED / FND-004 REGRESSION CORRECTED
 Durable Market Memory        FOUNDATION IMPLEMENTED
-Historical retrieval         CONTRACT + DURABLE ADAPTER IMPLEMENTED / PRODUCTION E2E PENDING
-Factual baseline             IMPLEMENTED / NOT REPOSITORY-BACKED (FND-002)
-Independent ingestion        PARTIAL (FND-003A/B merged; FND-003C implementation prepared, activation pending)
+Historical retrieval         DURABLE ADAPTER + PRODUCTION HISTORY VERIFIED
+Factual baseline             REPOSITORY-BACKED IMPLEMENTATION PASS / PRODUCTION E2E PENDING MERGE
+Independent ingestion        OPERATIONAL (FND-003A/B/C)
 Expectation baseline         MISSING lifecycle
 Pricing baseline             MISSING
 Market Snapshot              DESIGN ONLY
@@ -112,7 +112,7 @@ lib/ingestion/dashboard-ingestion.ts
 lib/normalization/dashboard-normalization.ts
   ↓
 Observation / Event / Evidence / EconomicEventResult / Context
-  ├──→ Factual Baseline from current normalized FRED window
+  ├──→ HistoricalObservationRepository → point-in-time Factual Baseline
   ├──→ Supabase Market Memory persistence
   └──→ application/dashboard-query.ts
           ↓
@@ -173,7 +173,7 @@ Runtime jurisdictions are deliberately restricted to `US`, `CHINA`, and `JAPAN`.
 
 Live read-only verification on 20 Sep 2026 found representative Biquote coverage for US inflation/labor/growth/FOMC, China GDP/industrial production/retail sales/official and Caixin PMI/CPI/PPI/M2/new loans, and Japan BoJ policy events/CPI/GDP/industrial production/retail sales/PMI/Tankan/wages/labor. China trade, aggregate financing, LPR, MLF and RRR families were not verified in the inspected window. Some China and BoJ records use provider `timeMode=tentative`; `tentative`, `date`, `notime`, missing, and otherwise unqualified modes retain the provider time only as the existing calendar anchor/provenance and are not promoted to exact `occurredAt`/`releasedAt`. Actual/result values remain durable when exact release time is unknown. Forex Factory's current weekly feed contained `USD`, `CNY` and `JPY` records but is not evidence of complete family coverage.
 
-FND-003C adds a GitHub Actions external trial clock with staggered provider-specific lanes:
+FND-003C initially added a GitHub Actions external trial-clock candidate with staggered provider-specific lanes:
 
 ```text
 market-fast     02,07,...,57 UTC  → coingecko,gold,dxy FORWARD
@@ -182,7 +182,7 @@ fred            minute 31 hourly  → fred FORWARD
 event-calendar  minute 41 / 6h    → forex-factory,federal-reserve
 ```
 
-The workflow also exposes explicit `workflow_dispatch` lane selection, minimum `contents: read` permissions, bounded HTTP timeouts, lane-specific concurrency with no in-progress cancellation, and requires `P365_PRODUCTION_BASE_URL` plus `P365_CRON_SECRET` through GitHub repository configuration rather than source. Scheduled execution is best-effort rather than a hard real-time SLA and only starts when the workflow exists on the default branch.
+The repository retains that workflow implementation, but it is not the active production clock. Production activation now uses Supabase `pg_cron` to invoke the same authenticated Vercel ingestion endpoints and write durable Market Memory. FND-002 does not reopen or redesign either scheduler path.
 
 Biquote polling is deliberately bounded because existing durable data shows retrieval-capture amplification: recent dashboard batches fetched 50 Biquote rows at a time, and one sampled 50-row Event batch contained 1 HIGH, 5 MEDIUM and 44 LOW events. Repeating an unbounded 50-row capture every five minutes could create up to 14,400 Evidence captures/day before considering other record types. The FND-003C fast lane therefore requests only HIGH events in a rolling 12-hour window with a hard limit of 20. This makes the theoretical Evidence ceiling 5,760/day if every run hits the cap, while actual post-merge volume must still be measured. Event/EventResult semantic dedupe remains separate from Evidence retrieval-capture semantics.
 
@@ -352,19 +352,18 @@ The new financial-market ontology therefore defines market domain and informatio
 3. Legacy Observation rows that predate canonical `retrievedAt` cannot participate in contract-compliant history/as-of queries and are excluded rather than assigned a fabricated availability time. Current writes retain `retrievedAt` in the immutable JSONB payload.
 4. The existing append-only dedupe strategy retains corrections when their canonical IDs differ, including current FRED value revisions. FND-018 remains open for record families whose canonical ID strategy may not distinguish every future correction/revision case.
 5. Dashboard read remains one ingestion/persistence trigger, but FND-003A adds an authenticated independent Observation endpoint that can be invoked without rendering the dashboard.
-6. FND-003A supports explicit provider selection, cache-bypassing forward acquisition, and FRED-only bounded backfill that follows provider pagination until range exhaustion is proven. FND-003B adds explicit provider/jurisdiction selection, fresh Event acquisition and append-only Event/Evidence/EventResult writes for US/China/Japan. Missing or inconsistent completeness metadata and provider failures remain explicit. `CRON_SECRET` fails closed and Bearer authorization behavior has focused regression coverage. The external intraday clock, deployment credentials, and production execution evidence remain FND-003C gaps.
-7. Baseline does not read Market Memory.
+6. FND-003A supports explicit provider selection, cache-bypassing forward acquisition, and FRED-only bounded backfill that follows provider pagination until range exhaustion is proven. FND-003B adds explicit provider/jurisdiction selection, fresh Event acquisition and append-only Event/Evidence/EventResult writes for US/China/Japan. `CRON_SECRET` fails closed. FND-003C is operational through production Supabase `pg_cron`; scheduler changes are not part of FND-002.
+7. The active factual macro baseline reads durable Observation history through `HistoricalObservationRepository`. A read-only production check found 29 FRED macro series with 7–11 distinct contract-eligible measurements each; no production data was mutated.
 8. `findById` uses `limit=1` without an explicit order. Canonical IDs are intended to be stable enough for a unique logical record, but revisions/version semantics should not depend on unspecified row order.
 
-Market Memory therefore has durable storage plus semantic Observation history retrieval, but is not yet a complete historical reasoning subsystem until FND-003 supplies independent continuity/backfill and FND-002 moves factual baseline selection onto repository history. Production Supabase REST E2E remains pending until the deployment environment supplies the server-only key.
+Market Memory therefore has durable storage, independently maintained continuity, and semantic Observation history retrieval. FND-002 consumes that repository history for factual macro comparisons. Production dashboard verification of the new application wiring remains pending owner merge.
 
 ## 10. Baseline audit
 
-### Factual baseline — PASS domain algorithm
+### Factual baseline — IMPLEMENTATION PASS / PRODUCTION E2E PENDING OWNER MERGE
 
 The selector checks:
 - domain;
-- subject;
 - source;
 - series;
 - unit;
@@ -374,15 +373,9 @@ The selector checks:
 
 It exposes MISSING/INCOMPATIBLE/STALE/UNKNOWN instead of fabricating a delta.
 
-### E2E limitation — HIGH
+The normalization layer now emits canonical current macro facts without building a baseline. Application orchestration selects the deterministic current fact for each semantic series, queries `HistoricalObservationRepository` with a strict bound before the current measurement plus `retrievedAtOnOrBefore <= current.retrievedAt`, and delegates compatible predecessor selection to the pure domain selector.
 
-`buildMacroFactualBaselines(macroObservations)` consumes only observations normalized in the current provider request. It does not query durable history.
-
-Consequences:
-- baseline validity depends on provider response depth;
-- historical continuity is not owned by P365;
-- provider history can masquerade as application history;
-- Market Memory is not yet the factual-baseline source.
+Provider-window history is never passed as a baseline candidate. Empty or incompatible repository history stays `MISSING`/`INCOMPATIBLE`; repository read failure becomes explicit `UNKNOWN` with no fabricated fallback. Same-measurement revisions are excluded, later-retrieved corrections cannot leak into an earlier point-in-time context, and same-period revision ties use retrieval time plus canonical ID for deterministic selection. Descriptive subject changes do not break semantic-series compatibility.
 
 ### Other baseline classes
 
@@ -497,9 +490,9 @@ Do not compensate for missing tests with broader architectural rewrites.
 
 | ID | Severity | Finding |
 |---|---|---|
-| FND-001 | **HIGH / CONTRACT + DURABLE ADAPTER REMEDIATED** | Semantic historical Observation query contract and durable Supabase adapter now implement provider-independent logical-series identity separately from optional source provenance, inclusive effective-time bounds, canonical retrieval/as-of cutoff, deterministic revision ordering, and bounded results. Production REST E2E is pending deployment credentials; FND-002/FND-003 remain separate. |
-| FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
-| FND-003 | **HIGH / PARTIAL — FND-003A/B MERGED; FND-003C IMPLEMENTATION PREPARED** | Independent Observation and Event/EventResult boundaries are merged. FND-003C adds provider-specific external GitHub Actions cadence with bounded Biquote polling and manual lane dispatch. Full remediation still requires default-branch scheduler activation, GitHub/Vercel production configuration, observed cadence, runtime logs, and durable write E2E proof. |
+| FND-001 | **REMEDIATED** | Semantic historical Observation query contract and durable Supabase adapter implement logical-series identity, optional source provenance, effective-time/as-of bounds, deterministic revision ordering, and bounded results. Production history depth was verified read-only for 29 FRED macro series. |
+| FND-002 | **IMPLEMENTATION REMEDIATED / PRODUCTION E2E PENDING OWNER MERGE** | Active factual macro baseline candidates come only from `HistoricalObservationRepository`; point-in-time, same-measurement revision, compatibility, deterministic ordering, outage, and no-fallback behavior have focused regression coverage. |
+| FND-003 | **REMEDIATED OPERATIONALLY** | Production Supabase `pg_cron` invokes authenticated Vercel Observation/Event ingestion endpoints and durable Market Memory contains continuing canonical writes. GitHub scheduler redesign is not reopened by FND-002. |
 | FND-004 | **HIGH / INITIAL REMEDIATION PR #36 / REGRESSION CORRECTED IN THIS CHECKPOINT** | Historical broad-ASSET mixing was removed in PR #36, but its `crypto.*` prefix excluded CoinGecko BTC/ETH asset-level metrics. The corrected selector now uses qualified CoinGecko provenance plus non-empty canonical `metricId`, with focused runtime-builder regression coverage. |
 | FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
@@ -626,7 +619,9 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 20 Sep 2026 | Additive canonical semantic dimensions | Added optional versioned semantic dimensions to canonical Observation writes, explicit mappings for all active FRED/Yahoo/CoinGecko series, and legacy read-time resolution without rewriting Market Memory or changing FND-001 history identity. |
 | 20 Sep 2026 | FND-003A intraday ingestion control | Added a fail-closed authenticated scheduler-agnostic Observation worker with mandatory provider selection, explicit FORWARD/BACKFILL modes, fresh no-cache acquisition, per-provider reporting/failure isolation, and exhaustive FRED-only bounded backfill. Pagination/range completeness and Bearer authorization are covered by focused regression tests. Event ingestion, scheduler activation and production proof remain separate checkpoints. |
 | 20 Sep 2026 | FND-003B multi-jurisdiction Event ingestion | Added a fail-closed provider-selective Event/EventResult worker for the US + China + Japan MVP, explicit native jurisdiction mappings, fresh acquisition, uncapped durable Forex Factory/FOMC windows, append-only Biquote result snapshots and provider-failure isolation. Biquote remains trial-only; provider-window and China/Japan family gaps stay explicit. FND-019 reconciliation and FND-003C scheduling/production activation remain open. |
-| 20 Sep 2026 | FND-003C external cadence implementation | Prepared staggered GitHub Actions lanes for 5-minute market ingestion, bounded 5-minute high-impact Biquote polling, hourly FRED and 6-hour schedule refresh, plus manual lane dispatch and concurrency controls. Production activation/cadence proof remains pending default-branch merge and secure GitHub/Vercel configuration. |
+| 20 Sep 2026 | FND-003C external cadence implementation | Initially prepared staggered GitHub Actions lanes and bounded Biquote polling; the subsequent production activation uses Supabase `pg_cron` instead of reopening that workflow design. |
+| 20 Sep 2026 | FND-003C production activation | Production external cadence moved to Supabase `pg_cron`, invoking authenticated Vercel ingestion endpoints and persisting canonical records to durable Supabase Market Memory. |
+| 20 Sep 2026 | FND-002 repository-backed factual baseline | Replaced active current-provider-window baseline ownership with application-layer `HistoricalObservationRepository` queries, strict point-in-time predecessor bounds, deterministic revision selection, and explicit no-fallback outage behavior. Production dashboard E2E remains pending owner merge. |
 
 ## Active remediation sequence
 
@@ -639,8 +634,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 6. Additive semantic-dimensions compatibility contract    ← merged before PR #45
 7. FND-003A selective fresh Observation worker             ← PR #45 merged
 8. FND-003B independent US/China/Japan Event ingestion     ← PR #46 merged
-9. FND-003C external cadence + production verification     ← implementation prepared; activation pending
-10. FND-002 Repository-backed Factual Baseline             ← pending
+9. FND-003C external cadence + production verification     ← operational via Supabase pg_cron
+10. FND-002 Repository-backed Factual Baseline             ← implementation pass; production E2E pending merge
 11. Temporal/provenance/freshness + ID lineage hardening
 12. FND-009 Manual cache invalidation + current gaps
 13. MVP market-universe completion: Macro + Crypto + Gold, one domain/provider checkpoint at a time
