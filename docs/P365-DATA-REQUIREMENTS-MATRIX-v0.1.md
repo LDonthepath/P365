@@ -1,8 +1,8 @@
 # P365 Data Requirements Matrix v0.1
 
-**Status:** Design checkpoint  
-**Scope:** Macro + Crypto implementation, market-agnostic architecture  
-**Purpose:** Define the minimum data foundation required for P365 Market Briefing before adding new providers or reasoning engines.
+**Status:** Active current-implementation requirements matrix, rebaselined under the financial-market ontology  
+**Scope:** Current Macro + Crypto + selected cross-asset implementation within a global multi-asset architecture  
+**Purpose:** Define field-level requirements and sequencing for the currently implemented foundation. The full product-domain universe and semantic classification are governed by `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`.
 
 ---
 
@@ -32,6 +32,14 @@ Market Briefing
 
 This matrix translates each reasoning requirement into explicit data requirements, provenance rules, temporal requirements, and implementation priority.
 
+### Authority boundary
+
+This file remains authoritative for **field-level requirements, temporal discipline, source qualification, and the current implemented foundation**.
+
+It is no longer the complete product-universe map. For market domains and information classes such as global central banks, equity internals, positioning, flows, derivatives, fiscal funding, global liquidity, and model estimates, use `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`.
+
+The legacy P0/P1/P2 labels below describe sequencing for the current foundation. They must not be interpreted as a permanent statement that positioning, flows, global policy, or derivatives are outside the P365 product boundary.
+
 ## 2. Non-goals
 
 This matrix does **not** authorize implementation of:
@@ -49,6 +57,29 @@ A provider or model must not be added merely because data is available. The data
 ---
 
 ## 3. Canonical reasoning-to-data map
+
+Before reading the reasoning table, preserve the ontology distinction:
+
+```text
+Market domain
+≠
+Information class
+≠
+Jurisdiction
+≠
+Instrument / participant / tenor
+```
+
+Examples:
+
+- US 10Y yield = `RATES / PRICING / US / 10Y`
+- CPI actual = `ECONOMY / OBSERVATION / US`
+- CPI consensus = `ECONOMY / EXPECTATION / US`
+- COT = positioning semantics, not a generic market observation
+- ETF net flow = `FLOW`, not price
+- term premium = `MODEL_ESTIMATE`, not raw yield
+- risk appetite = `DERIVED_STATE`, not provider fact
+
 
 | Reasoning question | Required data class | Minimum requirement |
 |---|---|---|
@@ -295,7 +326,10 @@ The exact set is event-dependent; do not force unrelated assets into every analy
 
 ---
 
-## 6. P2 — Deferred until P0/P1 are mature
+## 6. P2 — Deferred from the current implementation sequence until P0/P1 are mature
+
+**Important:** `P2` here means deferred from the current runtime sequence, not excluded from the P365 financial-market product boundary. The financial-market ontology classifies several items below as SECONDARY or ENRICHMENT once history/baseline/snapshot prerequisites are met.
+
 
 ### 6.1 Positioning
 
@@ -460,6 +494,17 @@ If these questions cannot be answered, the provider/model change is premature.
 
 ## 12. Current repository audit gate
 
+The September 2026 re-audit against `main@b2275e7dc7424db157bc15193eda2d4033df088e` found that the runtime is ahead of this matrix in several places:
+
+- the FRED registry contains 33 series, including SOFR, IORB, continued claims, JOLTS, quits, Sahm Rule, 10Y breakeven, 10Y-2Y, and IG/HY OAS;
+- Yahoo provides Gold futures, Russell 2000, and DXY;
+- CoinGecko provides BTC/ETH plus crypto-wide market observations;
+- Biquote provides trial actual/forecast/previous/revision event-result data;
+- durable Observation history has a contract plus Supabase adapter, while independent ingestion/backfill and repository-backed factual baseline remain open.
+
+The audit also confirmed a semantic limitation: current `ObservationDomain = MARKET | MACRO | ASSET | OTHER` is too coarse for the full financial-market product universe. The ontology checkpoint therefore precedes provider expansion.
+
+
 After this matrix is committed, the next task is a **gap analysis**, not immediate provider implementation.
 
 The audit must classify every existing data path as:
@@ -474,3 +519,59 @@ The audit must classify every existing data path as:
 Particular attention must be given to the current crypto market observation implementation. It must be evaluated against this matrix and the original product boundary before being treated as a canonical foundation.
 
 No provider replacement should be performed solely because an existing endpoint fails to return a value. First determine whether that endpoint belongs in the approved architecture at all.
+
+
+---
+
+## 13. Financial-market data-foundation rebaseline
+
+The current provider set must not be expanded by copying every capability in the ontology. Expansion must remain dependency-driven.
+
+### 13.1 Core expansion gate
+
+Before a new market domain is implemented, define:
+
+1. the market mechanism being represented;
+2. the information class;
+3. jurisdiction/geography;
+4. instrument/participant/tenor when relevant;
+5. source-native time semantics;
+6. historical continuity requirement;
+7. baseline requirement;
+8. source qualification and provenance;
+9. whether the value is raw, deterministic derived, or model-estimated;
+10. downstream reasoning question.
+
+### 13.2 Current-domain semantic corrections required before broad expansion
+
+The following current facts exist but need an additive semantic model rather than more ad-hoc Context scopes:
+
+| Current data | Legacy classification | Target semantic family |
+|---|---|---|
+| SOFR / EFFR | MACRO | LIQUIDITY_FUNDING / PRICING |
+| M2 / reserves / RRP | MACRO | LIQUIDITY_FUNDING / OBSERVATION |
+| TGA | MACRO | FISCAL_SOVEREIGN / OBSERVATION |
+| US 2Y / 10Y / real yield | MACRO | RATES / PRICING |
+| 10Y breakeven | MACRO | RATES / PRICING |
+| 10Y-2Y | MACRO | RATES / DERIVED_METRIC |
+| IG/HY OAS | MACRO | CREDIT / PRICING |
+| broad USD / DXY | MACRO or ASSET | FX / PRICING |
+| S&P / Nasdaq / Russell | ASSET | EQUITY / PRICING |
+| VIX | ASSET | VOLATILITY / PRICING |
+| WTI / Gold | ASSET | COMMODITY / PRICING |
+| BTC/ETH spot | ASSET | CRYPTO / PRICING |
+| crypto dominance | MARKET | CRYPTO / DERIVED_METRIC |
+
+These are **semantic reclassification targets**, not instructions to mutate existing Market Memory rows.
+
+### 13.3 Expansion waves
+
+After ontology compatibility, historical continuity, and factual-baseline ownership are secured, future provider/domain work should be isolated into waves:
+
+- **Core global policy/market wave:** material central banks, major FX, rates, headline equity, credit, commodity, volatility, crypto.
+- **Expectation/pricing wave:** consensus lifecycle, OIS/futures policy pricing, yield-curve/pricing baselines.
+- **Market-internals wave:** breadth, sector/factor rotation, earnings expectations/revisions, commodity curves/inventory.
+- **Positioning/flow wave:** COT, ETF/fund flows, stablecoin liquidity, crypto derivatives.
+- **Advanced methodology wave:** term premium, cross-currency basis, advanced options/dealer positioning, cross-border-flow decomposition.
+
+Each wave remains subject to one logical checkpoint per PR.
