@@ -1,7 +1,7 @@
 # P365 Data Requirements Matrix v0.1
 
 **Status:** Active current-implementation requirements matrix, rebaselined under the financial-market ontology  
-**Scope:** Current Macro + Crypto + selected cross-asset implementation within a global multi-asset architecture  
+**Scope:** MVP = **Macro + Crypto + Gold** within a future-compatible global multi-asset architecture  
 **Purpose:** Define field-level requirements and sequencing for the currently implemented foundation. The full product-domain universe and semantic classification are governed by `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`.
 
 ---
@@ -39,6 +39,21 @@ This file remains authoritative for **field-level requirements, temporal discipl
 It is no longer the complete product-universe map. For market domains and information classes such as global central banks, equity internals, positioning, flows, derivatives, fiscal funding, global liquidity, and model estimates, use `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`.
 
 The legacy P0/P1/P2 labels below describe sequencing for the current foundation. They must not be interpreted as a permanent statement that positioning, flows, global policy, or derivatives are outside the P365 product boundary.
+
+For implementation prioritization, the MVP boundary is explicit:
+
+```text
+FIRST-CLASS MVP
+Macro + Crypto + Gold
+
+SUPPORTING EVIDENCE ONLY
+Existing non-MVP cross-asset observations where useful
+
+POST-MVP FIRST-CLASS EXPANSION
+Equity / broad Credit / broad Commodities / other multi-asset domains
+```
+
+A supporting observation does not make its entire asset class part of MVP.
 
 ## 2. Non-goals
 
@@ -404,42 +419,53 @@ A provider endpoint that returns a number but cannot satisfy these requirements 
 
 ## 9. Minimum viable dataset
 
-The smallest useful P365 dataset is not "everything available." It is the smallest set that supports the first valid reasoning chain.
+The MVP must complete a useful reasoning chain for **Macro + Crypto + Gold**, not maximize breadth.
 
-### Current minimum
+### Macro
 
-**Macro**
-- P0 macro factual series
-- economic event calendar
-- FOMC events
+Minimum macro coverage should support:
 
-**Crypto**
-- BTC factual market observation
-- ETH factual market observation
-- total crypto market capitalization
-- BTC/ETH market capitalization or equivalent dominance inputs
-- stablecoin market capitalization
-- volume/volatility where a qualified source is available
+- economic reality: inflation, labor, growth and other approved releases;
+- material central-bank policy/events/projections;
+- liquidity/funding: balance sheets, reserves, M2, TGA/RRP, SOFR/EFFR/IORB where applicable;
+- rates and real yields;
+- USD / relevant FX context;
+- inflation pricing;
+- event expectation/actual/revision lifecycle;
+- historical baseline and point-in-time market context.
 
-**Cross-asset**
-- US 2Y
-- US 10Y
-- USD/DXY
-- S&P 500
-- Nasdaq
-- gold
-- oil
-- VIX
+### Crypto
 
-**Evidence**
-- source metadata
-- news/evidence records
-- publication/release timestamps
-- traceability to canonical objects
+Minimum crypto coverage should support:
 
-**History**
-- prior compatible observations
-- immutable event snapshots when P1 is implemented
+- BTC and ETH spot;
+- market capitalization / volume / dominance;
+- historical comparison;
+- stablecoin liquidity where a qualified source is approved;
+- crypto ETF flow where required by an approved reasoning question;
+- funding/OI/basis only when provider, time semantics and historical continuity qualify.
+
+### Gold
+
+Minimum Gold coverage should support:
+
+- canonical Gold spot/futures pricing;
+- durable history and factual baseline;
+- interaction with real yields, USD, rates, inflation pricing and liquidity context;
+- qualified ETF/positioning data only when required by an approved reasoning question.
+
+### Supporting cross-asset evidence
+
+Existing S&P 500, Nasdaq, Russell 2000, VIX, WTI and IG/HY data may remain available for context/transmission testing. They are **not** first-class MVP domain-expansion requirements.
+
+### Evidence and history
+
+All three MVP scopes require:
+
+- source metadata and evidence linkage;
+- correct publication/release/observation/retrieval timestamps;
+- durable historical continuity;
+- immutable snapshots when event reasoning is activated.
 
 ---
 
@@ -568,10 +594,10 @@ These are **semantic reclassification targets**, not instructions to mutate exis
 
 After ontology compatibility, historical continuity, and factual-baseline ownership are secured, future provider/domain work should be isolated into waves:
 
-- **Core global policy/market wave:** material central banks, major FX, rates, headline equity, credit, commodity, volatility, crypto.
-- **Expectation/pricing wave:** consensus lifecycle, OIS/futures policy pricing, yield-curve/pricing baselines.
-- **Market-internals wave:** breadth, sector/factor rotation, earnings expectations/revisions, commodity curves/inventory.
-- **Positioning/flow wave:** COT, ETF/fund flows, stablecoin liquidity, crypto derivatives.
-- **Advanced methodology wave:** term premium, cross-currency basis, advanced options/dealer positioning, cross-border-flow decomposition.
+- **MVP Macro wave:** material macro releases, central-bank policy/projections, liquidity/funding, rates, USD/relevant FX, and event expectations/pricing needed for approved macro reasoning.
+- **MVP Crypto wave:** BTC/ETH market structure plus qualified stablecoin, ETF-flow and derivatives inputs only where required by approved MVP reasoning questions.
+- **MVP Gold wave:** Gold pricing/history plus macro transmission context and qualified Gold flow/positioning enrichment.
+- **Post-MVP domain expansion:** Equity, broad Credit, broad Commodities beyond Gold, and other multi-asset first-class domains.
+- **Advanced methodology wave:** term premium, cross-currency basis, advanced options/dealer positioning, cross-border-flow decomposition, only when needed by the approved scope.
 
 Each wave remains subject to one logical checkpoint per PR.
