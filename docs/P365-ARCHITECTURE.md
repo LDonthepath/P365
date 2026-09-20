@@ -1,6 +1,8 @@
 # P365 Architecture
 
-P365 is a market-intelligence system designed to explain observable market conditions through a traceable sequence from canonical data to intelligence. The architecture is market-agnostic; Macro + Crypto are current implementation domains, not the product boundary.
+P365 is a Financial Market Intelligence System designed to explain observable market conditions through a traceable sequence from canonical data to intelligence. The architecture is market-agnostic and multi-asset; the current Macro + Crypto + selected cross-asset implementation is only a foundation subset, not the product boundary.
+
+The normative semantic map for market domains, information classes, jurisdiction, instrument, participant, tenor/horizon, and methodology/provenance is `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`.
 
 ## Reasoning boundary
 
@@ -28,27 +30,87 @@ UI
 
 The UI must remain a presentation layer. Domain reasoning belongs in the domain/data layers and must remain traceable to canonical evidence.
 
-## Macro factual foundation
+## Financial-market semantic model
+
+The provider pipeline remains generic, but canonical semantics must not rely on the current coarse `MARKET / MACRO / ASSET / OTHER` classification forever.
+
+Target semantics are multidimensional:
 
 ```text
-MACRO
-├── Monetary Policy : FEDFUNDS, EFFR, WALCL, WRESBAL
-├── Liquidity       : M2SL, WTREGEN, RRPONTSYD
-├── Inflation       : CPIAUCSL, CPILFESL, PCEPI, PCEPILFE
-├── Labor           : UNRATE, PAYEMS, ICSA
-├── Rates           : DGS2, DGS10, DFII10
-├── USD             : DTWEXBGS
-└── Growth          : GDPC1
+Market Domain
++ Information Class
++ Jurisdiction
++ Instrument
++ Participant (where relevant)
++ Tenor / Horizon
++ Methodology / Provenance
+```
 
-ASSET / CROSS-ASSET FOUNDATION
+Examples:
+
+```text
+US 10Y Treasury      → RATES / PRICING / US / SOVEREIGN_BOND / 10Y
+10Y-2Y spread        → RATES / DERIVED_METRIC / US
+CPI actual           → ECONOMY / OBSERVATION / US
+CPI consensus        → ECONOMY / EXPECTATION / US
+FOMC Dot Plot        → POLICY / EXPECTATION / US
+BTC ETF net flow     → CRYPTO / FLOW / ETF
+COT leveraged money  → POSITIONING semantics through domain + information-class dimensions
+Term premium         → RATES / MODEL_ESTIMATE
+Risk Appetite State  → DERIVED_STATE
+```
+
+This ontology is additive. Existing stored records and append-only Market Memory must not be rewritten merely to fit the new classification.
+
+
+## Current implementation subset
+
+The current FRED registry is broader than the original Macro-only foundation and includes 33 series across policy, liquidity/funding, economy, rates, FX, credit, equity, volatility, and commodity semantics.
+
+```text
+CURRENT FRED REGISTRY
+
+Policy / implementation
+├── FEDFUNDS
+├── EFFR
+├── WALCL
+├── WRESBAL
+└── IORB
+
+Liquidity / funding / fiscal
+├── M2SL
+├── WTREGEN
+├── SOFR
+└── RRPONTSYD
+
+Economy
+├── CPIAUCSL / CPILFESL
+├── PCEPI / PCEPILFE
+├── UNRATE / PAYEMS
+├── ICSA / CCSA
+├── JTSJOL / JTSQUR
+├── SAHMREALTIME
+└── GDPC1
+
+Rates / inflation pricing / credit / FX
+├── DGS2 / DGS10
+├── DFII10
+├── T10YIE
+├── T10Y2Y
+├── BAMLC0A0CM
+├── BAMLH0A0HYM2
+└── DTWEXBGS
+
+Cross-asset prices
 ├── VIXCLS
 ├── SP500
 ├── NASDAQCOM
 └── DCOILWTICO
-
-ECONOMIC EVENTS
-└── canonical calendar + official FOMC events
 ```
+
+Yahoo adds Gold futures, Russell 2000, and DXY; CoinGecko adds BTC/ETH and crypto-wide market observations; Biquote adds trial economic-event result data.
+
+The current runtime still stores these through legacy `ObservationDomain` categories. The ontology document defines their target semantic mapping without authorizing a runtime migration in this checkpoint.
 
 Macro grouping is driven by canonical FRED `seriesId` metadata and the Macro Series Registry rather than by interpretation or subject-string matching.
 
@@ -93,16 +155,36 @@ News remains Evidence and is not silently promoted into Observation. Economic-ca
 
 The Context implementation is deliberately mechanical and does not act as a State engine. The first Baseline implementation is now wired: `buildMacroFactualBaselines()` selects the latest compatible canonical observation and its preceding observation per macro series, preserving quality and evidence lineage. It calculates only the factual delta; it does not assign direction, abnormality, surprise, repricing, or regime.
 
-## Roadmap: Context → Baseline/Memory → Snapshot → State → Risk → Intelligence → Briefing
+## Foundation sequencing
 
-**Process rule:** one stage = one isolated change/checkpoint. Do not implement multiple reasoning stages in a single pass.
+**Process rule:** one logical checkpoint = one PR. Do not combine ontology migration, provider expansion, and higher-order reasoning in one change.
 
-1. **Context** — complete v0.2 grouping and traceability foundation. **Complete foundation.**
-2. **Baseline / Market Memory** — factual baseline selection is now wired for macro series; expectation, pricing, historical-abnormality baselines and full memory comparison remain pending.
-3. **Market Snapshot** — implement immutable capture-time market state references for before/after and historical comparison.
-4. **State** — define concrete confidence/domain rules for at least one case and wire one panel only.
-5. **Risk** — derive Risk from State plus relevant upcoming events.
-6. **Intelligence** — synthesize Context + Baseline/Memory + Snapshot + State + Risk into WHAT/WHY/CONFIRMS/CONTRADICTS/INVALIDATES/MONITOR.
-7. **Briefing** — render human-readable market synthesis from canonical intelligence without inventing facts.
+```text
+Financial Market Ontology documentation
+        ↓
+Additive semantic-dimensions compatibility contract
+        ↓
+Independent ingestion / backfill ownership
+        ↓
+Repository-backed factual baseline
+        ↓
+Temporal / provenance / freshness / identity hardening
+        ↓
+Current foundation defect closure
+        ↓
+Core market-universe expansion
+        ↓
+Expectation baseline
+        ↓
+Pricing baseline
+        ↓
+Immutable Market Snapshot
+        ↓
+Event-window repricing / transmission
+        ↓
+Secondary positioning / flow / internals
+        ↓
+Derived State → Intelligence → Briefing
+```
 
-Each stage requires its own verification and a short note explaining the chosen domain rule. Domain reasoning must be established before it is encoded.
+State, Risk, Regime, Intelligence, and Briefing remain downstream of factual/history/baseline/snapshot gates. The financial-market ontology broadens what P365 can represent; it does not authorize premature interpretation.
