@@ -1,7 +1,7 @@
 import "server-only";
 import { providerResult, type ProviderResult } from "./types";
 import type { CryptoMarketObservationInput } from "./crypto-market";
-import { cacheTagForRevalidate } from "./cache-policy";
+import { providerFetchPolicy, type ProviderAcquisitionMode } from "./provider-fetch-policy";
 
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
 
@@ -28,7 +28,7 @@ type YahooChartResponse = {
 
 type YahooQuote = { price: number; observedAt: string; previousClose: number | null; change: number | null; changePct: number | null };
 
-async function fetchYahooQuote(symbol: string): Promise<{ quote: YahooQuote } | { error: string }> {
+async function fetchYahooQuote(symbol: string, acquisitionMode: ProviderAcquisitionMode): Promise<{ quote: YahooQuote } | { error: string }> {
   const url = `${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
 
   try {
@@ -36,7 +36,7 @@ async function fetchYahooQuote(symbol: string): Promise<{ quote: YahooQuote } | 
       // Yahoo's unauthenticated chart endpoint occasionally blocks requests with no
       // browser-like User-Agent; this is a defensive header, not an auth credential.
       headers: { "User-Agent": "Mozilla/5.0 (compatible; P365-dashboard/1.0)" },
-      next: { revalidate: REVALIDATE_SECONDS, tags: [cacheTagForRevalidate(REVALIDATE_SECONDS)] },
+      ...providerFetchPolicy(acquisitionMode, REVALIDATE_SECONDS),
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return { error: `Yahoo Finance HTTP ${res.status} for ${symbol}` };
@@ -65,8 +65,9 @@ async function fetchYahooObservation(
   symbol: string,
   metricId: string,
   metadata: Record<string, string | number | boolean | null>,
+  acquisitionMode: ProviderAcquisitionMode,
 ): Promise<ProviderResult<CryptoMarketObservationInput>> {
-  const result = await fetchYahooQuote(symbol);
+  const result = await fetchYahooQuote(symbol, acquisitionMode);
   if ("error" in result) return providerResult("yahoo-finance", "ERROR", [], result.error);
 
   const retrievedAt = new Date().toISOString();
@@ -88,28 +89,28 @@ async function fetchYahooObservation(
 }
 
 /** COMEX gold front-month futures (GC=F) — a real traded price, not an ETF wrapper. */
-export async function fetchGoldFuturesSpot(): Promise<ProviderResult<CryptoMarketObservationInput>> {
+export async function fetchGoldFuturesSpot(acquisitionMode: ProviderAcquisitionMode = "CACHED"): Promise<ProviderResult<CryptoMarketObservationInput>> {
   return fetchYahooObservation("GC=F", "gold.futures.usd", {
     metric: "front_month_future",
     unit: "USD",
     endpoint: "v8/finance/chart",
-  });
+  }, acquisitionMode);
 }
 
 /** Real Russell 2000 index value (^RUT) — not the IWM ETF tracking proxy. */
-export async function fetchRussell2000Index(): Promise<ProviderResult<CryptoMarketObservationInput>> {
+export async function fetchRussell2000Index(acquisitionMode: ProviderAcquisitionMode = "CACHED"): Promise<ProviderResult<CryptoMarketObservationInput>> {
   return fetchYahooObservation("^RUT", "russell2000.index.usd", {
     metric: "index_value",
     unit: "Index",
     endpoint: "v8/finance/chart",
-  });
+  }, acquisitionMode);
 }
 
 /** Real ICE U.S. Dollar Index (DX-Y.NYB) — distinct from FRED's DTWEXBGS broad basket. */
-export async function fetchDxyIndex(): Promise<ProviderResult<CryptoMarketObservationInput>> {
+export async function fetchDxyIndex(acquisitionMode: ProviderAcquisitionMode = "CACHED"): Promise<ProviderResult<CryptoMarketObservationInput>> {
   return fetchYahooObservation("DX-Y.NYB", "dxy.index.usd", {
     metric: "index_value",
     unit: "Index",
     endpoint: "v8/finance/chart",
-  });
+  }, acquisitionMode);
 }

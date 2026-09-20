@@ -4,7 +4,7 @@
 **Audited ref:** `main@82db8d6f4a6ca8934027591c524e93c06f83dc6e`  
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 20 Sep 2026 against `main@82db8d6f4a6ca8934027591c524e93c06f83dc6e` after PR #42, then audited the additive semantic-dimensions compatibility implementation against the current canonical/domain/normalization/history paths.
+**Verification pass:** Re-verified 20 Sep 2026 against `main@82db8d6f4a6ca8934027591c524e93c06f83dc6e` after PR #42, then audited the additive semantic-dimensions compatibility implementation against the current canonical/domain/normalization/history paths. FND-003A was implemented from exact base `main@936d102fb0e04be06f9ad3a250933046929e3705`; this does not claim completion of FND-003B event ingestion or FND-003C production scheduling/activation.
 
 ## Documentation authority
 
@@ -45,7 +45,7 @@ The current system can ingest and normalize factual data, create evidence-backed
 | Context | PASS for grouping | Neutral grouping is evidence-backed and does not infer direction. |
 | Market Memory persistence | PARTIAL | Append-only durable adapter exists; operational readiness depends on deployment configuration and ingestion invocation. |
 | Historical retrieval | CONTRACT + DURABLE ADAPTER IMPLEMENTED / PRODUCTION E2E PENDING | FND-001 semantics are implemented against persisted canonical Observation payloads. Production REST E2E still requires the server-only deployment credential; independent ingestion/backfill remains FND-003. |
-| Historical continuity | **HIGH GAP** | Persistence is triggered by dashboard reads; no independent collection/backfill ownership is defined. |
+| Historical continuity | **PARTIAL / HIGH GAP REMAINS** | FND-003A adds a fail-closed authenticated, provider-selective Observation worker with fresh acquisition and exhaustive FRED-only bounded backfill. Event ingestion, external intraday scheduling, and production execution proof remain missing. |
 | Factual baseline | PASS in isolation / PARTIAL E2E | Selector is defensively implemented, but active baseline input is current-fetch history, not repository history. |
 | Expectation baseline | MISSING | Event forecast exists as EventResult data, but no baseline contract/selection lifecycle exists. |
 | Pricing baseline | MISSING | No canonical market-implied pricing layer. |
@@ -74,7 +74,7 @@ Context                      IMPLEMENTED / FND-004 REGRESSION CORRECTED
 Durable Market Memory        FOUNDATION IMPLEMENTED
 Historical retrieval         CONTRACT + DURABLE ADAPTER IMPLEMENTED / PRODUCTION E2E PENDING
 Factual baseline             IMPLEMENTED / NOT REPOSITORY-BACKED (FND-002)
-Independent ingestion        MISSING (FND-003)
+Independent ingestion        PARTIAL (FND-003A implemented; FND-003B/C pending)
 Expectation baseline         MISSING lifecycle
 Pricing baseline             MISSING
 Market Snapshot              DESIGN ONLY
@@ -142,6 +142,20 @@ Surprise / Repricing / Transmission
   ↓
 State / Intelligence / Briefing
 ```
+
+FND-003A now establishes the scheduler-agnostic Observation worker boundary:
+
+```text
+Authenticated external caller
+  ↓ explicit mode + providers
+/api/cron/historical-ingestion
+  ↓ FRESH acquisition (no Next.js data cache)
+selected CoinGecko / Gold / DXY / Russell / FRED adapter only
+  ↓ existing canonical normalization
+append-only Observation + Evidence persistence
+```
+
+`providers` is mandatory. `BACKFILL` is explicitly limited to FRED with valid inclusive date bounds; current-state CoinGecko/Yahoo adapters must not be represented as historical backfill sources. No Vercel cron schedule is installed by this checkpoint.
 
 ## 3. Product and governance audit
 
@@ -308,8 +322,8 @@ The new financial-market ontology therefore defines market domain and informatio
 2. The durable Supabase adapter implements that contract for persisted canonical Observation rows: FRED uses `payload.metadata.seriesId`; CoinGecko/Yahoo use `payload.metadata.metricId`; `effective_at` is the indexed effective-time filter; the retrieval cutoff uses canonical `payload.retrievedAt`, never `captured_at`.
 3. Legacy Observation rows that predate canonical `retrievedAt` cannot participate in contract-compliant history/as-of queries and are excluded rather than assigned a fabricated availability time. Current writes retain `retrievedAt` in the immutable JSONB payload.
 4. The existing append-only dedupe strategy retains corrections when their canonical IDs differ, including current FRED value revisions. FND-018 remains open for record families whose canonical ID strategy may not distinguish every future correction/revision case.
-5. Dashboard read is also the ingestion/persistence trigger.
-6. No scheduled ingestion/backfill owner is defined.
+5. Dashboard read remains one ingestion/persistence trigger, but FND-003A adds an authenticated independent Observation endpoint that can be invoked without rendering the dashboard.
+6. FND-003A supports explicit provider selection, cache-bypassing forward acquisition, and FRED-only bounded backfill that follows provider pagination until range exhaustion is proven. Missing or inconsistent completeness metadata and per-series failures remain explicit `ERROR`/partial execution results rather than successful backfills. `CRON_SECRET` fails closed and Bearer authorization behavior has focused regression coverage. Independent Event ingestion, the external intraday clock, deployment credentials, and production execution evidence remain FND-003B/C gaps.
 7. Baseline does not read Market Memory.
 8. `findById` uses `limit=1` without an explicit order. Canonical IDs are intended to be stable enough for a unique logical record, but revisions/version semantics should not depend on unspecified row order.
 
@@ -456,7 +470,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 |---|---|---|
 | FND-001 | **HIGH / CONTRACT + DURABLE ADAPTER REMEDIATED** | Semantic historical Observation query contract and durable Supabase adapter now implement provider-independent logical-series identity separately from optional source provenance, inclusive effective-time bounds, canonical retrieval/as-of cutoff, deterministic revision ordering, and bounded results. Production REST E2E is pending deployment credentials; FND-002/FND-003 remain separate. |
 | FND-002 | **HIGH** | Baseline uses current provider retrieval window instead of durable canonical history. |
-| FND-003 | **HIGH** | Historical ingestion/persistence depends on dashboard access; no independent cadence/backfill owner. |
+| FND-003 | **HIGH / PARTIAL — FND-003A IMPLEMENTED** | Observation ingestion no longer has to depend on dashboard access: a fail-closed authenticated endpoint requires explicit providers, bypasses provider cache, isolates partial failures, and permits exhaustive bounded FRED-only backfill with explicit incomplete/failure reporting. Independent Event/FOMC ingestion, external cadence ownership, production credentials, and live write/dedupe proof remain required before FND-003 is complete. |
 | FND-004 | **HIGH / INITIAL REMEDIATION PR #36 / REGRESSION CORRECTED IN THIS CHECKPOINT** | Historical broad-ASSET mixing was removed in PR #36, but its `crypto.*` prefix excluded CoinGecko BTC/ETH asset-level metrics. The corrected selector now uses qualified CoinGecko provenance plus non-empty canonical `metricId`, with focused runtime-builder regression coverage. |
 | FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
@@ -485,7 +499,11 @@ A. Documentation SSOT + Financial Market Ontology rebaseline
    ↓
 B. Additive canonical semantic-dimensions compatibility contract
    ↓
-C. FND-003 Independent ingestion/history ownership + backfill policy
+C1. FND-003A provider-selective fresh Observation worker + bounded FRED backfill
+   ↓
+C2. FND-003B independent Event/FOMC ingestion
+   ↓
+C3. FND-003C external intraday cadence + production activation proof
    ↓
 D. FND-002 Repository-backed Factual Baseline
    ↓
@@ -577,6 +595,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 20 Sep 2026 | MVP user/value boundary refinement | Primary MVP user narrowed to a self-directed Crypto + Gold trader with Macro as the explanatory layer; scope expansion is now gated on completing an auditable Macro → Crypto/Gold intelligence vertical slice. |
 | 20 Sep 2026 | BTC + XAU Evidence & Relationship Map v0.1 | Defined the normative shared Macro driver stack, BTC-specific flow/derivatives evidence, Gold-specific flow/positioning evidence, relationship-statistic contract, event-window evidence model, and readiness gate without adding providers or runtime reasoning. |
 | 20 Sep 2026 | Additive canonical semantic dimensions | Added optional versioned semantic dimensions to canonical Observation writes, explicit mappings for all active FRED/Yahoo/CoinGecko series, and legacy read-time resolution without rewriting Market Memory or changing FND-001 history identity. |
+| 20 Sep 2026 | FND-003A intraday ingestion control | Added a fail-closed authenticated scheduler-agnostic Observation worker with mandatory provider selection, explicit FORWARD/BACKFILL modes, fresh no-cache acquisition, per-provider reporting/failure isolation, and exhaustive FRED-only bounded backfill. Pagination/range completeness and Bearer authorization are covered by focused regression tests. Event ingestion, scheduler activation and production proof remain separate checkpoints. |
 
 ## Active remediation sequence
 
@@ -587,17 +606,19 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 4. Durable history query adapter                          ← PR #39; production E2E pending
 5. Financial Market Ontology & Data Foundation v0.1       ← PR #42 merged
 6. Additive semantic-dimensions compatibility contract    ← implemented in this checkpoint
-7. FND-003 Independent ingestion/backfill ownership       ← next
-8. FND-002 Repository-backed Factual Baseline             ← pending
-9. Temporal/provenance/freshness + ID lineage hardening
-10. FND-009 Manual cache invalidation + current gaps
-11. MVP market-universe completion: Macro + Crypto + Gold, one domain/provider checkpoint at a time
-12. Expectation Baseline lifecycle
-13. Pricing Baseline / market-implied layer
-14. Market Snapshot implementation
-15. Event-window cross-asset repricing/transmission
-16. Secondary positioning / flows enrichment inside Macro + Crypto + Gold
-17. Derived State → Risk/Regime → Intelligence → Briefing only after gates pass
+7. FND-003A selective fresh Observation worker             ← implemented in this checkpoint
+8. FND-003B independent Event/FOMC ingestion               ← next
+9. FND-003C external cadence + production verification     ← pending
+10. FND-002 Repository-backed Factual Baseline             ← pending
+11. Temporal/provenance/freshness + ID lineage hardening
+12. FND-009 Manual cache invalidation + current gaps
+13. MVP market-universe completion: Macro + Crypto + Gold, one domain/provider checkpoint at a time
+14. Expectation Baseline lifecycle
+15. Pricing Baseline / market-implied layer
+16. Market Snapshot implementation
+17. Event-window cross-asset repricing/transmission
+18. Secondary positioning / flows enrichment inside Macro + Crypto + Gold
+19. Derived State → Risk/Regime → Intelligence → Briefing only after gates pass
 ```
 
 One logical remediation = one PR = one verification checkpoint. This sequence may only change when a verified dependency requires it; changes must be recorded here.
