@@ -98,6 +98,46 @@ Unless required as supporting evidence for Macro/Crypto/Gold reasoning, defer fi
 
 The broader ontology remains deliberate future compatibility, not an MVP delivery mandate.
 
+### 1.3 MVP operating thesis
+
+The MVP is intentionally a **vertical slice**, not a broad terminal.
+
+```text
+MACRO
+explanatory environment
+        ↓
+CRYPTO + GOLD
+first-class traded markets
+        ↓
+MARKET MEMORY
+        ↓
+BASELINE / EXPECTATION / PRICING
+        ↓
+SNAPSHOT / REPRICING
+        ↓
+TRANSMISSION
+        ↓
+CONFIRMATION / CONTRADICTION
+        ↓
+INTELLIGENCE
+```
+
+Macro is not a third traded asset class in the MVP. Its primary role is to explain the environment and catalysts that affect Crypto and Gold.
+
+Scope expansion is blocked until this vertical slice can reliably answer:
+
+- what changed;
+- relative to what baseline;
+- what was expected;
+- what was priced;
+- how the market repriced;
+- how Crypto and Gold responded;
+- what evidence confirms or contradicts the move;
+- what is historically unusual;
+- what should be monitored next.
+
+Adding another first-class asset class before this chain is reliable would increase horizontal breadth without proving the core intelligence architecture.
+
 ## 2. Core invariants
 
 1. Raw observations must remain factual.
