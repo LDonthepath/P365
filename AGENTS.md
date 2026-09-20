@@ -1,6 +1,6 @@
 # Agent Instructions for P365
 
-Read `docs/P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md` in full before doing anything else in this repo. It is the active operational SSOT for current implementation status, verified findings, sequencing, and foundation gates. For market-domain semantics and future data-universe classification, also read `docs/P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`. Do not assume a feature is missing or complete without checking the active SSOT and current code.
+Read `docs/P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md` in full before doing anything else in this repo. It is the active operational SSOT for current implementation status, verified findings, sequencing, and foundation gates. For market-domain semantics and future data-universe classification, also read `docs/P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`. Before changing canonical Observation classification, history compatibility, or semantic mappings, read `docs/P365-CANONICAL-SEMANTIC-DIMENSIONS-COMPATIBILITY-v0.1.md`. Do not assume a feature is missing or complete without checking the active SSOT and current code.
 
 This file exists because unsupervised agent sessions on this repo have twice pushed 40-100+ commits directly to `main` without review, including: reverting reviewed fixes, adding an unrequested database dependency, restructuring the folder layout and reverting it in the same session, and repeatedly flipping the same UI element back and forth. Docs alone did not stop this. These rules are not suggestions.
 
