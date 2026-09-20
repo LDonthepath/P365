@@ -1,8 +1,15 @@
 # P365 Architecture
 
-P365 is a Financial Market Intelligence System designed to explain observable market conditions through a traceable sequence from canonical data to intelligence. The architecture is market-agnostic and multi-asset; the current Macro + Crypto + selected cross-asset implementation is only a foundation subset, not the product boundary.
+P365 is a Financial Market Intelligence System designed to explain observable market conditions through a traceable sequence from canonical data to intelligence. The architecture is market-agnostic and future-compatible with a broader multi-asset universe, while the **MVP implementation boundary is Macro + Crypto + Gold**.
 
 The normative semantic map for market domains, information classes, jurisdiction, instrument, participant, tenor/horizon, and methodology/provenance is `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`.
+
+The broader ontology is not the MVP backlog. For MVP:
+
+- **Macro** owns the economic/policy/liquidity/rates/USD/event environment required to explain markets.
+- **Crypto** is a first-class market domain.
+- **Gold** is a first-class MVP market domain, represented semantically under Commodity.
+- Existing equity, credit, volatility, oil, or other cross-asset observations may remain supporting evidence, but they are not first-class MVP expansion targets.
 
 ## Reasoning boundary
 
@@ -172,7 +179,7 @@ Temporal / provenance / freshness / identity hardening
         ↓
 Current foundation defect closure
         ↓
-Core market-universe expansion
+MVP market-universe completion: Macro + Crypto + Gold
         ↓
 Expectation baseline
         ↓
