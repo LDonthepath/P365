@@ -25,7 +25,7 @@ Older status, roadmap, gap-analysis, and audit documents are removed rather than
 
 **CHANGES REQUIRED**
 
-P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Two foundation concerns now dominate: **historical continuity** and **semantic breadth**. The runtime pipeline does not need to be restarted, but the current coarse `MARKET / MACRO / ASSET / OTHER` ontology is insufficient for the now-explicit global multi-asset Financial Market Intelligence product scope.
+P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Two foundation concerns now dominate: **historical continuity** and **semantic breadth**. The runtime pipeline does not need to be restarted, but the current coarse `MARKET / MACRO / ASSET / OTHER` ontology is insufficient for the broader product ontology. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
 
 The current system can ingest and normalize factual data, create evidence-backed Context, persist canonical records, query contract-compliant Observation history from durable Market Memory, and compute a factual macro baseline from the provider's current retrieval window. It cannot yet guarantee historical continuity because independent ingestion/backfill remains missing, the baseline is not repository-backed, and it cannot yet perform temporally valid event repricing/transmission analysis.
 
@@ -80,7 +80,8 @@ Pricing baseline             MISSING
 Market Snapshot              DESIGN ONLY
 Transmission reasoning       MISSING
 Financial-market ontology    DOCUMENTED / RUNTIME COMPATIBILITY PENDING
-Global multi-asset coverage  PARTIAL / LARGE QUALIFIED GAPS
+MVP Macro+Crypto+Gold       PARTIAL / ACTIVE TARGET
+Broader multi-asset coverage  POST-MVP / ONTOLOGY-DEFINED
 State / Regime / Risk        DEFERRED
 Intelligence / Briefing      DEFERRED
 ```
@@ -92,7 +93,8 @@ Intelligence / Briefing      DEFERRED
 - **Cross-asset:** S&P 500, Nasdaq, Russell 2000, US 2Y, US 10Y, 10Y real yield, DXY, broad USD, Gold futures, WTI, VIX and IG/HY credit spreads are available. DXY and broad USD remain separate instruments. MOVE remains open.
 - **Economic events:** Forex Factory provides scheduled-calendar awareness, Federal Reserve official FOMC date anchors, and Biquote trial structured event results. Production qualification/release semantics remain open.
 - **Semantic breadth:** the FRED registry now contains 33 series, including SOFR, IORB, continued claims, JOLTS, quits, Sahm Rule, 10Y breakeven, 10Y-2Y and IG/HY OAS. Current `ObservationDomain` still collapses policy, funding, rates, FX, credit, equity, volatility and commodity semantics into coarse `MACRO`/`ASSET` categories.
-- **Global market-universe gaps:** ECB/BoJ/PBoC/BoE policy, Dot Plot/SEP lifecycle, OIS/policy futures, FX funding/cross-currency basis, Treasury issuance/auctions, equity internals, MOVE, COT/flows, stablecoin/crypto ETF/derivatives and other ontology-defined domains remain unimplemented or partial.
+- **MVP coverage gaps:** Macro still lacks complete global-policy/expectation/pricing coverage; Crypto lacks qualified stablecoin/ETF-flow/derivatives coverage; Gold has pricing but not a complete durable-history/baseline/flow-positioning reasoning chain.
+- **Post-MVP ontology gaps:** full Equity, broad Credit, broad Commodities beyond Gold, broader volatility/derivatives, EM and other multi-asset domains remain intentionally outside first-class MVP scope unless used as supporting evidence.
 - **Evidence:** Alpha Vantage and CoinDesk news remain Evidence and are not promoted into Observation/Intelligence.
 
 ## 2. End-to-end runtime path
@@ -471,7 +473,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-018 | MEDIUM | Canonical ID strategy is hash-derived from mutable values/timestamps for several record families; correction/revision identity and lineage policy must be locked before history becomes authoritative. |
 | FND-019 | MEDIUM | Current Event aggregation can represent the same real economic event from Forex Factory and Biquote as separate canonical Events; provider-independent event identity/reconciliation is not yet defined. |
 | FND-020 | **HIGH** | Canonical `ObservationDomain = MARKET | MACRO | ASSET | OTHER` is too coarse for the global multi-asset product boundary. Current data already spans policy, liquidity/funding, fiscal, rates, FX, equity, credit, commodity, volatility and crypto semantics. An additive semantic-dimensions compatibility contract is required before broad provider expansion. |
-| FND-021 | **HIGH / PRODUCT-COVERAGE GAP** | Current factual universe is materially US/Fed-centric and lacks several mechanisms required by the approved financial-market ontology: material non-US central banks, policy pricing, global funding, fiscal issuance mechanics, equity internals, positioning/flows and key volatility/crypto structure data. This is not authorization to add all providers at once; expansion remains dependency-driven. |
+| FND-021 | **HIGH / MVP COVERAGE GAP** | The approved MVP is **Macro + Crypto + Gold**. Current Macro remains materially US/Fed-centric and incomplete in policy expectations/pricing; Crypto lacks several qualified structural inputs such as stablecoin/ETF-flow/derivatives; Gold exists as pricing but lacks a complete historical/baseline/flow-positioning chain. Full Equity, broad Credit, broad Commodities beyond Gold and other multi-asset domains are post-MVP unless used as supporting evidence. |
 
 ## 19. Repair order
 
@@ -490,7 +492,7 @@ E. Temporal/provenance/freshness + FND-018 identity/lineage hardening
    ↓
 F. FND-009 cache invalidation + remaining current-foundation defects
    ↓
-G. Core market-universe expansion in isolated domain/provider checkpoints
+G. Complete the approved MVP universe — Macro + Crypto + Gold — in isolated domain/provider checkpoints
    ↓
 H. Expectation Baseline lifecycle
    ↓
@@ -500,7 +502,7 @@ J. Market Snapshot implementation
    ↓
 K. Event-window repricing / cross-asset transmission contract
    ↓
-L. Secondary positioning / flow / market-internals expansion
+L. Secondary positioning / flow enrichment inside Macro + Crypto + Gold
    ↓
 M. Only after gates: Derived State → Risk/Regime → Intelligence → Briefing
 ```
@@ -554,7 +556,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 18 Sep 2026 | FND-001 Historical Observation repository contract | Added a provider-agnostic semantic history query contract and verified in-memory reference behavior; durable query adapter intentionally remains pending. |
 | 18 Sep 2026 | FND-004 Context taxonomy regression correction | Independent re-audit found the PR #36 prefix selector excluded CoinGecko asset-level metrics; corrected to qualified CoinGecko provenance plus canonical metric identity, retaining cross-asset exclusion. |
 | 18 Sep 2026 | Durable Historical Observation Query Adapter | Wired FND-001 to append-only Supabase Market Memory using semantic JSONB identity, effective-time bounds, canonical retrieval cutoff, deterministic revision ordering, and focused parity tests. Production REST E2E remains pending server-only deployment credentials; FND-002/FND-003 remain open. |
-| 20 Sep 2026 | Financial Market Ontology & Data Foundation rebaseline | External benchmark + current-main read-only audit broadened the canonical product universe to global multi-asset semantics; documented domain/information-class axes, current-data mapping, gaps, compatibility rules, and revised dependency sequence without changing runtime code. |
+| 20 Sep 2026 | Financial Market Ontology & Data Foundation rebaseline | External benchmark + current-main read-only audit broadened the canonical ontology for future compatibility while preserving the implementation MVP as **Macro + Crypto + Gold**; documented domain/information-class axes, current-data mapping, gaps, compatibility rules, and revised dependency sequence without changing runtime code. |
 
 ## Active remediation sequence
 
@@ -569,12 +571,12 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 8. FND-002 Repository-backed Factual Baseline             ← pending
 9. Temporal/provenance/freshness + ID lineage hardening
 10. FND-009 Manual cache invalidation + current gaps
-11. Core market-universe expansion, one domain/provider checkpoint at a time
+11. MVP market-universe completion: Macro + Crypto + Gold, one domain/provider checkpoint at a time
 12. Expectation Baseline lifecycle
 13. Pricing Baseline / market-implied layer
 14. Market Snapshot implementation
 15. Event-window cross-asset repricing/transmission
-16. Secondary positioning / flows / market internals
+16. Secondary positioning / flows enrichment inside Macro + Crypto + Gold
 17. Derived State → Risk/Regime → Intelligence → Briefing only after gates pass
 ```
 
@@ -586,6 +588,6 @@ P365 should **not** restart its architecture and should **not** add a reasoning 
 
 The correct strategy is to preserve the pipeline already present while broadening its semantics deliberately:
 
-> **freeze the financial-market ontology, add semantic dimensions without rewriting history, make canonical history operationally durable, then expand qualified market coverage and temporal reasoning in dependency order.**
+> **freeze the broad ontology for future compatibility, keep MVP delivery constrained to Macro + Crypto + Gold, add semantic dimensions without rewriting history, then complete those three scopes before broader first-class market expansion.**
 
 Once those gates pass, the existing factual data becomes a defensible base for the retail trader/investor decision-support workflow defined by P365.
