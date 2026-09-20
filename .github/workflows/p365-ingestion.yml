@@ -1,0 +1,152 @@
+name: P365 external ingestion cadence
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/p365-ingestion.yml"
+  schedule:
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+    - cron: "4,9,14,19,24,29,34,39,44,49,54,59 * * * *"
+    - cron: "31 * * * *"
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: "Ingestion lane to invoke"
+        required: true
+        type: choice
+        options:
+          - market-fast
+          - event-fast
+          - fred
+          - event-calendar
+
+permissions:
+  contents: read
+
+jobs:
+  validate-configuration:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Confirm workflow parses without production invocation
+        run: echo "P365 ingestion workflow parsed; production calls are schedule/workflow_dispatch only."
+
+  market-fast:
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.lane == 'market-fast') || (github.event_name == 'schedule' && github.event.schedule == '2,7,12,17,22,27,32,37,42,47,52,57 * * * *') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    concurrency:
+      group: p365-ingestion-market-fast
+      cancel-in-progress: false
+    env:
+      P365_BASE_URL: ${{ vars.P365_PRODUCTION_BASE_URL }}
+      P365_CRON_SECRET: ${{ secrets.P365_CRON_SECRET }}
+    steps:
+      - name: Invoke fresh BTC Gold DXY ingestion
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${P365_BASE_URL}" ]]; then
+            echo "P365_PRODUCTION_BASE_URL repository variable is required" >&2
+            exit 1
+          fi
+          if [[ -z "${P365_CRON_SECRET}" ]]; then
+            echo "P365_CRON_SECRET repository secret is required" >&2
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 55 \
+            --header "Authorization: Bearer ${P365_CRON_SECRET}" \
+            "${P365_BASE_URL%/}/api/cron/historical-ingestion?mode=FORWARD&providers=coingecko,gold,dxy"
+
+  event-fast:
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.lane == 'event-fast') || (github.event_name == 'schedule' && github.event.schedule == '4,9,14,19,24,29,34,39,44,49,54,59 * * * *') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    concurrency:
+      group: p365-ingestion-event-fast
+      cancel-in-progress: false
+    env:
+      P365_BASE_URL: ${{ vars.P365_PRODUCTION_BASE_URL }}
+      P365_CRON_SECRET: ${{ secrets.P365_CRON_SECRET }}
+    steps:
+      - name: Invoke bounded high-impact Biquote ingestion
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${P365_BASE_URL}" ]]; then
+            echo "P365_PRODUCTION_BASE_URL repository variable is required" >&2
+            exit 1
+          fi
+          if [[ -z "${P365_CRON_SECRET}" ]]; then
+            echo "P365_CRON_SECRET repository secret is required" >&2
+            exit 1
+          fi
+          FROM="$(date -u -d '6 hours ago' +'%Y-%m-%dT%H:%M:%SZ')"
+          TO="$(date -u -d '6 hours' +'%Y-%m-%dT%H:%M:%SZ')"
+          curl --fail-with-body --silent --show-error --max-time 55 \
+            --header "Authorization: Bearer ${P365_CRON_SECRET}" \
+            --get "${P365_BASE_URL%/}/api/cron/event-ingestion" \
+            --data-urlencode "providers=biquote" \
+            --data-urlencode "jurisdictions=US,CHINA,JAPAN" \
+            --data-urlencode "biquoteFrom=${FROM}" \
+            --data-urlencode "biquoteTo=${TO}" \
+            --data-urlencode "biquoteImportance=high" \
+            --data-urlencode "biquoteLimit=20"
+
+  fred:
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.lane == 'fred') || (github.event_name == 'schedule' && github.event.schedule == '31 * * * *') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    concurrency:
+      group: p365-ingestion-fred
+      cancel-in-progress: false
+    env:
+      P365_BASE_URL: ${{ vars.P365_PRODUCTION_BASE_URL }}
+      P365_CRON_SECRET: ${{ secrets.P365_CRON_SECRET }}
+    steps:
+      - name: Invoke fresh FRED forward ingestion
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${P365_BASE_URL}" ]]; then
+            echo "P365_PRODUCTION_BASE_URL repository variable is required" >&2
+            exit 1
+          fi
+          if [[ -z "${P365_CRON_SECRET}" ]]; then
+            echo "P365_CRON_SECRET repository secret is required" >&2
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 55 \
+            --header "Authorization: Bearer ${P365_CRON_SECRET}" \
+            "${P365_BASE_URL%/}/api/cron/historical-ingestion?mode=FORWARD&providers=fred"
+
+  event-calendar:
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.lane == 'event-calendar') || (github.event_name == 'schedule' && github.event.schedule == '41 */6 * * *') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    concurrency:
+      group: p365-ingestion-event-calendar
+      cancel-in-progress: false
+    env:
+      P365_BASE_URL: ${{ vars.P365_PRODUCTION_BASE_URL }}
+      P365_CRON_SECRET: ${{ secrets.P365_CRON_SECRET }}
+    steps:
+      - name: Invoke broad schedule ingestion
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${P365_BASE_URL}" ]]; then
+            echo "P365_PRODUCTION_BASE_URL repository variable is required" >&2
+            exit 1
+          fi
+          if [[ -z "${P365_CRON_SECRET}" ]]; then
+            echo "P365_CRON_SECRET repository secret is required" >&2
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 55 \
+            --header "Authorization: Bearer ${P365_CRON_SECRET}" \
+            --get "${P365_BASE_URL%/}/api/cron/event-ingestion" \
+            --data-urlencode "providers=forex-factory,federal-reserve" \
+            --data-urlencode "jurisdictions=US,CHINA,JAPAN"
