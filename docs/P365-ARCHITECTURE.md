@@ -69,6 +69,8 @@ Risk Appetite State  → DERIVED_STATE
 
 This ontology is additive. Existing stored records and append-only Market Memory must not be rewritten merely to fit the new classification.
 
+Current canonical Observation writes now carry optional versioned `semantics` with market domain, information class, and relevant jurisdiction/instrument/asset/participant/tenor dimensions. Legacy `domain` remains unchanged for compatibility, and historical rows without `semantics` can be resolved from approved `seriesId`/`metricId` mappings without mutation. See `P365-CANONICAL-SEMANTIC-DIMENSIONS-COMPATIBILITY-v0.1.md`.
+
 
 ## Current implementation subset
 

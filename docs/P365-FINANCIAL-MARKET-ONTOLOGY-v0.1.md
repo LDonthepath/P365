@@ -1,6 +1,6 @@
 # P365 Financial Market Ontology & Data Foundation v0.1
 
-**Status:** Proposed normative foundation contract  
+**Status:** Active normative foundation contract  
 **Product ontology scope:** Global multi-asset financial-market information model  
 **MVP implementation scope:** **Macro + Crypto + Gold**  
 **Implementation effect:** Documentation-only. This contract does **not** authorize provider expansion, runtime migration, State/Regime activation, or trading logic.
@@ -97,6 +97,8 @@ Unless required as supporting evidence for Macro/Crypto/Gold reasoning, defer fi
 - portfolio construction, execution, signals or trade recommendations.
 
 The broader ontology remains deliberate future compatibility, not an MVP delivery mandate.
+
+The additive runtime compatibility rules for canonical Observation semantics are defined in `P365-CANONICAL-SEMANTIC-DIMENSIONS-COMPATIBILITY-v0.1.md`.
 
 The normative evidence requirements for the MVP traded markets are defined in `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`. That contract owns the shared Macro driver map, BTC-specific flow/derivatives evidence, Gold-specific flow/positioning evidence, relationship methodology, and event-window evidence requirements.
 
