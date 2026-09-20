@@ -1,11 +1,17 @@
 import "server-only";
+import type { FactualBaseline } from "../domain/baseline";
 import { ingestDashboardData } from "../ingestion/dashboard-ingestion";
 import { normalizeDashboardData, type NormalizedDashboardData } from "../normalization/dashboard-normalization";
-import { canonicalRepositories, economicEventResultRepository, persistCanonicalDashboardData } from "../repositories/dashboard-repository";
-export type DashboardData = NormalizedDashboardData;
+import { canonicalRepositories, economicEventResultRepository, historicalObservationRepository, persistCanonicalDashboardData } from "../repositories/dashboard-repository";
+import { buildRepositoryBackedMacroFactualBaselines } from "./factual-baseline";
+export type DashboardData = NormalizedDashboardData & { macroBaselines: Record<string, FactualBaseline> };
 export async function getDashboardData(): Promise<DashboardData> {
   const ingestion = await ingestDashboardData();
   const normalized = normalizeDashboardData(ingestion);
+  const macroBaselines = await buildRepositoryBackedMacroFactualBaselines(
+    normalized.macroObservations,
+    historicalObservationRepository,
+  );
   // Market Memory / economic-event-result persistence is a durability nice-to-have,
   // not the dashboard's primary output. A write failure there (schema drift, quota,
   // outage) must never take the whole page down — it already happened once
@@ -20,5 +26,5 @@ export async function getDashboardData(): Promise<DashboardData> {
   } catch (error) {
     console.error("[economic-event-result] saveMany failed, continuing without it:", error instanceof Error ? error.message : error);
   }
-  return normalized;
+  return { ...normalized, macroBaselines };
 }

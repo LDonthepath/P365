@@ -33,7 +33,7 @@ function observationDate(observation: Observation): string | null {
 }
 
 function compatible(a: Observation, b: Observation): boolean {
-  if (a.domain !== b.domain || a.subject !== b.subject || a.sourceId !== b.sourceId) return false;
+  if (a.domain !== b.domain || a.sourceId !== b.sourceId) return false;
 
   const aSeries = observationSeriesId(a);
   const bSeries = observationSeriesId(b);
@@ -80,10 +80,21 @@ function compareBaselineRecency(a: Observation, b: Observation): number {
 
   const aTime = observedTime(a);
   const bTime = observedTime(b);
-  if (aTime !== null && bTime !== null) return bTime - aTime;
-  if (aTime !== null) return -1;
-  if (bTime !== null) return 1;
-  return 0;
+  if (aTime !== null && bTime !== null) {
+    if (aTime !== bTime) return bTime - aTime;
+  } else {
+    if (aTime !== null) return -1;
+    if (bTime !== null) return 1;
+  }
+
+  const aRetrieved = Date.parse(a.retrievedAt);
+  const bRetrieved = Date.parse(b.retrievedAt);
+  if (Number.isFinite(aRetrieved) && Number.isFinite(bRetrieved) && aRetrieved !== bRetrieved) {
+    return bRetrieved - aRetrieved;
+  }
+  if (Number.isFinite(aRetrieved)) return -1;
+  if (Number.isFinite(bRetrieved)) return 1;
+  return b.id.localeCompare(a.id);
 }
 
 function baselineStatus(currentQuality: DataQuality, baselineQuality: DataQuality): BaselineStatus {
