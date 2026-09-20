@@ -4,6 +4,7 @@ import type { MacroObservationInput } from "../data/fred";
 import type { FomcEventInput } from "../data/federal-reserve-events";
 import { forexFactoryJurisdiction } from "../data/event-jurisdiction";
 import type { DataQuality, Evidence, Event, Observation, ObservationSemantics, ProviderHealth, SourceHealthStatus } from "./types";
+import { buildObservationIdentity, observationEvidenceId, observationRevisionId } from "./observation-identity";
 import { requireObservationSemantics } from "./observation-semantics";
 import { qualityFromFreshness, freshnessPolicyForFamily } from "./freshness";
 
@@ -81,49 +82,59 @@ export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: str
 }
 
 export function cryptoMarketToObservations(items: CryptoMarketObservationInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
-  const evidence = items.map((item) => ({
-    id: hashId("evidence", `${sourceId}:${item.metricId}:${item.observedAt}`),
-    sourceId,
-    kind: "OBSERVATION" as const,
-    subject: item.metricId,
-    content: `${item.metricId} observed at ${item.value}`,
-    capturedAt: item.retrievedAt,
-    retrievedAt: item.retrievedAt,
-    metadata: { ...item.metadata, symbol: item.symbol, metricId: item.metricId },
-  }));
+  const normalized = items.map((item) => {
+    const domain = item.metricId.startsWith("crypto.") ? "MARKET" as const : "ASSET" as const;
+    const value = String(item.value);
+    const metadata = { symbol: item.symbol, metricId: item.metricId, ...item.metadata };
+    const identity = buildObservationIdentity({
+      domain,
+      seriesKey: item.metricId,
+      observedAt: item.observedAt,
+      sourceId,
+      value,
+      unit: typeof item.metadata.unit === "string" ? item.metadata.unit : null,
+    });
+    const evidenceId = observationEvidenceId(identity);
+    const evidence: Evidence = {
+      id: evidenceId,
+      sourceId,
+      kind: "OBSERVATION",
+      subject: item.metricId,
+      content: `${item.metricId} observed at ${item.value}`,
+      capturedAt: item.retrievedAt,
+      retrievedAt: item.retrievedAt,
+      metadata,
+    };
+    const observation = observationFromCanonicalFact({
+      id: observationRevisionId(identity),
+      domain,
+      subject: item.metricId,
+      value,
+      observedAt: item.observedAt,
+      retrievedAt: item.retrievedAt,
+      sourceId,
+      evidenceId,
+      identity,
+      // Yahoo Finance's chart meta.regularMarketPrice is a live/delayed quote (not a
+      // once-daily close), so gold, Russell 2000, and DXY all qualify as MARKET_REALTIME.
+      freshnessFamily: "MARKET_REALTIME",
+      semantics: requireObservationSemantics(item.metricId),
+      metadata,
+    });
+    return { evidence, observation };
+  });
 
-  const observations = items.map((item, index) => observationFromCanonicalFact({
-    id: hashId("observation", `${sourceId}:${item.metricId}:${item.observedAt}`),
-    domain: item.metricId.startsWith("crypto.") ? "MARKET" : "ASSET",
-    subject: item.metricId,
-    value: String(item.value),
-    observedAt: item.observedAt,
-    retrievedAt: item.retrievedAt,
-    sourceId,
-    evidenceId: evidence[index].id,
-    // Yahoo Finance's chart meta.regularMarketPrice is a live/delayed quote (not a
-    // once-daily close), so gold, Russell 2000, and DXY all qualify as MARKET_REALTIME —
-    // matched by a 15 min revalidate cadence in lib/data/yahoo-finance-markets.ts.
-    freshnessFamily: "MARKET_REALTIME",
-    semantics: requireObservationSemantics(item.metricId),
-    metadata: { symbol: item.symbol, metricId: item.metricId, ...item.metadata },
-  }));
-
-  return { observations, evidence };
+  return {
+    observations: normalized.map((item) => item.observation),
+    evidence: normalized.map((item) => item.evidence),
+  };
 }
 
 /** Converts validated FRED records into canonical facts without interpretation. */
 export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
   const eligibleItems = items.filter((item) => isValidCurrentOrPastMacroDate(item.observationDate));
-  const evidence = eligibleItems.map((item) => ({
-    id: hashId("evidence", `${sourceId}:${item.series.seriesId}:${item.observationDate}:${item.value}`),
-    sourceId,
-    kind: "OBSERVATION" as const,
-    subject: item.series.subject,
-    content: `${item.series.seriesId} = ${item.value} (${item.observationDate})`,
-    capturedAt: item.retrievedAt,
-    retrievedAt: item.retrievedAt,
-    metadata: {
+  const normalized = eligibleItems.map((item) => {
+    const metadata = {
       seriesId: item.series.seriesId,
       frequency: item.series.frequency,
       unit: item.series.unit,
@@ -132,33 +143,48 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
       releasedAt: item.releasedAt,
       previousValue: item.previousValue,
       vintageDate: item.vintageDate,
-    },
-  }));
-
-  const observations = eligibleItems.map((item, index) => ({
-    id: hashId("observation", `${sourceId}:${item.series.seriesId}:${item.observationDate}:${item.value}`),
-    domain: item.series.domain,
-    subject: item.series.subject,
-    value: item.value,
-    observedAt: item.observationDate,
-    retrievedAt: item.retrievedAt,
-    sourceId,
-    quality: macroObservationQuality(item.observationDate, item.series.freshnessMs),
-    evidenceId: evidence[index].id,
-    semantics: requireObservationSemantics(item.series.seriesId),
-    metadata: {
-      seriesId: item.series.seriesId,
-      frequency: item.series.frequency,
+    };
+    const identity = buildObservationIdentity({
+      domain: item.series.domain,
+      seriesKey: item.series.seriesId,
+      observedAt: item.observationDate,
+      sourceId,
+      value: item.value,
       unit: item.series.unit,
-      source: item.series.source,
-      observationDate: item.observationDate,
-      releasedAt: item.releasedAt,
-      previousValue: item.previousValue,
-      vintageDate: item.vintageDate,
-    },
-  }));
+      frequency: item.series.frequency,
+    });
+    const evidenceId = observationEvidenceId(identity);
+    const evidence: Evidence = {
+      id: evidenceId,
+      sourceId,
+      kind: "OBSERVATION",
+      subject: item.series.subject,
+      content: `${item.series.seriesId} = ${item.value} (${item.observationDate})`,
+      capturedAt: item.retrievedAt,
+      retrievedAt: item.retrievedAt,
+      metadata,
+    };
+    const observation: Observation = {
+      id: observationRevisionId(identity),
+      domain: item.series.domain,
+      subject: item.series.subject,
+      value: item.value,
+      observedAt: item.observationDate,
+      retrievedAt: item.retrievedAt,
+      sourceId,
+      quality: macroObservationQuality(item.observationDate, item.series.freshnessMs),
+      evidenceId,
+      identity,
+      semantics: requireObservationSemantics(item.series.seriesId),
+      metadata,
+    };
+    return { evidence, observation };
+  });
 
-  return { observations, evidence };
+  return {
+    observations: normalized.map((item) => item.observation),
+    evidence: normalized.map((item) => item.evidence),
+  };
 }
 
 export function fomcToCanonicalRecords(items: FomcEventInput[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
@@ -197,6 +223,7 @@ export function observationFromCanonicalFact(input: {
   retrievedAt: string;
   sourceId: string;
   evidenceId: string;
+  identity?: Observation["identity"];
   semantics?: ObservationSemantics;
   /** Explicit freshness classification is required; domain must not imply provider cadence. */
   freshnessFamily: "FRED_MACRO" | "MARKET_REALTIME" | "MARKET_DAILY";

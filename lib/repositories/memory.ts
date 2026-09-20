@@ -5,8 +5,8 @@ import { compareObservationHistory, observationHistoryTimestamp, observationSema
 export class InMemoryObservationRepository implements ObservationRepository, HistoricalObservationRepository {
   private readonly items = new Map<string, Observation>();
 
-  async save(item: Observation): Promise<void> { this.items.set(item.id, item); }
-  async saveMany(items: Observation[]): Promise<void> { items.forEach((item) => this.items.set(item.id, item)); }
+  async save(item: Observation): Promise<void> { if (!this.items.has(item.id)) this.items.set(item.id, item); }
+  async saveMany(items: Observation[]): Promise<void> { items.forEach((item) => { if (!this.items.has(item.id)) this.items.set(item.id, item); }); }
   async findById(id: string): Promise<Observation | null> { return this.items.get(id) ?? null; }
 
   async findHistory(query: ObservationHistoryQuery): Promise<Observation[]> {

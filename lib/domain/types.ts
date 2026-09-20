@@ -93,6 +93,20 @@ export type ObservationSemantics = {
   participant?: ParticipantClass;
   tenor?: string;
 };
+
+/**
+ * Additive identity/lineage for Observation writes created after FND-018A.
+ * Legacy persisted Observations remain valid without this field.
+ */
+export type ObservationIdentity = {
+  version: "v1";
+  /** FND-001 semantic series key (metadata.seriesId or metadata.metricId). */
+  seriesKey: string;
+  /** Stable logical-series + observedAt measurement identity. */
+  measurementId: string;
+  /** SHA-256 factual-version fingerprint; excludes retrieval availability. */
+  revisionFingerprint: string;
+};
 export type EventStatus = "UPCOMING" | "ACTIVE" | "PAST" | "UNKNOWN";
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
 
@@ -135,6 +149,8 @@ export type Observation = {
   sourceId: string;
   quality: DataQuality;
   evidenceId: string;
+  /** Additive revision lineage. Optional for legacy persisted records. */
+  identity?: ObservationIdentity;
   /** Additive semantic dimensions. Optional for legacy persisted records. */
   semantics?: ObservationSemantics;
   metadata?: Record<string, string | number | boolean | null>;
