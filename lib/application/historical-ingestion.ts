@@ -14,7 +14,7 @@ export type HistoricalIngestionMode = "FORWARD" | "BACKFILL";
 export type HistoricalIngestionOptions = {
   mode: HistoricalIngestionMode;
   providers: HistoricalIngestionProvider[];
-  fred?: Omit<FredObservationQuery, "acquisitionMode">;
+  fred?: Omit<FredObservationQuery, "acquisitionMode" | "requireCompleteRange">;
 };
 
 export type HistoricalIngestionAcquisition = {
@@ -56,7 +56,11 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
   return {
     acquisition: {
       coingecko: () => crypto.fetchCryptoMarketObservations(["BTC", "ETH"], "FRESH"),
-      fred: () => fred.fetchFredMacroObservations({ ...options.fred, acquisitionMode: "FRESH" }),
+      fred: () => fred.fetchFredMacroObservations({
+        ...options.fred,
+        acquisitionMode: "FRESH",
+        requireCompleteRange: options.mode === "BACKFILL",
+      }),
       gold: () => yahoo.fetchGoldFuturesSpot("FRESH"),
       russell: () => yahoo.fetchRussell2000Index("FRESH"),
       dxy: () => yahoo.fetchDxyIndex("FRESH"),

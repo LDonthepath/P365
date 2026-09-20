@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
+import type { MacroObservationInput } from "../data/fred";
+import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
 import { providerFetchPolicy } from "../data/provider-fetch-policy";
 import { providerResult, type ProviderResult } from "../data/types";
 import { InMemoryEvidenceRepository, InMemoryObservationRepository } from "../repositories/memory";
@@ -29,6 +31,18 @@ function marketResult(
   status: ProviderResult<CryptoMarketObservationInput>["status"] = "SUCCESS",
 ): ProviderResult<CryptoMarketObservationInput> {
   return providerResult(provider, status, data, status === "ERROR" ? "provider failed" : undefined);
+}
+
+function macroInput(): MacroObservationInput {
+  return {
+    series: MACRO_SERIES_REGISTRY[0],
+    value: "0.25",
+    observationDate: "2020-01-01",
+    previousValue: null,
+    vintageDate: "2020-01-01",
+    releasedAt: null,
+    retrievedAt: "2026-09-20T09:00:01.000Z",
+  };
 }
 
 function repositories(): { repositories: CanonicalRepositories; observations: InMemoryObservationRepository } {
@@ -80,6 +94,46 @@ async function main(): Promise<void> {
     limit: 10,
   });
   assert.equal(history.length, 1, "repeated ingestion must retain canonical idempotency");
+
+  const backfillStore = repositories();
+  const backfillAcquisition = acquisition([]);
+  backfillAcquisition.fred = async () => providerResult("fred", "SUCCESS", [macroInput()]);
+  const backfillOptions = {
+    mode: "BACKFILL" as const,
+    providers: ["fred" as const],
+    fred: { observationStart: "2020-01-01", observationEnd: "2020-01-31", limit: 100 },
+  };
+  await runHistoricalIngestion(backfillOptions, {
+    acquisition: backfillAcquisition,
+    repositories: backfillStore.repositories,
+  });
+  await runHistoricalIngestion(backfillOptions, {
+    acquisition: backfillAcquisition,
+    repositories: backfillStore.repositories,
+  });
+  const backfillHistory = await backfillStore.observations.findHistory({
+    identity: { domain: "MACRO", seriesKey: MACRO_SERIES_REGISTRY[0].seriesId },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(backfillHistory.length, 1, "repeated backfill must retain canonical idempotency");
+
+  const incompleteBackfillStore = repositories();
+  const incompleteBackfillAcquisition = acquisition([]);
+  incompleteBackfillAcquisition.fred = async () => providerResult(
+    "fred",
+    "ERROR",
+    [macroInput()],
+    "one requested series could not prove completeness",
+  );
+  const incompleteBackfill = await runHistoricalIngestion(backfillOptions, {
+    acquisition: incompleteBackfillAcquisition,
+    repositories: incompleteBackfillStore.repositories,
+  });
+  assert.equal(incompleteBackfill.status, "PARTIAL");
+  assert.equal(incompleteBackfill.persistedObservations, 1);
+  assert.equal(incompleteBackfill.providers[0].status, "ERROR");
+  assert.match(incompleteBackfill.providers[0].error ?? "", /could not prove completeness/);
 
   const partialStore = repositories();
   const partialAcquisition = acquisition([]);
