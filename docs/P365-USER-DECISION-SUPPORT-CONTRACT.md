@@ -15,6 +15,8 @@ P365 remains a **Market Intelligence System**, not an advisory or execution syst
 
 The long-term architecture may support additional financial-market domains, but MVP product value is judged first on whether P365 materially improves the Crypto + Gold trader's understanding of the market.
 
+For the detailed evidence stack used to support that understanding—shared Macro drivers, BTC ETF/stablecoin/derivatives evidence, Gold ETF/COT evidence, relationship statistics, and event-window comparisons—use `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`.
+
 ## 2. User outcome
 
 P365 should help the user answer, in order:
