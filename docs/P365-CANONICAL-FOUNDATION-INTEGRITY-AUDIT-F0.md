@@ -528,6 +528,22 @@ Do not call the foundation complete until:
 - tests cover the foundation invariants;
 - build/lint pass for every implementation checkpoint.
 
+### MVP product-completion gate
+
+Before P365 expands another market into a first-class product domain, the **Macro + Crypto + Gold** vertical slice must be able to answer, with auditable evidence and point-in-time semantics:
+
+1. what materially changed in Macro;
+2. what the correct factual/expectation/pricing baseline was;
+3. whether an event produced surprise and/or repricing;
+4. how rates, real yields, USD and liquidity/funding changed;
+5. how Crypto responded;
+6. how Gold responded;
+7. what qualified flow/positioning/structure evidence confirms or contradicts the move;
+8. whether the condition is unusual against a defined historical baseline;
+9. what material catalyst or invalidation should be monitored next.
+
+Until this gate is met, additional first-class Equity, broad Credit, broad Commodity, or other multi-asset expansion is post-MVP. Existing observations from those domains may still serve as supporting evidence.
+
 ## 21. Pre-merge verification of this audit PR
 
 The audit PR itself was re-checked before merge:
@@ -557,6 +573,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 18 Sep 2026 | FND-004 Context taxonomy regression correction | Independent re-audit found the PR #36 prefix selector excluded CoinGecko asset-level metrics; corrected to qualified CoinGecko provenance plus canonical metric identity, retaining cross-asset exclusion. |
 | 18 Sep 2026 | Durable Historical Observation Query Adapter | Wired FND-001 to append-only Supabase Market Memory using semantic JSONB identity, effective-time bounds, canonical retrieval cutoff, deterministic revision ordering, and focused parity tests. Production REST E2E remains pending server-only deployment credentials; FND-002/FND-003 remain open. |
 | 20 Sep 2026 | Financial Market Ontology & Data Foundation rebaseline | External benchmark + current-main read-only audit broadened the canonical ontology for future compatibility while preserving the implementation MVP as **Macro + Crypto + Gold**; documented domain/information-class axes, current-data mapping, gaps, compatibility rules, and revised dependency sequence without changing runtime code. |
+| 20 Sep 2026 | MVP user/value boundary refinement | Primary MVP user narrowed to a self-directed Crypto + Gold trader with Macro as the explanatory layer; scope expansion is now gated on completing an auditable Macro → Crypto/Gold intelligence vertical slice. |
 
 ## Active remediation sequence
 
