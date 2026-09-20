@@ -11,7 +11,7 @@
 This is the **single operational SSOT for foundation development**. It owns:
 
 - current implementation state;
-- verified F0 findings (`FND-001`…`FND-019`);
+- verified foundation findings (`FND-001`…`FND-021`);
 - current factual coverage/gaps;
 - remediation priority and sequencing;
 - foundation completion gates;
