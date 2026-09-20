@@ -1,12 +1,13 @@
 # P365 Financial Market Ontology & Data Foundation v0.1
 
 **Status:** Proposed normative foundation contract  
-**Scope:** Global multi-asset financial-market information model  
+**Product ontology scope:** Global multi-asset financial-market information model  
+**MVP implementation scope:** **Macro + Crypto + Gold**  
 **Implementation effect:** Documentation-only. This contract does **not** authorize provider expansion, runtime migration, State/Regime activation, or trading logic.
 
 ## 1. Purpose
 
-P365 is a **Financial Market Intelligence System**. Its product boundary is broader than the current Macro + Crypto implementation.
+P365 is a **Financial Market Intelligence System**. Its long-term product ontology is broader than the MVP, but the **MVP implementation boundary is intentionally limited to Macro + Crypto + Gold**.
 
 The canonical foundation must represent the mechanisms a self-directed trader/investor uses to understand the market:
 
@@ -40,6 +41,62 @@ Briefing
 ```
 
 Current implementation domains are an implementation subset, not the product boundary.
+
+### 1.1 MVP boundary
+
+The ontology and the MVP are intentionally different layers:
+
+```text
+LONG-TERM PRODUCT ONTOLOGY
+Global multi-asset financial market
+        ↓
+MVP PRODUCT / IMPLEMENTATION SCOPE
+Macro + Crypto + Gold
+```
+
+For MVP, P365 should complete a defensible reasoning chain inside those three scopes before expanding first-class coverage to Equity, broad Credit, broad Commodities, or other asset classes.
+
+**Macro** is the explanatory environment for the MVP and may include:
+
+- economic reality: growth, inflation, labor and other material macro releases;
+- material central-bank policy and projections;
+- liquidity/funding: balance sheets, reserves, money supply, TGA/RRP, money-market funding;
+- rates and real yields;
+- USD / relevant FX context;
+- inflation expectations/pricing;
+- economic/central-bank events, consensus, actual, revisions and policy pricing.
+
+**Crypto** is a first-class MVP market domain and may include:
+
+- BTC/ETH spot and market structure;
+- total market cap / volume / dominance;
+- stablecoin liquidity;
+- spot-ETF flows where qualified;
+- futures/open-interest/funding/basis where qualified;
+- positioning/flow data only when its identity, timing and methodology are explicit.
+
+**Gold** is a first-class MVP market domain even though the long-term ontology classifies it under Commodity. MVP Gold may include:
+
+- spot/futures pricing;
+- historical baselines;
+- relevant ETF/positioning data where qualified;
+- transmission against macro drivers such as real yields, USD, rates, liquidity and inflation pricing.
+
+Existing non-MVP cross-asset observations such as S&P 500, Nasdaq, Russell 2000, VIX, WTI and IG/HY spreads may remain as **supporting evidence** if already present and useful for context/transmission. They are not authorization to expand Equity, Volatility, Oil, or Credit into first-class MVP product modules.
+
+### 1.2 Explicitly outside MVP first-class scope
+
+Unless required as supporting evidence for Macro/Crypto/Gold reasoning, defer first-class implementation of:
+
+- full Equity market intelligence;
+- equity breadth / sector / factor / earnings systems;
+- broad Credit intelligence;
+- broad Commodity coverage other than Gold;
+- full multi-asset derivatives/options platform;
+- EM/cross-border asset-class expansion;
+- portfolio construction, execution, signals or trade recommendations.
+
+The broader ontology remains deliberate future compatibility, not an MVP delivery mandate.
 
 ## 2. Core invariants
 
@@ -545,39 +602,34 @@ Priority describes implementation dependency, **not market importance**.
 
 ### CORE
 
-Required for the first defensible global multi-asset market-intelligence chain:
+Required for the first defensible **MVP Macro + Crypto + Gold** intelligence chain:
 
 - canonical historical continuity
 - factual baseline from durable history
 - explicit ontology-compatible semantic identity
-- US economic/policy/liquidity foundation
-- material central-bank policy coverage
-- rates
-- FX
-- headline equity
-- credit
-- commodity
-- volatility
-- crypto
-- economic/central-bank events
-- expectation data
+- macro economic reality
+- material central-bank policy/projections
+- liquidity/funding and money supply
+- rates / real yields / inflation pricing
+- USD / relevant FX context
+- economic/central-bank events and expectations
 - market-implied policy/rates pricing
+- crypto spot / market structure
+- qualified crypto ETF / stablecoin / derivatives data when required by the approved MVP reasoning questions
+- gold pricing and its macro transmission context
 - immutable Market Snapshot
 
 ### SECONDARY
 
 Materially improves explanation but is not required for the first valid chain:
 
-- equity breadth
-- sector/factor rotation
-- Treasury issuance/auction mechanics
-- COT
-- ETF flows
+- Treasury issuance/auction mechanics when needed for macro liquidity reasoning
+- COT limited to approved Macro/Crypto/Gold instruments
+- ETF flows limited to approved Crypto/Gold reasoning
 - stablecoin liquidity
 - crypto derivatives
-- commodity curves/inventories
-- lending standards / credit internals
-- earnings expectations/revisions
+- gold positioning/ETF-flow enrichment
+- selected credit/volatility/cross-asset evidence needed to test Macro/Crypto/Gold transmission
 
 ### ENRICHMENT
 
@@ -585,11 +637,10 @@ Requires stronger provider/methodology qualification or is more specialized:
 
 - term-premium decomposition
 - cross-currency basis
-- advanced options/dealer positioning
-- institutional 13F-style holdings
+- advanced crypto/gold options or dealer positioning
+- institutional holdings relevant to Crypto/Gold
 - attributed on-chain exchange flows
-- cross-border investor-flow decomposition
-- dispersion/implied correlation
+- advanced global-liquidity decomposition
 - advanced market microstructure
 
 ### DEFERRED
@@ -638,7 +689,7 @@ E. Temporal / provenance / freshness + ID lineage hardening
    ↓
 F. FND-009 cache invalidation + remaining current-foundation defects
    ↓
-G. Core market-universe expansion in isolated provider/domain checkpoints
+G. Complete approved MVP market universe: Macro + Crypto + Gold, in isolated provider/domain checkpoints
    ↓
 H. Expectation baseline lifecycle
    ↓
@@ -648,12 +699,12 @@ J. Immutable Market Snapshot
    ↓
 K. Event-window repricing / transmission comparison contract
    ↓
-L. Secondary positioning / flow / internals expansion
+L. Secondary positioning / flow enrichment inside Macro + Crypto + Gold
    ↓
 M. Only after evidence gates: Derived State → Intelligence → Briefing
 ```
 
-The existing architecture is retained. The purpose of this rebaseline is to make the data semantics broad enough for the product definition before the implementation surface grows.
+The existing architecture is retained. The ontology stays broad for future compatibility, while implementation remains deliberately bounded to **Macro + Crypto + Gold for MVP** until the MVP reasoning chain is complete.
 
 ## 11. Acceptance criteria for ontology implementation
 
@@ -688,4 +739,4 @@ This contract does not:
 
 The immediate purpose is narrower:
 
-> **Give P365 one scalable semantic map for the financial market before expanding the implementation foundation.**
+> **Give P365 one scalable semantic map for the financial market while keeping MVP delivery constrained to Macro + Crypto + Gold.**
