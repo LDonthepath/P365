@@ -57,6 +57,51 @@ async function main(): Promise<void> {
     toleranceMs: 135 * DAY,
     evaluatedAt: "2026-09-21T00:00:00.000Z",
   }), "FRESH", "quarterly tolerance starts after quarter end");
+  assert.equal(qualityFromMacroCadence({
+    observationDate: "2026-04-01",
+    frequency: "QUARTERLY",
+    toleranceMs: 135 * DAY,
+    evaluatedAt: "2026-11-13T00:00:00.000Z",
+  }), "STALE", "quarterly observations expire after the period-end deadline");
+
+  const standardMonthlySeries = ["FEDFUNDS", "CPIAUCSL", "CPILFESL", "UNRATE", "PAYEMS", "SAHMREALTIME"];
+  const laggedMonthlySeries = ["M2SL", "PCEPI", "PCEPILFE", "JTSJOL", "JTSQUR"];
+  for (const seriesId of standardMonthlySeries) {
+    const definition = series(seriesId);
+    assert.equal(definition.freshnessMs, 45 * DAY, `${seriesId} uses its qualified standard-monthly tolerance`);
+    assert.equal(
+      macroToCanonicalRecords([
+        macroInput(definition, "2026-08-01", "2026-09-21T00:00:00.000Z"),
+      ], "fred").observations[0]?.quality,
+      "FRESH",
+      `${seriesId} remains fresh inside its normal monthly publication cycle`,
+    );
+    assert.equal(
+      macroToCanonicalRecords([
+        macroInput(definition, "2026-08-01", "2026-10-16T00:00:00.000Z"),
+      ], "fred").observations[0]?.quality,
+      "STALE",
+      `${seriesId} becomes stale after its conservative cadence deadline`,
+    );
+  }
+  for (const seriesId of laggedMonthlySeries) {
+    const definition = series(seriesId);
+    assert.equal(definition.freshnessMs, 65 * DAY, `${seriesId} uses its qualified lagged-monthly tolerance`);
+    assert.equal(
+      macroToCanonicalRecords([
+        macroInput(definition, "2026-07-01", "2026-09-21T00:00:00.000Z"),
+      ], "fred").observations[0]?.quality,
+      "FRESH",
+      `${seriesId} remains fresh while July can be the latest normally published observation`,
+    );
+    assert.equal(
+      macroToCanonicalRecords([
+        macroInput(definition, "2026-07-01", "2026-10-06T00:00:00.000Z"),
+      ], "fred").observations[0]?.quality,
+      "STALE",
+      `${seriesId} becomes stale after its conservative cadence deadline`,
+    );
+  }
 
   assert.equal(qualityFromMacroCadence({
     observationDate: "2026-09-16",
@@ -139,6 +184,21 @@ async function main(): Promise<void> {
   const baselines = await buildRepositoryBackedMacroFactualBaselines([current], history);
   assert.equal(baselines.CPIAUCSL.status, "VALID", "cadence-valid monthly facts produce a valid FND-002 baseline");
   assert.equal(baselines.CPIAUCSL.baselineObservationId, predecessor.id);
+
+  const legacyHistory = new InMemoryObservationRepository();
+  const legacyPredecessor = {
+    ...predecessor,
+    id: "legacy-cpi-predecessor-stored-stale",
+    quality: "STALE" as const,
+  };
+  await legacyHistory.save(legacyPredecessor);
+  const legacyBaselines = await buildRepositoryBackedMacroFactualBaselines([current], legacyHistory);
+  assert.equal(
+    legacyBaselines.CPIAUCSL.status,
+    "STALE",
+    "FND-011A does not reinterpret or rewrite persisted legacy quality inside FND-002",
+  );
+  assert.equal(legacyBaselines.CPIAUCSL.baselineObservationId, legacyPredecessor.id);
 }
 
 void main();
