@@ -2,6 +2,7 @@ import "server-only";
 import { providerResult, type ProviderResult } from "./types";
 import type { CryptoMarketObservationInput } from "./crypto-market";
 import { providerFetchPolicy, type ProviderAcquisitionMode } from "./provider-fetch-policy";
+import { OBSERVATION_PROVIDER_RESOURCES } from "../domain/observation-provenance";
 
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
 
@@ -78,6 +79,11 @@ async function fetchYahooObservation(
     observedAt: result.quote.observedAt,
     retrievedAt,
     source: "Yahoo Finance",
+    provenance: {
+      version: "v1",
+      providerResource: OBSERVATION_PROVIDER_RESOURCES.yahooChart,
+      nativeSymbol: symbol,
+    },
     metadata: {
       ...metadata,
       previousClose: result.quote.previousClose,

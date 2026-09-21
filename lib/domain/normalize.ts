@@ -5,6 +5,7 @@ import type { FomcEventInput } from "../data/federal-reserve-events";
 import { forexFactoryJurisdiction } from "../data/event-jurisdiction";
 import type { DataQuality, Evidence, Event, Observation, ObservationSemantics, ProviderHealth, SourceHealthStatus } from "./types";
 import { buildObservationIdentity, observationEvidenceId, observationRevisionId } from "./observation-identity";
+import { assertCurrentObservationInvariants } from "./observation-provenance";
 import { requireObservationSemantics } from "./observation-semantics";
 import { qualityFromFreshness, freshnessPolicyForFamily } from "./freshness";
 
@@ -115,12 +116,14 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
       sourceId,
       evidenceId,
       identity,
+      provenance: item.provenance,
       // Yahoo Finance's chart meta.regularMarketPrice is a live/delayed quote (not a
       // once-daily close), so gold, Russell 2000, and DXY all qualify as MARKET_REALTIME.
       freshnessFamily: "MARKET_REALTIME",
       semantics: requireObservationSemantics(item.metricId),
       metadata,
     });
+    assertCurrentObservationInvariants(observation);
     return { evidence, observation };
   });
 
@@ -175,9 +178,11 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
       quality: macroObservationQuality(item.observationDate, item.series.freshnessMs),
       evidenceId,
       identity,
+      provenance: item.provenance,
       semantics: requireObservationSemantics(item.series.seriesId),
       metadata,
     };
+    assertCurrentObservationInvariants(observation);
     return { evidence, observation };
   });
 
@@ -224,6 +229,7 @@ export function observationFromCanonicalFact(input: {
   sourceId: string;
   evidenceId: string;
   identity?: Observation["identity"];
+  provenance?: Observation["provenance"];
   semantics?: ObservationSemantics;
   /** Explicit freshness classification is required; domain must not imply provider cadence. */
   freshnessFamily: "FRED_MACRO" | "MARKET_REALTIME" | "MARKET_DAILY";

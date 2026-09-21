@@ -21,7 +21,12 @@ function observationInput(metricId: string): CryptoMarketObservationInput {
     observedAt: "2026-09-20T09:00:00.000Z",
     retrievedAt: "2026-09-20T09:00:01.000Z",
     source: "CoinGecko",
-    metadata: { unit: "USD" },
+    provenance: {
+      version: "v1",
+      providerResource: "/simple/price",
+      nativeInstrumentId: "bitcoin",
+    },
+    metadata: { unit: "USD", providerAssetId: "bitcoin", endpoint: "/simple/price" },
   };
 }
 
@@ -42,6 +47,13 @@ function macroInput(): MacroObservationInput {
     vintageDate: "2020-01-01",
     releasedAt: null,
     retrievedAt: "2026-09-20T09:00:01.000Z",
+    provenance: {
+      version: "v1",
+      providerResource: "/fred/series/observations",
+      nativeSeriesId: MACRO_SERIES_REGISTRY[0].seriesId,
+      observationDate: "2020-01-01",
+      vintageDate: "2020-01-01",
+    },
   };
 }
 

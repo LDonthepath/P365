@@ -22,6 +22,13 @@ function macroInput(value: string, retrievedAt: string): MacroObservationInput {
     vintageDate: "2026-09-01",
     releasedAt: null,
     retrievedAt,
+    provenance: {
+      version: "v1",
+      providerResource: "/fred/series/observations",
+      nativeSeriesId: cpi.seriesId,
+      observationDate: "2026-08-01",
+      vintageDate: "2026-09-01",
+    },
   };
 }
 
@@ -38,9 +45,13 @@ function marketInput(
     observedAt: "2026-09-20T09:00:00.000Z",
     retrievedAt,
     source: metricId === "gold.futures.usd" ? "Yahoo Finance" : "CoinGecko",
+    provenance: metricId === "gold.futures.usd"
+      ? { version: "v1", providerResource: "/v8/finance/chart", nativeSymbol: symbol }
+      : { version: "v1", providerResource: "/simple/price", nativeInstrumentId: "bitcoin" },
     metadata: {
       unit: "USD",
       endpoint: metricId === "gold.futures.usd" ? "v8/finance/chart" : "/simple/price",
+      ...(metricId === "gold.futures.usd" ? {} : { providerAssetId: "bitcoin" }),
     },
   };
 }

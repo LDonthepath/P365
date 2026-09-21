@@ -21,6 +21,13 @@ function main(): void {
     vintageDate: "2026-09-19",
     releasedAt: null,
     retrievedAt: "2026-09-20T00:01:00.000Z",
+    provenance: {
+      version: "v1",
+      providerResource: "/fred/series/observations",
+      nativeSeriesId: "DGS10",
+      observationDate: "2026-09-19",
+      vintageDate: "2026-09-19",
+    },
   };
 
   const [treasury] = macroToCanonicalRecords([macroInput], "fred").observations;
@@ -46,6 +53,11 @@ function main(): void {
       observedAt: "2026-09-20T00:00:00.000Z",
       retrievedAt: "2026-09-20T00:01:00.000Z",
       source: "CoinGecko",
+      provenance: {
+        version: "v1",
+        providerResource: "/simple/price",
+        nativeInstrumentId: "bitcoin",
+      },
       metadata: { unit: "USD" },
     },
     {
@@ -55,6 +67,11 @@ function main(): void {
       observedAt: "2026-09-20T00:00:00.000Z",
       retrievedAt: "2026-09-20T00:01:00.000Z",
       source: "Yahoo Finance",
+      provenance: {
+        version: "v1",
+        providerResource: "/v8/finance/chart",
+        nativeSymbol: "GC=F",
+      },
       metadata: { unit: "USD" },
     },
   ];
