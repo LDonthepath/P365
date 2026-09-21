@@ -1,4 +1,6 @@
-export type MacroFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY";
+import type { MacroCadenceFrequency } from "../domain/freshness";
+
+export type MacroFrequency = MacroCadenceFrequency;
 
 export type MacroSeriesDefinition = {
   seriesId: string;
@@ -8,7 +10,10 @@ export type MacroSeriesDefinition = {
   source: "FRED";
   /** Canonical Observation domain. MACRO = macro fundamentals/policy; ASSET = cross-asset market instrument. */
   domain: "MACRO" | "ASSET";
-  /** Maximum age of the underlying observation before it is stale. */
+  /**
+   * Freshness tolerance after the cadence reference: the observation date for
+   * DAILY/WEEKLY, or the end of the observation period for MONTHLY/QUARTERLY.
+   */
   freshnessMs: number;
   /** Server cache duration appropriate for the series publication cadence. */
   revalidateSeconds: number;
