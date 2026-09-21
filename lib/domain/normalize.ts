@@ -7,7 +7,7 @@ import type { DataQuality, Evidence, Event, Observation, ObservationSemantics, P
 import { buildObservationIdentity, observationEvidenceId, observationRevisionId } from "./observation-identity";
 import { assertCurrentObservationInvariants } from "./observation-provenance";
 import { requireObservationSemantics } from "./observation-semantics";
-import { qualityFromFreshness, freshnessPolicyForFamily } from "./freshness";
+import { qualityFromFreshness, qualityFromMacroCadence, freshnessPolicyForFamily } from "./freshness";
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
@@ -26,16 +26,23 @@ function hashId(prefix: string, value: string): string {
   return `${prefix}-${Math.abs(hash).toString(36)}`;
 }
 
-function macroObservationQuality(observationDate: string, freshnessMs: number): DataQuality {
-  return qualityFromFreshness(observationDate, { ...freshnessPolicyForFamily("FRED_MACRO"), maxAgeMs: freshnessMs });
+function macroObservationQuality(item: MacroObservationInput): DataQuality {
+  return qualityFromMacroCadence({
+    observationDate: item.observationDate,
+    frequency: item.series.frequency,
+    toleranceMs: item.series.freshnessMs,
+    evaluatedAt: item.retrievedAt,
+  });
 }
 
-function isValidCurrentOrPastMacroDate(observationDate: string): boolean {
+function isValidMacroObservationContext(observationDate: string, retrievedAt: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(observationDate)) return false;
   const date = new Date(`${observationDate}T00:00:00.000Z`);
+  const retrieved = new Date(retrievedAt);
   return Number.isFinite(date.getTime())
+    && Number.isFinite(retrieved.getTime())
     && date.toISOString().slice(0, 10) === observationDate
-    && observationDate <= new Date().toISOString().slice(0, 10);
+    && date.getTime() <= retrieved.getTime();
 }
 
 export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] {
@@ -135,7 +142,7 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
 
 /** Converts validated FRED records into canonical facts without interpretation. */
 export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
-  const eligibleItems = items.filter((item) => isValidCurrentOrPastMacroDate(item.observationDate));
+  const eligibleItems = items.filter((item) => isValidMacroObservationContext(item.observationDate, item.retrievedAt));
   const normalized = eligibleItems.map((item) => {
     const metadata = {
       seriesId: item.series.seriesId,
@@ -175,7 +182,7 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
       observedAt: item.observationDate,
       retrievedAt: item.retrievedAt,
       sourceId,
-      quality: macroObservationQuality(item.observationDate, item.series.freshnessMs),
+      quality: macroObservationQuality(item),
       evidenceId,
       identity,
       provenance: item.provenance,
