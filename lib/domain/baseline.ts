@@ -2,6 +2,8 @@ import type { DataQuality, Observation } from "./types";
 
 export type BaselineStatus = "VALID" | "STALE" | "MISSING" | "INCOMPATIBLE" | "UNKNOWN";
 
+export const FACTUAL_BASELINE_QUALITY_POLICY = "current-freshness-historical-fitness-v1" as const;
+
 export type FactualBaseline = {
   kind: "FACTUAL";
   status: BaselineStatus;
@@ -12,7 +14,13 @@ export type FactualBaseline = {
   currentObservedAt: string;
   baselineObservedAt: string | null;
   sourceId: string;
+  /** Aggregate quality of this baseline assessment. */
   quality: DataQuality;
+  /** Stored canonical quality; never recomputed or rewritten by baseline selection. */
+  currentObservationQuality: DataQuality;
+  /** Stored predecessor quality, retained even when STALE is historically usable. */
+  baselineObservationQuality: DataQuality | null;
+  qualityPolicy: typeof FACTUAL_BASELINE_QUALITY_POLICY;
   reason?: string;
 };
 
@@ -98,9 +106,30 @@ function compareBaselineRecency(a: Observation, b: Observation): number {
 }
 
 function baselineStatus(currentQuality: DataQuality, baselineQuality: DataQuality): BaselineStatus {
-  if (currentQuality === "FRESH" && baselineQuality === "FRESH") return "VALID";
-  if (currentQuality === "STALE" || baselineQuality === "STALE") return "STALE";
-  return "UNKNOWN";
+  // UNKNOWN/PARTIAL never prove factual fitness. STALE has asymmetric
+  // meaning: it disqualifies a current observation, but an otherwise
+  // compatible earlier fact remains usable as a historical predecessor.
+  if (currentQuality === "UNKNOWN" || currentQuality === "PARTIAL") return "UNKNOWN";
+  if (baselineQuality === "UNKNOWN" || baselineQuality === "PARTIAL") return "UNKNOWN";
+  return currentQuality === "STALE" ? "STALE" : "VALID";
+}
+
+function baselineQualityReason(
+  status: BaselineStatus,
+  currentQuality: DataQuality,
+  baselineQuality: DataQuality,
+): string | undefined {
+  if (status === "STALE") {
+    return "Current observation is marked stale; historical predecessor fitness does not override current freshness.";
+  }
+  if (status !== "UNKNOWN") return undefined;
+  if (currentQuality === "UNKNOWN" || currentQuality === "PARTIAL") {
+    return "Current observation quality is insufficient for a valid factual baseline.";
+  }
+  if (baselineQuality === "UNKNOWN" || baselineQuality === "PARTIAL") {
+    return "Selected historical predecessor quality is insufficient for factual comparison.";
+  }
+  return "Current or selected baseline observation does not have sufficient quality for a valid factual baseline.";
 }
 
 export function selectFactualBaseline(
@@ -121,6 +150,9 @@ export function selectFactualBaseline(
       baselineObservedAt: null,
       sourceId: current.sourceId,
       quality: "UNKNOWN",
+      currentObservationQuality: current.quality,
+      baselineObservationQuality: null,
+      qualityPolicy: FACTUAL_BASELINE_QUALITY_POLICY,
       reason: "Current observation has an invalid observedAt timestamp.",
     };
   }
@@ -146,6 +178,9 @@ export function selectFactualBaseline(
       baselineObservedAt: null,
       sourceId: current.sourceId,
       quality: current.quality,
+      currentObservationQuality: current.quality,
+      baselineObservationQuality: null,
+      qualityPolicy: FACTUAL_BASELINE_QUALITY_POLICY,
       reason: hasCompatibleCandidates
         ? "Compatible observations exist, but none precedes the current measurement."
         : consideredCandidates.length > 0
@@ -155,6 +190,7 @@ export function selectFactualBaseline(
   }
 
   const status = baselineStatus(current.quality, baseline.quality);
+  const reason = baselineQualityReason(status, current.quality, baseline.quality);
 
   return {
     kind: "FACTUAL",
@@ -167,11 +203,10 @@ export function selectFactualBaseline(
     baselineObservedAt: baseline.observedAt,
     sourceId: current.sourceId,
     quality: status === "VALID" ? "FRESH" : status === "STALE" ? "STALE" : "UNKNOWN",
-    ...(status === "STALE"
-      ? { reason: "Current or selected baseline observation is marked stale." }
-      : status === "UNKNOWN"
-        ? { reason: "Current or selected baseline observation does not have sufficient quality for a valid factual baseline." }
-        : {}),
+    currentObservationQuality: current.quality,
+    baselineObservationQuality: baseline.quality,
+    qualityPolicy: FACTUAL_BASELINE_QUALITY_POLICY,
+    ...(reason ? { reason } : {}),
   };
 }
 

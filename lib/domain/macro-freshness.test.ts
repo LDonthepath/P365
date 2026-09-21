@@ -195,10 +195,12 @@ async function main(): Promise<void> {
   const legacyBaselines = await buildRepositoryBackedMacroFactualBaselines([current], legacyHistory);
   assert.equal(
     legacyBaselines.CPIAUCSL.status,
-    "STALE",
-    "FND-011A does not reinterpret or rewrite persisted legacy quality inside FND-002",
+    "VALID",
+    "stored STALE cadence quality remains usable for a compatible historical predecessor",
   );
   assert.equal(legacyBaselines.CPIAUCSL.baselineObservationId, legacyPredecessor.id);
+  assert.equal(legacyBaselines.CPIAUCSL.baselineObservationQuality, "STALE");
+  assert.equal(legacyPredecessor.quality, "STALE", "baseline interpretation never rewrites canonical quality");
 }
 
 void main();

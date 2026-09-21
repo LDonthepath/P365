@@ -1,10 +1,10 @@
 # P365 Foundation Master — SSOT v0.1
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
-**Audited ref:** FND-011A implementation based on `main@2b1b3ed71805df08bdfa2aac5fdc9a43d22bc8f1`
+**Audited ref:** FND-002Q implementation based on `main@8530c43a147357fb15fa57a31ed17f5d117b09fc`
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 21 Sep 2026 from `main@2b1b3ed71805df08bdfa2aac5fdc9a43d22bc8f1`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002 and FND-018A remain FULL PASS/CLOSED. FND-010A is production-active: the 10:02 UTC ingestion wrote 10 structured-provenance Observations (8 CoinGecko, 2 Yahoo), all with identity v1, zero duplicate canonical IDs, and zero runtime errors; the post-merge dashboard smoke remains pending owner verification. FND-011A makes registry-backed FRED quality deterministic at `retrievedAt` and period-aware for monthly/quarterly anchors; market-hours freshness remains separate FND-011B work.
+**Verification pass:** Re-verified 21 Sep 2026 from `main@8530c43a147357fb15fa57a31ed17f5d117b09fc`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002 repository ownership and FND-018A remain FULL PASS/CLOSED. FND-010A is production-active: the 10:02 UTC ingestion wrote 10 structured-provenance Observations (8 CoinGecko, 2 Yahoo), all with identity v1, zero duplicate canonical IDs, and zero runtime errors. FND-011A is merged and deployed; a post-merge scheduled FRED capture was not yet present at the FND-002Q audit cutoff, so no unchanged fact was forced through backfill. FND-002Q separates current freshness from historical predecessor fitness without mutating stored Observation quality; FND-011B remains separate.
 
 ## Documentation authority
 
@@ -73,10 +73,10 @@ Economic event results       TRIAL / PARTIAL
 Context                      IMPLEMENTED / FND-004 REGRESSION CORRECTED
 Durable Market Memory        FOUNDATION IMPLEMENTED
 Historical retrieval         DURABLE ADAPTER + PRODUCTION HISTORY VERIFIED
-Factual baseline             REPOSITORY-BACKED FULL PASS / PRODUCTION E2E VERIFIED
+Factual baseline             REPOSITORY-BACKED FULL PASS / FND-002Q QUALITY HARDENING PENDING MERGE
 Observation identity        FND-018A FULL PASS / CLOSED / PRODUCTION ACTIVE
 Observation provenance      FND-010A PRODUCTION ACTIVE / DASHBOARD SMOKE PENDING OWNER
-Macro freshness             FND-011A IMPLEMENTATION PASS / PRODUCTION ACTIVATION PENDING MERGE
+Macro freshness             FND-011A MERGED / PRODUCTION DEPLOYMENT READY
 Independent ingestion        OPERATIONAL (FND-003A/B/C)
 Expectation baseline         MISSING lifecycle
 Pricing baseline             MISSING
@@ -323,7 +323,7 @@ The policy is grounded in official cadence evidence rather than hard-coded relea
 
 A 21 Sep 2026 production read-only re-audit of the latest 33 contract-eligible FRED series found stored quality of DAILY 14 FRESH / 2 STALE, WEEKLY 4 FRESH / 1 STALE, MONTHLY 0 FRESH / 11 STALE, and QUARTERLY 0 FRESH / 1 STALE. Applying the corrected registry policy to the same `observedAt`/`retrievedAt` contexts projects all 11 monthly series and Q2 `GDPC1` as FRESH; `DCOILWTICO`, `DTWEXBGS`, and `CCSA` remain genuinely stale under the unchanged conservative DAILY/WEEKLY policy. Production rows are not rewritten. After owner merge/deployment, runtime normalization uses the new policy; only new measurements or factual revisions append a new quality-bearing row, while unchanged revision identities continue to dedupe as required by FND-018A.
 
-Durable-history caveat: existing predecessor rows can retain their legacy stored `quality = STALE`. `HistoricalObservationRepository` and `selectFactualBaseline()` intentionally continue to respect that immutable stored quality, so such a predecessor still yields a STALE factual baseline even when a newly normalized current record is FRESH. FND-011A does not hide this with a read-time reinterpretation or history rewrite. Re-evaluating legacy baseline quality requires a separate, explicitly versioned compatibility policy and is not claimed resolved here.
+FND-002Q locks the durable-history interpretation boundary. Existing predecessor rows retain their immutable stored `quality`, and `HistoricalObservationRepository` returns them unchanged. The factual-baseline layer now distinguishes current-observation freshness from historical-predecessor fitness: a semantically compatible, strictly earlier, point-in-time-available predecessor with stored `STALE` quality remains usable because STALE is a cadence/recency classification, not evidence that the historical fact is invalid. `UNKNOWN` and `PARTIAL` predecessors remain insufficient. No read-time cadence recomputation, quality rewrite, backfill, or repository-policy change is introduced.
 
 ### PARTIAL
 
@@ -374,7 +374,7 @@ The new financial-market ontology therefore defines market domain and informatio
 11. FND-018A production activation is verified: v1 rows are present for FRED/CoinGecko/Yahoo, legacy and v1 history coexist, and a read-only audit found zero duplicate v1 canonical revision/effective-time groups.
 12. Pre-FND-010A production provenance was metadata-only. Post-merge activation at 10:02 UTC wrote 10 structured-provenance Observations (8 CoinGecko, 2 Yahoo), all identity v1, with zero duplicate canonical IDs and zero runtime errors. Unchanged FRED revisions may correctly dedupe against existing v1 rows, so no destructive backfill is used to force a FRED provenance example. The owner dashboard smoke remains pending.
 
-Market Memory therefore has durable storage, independently maintained continuity, semantic Observation history retrieval, active additive revision identity, and production-active structured Observation provenance. FND-002 and FND-018A are closed. FND-011A does not rewrite legacy history; new measurements/revisions carry cadence-aware quality, unchanged factual identities retain idempotent dedupe, and legacy stored quality remains authoritative to FND-002 until a separate versioned compatibility policy is approved.
+Market Memory therefore has durable storage, independently maintained continuity, semantic Observation history retrieval, active additive revision identity, and production-active structured Observation provenance. FND-002 repository ownership and FND-018A are closed. FND-011A does not rewrite legacy history; new measurements/revisions carry cadence-aware quality and unchanged factual identities retain idempotent dedupe. FND-002Q likewise leaves legacy quality authoritative on each Observation while interpreting stored STALE predecessors as historically usable only at the factual-baseline layer.
 
 ## 10. Baseline audit
 
@@ -387,7 +387,8 @@ The selector checks:
 - unit;
 - frequency;
 - temporal ordering;
-- quality.
+- current freshness;
+- historical predecessor factual fitness.
 
 It exposes MISSING/INCOMPATIBLE/STALE/UNKNOWN instead of fabricating a delta.
 
@@ -396,6 +397,10 @@ The normalization layer now emits canonical current macro facts without building
 Provider-window history is never passed as a baseline candidate. Empty or incompatible repository history stays `MISSING`/`INCOMPATIBLE`; repository read failure becomes explicit `UNKNOWN` with no fabricated fallback. Same-measurement revisions are excluded, later-retrieved corrections cannot leak into an earlier point-in-time context, and same-period revision ties use retrieval time plus canonical ID for deterministic selection. Descriptive subject changes do not break semantic-series compatibility.
 
 Production verification after PR #49 merge returned `/dashboard` HTTP 200 and recorded 29 service-role `HistoricalObservationRepository` reads against durable Market Memory. FND-018A regression coverage preserves the strict predecessor rule: a correction sharing the current measurement cannot become a previous-period baseline.
+
+FND-002Q makes quality asymmetric without changing selection. Current `FRESH` is required for a VALID baseline; current `STALE` yields STALE; current `UNKNOWN`/`PARTIAL` yields UNKNOWN. A selected predecessor may be `FRESH` or `STALE`, because historical age does not invalidate a factual comparison. Predecessor `UNKNOWN`/`PARTIAL` remains fail-safe UNKNOWN. Additive `currentObservationQuality`, `baselineObservationQuality`, and `qualityPolicy = current-freshness-historical-fitness-v1` fields preserve auditability when a VALID baseline references a stored STALE predecessor.
+
+A production read-only audit found 33 FRED series with a strict point-in-time predecessor: 17 predecessors stored FRESH, 16 stored STALE, and none UNKNOWN/PARTIAL. All 16 STALE predecessors become eligible historical facts under FND-002Q, but only one audited series (`ICSA`) currently combines a FRESH current observation with a STALE predecessor and would therefore become VALID immediately. The other 15 still have STALE current observations and remain STALE; usability of the predecessor does not override current freshness. Representative immutable STALE predecessors include CPI July, GDP Q1, lagged monthly families, and continued claims. No production row was mutated.
 
 ### Other baseline classes
 
@@ -512,6 +517,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 |---|---|---|
 | FND-001 | **REMEDIATED** | Semantic historical Observation query contract and durable Supabase adapter implement logical-series identity, optional source provenance, effective-time/as-of bounds, deterministic revision ordering, and bounded results. Production history depth was verified read-only for 29 FRED macro series. |
 | FND-002 | **FULL PASS / CLOSED / PRODUCTION E2E VERIFIED** | Active factual macro baseline candidates come only from `HistoricalObservationRepository`; production `/dashboard` completed with 29 service-role history reads, and point-in-time/no-fallback behavior remains regression-covered. |
+| FND-002Q | **IMPLEMENTATION PASS / PRODUCTION E2E PENDING OWNER MERGE** | Historical factual predecessor fitness is separated from current freshness. Stored STALE predecessors remain immutable but usable when compatibility, strict earlier measurement, and point-in-time availability hold; UNKNOWN/PARTIAL remain fail-safe. |
 | FND-003 | **REMEDIATED OPERATIONALLY** | Production Supabase `pg_cron` invokes authenticated Vercel Observation/Event ingestion endpoints and durable Market Memory contains continuing canonical writes. GitHub scheduler redesign is not reopened by FND-002. |
 | FND-004 | **HIGH / INITIAL REMEDIATION PR #36 / REGRESSION CORRECTED IN THIS CHECKPOINT** | Historical broad-ASSET mixing was removed in PR #36, but its `crypto.*` prefix excluded CoinGecko BTC/ETH asset-level metrics. The corrected selector now uses qualified CoinGecko provenance plus non-empty canonical `metricId`, with focused runtime-builder regression coverage. |
 | FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
@@ -555,7 +561,9 @@ E2. FND-010A Structured Observation provenance/availability
    ↓
 E3. FND-011A FRED/Macro cadence-aware freshness
    ↓
-E4. FND-011B market-hours freshness in a separate checkpoint
+E4. FND-002Q Historical Factual Baseline Quality Compatibility
+   ↓
+E5. FND-011B market-hours freshness in a separate checkpoint
    ↓
 F. FND-009 cache invalidation + remaining current-foundation defects
    ↓
@@ -650,7 +658,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 20 Sep 2026 | FND-002 repository-backed factual baseline | Replaced active current-provider-window baseline ownership with application-layer `HistoricalObservationRepository` queries, strict point-in-time predecessor bounds, deterministic revision selection, and explicit no-fallback outage behavior. Production `/dashboard` E2E subsequently passed with 29 service-role history reads. |
 | 20 Sep 2026 | FND-018A Observation identity/revision lineage | Added versioned SHA-256 measurement/revision identity for FRED/CoinGecko/Yahoo Observations, normalized factual values and Observation dedupe timestamps, preserved legacy history without rewrite, and retained point-in-time availability semantics. Post-merge production activation verified v1 writes, legacy coexistence, zero duplicate v1 revision groups, dashboard HTTP 200, and 29 history reads. |
 | 20 Sep 2026 | FND-010A structured Observation provenance | Added optional typed provider resource/native identity/date provenance for future FRED/CoinGecko/Yahoo Observations, strict current-write invariants, credential-free resource validation, and an explicit P365 retrieval-vs-source-release-vs-storage-time boundary. Production activation wrote 10 structured-provenance identity-v1 rows without duplicates/runtime errors; FRED may remain deduped when factual revisions are unchanged. |
-| 21 Sep 2026 | FND-011A FRED/Macro cadence-aware freshness | Replaced wall-clock, period-start age checks in FRED normalization with acquisition-time cadence policy: MONTHLY/QUARTERLY use period end plus series-qualified registry tolerance (45 days for standard monthly families; 65 days for M2/PCE/JOLTS), DAILY/WEEKLY preserve existing anchors, invalid/future contexts are not fresh, and no release timestamp is fabricated. Immutable legacy predecessor quality remains authoritative to FND-002 and is an explicit follow-up; FND-011B market-hours semantics remains open. |
+| 21 Sep 2026 | FND-011A FRED/Macro cadence-aware freshness | Replaced wall-clock, period-start age checks in FRED normalization with acquisition-time cadence policy: MONTHLY/QUARTERLY use period end plus series-qualified registry tolerance (45 days for standard monthly families; 65 days for M2/PCE/JOLTS), DAILY/WEEKLY preserve existing anchors, invalid/future contexts are not fresh, and no release timestamp is fabricated. Historical predecessor interpretation is handled separately by FND-002Q; FND-011B market-hours semantics remains open. |
+| 21 Sep 2026 | FND-002Q Historical Factual Baseline Quality Compatibility | Separated current-observation freshness from historical-predecessor fitness. Stored STALE predecessors remain immutable and traceable but may support a VALID factual comparison when current is FRESH; UNKNOWN/PARTIAL remain insufficient and point-in-time repository bounds remain unchanged. |
 
 ## Active remediation sequence
 
@@ -667,16 +676,17 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 10. FND-002 Repository-backed Factual Baseline             ← FULL PASS / CLOSED
 11. FND-018A Observation identity/revision lineage         ← FULL PASS / CLOSED / production active
 12. FND-010A Structured Observation provenance             ← production active; dashboard smoke pending owner
-13. FND-011A FRED/Macro cadence-aware freshness             ← current implementation checkpoint
-14. FND-011B market-hours freshness                         ← separate future checkpoint
-15. FND-009 Manual cache invalidation + current gaps
-16. MVP market-universe completion: Macro + Crypto + Gold, one domain/provider checkpoint at a time
-17. Expectation Baseline lifecycle
-18. Pricing Baseline / market-implied layer
-19. Market Snapshot implementation
-20. Event-window cross-asset repricing/transmission
-21. Secondary positioning / flows enrichment inside Macro + Crypto + Gold
-22. Derived State → Risk/Regime → Intelligence → Briefing only after gates pass
+13. FND-011A FRED/Macro cadence-aware freshness             ← PR #52 merged
+14. FND-002Q Historical Baseline Quality Compatibility      ← current implementation checkpoint
+15. FND-011B market-hours freshness                         ← separate future checkpoint
+16. FND-009 Manual cache invalidation + current gaps
+17. MVP market-universe completion: Macro + Crypto + Gold, one domain/provider checkpoint at a time
+18. Expectation Baseline lifecycle
+19. Pricing Baseline / market-implied layer
+20. Market Snapshot implementation
+21. Event-window cross-asset repricing/transmission
+22. Secondary positioning / flows enrichment inside Macro + Crypto + Gold
+23. Derived State → Risk/Regime → Intelligence → Briefing only after gates pass
 ```
 
 One logical remediation = one PR = one verification checkpoint. This sequence may only change when a verified dependency requires it; changes must be recorded here.

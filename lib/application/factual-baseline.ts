@@ -1,4 +1,8 @@
-import { selectFactualBaseline, type FactualBaseline } from "../domain/baseline";
+import {
+  FACTUAL_BASELINE_QUALITY_POLICY,
+  selectFactualBaseline,
+  type FactualBaseline,
+} from "../domain/baseline";
 import type { Observation } from "../domain/types";
 import { compareObservationHistory, observationSemanticSeriesKey } from "../repositories/observation-history";
 import type { HistoricalObservationRepository } from "../repositories/types";
@@ -17,6 +21,9 @@ function repositoryFailureBaseline(current: Observation): FactualBaseline {
     baselineObservedAt: null,
     sourceId: current.sourceId,
     quality: "UNKNOWN",
+    currentObservationQuality: current.quality,
+    baselineObservationQuality: null,
+    qualityPolicy: FACTUAL_BASELINE_QUALITY_POLICY,
     reason: "Historical Observation repository read failed; factual baseline is unavailable.",
   };
 }
