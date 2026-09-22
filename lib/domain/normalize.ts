@@ -94,7 +94,7 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
   const normalized = items.map((item) => {
     const domain = item.metricId.startsWith("crypto.") ? "MARKET" as const : "ASSET" as const;
     const value = String(item.value);
-    const metadata = { symbol: item.symbol, metricId: item.metricId, ...item.metadata };
+    const metadata = { symbol: item.symbol, metricId: item.metricId, freshnessCalendar: item.freshnessCalendar, ...item.metadata };
     const identity = buildObservationIdentity({
       domain,
       seriesKey: item.metricId,
