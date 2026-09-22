@@ -681,8 +681,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 9. FND-003C external cadence + production verification     ← operational via Supabase pg_cron
 10. FND-002 Repository-backed Factual Baseline             ← FULL PASS / CLOSED
 11. FND-018A Observation identity/revision lineage         ← FULL PASS / CLOSED / production active
-12. FND-010A Structured Observation provenance             ← production active; dashboard smoke pending owner
-13. FND-011A FRED/Macro cadence-aware freshness             ← PR #52 merged
+12. FND-010A Structured Observation provenance             ← production active
+13. FND-011A FRED/Macro cadence-aware freshness             ← production active
 14. FND-002Q Historical Baseline Quality Compatibility      ← FULL PASS / CLOSED / production E2E verified
 15. FND-011B market-hours freshness                         ← current implementation checkpoint
 16. FND-009 Manual cache invalidation + current gaps
