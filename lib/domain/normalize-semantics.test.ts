@@ -53,6 +53,7 @@ function main(): void {
       observedAt: "2026-09-20T00:00:00.000Z",
       retrievedAt: "2026-09-20T00:01:00.000Z",
       source: "CoinGecko",
+      freshnessCalendar: "CONTINUOUS_24_7",
       provenance: {
         version: "v1",
         providerResource: "/simple/price",
@@ -67,6 +68,7 @@ function main(): void {
       observedAt: "2026-09-20T00:00:00.000Z",
       retrievedAt: "2026-09-20T00:01:00.000Z",
       source: "Yahoo Finance",
+      freshnessCalendar: "CME_GLOBEX_GOLD",
       provenance: {
         version: "v1",
         providerResource: "/v8/finance/chart",
