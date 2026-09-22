@@ -21,6 +21,7 @@ function observationInput(metricId: string): CryptoMarketObservationInput {
     observedAt: "2026-09-20T09:00:00.000Z",
     retrievedAt: "2026-09-20T09:00:01.000Z",
     source: "CoinGecko",
+    freshnessCalendar: "CONTINUOUS_24_7",
     provenance: {
       version: "v1",
       providerResource: "/simple/price",
