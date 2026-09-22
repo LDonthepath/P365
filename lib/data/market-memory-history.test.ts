@@ -102,7 +102,9 @@ function fakePostgrest(rows: StoredRow[]): typeof fetch {
 async function main(): Promise<void> {
   const rows: StoredRow[] = [
     row(observation("fred-old", "MACRO", "CPIAUCSL", "2026-06-01T00:00:00.000Z", "2026-07-01T00:00:00.000Z")),
-    row(observation("fred-original", "MACRO", "CPIAUCSL", "2026-07-01T00:00:00.000Z", "2026-08-01T00:00:00.000Z")),
+    row(observation("fred-original", "MACRO", "CPIAUCSL", "2026-07-01T00:00:00.000Z", "2026-08-01T00:00:00.000Z", {
+      quality: "STALE",
+    })),
     row(observation("fred-correction", "MACRO", "CPIAUCSL", "2026-07-01T00:00:00.000Z", "2026-09-01T00:00:00.000Z", {
       subject: "renamed subject",
       value: "corrected",
@@ -150,6 +152,8 @@ async function main(): Promise<void> {
     ["fred-old", "fred-original", "fred-correction"], "optional provenance filter");
   assertEqual((await repository.findHistory(query({ sourceId: "fred" })))[2]?.identity?.version,
     "v1", "versioned and legacy Observation payloads remain readable together");
+  assertEqual((await repository.findHistory(query({ sourceId: "fred" })))[1]?.quality,
+    "STALE", "durable adapter returns stored predecessor quality without mutation or filtering");
   assertEqual((await repository.findHistory(query({
     observedAtOnOrAfter: "2026-07-01T00:00:00.000Z",
     observedAtOnOrBefore: "2026-07-01T00:00:00.000Z",
