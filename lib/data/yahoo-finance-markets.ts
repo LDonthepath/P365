@@ -65,6 +65,7 @@ async function fetchYahooQuote(symbol: string, acquisitionMode: ProviderAcquisit
 async function fetchYahooObservation(
   symbol: string,
   metricId: string,
+  freshnessCalendar: CryptoMarketObservationInput["freshnessCalendar"],
   metadata: Record<string, string | number | boolean | null>,
   acquisitionMode: ProviderAcquisitionMode,
 ): Promise<ProviderResult<CryptoMarketObservationInput>> {
@@ -84,6 +85,7 @@ async function fetchYahooObservation(
       providerResource: OBSERVATION_PROVIDER_RESOURCES.yahooChart,
       nativeSymbol: symbol,
     },
+    freshnessCalendar,
     metadata: {
       ...metadata,
       previousClose: result.quote.previousClose,
@@ -96,7 +98,7 @@ async function fetchYahooObservation(
 
 /** COMEX gold front-month futures (GC=F) — a real traded price, not an ETF wrapper. */
 export async function fetchGoldFuturesSpot(acquisitionMode: ProviderAcquisitionMode = "CACHED"): Promise<ProviderResult<CryptoMarketObservationInput>> {
-  return fetchYahooObservation("GC=F", "gold.futures.usd", {
+  return fetchYahooObservation("GC=F", "gold.futures.usd", "CME_GLOBEX_GOLD", {
     metric: "front_month_future",
     unit: "USD",
     endpoint: "v8/finance/chart",
@@ -105,7 +107,7 @@ export async function fetchGoldFuturesSpot(acquisitionMode: ProviderAcquisitionM
 
 /** Real Russell 2000 index value (^RUT) — not the IWM ETF tracking proxy. */
 export async function fetchRussell2000Index(acquisitionMode: ProviderAcquisitionMode = "CACHED"): Promise<ProviderResult<CryptoMarketObservationInput>> {
-  return fetchYahooObservation("^RUT", "russell2000.index.usd", {
+  return fetchYahooObservation("^RUT", "russell2000.index.usd", "RUSSELL_2000_CASH_INDEX", {
     metric: "index_value",
     unit: "Index",
     endpoint: "v8/finance/chart",
@@ -114,7 +116,7 @@ export async function fetchRussell2000Index(acquisitionMode: ProviderAcquisition
 
 /** Real ICE U.S. Dollar Index (DX-Y.NYB) — distinct from FRED's DTWEXBGS broad basket. */
 export async function fetchDxyIndex(acquisitionMode: ProviderAcquisitionMode = "CACHED"): Promise<ProviderResult<CryptoMarketObservationInput>> {
-  return fetchYahooObservation("DX-Y.NYB", "dxy.index.usd", {
+  return fetchYahooObservation("DX-Y.NYB", "dxy.index.usd", "ICE_USDX", {
     metric: "index_value",
     unit: "Index",
     endpoint: "v8/finance/chart",
