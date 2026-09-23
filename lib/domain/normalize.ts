@@ -7,7 +7,8 @@ import type { DataQuality, Evidence, Event, Observation, ObservationSemantics, P
 import { buildObservationIdentity, observationEvidenceId, observationRevisionId } from "./observation-identity";
 import { assertCurrentObservationInvariants } from "./observation-provenance";
 import { requireObservationSemantics } from "./observation-semantics";
-import { qualityFromFreshness, qualityFromMacroCadence, freshnessPolicyForFamily } from "./freshness";
+import { qualityFromFreshness, qualityFromMacroCadence, qualityFromMarketHours, freshnessPolicyForFamily } from "./freshness";
+import type { MarketFreshnessCalendar } from "./freshness";
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
@@ -93,7 +94,7 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
   const normalized = items.map((item) => {
     const domain = item.metricId.startsWith("crypto.") ? "MARKET" as const : "ASSET" as const;
     const value = String(item.value);
-    const metadata = { symbol: item.symbol, metricId: item.metricId, ...item.metadata };
+    const metadata = { ...item.metadata, symbol: item.symbol, metricId: item.metricId, freshnessCalendar: item.freshnessCalendar };
     const identity = buildObservationIdentity({
       domain,
       seriesKey: item.metricId,
@@ -127,6 +128,7 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
       // Yahoo Finance's chart meta.regularMarketPrice is a live/delayed quote (not a
       // once-daily close), so gold, Russell 2000, and DXY all qualify as MARKET_REALTIME.
       freshnessFamily: "MARKET_REALTIME",
+      marketFreshnessCalendar: item.freshnessCalendar,
       semantics: requireObservationSemantics(item.metricId),
       metadata,
     });
@@ -240,12 +242,26 @@ export function observationFromCanonicalFact(input: {
   semantics?: ObservationSemantics;
   /** Explicit freshness classification is required; domain must not imply provider cadence. */
   freshnessFamily: "FRED_MACRO" | "MARKET_REALTIME" | "MARKET_DAILY";
+  marketFreshnessCalendar?: MarketFreshnessCalendar;
   metadata?: Record<string, string | number | boolean | null>;
 }): Observation {
-  const { freshnessFamily, ...canonicalInput } = input;
+  const { freshnessFamily, marketFreshnessCalendar, ...canonicalInput } = input;
+  const policy = freshnessPolicyForFamily(freshnessFamily);
+  const evaluatedAtMs = Date.parse(input.retrievedAt);
+  const quality = freshnessFamily === "MARKET_REALTIME"
+    ? marketFreshnessCalendar
+      ? qualityFromMarketHours({
+          observedAt: input.observedAt,
+          evaluatedAt: input.retrievedAt,
+          maxAgeMs: policy.maxAgeMs,
+          calendar: marketFreshnessCalendar,
+        })
+      : "UNKNOWN"
+    : qualityFromFreshness(input.observedAt, policy, evaluatedAtMs);
+
   return {
     ...canonicalInput,
-    quality: qualityFromFreshness(input.observedAt, freshnessPolicyForFamily(freshnessFamily)),
+    quality,
   };
 }
 

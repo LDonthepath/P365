@@ -45,6 +45,7 @@ function marketInput(
     observedAt: "2026-09-20T09:00:00.000Z",
     retrievedAt,
     source: metricId === "gold.futures.usd" ? "Yahoo Finance" : "CoinGecko",
+    freshnessCalendar: metricId === "gold.futures.usd" ? "CME_GLOBEX_GOLD" : "CONTINUOUS_24_7",
     provenance: metricId === "gold.futures.usd"
       ? { version: "v1", providerResource: "/v8/finance/chart", nativeSymbol: symbol }
       : { version: "v1", providerResource: "/simple/price", nativeInstrumentId: "bitcoin" },

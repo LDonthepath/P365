@@ -1,10 +1,10 @@
 # P365 Foundation Master — SSOT v0.1
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
-**Audited ref:** FND-002Q implementation based on `main@8530c43a147357fb15fa57a31ed17f5d117b09fc`
+**Audited ref:** FND-011B implementation based on `main@124dd465aff2201d5c565803b5eac29d13c287a0`
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 22 Sep 2026 from `main@8530c43a147357fb15fa57a31ed17f5d117b09fc`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002 repository ownership and FND-018A remain FULL PASS/CLOSED. FND-010A remains production-active. FND-011A is merged, deployed, and production-active: scheduled FRED ingestion on the production deployment returns HTTP 200 and new v1 FRED rows continue to append without forced backfill. FND-002Q separates current freshness from historical predecessor fitness without mutating stored Observation quality; FND-011B remains separate.
+**Verification pass:** Re-verified 24 Sep 2026 from `main@124dd465aff2201d5c565803b5eac29d13c287a0`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002, FND-002Q, and FND-018A are FULL PASS/CLOSED; production dashboard E2E after PR #53 returned HTTP 200 and durable history reads increased by the expected 29-per-execution pattern without rewriting stored predecessor quality. FND-010A and FND-011A remain production-active. FND-011B implements acquisition-time freshness windows for Yahoo GC/DXY/Russell and continuous 24/7 freshness for CoinGecko; its final audit distinguishes exchange-session evidence from the bounded Yahoo ^RUT post-close provider window, and production activation remains pending owner merge.
 
 ## Documentation authority
 
@@ -41,7 +41,7 @@ The current system can independently ingest and normalize selected factual Obser
 | Events / event results | PARTIAL | Biquote provides actual/forecast/previous/revision. Only `timeMode=exact` currently qualifies provider `time` for occurrence/release timestamps; broader production qualification remains trial-only. |
 | Evidence | PASS / PARTIAL | Publication/retrieval separation exists; source-native identity/endpoint is not uniformly first-class. |
 | Temporal semantics | PASS / PARTIAL | Observation availability is canonical `retrievedAt`, separate from storage `captured_at`; exact source release remains missing when providers do not supply it. Event/provider release qualification remains incomplete. |
-| Freshness/quality | PASS / PARTIAL | FND-011A makes registry-backed FRED quality cadence-aware and deterministic at acquisition time. Exact release calendars and market-hours semantics remain unmodeled; the latter is FND-011B. |
+| Freshness/quality | PASS / PARTIAL | FND-011A makes registry-backed FRED quality cadence-aware and deterministic at acquisition time. FND-011B adds qualified regular-session/provider-window semantics for CoinGecko/Yahoo; exact exchange holiday/early-close calendars remain unmodeled. |
 | Context | PASS for grouping | Neutral grouping is evidence-backed and does not infer direction. |
 | Market Memory persistence | PASS for current canonical boundary | Append-only durable storage is active and read-only production verification confirms retrievable macro Observation history. |
 | Historical retrieval | PASS | FND-001 semantics are implemented against persisted canonical Observation payloads; read-only production verification found 29 contract-eligible FRED macro series with predecessor depth. |
@@ -73,10 +73,10 @@ Economic event results       TRIAL / PARTIAL
 Context                      IMPLEMENTED / FND-004 REGRESSION CORRECTED
 Durable Market Memory        FOUNDATION IMPLEMENTED
 Historical retrieval         DURABLE ADAPTER + PRODUCTION HISTORY VERIFIED
-Factual baseline             REPOSITORY-BACKED FULL PASS / FND-002Q QUALITY HARDENING PENDING MERGE
+Factual baseline             REPOSITORY-BACKED FULL PASS / FND-002Q PRODUCTION E2E VERIFIED
 Observation identity        FND-018A FULL PASS / CLOSED / PRODUCTION ACTIVE
-Observation provenance      FND-010A PRODUCTION ACTIVE / DASHBOARD SMOKE PENDING OWNER
-Macro freshness             FND-011A MERGED / PRODUCTION DEPLOYMENT READY
+Observation provenance      FND-010A PRODUCTION ACTIVE
+Macro freshness             FND-011A PRODUCTION ACTIVE
 Independent ingestion        OPERATIONAL (FND-003A/B/C)
 Expectation baseline         MISSING lifecycle
 Pricing baseline             MISSING
@@ -309,7 +309,7 @@ Remaining gaps:
 - exact source-release availability remains unknown where the provider does not supply it;
 - Event/Evidence structured provenance remains outside FND-010A;
 - FND-011A macro freshness is cadence-aware but is not an exact provider release-calendar model;
-- market freshness does not explicitly encode market-open/closed semantics.
+- FND-011B models regular weekly Yahoo/CoinGecko market sessions but intentionally does not claim exact exchange holiday or early-close calendars.
 
 ## 7. Quality, health and cache audit
 
@@ -324,6 +324,11 @@ The policy is grounded in official cadence evidence rather than hard-coded relea
 A 21 Sep 2026 production read-only re-audit of the latest 33 contract-eligible FRED series found stored quality of DAILY 14 FRESH / 2 STALE, WEEKLY 4 FRESH / 1 STALE, MONTHLY 0 FRESH / 11 STALE, and QUARTERLY 0 FRESH / 1 STALE. Applying the corrected registry policy to the same `observedAt`/`retrievedAt` contexts projects all 11 monthly series and Q2 `GDPC1` as FRESH; `DCOILWTICO`, `DTWEXBGS`, and `CCSA` remain genuinely stale under the unchanged conservative DAILY/WEEKLY policy. Production rows are not rewritten. After owner merge/deployment, runtime normalization uses the new policy; only new measurements or factual revisions append a new quality-bearing row, while unchanged revision identities continue to dedupe as required by FND-018A.
 
 FND-002Q locks the durable-history interpretation boundary. Existing predecessor rows retain their immutable stored `quality`, and `HistoricalObservationRepository` returns them unchanged. The factual-baseline layer now distinguishes current-observation freshness from historical-predecessor fitness: a semantically compatible, strictly earlier, point-in-time-available predecessor with stored `STALE` quality remains usable because STALE is a cadence/recency classification, not evidence that the historical fact is invalid. `UNKNOWN` and `PARTIAL` predecessors remain insufficient. No read-time cadence recomputation, quality rewrite, backfill, or repository-policy change is introduced.
+
+FND-011B separates continuous markets from sessioned/provider-window markets and evaluates both against canonical `retrievedAt` rather than the normalization wall clock. CoinGecko is explicitly `CONTINUOUS_24_7`, so its 15-minute realtime threshold continues to age on weekends. Yahoo instruments are mapped to qualified regular windows: COMEX Gold (`GC=F`) uses the CME Globex Sunday-Friday 18:00-17:00 ET schedule with the daily 17:00-18:00 maintenance break; ICE USDX (`DX-Y.NYB`) uses the ICE Sunday 18:00 ET open plus weekday 20:00-17:00 ET electronic session. Yahoo `^RUT` is the Russell 2000 cash-index observation: underlying US exchange closes are 16:00 ET, while production Yahoo observations can carry a final provider timestamp around 16:30 ET, so P365 uses a bounded 09:30-16:31 ET provider freshness window without representing that extension as an official LSEG market-close or publication schedule. The policy is DST-aware through `America/New_York` and stops time outside the qualified window from consuming the 15-minute freshness budget. It does not fabricate exchange holiday status or early-close timestamps.
+
+Production history demonstrates the defect this corrects: on Sunday 20 Sep at 13:14 UTC, Yahoo still returned Friday 18 Sep closes for `GC=F`, `^RUT`, and `DX-Y.NYB`; the old wall-clock policy stored all three as STALE although their qualified freshness windows were closed. After the Sunday reopen, GC and DXY began updating again around 22:01 UTC and became FRESH, while Russell remained on its Friday cash close. FND-011B preserves that distinction deterministically. Official schedule qualification is used for CME Gold and ICE USDX. Russell uses the underlying US cash-session boundary plus the observed Yahoo post-close timestamp behavior as an explicitly provider-qualified window; it is not presented as an official LSEG publication schedule. Exact holiday/early-close calendars remain outside this checkpoint.
+
 
 ### PARTIAL
 
@@ -517,7 +522,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 |---|---|---|
 | FND-001 | **REMEDIATED** | Semantic historical Observation query contract and durable Supabase adapter implement logical-series identity, optional source provenance, effective-time/as-of bounds, deterministic revision ordering, and bounded results. Production history depth was verified read-only for 29 FRED macro series. |
 | FND-002 | **FULL PASS / CLOSED / PRODUCTION E2E VERIFIED** | Active factual macro baseline candidates come only from `HistoricalObservationRepository`; production `/dashboard` completed with 29 service-role history reads, and point-in-time/no-fallback behavior remains regression-covered. |
-| FND-002Q | **IMPLEMENTATION PASS / PRODUCTION E2E PENDING OWNER MERGE** | Historical factual predecessor fitness is separated from current freshness. Stored STALE predecessors remain immutable but usable when compatibility, strict earlier measurement, and point-in-time availability hold; UNKNOWN/PARTIAL remain fail-safe. |
+| FND-002Q | **FULL PASS / CLOSED / PRODUCTION E2E VERIFIED** | Historical factual predecessor fitness is separated from current freshness. Stored STALE predecessors remain immutable but usable when compatibility, strict earlier measurement, and point-in-time availability hold; UNKNOWN/PARTIAL remain fail-safe. |
 | FND-003 | **REMEDIATED OPERATIONALLY** | Production Supabase `pg_cron` invokes authenticated Vercel Observation/Event ingestion endpoints and durable Market Memory contains continuing canonical writes. GitHub scheduler redesign is not reopened by FND-002. |
 | FND-004 | **HIGH / INITIAL REMEDIATION PR #36 / REGRESSION CORRECTED IN THIS CHECKPOINT** | Historical broad-ASSET mixing was removed in PR #36, but its `crypto.*` prefix excluded CoinGecko BTC/ETH asset-level metrics. The corrected selector now uses qualified CoinGecko provenance plus non-empty canonical `metricId`, with focused runtime-builder regression coverage. |
 | FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
@@ -526,7 +531,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-008 | MEDIUM | FND-003B now gates Biquote `time` → `releasedAt`/`occurredAt` promotion on `timeMode=exact`; broader provider release-time semantics and production qualification remain open. |
 | FND-009 | **HIGH** | Confirmed manual-refresh defect: `p365-dashboard` invalidation does not clear cadence-tagged FRED/CoinGecko/CoinDesk/Yahoo fetches. |
 | FND-010 | **OBSERVATION PORTION REMEDIATED BY FND-010A / REMAINDER OPEN** | Future qualified FRED/CoinGecko/Yahoo Observations carry typed source-native resource/identity/date provenance while retaining legacy metadata. Exact provider release time is not fabricated. Event/Evidence provenance and broader provider qualification remain separate. |
-| FND-011 | **FND-011A MACRO PORTION IMPLEMENTATION PASS / FND-011B OPEN** | Registry-backed FRED MONTHLY/QUARTERLY quality uses period-end plus per-series tolerance and is evaluated deterministically at canonical `retrievedAt`; DAILY/WEEKLY anchors remain conservative. This is not an exact release calendar. Yahoo/CoinGecko market-hours freshness remains open as FND-011B. |
+| FND-011 | **FND-011A PRODUCTION ACTIVE / FND-011B IMPLEMENTATION PASS — PRODUCTION ACTIVATION PENDING OWNER MERGE** | FRED cadence freshness remains acquisition-time deterministic. FND-011B makes CoinGecko explicitly continuous 24/7, applies qualified exchange sessions to Yahoo GC/DXY, and uses a bounded provider freshness window for Yahoo ^RUT without claiming an official LSEG 16:31 close/publication schedule. Exact holiday/early-close calendars remain an explicit future qualification boundary rather than fabricated runtime state. |
 | FND-012 | MEDIUM | Non-crypto Yahoo adapter reuses `CryptoMarketObservationInput`. |
 | FND-013 | MEDIUM | MOVE remains absent from target cross-asset universe. |
 | FND-014 | MEDIUM | Expectation data exists at trial event-result level but has no baseline lifecycle. |
@@ -660,6 +665,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 20 Sep 2026 | FND-010A structured Observation provenance | Added optional typed provider resource/native identity/date provenance for future FRED/CoinGecko/Yahoo Observations, strict current-write invariants, credential-free resource validation, and an explicit P365 retrieval-vs-source-release-vs-storage-time boundary. Production activation wrote 10 structured-provenance identity-v1 rows without duplicates/runtime errors; FRED may remain deduped when factual revisions are unchanged. |
 | 21 Sep 2026 | FND-011A FRED/Macro cadence-aware freshness | Replaced wall-clock, period-start age checks in FRED normalization with acquisition-time cadence policy: MONTHLY/QUARTERLY use period end plus series-qualified registry tolerance (45 days for standard monthly families; 65 days for M2/PCE/JOLTS), DAILY/WEEKLY preserve existing anchors, invalid/future contexts are not fresh, and no release timestamp is fabricated. Historical predecessor interpretation is handled separately by FND-002Q; FND-011B market-hours semantics remains open. |
 | 21 Sep 2026 | FND-002Q Historical Factual Baseline Quality Compatibility | Separated current-observation freshness from historical-predecessor fitness. Stored STALE predecessors remain immutable and traceable but may support a VALID factual comparison when current is FRESH; UNKNOWN/PARTIAL remain insufficient and point-in-time repository bounds remain unchanged. |
+| 23 Sep 2026 | FND-011B market-hours freshness | Added acquisition-time session/provider-window-aware freshness for Yahoo GC/DXY/Russell and explicit continuous 24/7 freshness for CoinGecko. Closed-window wall-clock time no longer makes the latest legitimate Yahoo quote stale; exact holiday/early-close calendars remain intentionally unclaimed. |
+| 24 Sep 2026 | FND-011B final audit correction | Removed an unsupported implication that Russell's 16:31 boundary is an official LSEG publication schedule, aligned elapsed-time chunks to exact minute boundaries, failed safe when a sessioned observedAt falls outside its qualified window, protected persisted freshness-calendar audit metadata from loose metadata override, and synchronized FND-002Q/FND-010A/FND-011A SSOT status with merged production reality. |
 
 ## Active remediation sequence
 
@@ -675,10 +682,10 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 9. FND-003C external cadence + production verification     ← operational via Supabase pg_cron
 10. FND-002 Repository-backed Factual Baseline             ← FULL PASS / CLOSED
 11. FND-018A Observation identity/revision lineage         ← FULL PASS / CLOSED / production active
-12. FND-010A Structured Observation provenance             ← production active; dashboard smoke pending owner
-13. FND-011A FRED/Macro cadence-aware freshness             ← PR #52 merged
-14. FND-002Q Historical Baseline Quality Compatibility      ← current implementation checkpoint
-15. FND-011B market-hours freshness                         ← separate future checkpoint
+12. FND-010A Structured Observation provenance             ← production active
+13. FND-011A FRED/Macro cadence-aware freshness             ← production active
+14. FND-002Q Historical Baseline Quality Compatibility      ← FULL PASS / CLOSED / production E2E verified
+15. FND-011B market-hours freshness                         ← current implementation checkpoint
 16. FND-009 Manual cache invalidation + current gaps
 17. MVP market-universe completion: Macro + Crypto + Gold, one domain/provider checkpoint at a time
 18. Expectation Baseline lifecycle

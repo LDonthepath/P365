@@ -46,6 +46,13 @@ function marketInput(
       ? "CoinGecko"
       : "Yahoo Finance",
     provenance,
+    freshnessCalendar: metricId === "gold.futures.usd"
+      ? "CME_GLOBEX_GOLD"
+      : metricId === "russell2000.index.usd"
+        ? "RUSSELL_2000_CASH_INDEX"
+        : metricId === "dxy.index.usd"
+          ? "ICE_USDX"
+          : "CONTINUOUS_24_7",
     metadata: {
       unit: metricId.endsWith("pct") ? "PERCENT" : "USD",
       endpoint: provenance.providerResource === "/v8/finance/chart"

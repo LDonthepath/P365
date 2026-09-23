@@ -53,12 +53,18 @@ function main(): void {
       observedAt: "2026-09-20T00:00:00.000Z",
       retrievedAt: "2026-09-20T00:01:00.000Z",
       source: "CoinGecko",
+      freshnessCalendar: "CONTINUOUS_24_7",
       provenance: {
         version: "v1",
         providerResource: "/simple/price",
         nativeInstrumentId: "bitcoin",
       },
-      metadata: { unit: "USD" },
+      metadata: {
+        unit: "USD",
+        symbol: "WRONG",
+        metricId: "wrong.metric",
+        freshnessCalendar: "ICE_USDX",
+      },
     },
     {
       metricId: "gold.futures.usd",
@@ -67,6 +73,7 @@ function main(): void {
       observedAt: "2026-09-20T00:00:00.000Z",
       retrievedAt: "2026-09-20T00:01:00.000Z",
       source: "Yahoo Finance",
+      freshnessCalendar: "CME_GLOBEX_GOLD",
       provenance: {
         version: "v1",
         providerResource: "/v8/finance/chart",
@@ -91,6 +98,13 @@ function main(): void {
     "BTC normalization attaches approved semantics",
   );
   assertEqual(btc?.domain, "ASSET", "legacy BTC domain remains unchanged");
+  assertEqual(btc?.metadata?.symbol, "BTC", "canonical symbol cannot be overridden by loose metadata");
+  assertEqual(btc?.metadata?.metricId, "btc.spot.usd", "canonical metricId cannot be overridden by loose metadata");
+  assertEqual(
+    btc?.metadata?.freshnessCalendar,
+    "CONTINUOUS_24_7",
+    "persisted freshnessCalendar must match the calendar used for quality evaluation",
+  );
 
   assertEqual(
     gold?.semantics,
