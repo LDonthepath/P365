@@ -151,11 +151,13 @@ function marketFreshnessElapsedMs(
 
 /**
  * Assesses realtime market freshness at the acquisition time. Continuous
- * crypto ages in wall-clock time. Sessioned Yahoo instruments age only while
- * their qualified regular electronic/cash market is scheduled open.
+ * crypto ages in wall-clock time. Yahoo instruments age only while their
+ * qualified regular exchange session or bounded provider freshness window is
+ * active.
  *
- * This models regular weekly sessions, not exchange holiday/early-close
- * exceptions. It never fabricates a provider quote timestamp or market state.
+ * This models regular weekly sessions/provider windows, not exchange
+ * holiday/early-close exceptions. It never fabricates a provider quote
+ * timestamp or market state.
  */
 export function qualityFromMarketHours(input: MarketFreshnessInput): DataQuality {
   const observedAtMs = Date.parse(input.observedAt);
