@@ -83,7 +83,7 @@ function newYorkClock(timestampMs: number): { weekday: NewYorkWeekday; secondOfD
   return { weekday, secondOfDay: hour * 3600 + minute * 60 + second };
 }
 
-function marketCalendarOpenAt(timestampMs: number, calendar: MarketFreshnessCalendar): boolean {
+function marketFreshnessWindowOpenAt(timestampMs: number, calendar: MarketFreshnessCalendar): boolean {
   if (calendar === "CONTINUOUS_24_7") return true;
 
   const clock = newYorkClock(timestampMs);
@@ -112,13 +112,16 @@ function marketCalendarOpenAt(timestampMs: number, calendar: MarketFreshnessCale
   }
 
   // Yahoo ^RUT is the cash Russell 2000 index, not the nearly-24h RUT
-  // options product. The official close can be published after 16:15 ET;
-  // P365 allows through 16:31 ET to cover the cash-index close publication.
+  // options product. US constituent exchanges publish official closes at
+  // 16:00 ET, while production Yahoo ^RUT observations can carry a final
+  // provider timestamp around 16:30 ET. P365 therefore qualifies a bounded
+  // 09:30-16:31 ET provider freshness window. This is not represented as an
+  // official LSEG market-close or index-publication schedule.
   if (weekday === "Sat" || weekday === "Sun") return false;
   return atOrAfter(9, 30) && before(16, 31);
 }
 
-function marketOpenElapsedMs(
+function marketFreshnessElapsedMs(
   observedAtMs: number,
   evaluatedAtMs: number,
   calendar: MarketFreshnessCalendar,
@@ -127,22 +130,23 @@ function marketOpenElapsedMs(
   if (calendar === "CONTINUOUS_24_7") return evaluatedAtMs - observedAtMs;
 
   let cursor = observedAtMs;
-  let openElapsedMs = 0;
+  let windowElapsedMs = 0;
 
-  // Freshness thresholds are short (15 minutes today). Walk wall-clock
-  // minutes but accumulate only scheduled-open time; stop as soon as the
-  // threshold is exceeded. This keeps weekend/overnight closures from aging
-  // a valid last quote while still making a stuck quote stale after reopen.
-  while (cursor < evaluatedAtMs && openElapsedMs <= stopAfterMs) {
-    const next = Math.min(cursor + MINUTE, evaluatedAtMs);
+  // Freshness thresholds are short (15 minutes today). Walk to absolute
+  // minute boundaries and accumulate only qualified freshness-window time.
+  // Aligning chunks to minute boundaries prevents a chunk from straddling a
+  // session/open-close boundary and over/under-counting sub-minute time.
+  while (cursor < evaluatedAtMs && windowElapsedMs <= stopAfterMs) {
+    const nextMinuteBoundary = (Math.floor(cursor / MINUTE) + 1) * MINUTE;
+    const next = Math.min(nextMinuteBoundary, evaluatedAtMs);
     const midpoint = cursor + (next - cursor) / 2;
-    if (marketCalendarOpenAt(midpoint, calendar)) {
-      openElapsedMs += next - cursor;
+    if (marketFreshnessWindowOpenAt(midpoint, calendar)) {
+      windowElapsedMs += next - cursor;
     }
     cursor = next;
   }
 
-  return openElapsedMs;
+  return windowElapsedMs;
 }
 
 /**
@@ -166,7 +170,14 @@ export function qualityFromMarketHours(input: MarketFreshnessInput): DataQuality
     return "UNKNOWN";
   }
 
-  return marketOpenElapsedMs(observedAtMs, evaluatedAtMs, input.calendar, input.maxAgeMs) <= input.maxAgeMs
+  if (
+    input.calendar !== "CONTINUOUS_24_7"
+    && !marketFreshnessWindowOpenAt(observedAtMs, input.calendar)
+  ) {
+    return "UNKNOWN";
+  }
+
+  return marketFreshnessElapsedMs(observedAtMs, evaluatedAtMs, input.calendar, input.maxAgeMs) <= input.maxAgeMs
     ? "FRESH"
     : "STALE";
 }

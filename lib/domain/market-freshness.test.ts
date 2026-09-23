@@ -61,9 +61,19 @@ function main(): void {
     "Friday Russell cash close remains current through the weekend",
   );
   assert.equal(
-    quality("2026-09-18T20:30:13.000Z", "2026-09-21T13:46:00.000Z", "RUSSELL_2000_CASH_INDEX"),
+    quality("2026-09-18T20:30:13.000Z", "2026-09-21T13:44:13.000Z", "RUSSELL_2000_CASH_INDEX"),
+    "FRESH",
+    "Russell remains fresh at exactly 15 minutes of qualified freshness-window time",
+  );
+  assert.equal(
+    quality("2026-09-18T20:30:13.000Z", "2026-09-21T13:44:14.000Z", "RUSSELL_2000_CASH_INDEX"),
     "STALE",
-    "unchanged Russell cash close becomes stale after Monday cash trading resumes",
+    "Russell becomes stale one second beyond the qualified freshness-window threshold",
+  );
+  assert.equal(
+    quality("2026-09-18T20:31:00.000Z", "2026-09-20T23:03:39.000Z", "RUSSELL_2000_CASH_INDEX"),
+    "UNKNOWN",
+    "sessioned observations outside their qualified freshness window fail safe",
   );
 
   assert.equal(

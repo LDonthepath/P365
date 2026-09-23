@@ -59,7 +59,12 @@ function main(): void {
         providerResource: "/simple/price",
         nativeInstrumentId: "bitcoin",
       },
-      metadata: { unit: "USD" },
+      metadata: {
+        unit: "USD",
+        symbol: "WRONG",
+        metricId: "wrong.metric",
+        freshnessCalendar: "ICE_USDX",
+      },
     },
     {
       metricId: "gold.futures.usd",
@@ -93,6 +98,13 @@ function main(): void {
     "BTC normalization attaches approved semantics",
   );
   assertEqual(btc?.domain, "ASSET", "legacy BTC domain remains unchanged");
+  assertEqual(btc?.metadata?.symbol, "BTC", "canonical symbol cannot be overridden by loose metadata");
+  assertEqual(btc?.metadata?.metricId, "btc.spot.usd", "canonical metricId cannot be overridden by loose metadata");
+  assertEqual(
+    btc?.metadata?.freshnessCalendar,
+    "CONTINUOUS_24_7",
+    "persisted freshnessCalendar must match the calendar used for quality evaluation",
+  );
 
   assertEqual(
     gold?.semantics,
