@@ -1,4 +1,4 @@
-import { cacheTagForRevalidate } from "./cache-policy";
+import { P365_DASHBOARD_CACHE_TAGS, cacheTagForRevalidate } from "./cache-policy";
 
 function assertEqual(actual: unknown, expected: unknown, label: string): void {
   if (actual !== expected) {
@@ -20,3 +20,9 @@ assertEqual(cacheTagForRevalidate(21600), "p365-fast", "21600s");
 assertEqual(cacheTagForRevalidate(43200), "p365-medium", "43200s");
 assertEqual(cacheTagForRevalidate(86400), "p365-slow", "86400s");
 assertThrows("28800s", () => cacheTagForRevalidate(28800));
+
+assertEqual(
+  P365_DASHBOARD_CACHE_TAGS.join(","),
+  "p365-dashboard,p365-fast,p365-medium,p365-slow",
+  "manual refresh invalidates legacy and every cadence cache group",
+);

@@ -3,15 +3,18 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidateTag } from "next/cache";
+import { P365_DASHBOARD_CACHE_TAGS } from "@/lib/data/cache-policy";
 
 export async function logout() {
   (await cookies()).delete("market_briefing_session");
   redirect("/login");
 }
 
-// Memaksa semua fetch provider untuk mengambil data baru pada render berikutnya,
-// bukan menunggu revalidate cache alami. Dipanggil dari tombol "Muat ulang manual".
+// Memaksa seluruh cache provider dashboard di-invalidasi sebelum render berikutnya,
+// termasuk tag legacy dan semua cadence group yang dipakai provider saat ini.
 export async function refreshDashboardData() {
-  revalidateTag("p365-dashboard");
+  for (const tag of P365_DASHBOARD_CACHE_TAGS) {
+    revalidateTag(tag);
+  }
   return { refreshedAt: new Date().toISOString() };
 }

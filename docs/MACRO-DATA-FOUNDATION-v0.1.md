@@ -59,7 +59,7 @@ Macro quality uses expected cadence rather than the crypto market 15-minute rule
 | Monthly | 45 days | 12 hours |
 | Quarterly | 135 days | 24 hours |
 
-`UNKNOWN` remains available for genuinely indeterminate temporal data, but an invalid or explicitly future macro observation date is rejected and never becomes canonical. FRED is marked `STALE` if every successfully normalized macro observation is stale. Cache entries use the existing `p365-dashboard` tag and can be invalidated by the existing dashboard refresh action.
+`UNKNOWN` remains available for genuinely indeterminate temporal data, but an invalid or explicitly future macro observation date is rejected and never becomes canonical. FRED is marked `STALE` if every successfully normalized macro observation is stale. Cache entries use cadence-group tags from `lib/data/cache-policy.ts`. The dashboard manual-refresh action invalidates the complete authoritative dashboard tag set, including the retained legacy `p365-dashboard` tag and the `p365-fast` / `p365-medium` / `p365-slow` groups.
 
 ## [IMPLEMENTED] events
 

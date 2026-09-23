@@ -1,10 +1,10 @@
 # P365 Foundation Master — SSOT v0.1
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
-**Audited ref:** FND-011B implementation based on `main@124dd465aff2201d5c565803b5eac29d13c287a0`
+**Audited ref:** FND-009 implementation based on `main@9934c1761657817109a2636fd11e621252b7789f`
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 24 Sep 2026 from `main@124dd465aff2201d5c565803b5eac29d13c287a0`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002, FND-002Q, and FND-018A are FULL PASS/CLOSED; production dashboard E2E after PR #53 returned HTTP 200 and durable history reads increased by the expected 29-per-execution pattern without rewriting stored predecessor quality. FND-010A and FND-011A remain production-active. FND-011B implements acquisition-time freshness windows for Yahoo GC/DXY/Russell and continuous 24/7 freshness for CoinGecko; its final audit distinguishes exchange-session evidence from the bounded Yahoo ^RUT post-close provider window, and production activation remains pending owner merge.
+**Verification pass:** Re-verified 24 Sep 2026 from `main@9934c1761657817109a2636fd11e621252b7789f`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002, FND-002Q, and FND-018A are FULL PASS/CLOSED; FND-010A and FND-011A remain production-active. FND-011B is merged and deployed; scheduled market-fast ingestion returned HTTP 200 on the new production deployment and new rows persisted the qualified freshness calendar, while the final Yahoo open-session FRESH activation proof remains pending. FND-009 is the active implementation checkpoint.
 
 ## Documentation authority
 
@@ -334,7 +334,7 @@ Production history demonstrates the defect this corrects: on Sunday 20 Sep at 13
 
 ProviderHealth maps SUCCESS to HEALTHY regardless of canonical item quality, with a special FRED override when all normalized macro facts are stale. That means health and data quality are related but not uniformly composed across providers.
 
-Manual refresh currently invalidates only `p365-dashboard`. Repository-wide verification confirms FRED, CoinGecko, CoinDesk and Yahoo use cadence-group tags (`p365-fast` / `p365-medium` / `p365-slow`) instead. Forex Factory, Biquote and FOMC still use `p365-dashboard`, while Alpha Vantage uses it directly. Therefore the button labelled **Muat ulang manual** does **not** invalidate the entire provider set and can return cached data for cadence-migrated providers. This is a **confirmed functional cache invalidation defect**, not merely a topology risk.
+FND-009 corrects the confirmed manual-refresh defect. Dashboard-cached providers now share one authoritative invalidation topology in `lib/data/cache-policy.ts`: the retained legacy `p365-dashboard` tag plus cadence groups `p365-fast`, `p365-medium`, and `p365-slow`. The **Muat ulang manual** Server Action iterates that complete set rather than invalidating only the legacy tag. This preserves provider-specific cache cadence while making explicit user refresh semantics truthful again. Production verification remains gated on owner merge/deployment; independent ingestion continues to use `cache: "no-store"` and is unaffected.
 
 ## 8. Context audit
 
@@ -529,9 +529,9 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
 | FND-007 | **HIGH** | No Pricing baseline/market-implied layer; pricing surprise/repricing conclusions are not allowed. |
 | FND-008 | MEDIUM | FND-003B now gates Biquote `time` → `releasedAt`/`occurredAt` promotion on `timeMode=exact`; broader provider release-time semantics and production qualification remain open. |
-| FND-009 | **HIGH** | Confirmed manual-refresh defect: `p365-dashboard` invalidation does not clear cadence-tagged FRED/CoinGecko/CoinDesk/Yahoo fetches. |
+| FND-009 | **IMPLEMENTATION PASS — PRODUCTION VERIFICATION PENDING OWNER MERGE** | Manual refresh now invalidates the authoritative complete dashboard cache-tag set: retained legacy `p365-dashboard` plus `p365-fast`, `p365-medium`, and `p365-slow`. The tag topology is owned centrally by `lib/data/cache-policy.ts`, preventing the Server Action from drifting from cadence-aware provider caching. |
 | FND-010 | **OBSERVATION PORTION REMEDIATED BY FND-010A / REMAINDER OPEN** | Future qualified FRED/CoinGecko/Yahoo Observations carry typed source-native resource/identity/date provenance while retaining legacy metadata. Exact provider release time is not fabricated. Event/Evidence provenance and broader provider qualification remain separate. |
-| FND-011 | **FND-011A PRODUCTION ACTIVE / FND-011B IMPLEMENTATION PASS — PRODUCTION ACTIVATION PENDING OWNER MERGE** | FRED cadence freshness remains acquisition-time deterministic. FND-011B makes CoinGecko explicitly continuous 24/7, applies qualified exchange sessions to Yahoo GC/DXY, and uses a bounded provider freshness window for Yahoo ^RUT without claiming an official LSEG 16:31 close/publication schedule. Exact holiday/early-close calendars remain an explicit future qualification boundary rather than fabricated runtime state. |
+| FND-011 | **FND-011A PRODUCTION ACTIVE / FND-011B MERGED — PRODUCTION ACTIVATION PARTIAL PASS** | FRED cadence freshness remains acquisition-time deterministic. FND-011B is deployed in production; scheduled market-fast ingestion is HTTP 200 and new CoinGecko/Yahoo rows persist the qualified freshness calendar. Final Yahoo open-session FRESH evidence remains pending before FND-011B is marked CLOSED / PRODUCTION ACTIVE. Exact holiday/early-close calendars remain an explicit future qualification boundary rather than fabricated runtime state. |
 | FND-012 | MEDIUM | Non-crypto Yahoo adapter reuses `CryptoMarketObservationInput`. |
 | FND-013 | MEDIUM | MOVE remains absent from target cross-asset universe. |
 | FND-014 | MEDIUM | Expectation data exists at trial event-result level but has no baseline lifecycle. |
@@ -667,6 +667,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 21 Sep 2026 | FND-002Q Historical Factual Baseline Quality Compatibility | Separated current-observation freshness from historical-predecessor fitness. Stored STALE predecessors remain immutable and traceable but may support a VALID factual comparison when current is FRESH; UNKNOWN/PARTIAL remain insufficient and point-in-time repository bounds remain unchanged. |
 | 23 Sep 2026 | FND-011B market-hours freshness | Added acquisition-time session/provider-window-aware freshness for Yahoo GC/DXY/Russell and explicit continuous 24/7 freshness for CoinGecko. Closed-window wall-clock time no longer makes the latest legitimate Yahoo quote stale; exact holiday/early-close calendars remain intentionally unclaimed. |
 | 24 Sep 2026 | FND-011B final audit correction | Removed an unsupported implication that Russell's 16:31 boundary is an official LSEG publication schedule, aligned elapsed-time chunks to exact minute boundaries, failed safe when a sessioned observedAt falls outside its qualified window, protected persisted freshness-calendar audit metadata from loose metadata override, and synchronized FND-002Q/FND-010A/FND-011A SSOT status with merged production reality. |
+| 24 Sep 2026 | FND-009 manual cache invalidation | Centralized the complete dashboard invalidation tag set and made the manual-refresh Server Action invalidate legacy plus fast/medium/slow cadence groups. Added regression coverage so cadence-aware provider caches cannot silently fall outside manual refresh semantics. Production verification remains pending owner merge/deployment. |
 
 ## Active remediation sequence
 
@@ -685,8 +686,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 12. FND-010A Structured Observation provenance             ← production active
 13. FND-011A FRED/Macro cadence-aware freshness             ← production active
 14. FND-002Q Historical Baseline Quality Compatibility      ← FULL PASS / CLOSED / production E2E verified
-15. FND-011B market-hours freshness                         ← current implementation checkpoint
-16. FND-009 Manual cache invalidation + current gaps
+15. FND-011B market-hours freshness                         ← merged / production activation partial pass
+16. FND-009 Manual cache invalidation                         ← current implementation checkpoint
 17. MVP market-universe completion: Macro + Crypto + Gold, one domain/provider checkpoint at a time
 18. Expectation Baseline lifecycle
 19. Pricing Baseline / market-implied layer
