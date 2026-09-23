@@ -1,4 +1,23 @@
-export type P365CacheTag = "p365-fast" | "p365-medium" | "p365-slow";
+export const P365_CADENCE_CACHE_TAGS = [
+  "p365-fast",
+  "p365-medium",
+  "p365-slow",
+] as const;
+
+export type P365CacheTag = (typeof P365_CADENCE_CACHE_TAGS)[number];
+
+/**
+ * Complete cache-tag set owned by the dashboard manual-refresh contract.
+ *
+ * `p365-dashboard` remains for providers that still use the legacy direct
+ * dashboard tag. Cadence-aware providers use one of P365_CADENCE_CACHE_TAGS.
+ * Keeping the union here makes manual invalidation follow the cache topology
+ * instead of duplicating tag knowledge inside the Server Action.
+ */
+export const P365_DASHBOARD_CACHE_TAGS = [
+  "p365-dashboard",
+  ...P365_CADENCE_CACHE_TAGS,
+] as const;
 
 const FAST_CADENCES = new Set([
   5 * 60,
