@@ -16,11 +16,11 @@ function assertEqual(actual: unknown, expected: unknown, label: string): void {
 
 const report: EventWindowCaptureReport = {
   status: "SUCCESS",
-  evaluatedAt: "2026-10-15T18:00:00.000Z",
+  evaluatedAt: "2026-10-16T00:00:00.000Z",
   candidateEvents: 1,
   qualifiedWindows: 1,
-  dueSlots: 5,
-  captured: 3,
+  dueSlots: 2,
+  captured: 0,
   corrected: 2,
   alreadyCaptured: 0,
   unavailableEventSlots: 0,
@@ -36,7 +36,6 @@ async function main(): Promise<void> {
       return report;
     },
     () => "secret",
-    () => Date.parse("2026-10-16T00:00:00.000Z"),
   );
 
   const unauthorized = await handler(
@@ -44,7 +43,6 @@ async function main(): Promise<void> {
       method: "POST",
       body: JSON.stringify({
         eventIdentityKey: "event:v1:US:2026-10-15T12:30:00.000Z:cpi",
-        evaluatedAt: "2026-10-15T18:00:00.000Z",
       }),
     }),
   );
@@ -57,23 +55,10 @@ async function main(): Promise<void> {
       headers: { Authorization: "Bearer secret" },
       body: JSON.stringify({
         eventIdentityKey: "provider-specific-id",
-        evaluatedAt: "2026-10-15T18:00:00.000Z",
       }),
     }),
   );
   assertEqual(invalidIdentity.status, 400, "repair rejects non-v1 Event identity");
-
-  const future = await handler(
-    new Request("https://example.test/api/internal/snapshot-repair", {
-      method: "POST",
-      headers: { Authorization: "Bearer secret" },
-      body: JSON.stringify({
-        eventIdentityKey: "event:v1:US:2026-10-15T12:30:00.000Z:cpi",
-        evaluatedAt: "2026-10-16T00:01:00.000Z",
-      }),
-    }),
-  );
-  assertEqual(future.status, 400, "repair rejects future evaluation anchors");
 
   const authorized = await handler(
     new Request("https://example.test/api/internal/snapshot-repair", {
@@ -84,7 +69,6 @@ async function main(): Promise<void> {
       },
       body: JSON.stringify({
         eventIdentityKey: "event:v1:US:2026-10-15T12:30:00.000Z:cpi",
-        evaluatedAt: "2026-10-15T18:00:00.000Z",
       }),
     }),
   );
@@ -94,9 +78,8 @@ async function main(): Promise<void> {
     calls[0],
     {
       eventIdentityKey: "event:v1:US:2026-10-15T12:30:00.000Z:cpi",
-      evaluatedAt: "2026-10-15T18:00:00.000Z",
     },
-    "handler forwards normalized repair request",
+    "handler forwards only the provider-independent Event identity",
   );
   assertEqual(await authorized.json(), report, "handler returns repair report");
 }
