@@ -51,7 +51,7 @@ The current system can independently ingest and normalize selected factual Obser
 | Pricing baseline | **PRC-001 MERGED / PRODUCTION DEPLOYED / CONTRACT + DURABLE INPUT VERIFIED** | Point-in-time provider-scoped selection is deployed for existing canonical `PRICING` Observations with `observedAt` + `retrievedAt` as-of protection and explicit caller age tolerance. Production durable history contains qualified BTC/ETH, DXY, Gold, rates/real-yield/inflation-compensation and other pricing inputs. No active runtime consumer calls the selector yet. OIS/Fed-funds/SOFR-futures policy-path pricing remains a separate source-coverage gap. |
 | Historical baseline | MISSING | No approved methodology/query implementation. |
 | Cross-asset baseline | **PARTIAL / SNP-001 CAPABILITY IMPLEMENTED ON BRANCH** | SNP-001 can capture immutable requirement-qualified reference sets across canonical observations/events/baselines and query them historically by scope/time. Automatic PRE/POST trigger/window policy and comparison semantics remain separate checkpoints. |
-| Market Snapshot | **SNP-001 IMPLEMENTATION PASS — CORE PREVIEW VERIFIED / OWNER MERGE PENDING** | Immutable reference-only Snapshot construction, no-lookahead validation, deterministic identity, explicit scope requirements/missingness, append-only `SNAPSHOT` persistence, lineage columns, and historical scope/time query are implemented. No automatic capture trigger, snapshot comparison, repricing, transmission, State or Intelligence is activated. Core source head is Vercel READY/SUCCESS; final docs-only verification remains pending. |
+| Market Snapshot | **SNP-001 IMPLEMENTATION PASS — PREVIEW VERIFIED / OWNER MERGE PENDING** | Immutable reference-only Snapshot construction, no-lookahead validation, deterministic identity, explicit scope requirements/missingness, append-only `SNAPSHOT` persistence, lineage columns, and historical scope/time query are implemented. No automatic capture trigger, snapshot comparison, repricing, transmission, State or Intelligence is activated. Final branch head is Vercel READY/SUCCESS. |
 | Cross-asset factual coverage | PARTIAL | Useful universe exists; MOVE remains absent and docs disagree on credit coverage. |
 | Transmission reasoning | MISSING | Correctly not implemented. |
 | State/Regime/Risk/Intelligence | DEFERRED / PASS boundary | Builder files exist but are not active pipeline owners. |
@@ -80,7 +80,7 @@ Macro freshness             FND-011A PRODUCTION ACTIVE
 Independent ingestion        OPERATIONAL (FND-003A/B/C)
 Expectation baseline         EXP-001 MERGED / PRODUCTION DEPLOYED / E2E PENDING
 Pricing baseline             PRC-001 MERGED / PRODUCTION DEPLOYED
-Market Snapshot              SNP-001 IMPLEMENTATION PASS / CORE PREVIEW VERIFIED
+Market Snapshot              SNP-001 IMPLEMENTATION PASS / PREVIEW VERIFIED
 Transmission reasoning       MISSING
 Financial-market ontology    DOCUMENTED / ADDITIVE RUNTIME COMPATIBILITY IMPLEMENTED
 MVP Macro+Crypto+Gold       PARTIAL / ACTIVE TARGET
