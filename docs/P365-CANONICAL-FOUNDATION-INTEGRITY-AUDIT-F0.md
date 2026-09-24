@@ -768,7 +768,7 @@ Intelligence / Briefing
 20. PRC-001 Point-in-Time Canonical Pricing Baseline           ← merged / production deployed; contract + durable input verified
 21. SNP-001 Immutable Market Snapshot                            ← merged / production deployed; runtime capture pending
 22. EVW-001 Qualified Event Window & Snapshot Capture Policy      ← implementation PASS; owner merge pending
-23. Snapshot comparison → repricing / cross-asset transmission
+22A. Snapshot comparison → repricing / cross-asset transmission
 23. MVP Macro + Crypto + Gold evidence completion           ← demand-driven by the vertical slice, not breadth-first expansion
 24. Secondary positioning / flows enrichment inside Macro + Crypto + Gold
 25. Derived State → Risk/Regime → Intelligence → Briefing only after gates pass
