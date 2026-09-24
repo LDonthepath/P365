@@ -1,4 +1,5 @@
 import type { EconomicEventResult } from "../domain/event-result";
+import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
 import type { Event, Observation } from "../domain/types";
 import {
   InMemoryEventRepository,
@@ -206,6 +207,7 @@ async function main(): Promise<void> {
   assertEqual(report.qualifiedWindows, 1, "one qualified event window");
   assertEqual(report.dueSlots, 2, "PRE and T+5 are due by 12:36");
   assertEqual(report.captured, 2, "two snapshots captured");
+  assertEqual(report.corrected, 0, "first run requires no correction");
   assertEqual(report.alreadyCaptured, 0, "first run has no existing slots");
 
   const stored = await first.snapshots.findHistory({
@@ -253,6 +255,7 @@ async function main(): Promise<void> {
     { repositories: first.repositories },
   );
   assertEqual(retry.captured, 0, "retry does not create duplicate snapshots");
+  assertEqual(retry.corrected, 0, "retry does not create correction snapshots");
   assertEqual(retry.alreadyCaptured, 2, "retry detects deterministic slots");
   assertEqual(
     (await first.snapshots.findHistory({
@@ -262,6 +265,77 @@ async function main(): Promise<void> {
     })).length,
     2,
     "idempotent retry preserves two rows",
+  );
+
+  const repair = await fixture();
+  const emptyObservations = new InMemoryObservationRepository();
+  const defectiveReport = await runEventWindowSnapshotCapture(
+    { now: "2026-10-15T12:36:00.000Z" },
+    {
+      repositories: {
+        ...repair.repositories,
+        observations: emptyObservations,
+        canonicalObservations: emptyObservations,
+      },
+    },
+  );
+  assertEqual(defectiveReport.captured, 2, "defective fixture first materializes immutable PARTIAL slots");
+  const defectiveRows = await repair.snapshots.findHistory({
+    scope: "MVP_MACRO_CRYPTO_GOLD_EVENT",
+    order: "ASC",
+    limit: 10,
+  });
+  assertEqual(
+    defectiveRows.map((item) => item.observationRefs.length),
+    [0, 0],
+    "defective rows reproduce missing Observation lineage",
+  );
+
+  const correctedReport = await runEventWindowSnapshotCapture(
+    { now: "2026-10-15T12:36:30.000Z" },
+    { repositories: repair.repositories },
+  );
+  assertEqual(correctedReport.captured, 0, "repair does not rewrite the original logical slot");
+  assertEqual(correctedReport.corrected, 2, "repair appends one superseding Snapshot per defective slot");
+  assertEqual(correctedReport.alreadyCaptured, 0, "first repair is not reported as already captured");
+  assert(
+    correctedReport.slots.every((slot) => slot.status === "CORRECTED"),
+    "repair reports explicit CORRECTED slot status",
+  );
+
+  const repairedRows = await repair.snapshots.findHistory({
+    scope: "MVP_MACRO_CRYPTO_GOLD_EVENT",
+    order: "ASC",
+    limit: 10,
+  });
+  assertEqual(repairedRows.length, 4, "append-only repair retains two old rows and adds two corrected rows");
+  for (const role of ["PRE", "T_PLUS_5"]) {
+    const roleRows = repairedRows.filter((item) => item.metadata?.eventWindowRole === role);
+    const active = selectActiveMarketSnapshot(roleRows);
+    assert(active !== null, role + " has one active supersession tip");
+    assertEqual(active?.observationRefs.length, 4, role + " active correction restores four Observation refs");
+    assertEqual(active?.metadata?.captureOwner, "CAP-001C", role + " active correction records CAP-001C owner");
+    assertEqual(
+      active?.metadata?.supersedesSnapshotId,
+      roleRows.find((item) => item.id !== active?.id)?.id,
+      role + " correction explicitly links the immutable superseded row",
+    );
+  }
+
+  const correctedRetry = await runEventWindowSnapshotCapture(
+    { now: "2026-10-15T12:36:45.000Z" },
+    { repositories: repair.repositories },
+  );
+  assertEqual(correctedRetry.corrected, 0, "corrected retry does not append another repair");
+  assertEqual(correctedRetry.alreadyCaptured, 2, "corrected retry resolves supersession tips idempotently");
+  assertEqual(
+    (await repair.snapshots.findHistory({
+      scope: "MVP_MACRO_CRYPTO_GOLD_EVENT",
+      order: "ASC",
+      limit: 10,
+    })).length,
+    4,
+    "corrected retry preserves append-only row count",
   );
 
   const lateEvent = await fixture("2026-10-15T12:26:00.000Z");
