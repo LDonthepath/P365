@@ -1,4 +1,4 @@
-import type { EconomicEventResult } from "../domain/event-result";
+import type { EconomicEventResult, EventExpectedType } from "../domain/event-result";
 import type { Context, Event, Evidence, Observation, ObservationDomain } from "../domain/types";
 
 export type ObservationHistoryOrder = "ASC" | "DESC";
@@ -44,6 +44,27 @@ export type ObservationHistoryQuery = {
   limit: number;
 };
 
+export type EconomicEventResultHistoryOrder = "ASC" | "DESC";
+
+/**
+ * Point-in-time EventResult history contract.
+ *
+ * Logical ownership is provider-independent eventIdentityKey; sourceId remains
+ * an explicit provenance qualification so forecast providers are never blended
+ * implicitly. Availability bounds apply to canonical retrievedAt, never Market
+ * Memory captured_at.
+ */
+export type EconomicEventResultHistoryQuery = {
+  eventIdentityKey: string;
+  sourceId?: string;
+  expectedType?: EventExpectedType;
+  retrievedAtOnOrAfter?: string;
+  retrievedAtOnOrBefore?: string;
+  order: EconomicEventResultHistoryOrder;
+  /** Positive integer capped at 500 records per query. */
+  limit: number;
+};
+
 export interface ObservationRepository { save(observation: Observation): Promise<void>; saveMany(observations: Observation[]): Promise<void>; findById(id: string): Promise<Observation | null>; }
 /** Historical read capability stays separate from canonical write persistence. */
 export interface HistoricalObservationRepository { findHistory(query: ObservationHistoryQuery): Promise<Observation[]>; }
@@ -51,3 +72,5 @@ export interface EventRepository { save(event: Event): Promise<void>; saveMany(e
 export interface EvidenceRepository { save(evidence: Evidence): Promise<void>; saveMany(evidence: Evidence[]): Promise<void>; findById(id: string): Promise<Evidence | null>; }
 export interface ContextRepository { save(context: Context): Promise<void>; saveMany(contexts: Context[]): Promise<void>; findById(id: string): Promise<Context | null>; }
 export interface EconomicEventResultRepository { save(result: EconomicEventResult): Promise<void>; saveMany(results: EconomicEventResult[]): Promise<void>; findById(id: string): Promise<EconomicEventResult | null>; }
+/** Historical EventResult reads stay separate from canonical write persistence. */
+export interface HistoricalEconomicEventResultRepository { findHistory(query: EconomicEventResultHistoryQuery): Promise<EconomicEventResult[]>; }
