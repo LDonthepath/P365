@@ -1,4 +1,4 @@
-import { resolveObservationSemantics } from "./observation-semantics";
+import { observationSemanticsForSeriesKey, resolveObservationSemantics } from "./observation-semantics";
 import type {
   DataQuality,
   MarketDomain,
@@ -136,20 +136,9 @@ export function selectPricingBaseline(
 ): PricingBaseline {
   const { asOfMs } = validatePricingBaselineRequest(request);
 
-  const requestedSemantics = resolveObservationSemantics({
-    id: "pricing-baseline-semantic-probe",
-    domain: request.identity.domain,
-    subject: request.identity.seriesKey,
-    value: "0",
-    observedAt: request.asOf,
-    retrievedAt: request.asOf,
-    sourceId: request.sourceId,
-    quality: "UNKNOWN",
-    evidenceId: "pricing-baseline-semantic-probe",
-    metadata: request.identity.domain === "MACRO"
-      ? { seriesId: request.identity.seriesKey }
-      : { metricId: request.identity.seriesKey },
-  });
+  const requestedSemantics = observationSemanticsForSeriesKey(
+    request.identity.seriesKey,
+  );
 
   if (!requestedSemantics || requestedSemantics.informationClass !== "PRICING") {
     return emptyBaseline(
