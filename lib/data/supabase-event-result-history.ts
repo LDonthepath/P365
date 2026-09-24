@@ -16,6 +16,7 @@ type MarketMemoryPayloadRow = {
 
 const DEFAULT_CANDIDATE_BATCH_SIZE = 100;
 const DEFAULT_MAX_CANDIDATE_SCAN = 5_000;
+const SUPABASE_REQUEST_TIMEOUT_MS = 10_000;
 
 export type SupabaseHistoricalEconomicEventResultRepositoryOptions = {
   fetch?: typeof fetch;
@@ -36,10 +37,6 @@ function isCanonicalEconomicEventResult(value: unknown): value is EconomicEventR
     && (result.eventIdentityKey === undefined || typeof result.eventIdentityKey === "string")
     && (result.expected === undefined || (typeof result.expected === "number" && Number.isFinite(result.expected)))
     && (result.expectedType === undefined || ["FORECAST", "CONSENSUS", "OFFICIAL_PROJECTION"].includes(result.expectedType));
-}
-
-function postgrestQuoted(value: string): string {
-  return '"' + value.replaceAll("\\", "\\\\").replaceAll('"', '\\"') + '"';
 }
 
 export class SupabaseHistoricalEconomicEventResultRepository
@@ -69,15 +66,15 @@ implements HistoricalEconomicEventResultRepository {
     const baseParams = new URLSearchParams({
       select: "id,captured_at,payload",
       record_type: "eq.EVENT_RESULT",
-      "payload->>eventIdentityKey": "eq." + postgrestQuoted(query.eventIdentityKey),
+      "payload->>eventIdentityKey": "eq." + query.eventIdentityKey,
       captured_at: "lte." + capturedAtOnOrBefore,
       order: "captured_at.asc,id.asc",
     });
     if (query.sourceId !== undefined) {
-      baseParams.set("payload->>sourceId", "eq." + postgrestQuoted(query.sourceId));
+      baseParams.set("payload->>sourceId", "eq." + query.sourceId);
     }
     if (query.expectedType !== undefined) {
-      baseParams.set("payload->>expectedType", "eq." + postgrestQuoted(query.expectedType));
+      baseParams.set("payload->>expectedType", "eq." + query.expectedType);
     }
 
     const results: EconomicEventResult[] = [];
@@ -96,6 +93,7 @@ implements HistoricalEconomicEventResultRepository {
             Authorization: "Bearer " + config.key,
           },
           cache: "no-store",
+          signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
         },
       );
       if (!response.ok) {
