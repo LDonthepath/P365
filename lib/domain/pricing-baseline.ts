@@ -180,7 +180,8 @@ export function selectPricingBaseline(
     );
   }
 
-  const value = Number(selected.value);
+  const normalizedValue = selected.value.trim();
+  const value = normalizedValue.length > 0 ? Number(normalizedValue) : Number.NaN;
   if (!Number.isFinite(value)) {
     return {
       ...emptyBaseline(
