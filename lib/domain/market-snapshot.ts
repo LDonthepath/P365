@@ -259,8 +259,10 @@ function baselineQuality(
 
 function combineQuality(qualities: MarketSnapshotQuality[]): MarketSnapshotQuality {
   if (qualities.includes("UNKNOWN")) return "UNKNOWN";
-  if (qualities.includes("STALE")) return "STALE";
+  // Missing/incomplete scope is more material than staleness of an included
+  // reference because a STALE label alone would hide absent required data.
   if (qualities.includes("PARTIAL")) return "PARTIAL";
+  if (qualities.includes("STALE")) return "STALE";
   return "COMPLETE";
 }
 
