@@ -17,6 +17,12 @@ export function validateMarketSnapshotHistoryQuery(
   if (!query?.scope?.trim()) {
     throw new Error("Market Snapshot history requires a non-empty scope.");
   }
+  if (
+    query.eventIdentityKey !== undefined
+    && query.eventIdentityKey.trim().length === 0
+  ) {
+    throw new Error("Market Snapshot history eventIdentityKey must be non-empty when provided.");
+  }
   if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > MAX_MARKET_SNAPSHOT_HISTORY_LIMIT) {
     throw new Error(
       "Market Snapshot history limit must be an integer between 1 and "
