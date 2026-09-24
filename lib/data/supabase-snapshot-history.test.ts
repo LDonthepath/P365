@@ -17,6 +17,7 @@ function snapshot(
   id: string,
   capturedAt: string,
   scope = "MVP_MACRO_CRYPTO_GOLD_EVENT",
+  eventIdentityKey = "event:v1:US:2026-10-15T12:30:00.000Z:cpi",
 ): MarketSnapshot {
   return {
     id,
@@ -31,6 +32,7 @@ function snapshot(
     requirements: [{ kind: "OBSERVATION", key: "ASSET:btc.spot.usd:coingecko-market" }],
     missingRequirements: [{ kind: "OBSERVATION", key: "ASSET:btc.spot.usd:coingecko-market" }],
     quality: "PARTIAL",
+    metadata: { eventIdentityKey },
   };
 }
 
@@ -70,6 +72,7 @@ async function main(): Promise<void> {
 
   const history = await repository.findHistory({
     scope: "MVP_MACRO_CRYPTO_GOLD_EVENT",
+    eventIdentityKey: "event:v1:US:2026-10-15T12:30:00.000Z:cpi",
     capturedAtOnOrBefore: "2026-10-15T12:30:00.000Z",
     order: "DESC",
     limit: 10,
@@ -87,6 +90,11 @@ async function main(): Promise<void> {
     query.get("payload->>scope"),
     "eq.MVP_MACRO_CRYPTO_GOLD_EVENT",
     "adapter scopes Snapshot reasoning scope with raw equality value",
+  );
+  assertEqual(
+    query.get("payload->metadata->>eventIdentityKey"),
+    "eq.event:v1:US:2026-10-15T12:30:00.000Z:cpi",
+    "adapter scopes requested event identity with raw equality value",
   );
   assertEqual(
     query.getAll("effective_at"),
