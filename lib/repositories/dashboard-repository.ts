@@ -2,9 +2,10 @@ import type { Context, Event, Evidence, Observation } from "../domain/types";
 import { supabaseCanonicalRepositories, supabaseHistoricalObservationRepository, supabaseMarketSnapshotRepository } from "../data/market-memory-store";
 import { supabaseEconomicEventResultRepository } from "../data/economic-event-result-repository";
 import { supabaseHistoricalEconomicEventResultRepository } from "../data/supabase-event-result-history";
+import { supabaseHistoricalEventRepository } from "../data/supabase-event-history";
 import { supabaseHistoricalMarketSnapshotRepository } from "../data/supabase-snapshot-history";
-import { InMemoryContextRepository, InMemoryEventRepository, InMemoryEvidenceRepository, InMemoryMarketSnapshotRepository, InMemoryObservationRepository } from "./memory";
-import type { ContextRepository, EconomicEventResultRepository, EventRepository, EvidenceRepository, HistoricalEconomicEventResultRepository, HistoricalMarketSnapshotRepository, HistoricalObservationRepository, MarketSnapshotRepository, ObservationRepository } from "./types";
+import { InMemoryContextRepository, InMemoryEventRepository, InMemoryEvidenceRepository, InMemoryHistoricalEventRepository, InMemoryMarketSnapshotRepository, InMemoryObservationRepository } from "./memory";
+import type { ContextRepository, EconomicEventResultRepository, EventRepository, EvidenceRepository, HistoricalEconomicEventResultRepository, HistoricalEventRepository, HistoricalMarketSnapshotRepository, HistoricalObservationRepository, MarketSnapshotRepository, ObservationRepository } from "./types";
 
 export type CanonicalRepositories = {
   observations: ObservationRepository;
@@ -28,6 +29,14 @@ export const historicalObservationRepository: HistoricalObservationRepository =
   process.env.P365_MEMORY_PERSISTENCE === "memory"
     ? canonicalRepositories.observations as InMemoryObservationRepository
     : supabaseHistoricalObservationRepository;
+
+const inMemoryHistoricalEventRepository =
+  process.env.P365_MEMORY_PERSISTENCE === "memory"
+    ? new InMemoryHistoricalEventRepository(canonicalRepositories.events as InMemoryEventRepository)
+    : null;
+
+export const historicalEventRepository: HistoricalEventRepository =
+  inMemoryHistoricalEventRepository ?? supabaseHistoricalEventRepository;
 
 export const economicEventResultRepository: EconomicEventResultRepository = supabaseEconomicEventResultRepository;
 export const historicalEconomicEventResultRepository: HistoricalEconomicEventResultRepository = supabaseHistoricalEconomicEventResultRepository;
