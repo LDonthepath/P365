@@ -119,6 +119,34 @@ function staticObservationRequirementKey(
   ].join(":");
 }
 
+function latestEventRevisions(events: Event[]): Event[] {
+  const latest = new Map<string, Event>();
+
+  for (const event of events) {
+    const identity = event.identity?.key ?? "event-id:" + event.id;
+    const key = identity + "|" + event.sourceId;
+    const existing = latest.get(key);
+    if (!existing) {
+      latest.set(key, event);
+      continue;
+    }
+
+    const eventRetrievedAt = Date.parse(event.retrievedAt);
+    const existingRetrievedAt = Date.parse(existing.retrievedAt);
+    if (
+      eventRetrievedAt > existingRetrievedAt
+      || (
+        eventRetrievedAt === existingRetrievedAt
+        && event.id.localeCompare(existing.id) < 0
+      )
+    ) {
+      latest.set(key, event);
+    }
+  }
+
+  return [...latest.values()];
+}
+
 function candidateScheduleBounds(nowMs: number): {
   from: string;
   through: string;
@@ -183,7 +211,7 @@ async function eventAsOfTarget(
     limit: 100,
   });
 
-  return reconcileEvents(versions)[0] ?? null;
+  return reconcileEvents(latestEventRevisions(versions))[0] ?? null;
 }
 
 async function capturePricingInputs(input: {
@@ -442,7 +470,9 @@ export async function runEventWindowSnapshotCapture(
     };
   }
 
-  const windowSet = buildQualifiedEventWindowSet(candidates);
+  const windowSet = buildQualifiedEventWindowSet(
+    latestEventRevisions(candidates),
+  );
   const due = windowSet.windows.flatMap((window) =>
     dueSlots(window, nowMs).map((slot) => ({ window, slot })),
   );
