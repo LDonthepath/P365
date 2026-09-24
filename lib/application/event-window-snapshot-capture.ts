@@ -6,6 +6,7 @@ import { reconcileEvents } from "../domain/event-identity";
 import {
   EVENT_WINDOW_POLICY_V1,
   type EventWindowRole,
+  type EventWindowT0Source,
   type QualifiedEventWindow,
   type QualifiedEventWindowSlot,
 } from "../domain/event-window";
@@ -253,19 +254,31 @@ function strictlyImprovesSnapshot(
   );
 }
 
-async function eventAsOfTarget(
-  window: QualifiedEventWindow,
+async function eventAsOfIdentity(
+  eventIdentityKey: string,
   targetAt: string,
   repository: HistoricalEventRepository,
 ): Promise<Event | null> {
   const versions = await repository.findHistory({
-    eventIdentityKey: window.eventIdentityKey,
+    eventIdentityKey,
     retrievedAtOnOrBefore: targetAt,
     order: "DESC",
     limit: 100,
   });
 
   return reconcileEvents(latestEventRevisions(versions))[0] ?? null;
+}
+
+async function eventAsOfTarget(
+  window: QualifiedEventWindow,
+  targetAt: string,
+  repository: HistoricalEventRepository,
+): Promise<Event | null> {
+  return eventAsOfIdentity(
+    window.eventIdentityKey,
+    targetAt,
+    repository,
+  );
 }
 
 async function capturePricingInputs(input: {
@@ -631,15 +644,115 @@ export async function runEventWindowSnapshotCapture(
 
 export type EventWindowSnapshotRepairRequest = {
   eventIdentityKey: string;
-  evaluatedAt: string;
 };
 
+function isEventWindowRole(value: unknown): value is EventWindowRole {
+  return typeof value === "string"
+    && EVENT_WINDOW_POLICY_V1.slots.some((slot) => slot.role === value);
+}
+
+function isEventWindowT0Source(value: unknown): value is EventWindowT0Source {
+  return value === "RELEASED_AT" || value === "SCHEDULED_AT";
+}
+
+function repairWindowFromSnapshot(
+  snapshot: MarketSnapshot,
+  event: Event,
+): {
+  window: QualifiedEventWindow;
+  slot: QualifiedEventWindowSlot;
+} {
+  const metadata = snapshot.metadata ?? {};
+  const eventWindowId = typeof metadata.eventWindowId === "string"
+    ? metadata.eventWindowId.trim()
+    : "";
+  const eventIdentityKey = typeof metadata.eventIdentityKey === "string"
+    ? metadata.eventIdentityKey.trim()
+    : "";
+  const role = metadata.eventWindowRole;
+  const phase = metadata.eventWindowPhase;
+  const targetAtRaw = typeof metadata.targetAt === "string"
+    ? metadata.targetAt
+    : "";
+  const t0Raw = typeof metadata.t0 === "string" ? metadata.t0 : "";
+  const t0Source = metadata.t0Source;
+
+  if (!eventWindowId || !eventIdentityKey) {
+    throw new Error("Snapshot repair requires persisted Event Window identity metadata.");
+  }
+  if (!isEventWindowRole(role)) {
+    throw new Error("Snapshot repair requires a valid persisted Event Window role.");
+  }
+  if (!isEventWindowT0Source(t0Source)) {
+    throw new Error("Snapshot repair requires a valid persisted Event Window T0 source.");
+  }
+  if (snapshot.scope !== EVENT_WINDOW_POLICY_V1.snapshotScope) {
+    throw new Error("Snapshot repair only supports the governed Event Window scope.");
+  }
+  if (event.identity?.key !== eventIdentityKey) {
+    throw new Error("Snapshot repair Event identity does not match the target Snapshot.");
+  }
+
+  const targetMs = timestamp(targetAtRaw, "repair targetAt");
+  const capturedMs = timestamp(snapshot.capturedAt, "repair Snapshot capturedAt");
+  const t0Ms = timestamp(t0Raw, "repair t0");
+  if (targetMs !== capturedMs) {
+    throw new Error("Snapshot repair targetAt must equal immutable Snapshot capturedAt.");
+  }
+
+  const policySlot = EVENT_WINDOW_POLICY_V1.slots.find(
+    (slot) => slot.role === role,
+  );
+  if (!policySlot || phase !== policySlot.phase) {
+    throw new Error("Snapshot repair role/phase must match EVW-001 policy.");
+  }
+  if (t0Ms + policySlot.offsetMs !== targetMs) {
+    throw new Error("Snapshot repair targetAt must preserve the persisted EVW-001 T0/offset.");
+  }
+
+  const identity = event.identity;
+  if (!identity) {
+    throw new Error("Snapshot repair requires provider-independent Event identity.");
+  }
+
+  const targetAt = new Date(targetMs).toISOString();
+  const toleranceMs = policySlot.toleranceMs;
+  const slot: QualifiedEventWindowSlot = {
+    role,
+    phase: policySlot.phase,
+    offsetMs: policySlot.offsetMs,
+    targetAt,
+    opensAt: new Date(targetMs - toleranceMs).toISOString(),
+    closesAt: new Date(targetMs + toleranceMs).toISOString(),
+    toleranceMs,
+  };
+
+  return {
+    window: {
+      id: eventWindowId,
+      version: "v1",
+      eventId: event.id,
+      eventIdentityKey,
+      semanticKey: identity.semanticKey,
+      subject: event.subject,
+      jurisdiction: event.jurisdiction,
+      sourceId: event.sourceId,
+      t0: new Date(t0Ms).toISOString(),
+      t0Source,
+      snapshotScope: EVENT_WINDOW_POLICY_V1.snapshotScope,
+      slots: [slot],
+    },
+    slot,
+  };
+}
+
 /**
- * Re-evaluates one historical Event identity outside the normal cron lookback.
+ * Repairs only immutable Snapshot slots that already exist for one Event.
  *
- * This is an explicit repair path, not a second scheduler. Event selection is
- * bounded to the requested provider-independent identity and every Snapshot
- * input remains constrained to the original slot target by captureSlot().
+ * The repair source of truth is the persisted slot metadata itself, not a
+ * later Event revision. This preserves the original eventWindowId, T0, role
+ * and targetAt while captureSlot() still rebuilds every canonical input with
+ * retrievedAt/observedAt bounded by that original target.
  */
 export async function runEventWindowSnapshotRepair(
   request: EventWindowSnapshotRepairRequest,
@@ -652,16 +765,15 @@ export async function runEventWindowSnapshotRepair(
     throw new Error("Snapshot repair requires a non-empty eventIdentityKey.");
   }
 
-  const evaluatedAtMs = timestamp(request.evaluatedAt, "repair evaluatedAt");
-  const evaluatedAt = new Date(evaluatedAtMs).toISOString();
+  const evaluatedAt = new Date().toISOString();
   const repositories = dependencies.repositories ?? await defaultRepositories();
 
-  let candidates: Event[];
+  let history: MarketSnapshot[];
   try {
-    candidates = await repositories.events.findHistory({
+    history = await repositories.snapshotHistory.findHistory({
+      scope: EVENT_WINDOW_POLICY_V1.snapshotScope,
       eventIdentityKey,
-      retrievedAtOnOrBefore: evaluatedAt,
-      order: "DESC",
+      order: "ASC",
       limit: 500,
     });
   } catch (error) {
@@ -684,33 +796,17 @@ export async function runEventWindowSnapshotRepair(
         status: "FAILED",
         message: error instanceof Error
           ? error.message
-          : "Historical Event repair query failed.",
+          : "Historical Snapshot repair query failed.",
       }],
     };
   }
 
-  const qualifiedCandidates = latestEventRevisions(candidates).filter(
-    (event) => event.identity?.key === eventIdentityKey,
-  );
-  const windowSet = buildQualifiedEventWindowSet(qualifiedCandidates);
-  const windows = windowSet.windows.filter(
-    (window) => window.eventIdentityKey === eventIdentityKey,
-  );
-  const due = windows.flatMap((window) =>
-    window.slots
-      .filter((slot) => {
-        const target = Date.parse(slot.targetAt);
-        return Number.isFinite(target) && target <= evaluatedAtMs;
-      })
-      .map((slot) => ({ window, slot })),
-  );
-
-  if (due.length === 0) {
+  if (history.length === 0) {
     return {
       status: "EMPTY",
       evaluatedAt,
-      candidateEvents: candidates.length,
-      qualifiedWindows: windows.length,
+      candidateEvents: 0,
+      qualifiedWindows: 0,
       dueSlots: 0,
       captured: 0,
       corrected: 0,
@@ -721,8 +817,94 @@ export async function runEventWindowSnapshotRepair(
     };
   }
 
+  const groups = new Map<string, MarketSnapshot[]>();
+  for (const snapshot of history) {
+    const windowId = snapshot.metadata?.eventWindowId;
+    const role = snapshot.metadata?.eventWindowRole;
+    const targetAt = snapshot.metadata?.targetAt;
+    if (
+      typeof windowId !== "string"
+      || !isEventWindowRole(role)
+      || typeof targetAt !== "string"
+    ) {
+      return {
+        status: "FAILED",
+        evaluatedAt,
+        candidateEvents: 1,
+        qualifiedWindows: 0,
+        dueSlots: 0,
+        captured: 0,
+        corrected: 0,
+        alreadyCaptured: 0,
+        unavailableEventSlots: 0,
+        failed: 1,
+        slots: [{
+          eventIdentityKey,
+          eventId: snapshot.eventRefs[0]?.eventId ?? "unavailable",
+          role: isEventWindowRole(role) ? role : "PRE",
+          targetAt: typeof targetAt === "string" ? targetAt : snapshot.capturedAt,
+          status: "FAILED",
+          message: "Existing Snapshot is missing governed Event Window repair metadata.",
+        }],
+      };
+    }
+    const key = [windowId, role, new Date(Date.parse(targetAt)).toISOString()].join("|");
+    const group = groups.get(key) ?? [];
+    group.push(snapshot);
+    groups.set(key, group);
+  }
+
+  const work: Array<{
+    window: QualifiedEventWindow;
+    slot: QualifiedEventWindowSlot;
+  }> = [];
+
+  try {
+    for (const snapshots of groups.values()) {
+      const active = selectActiveMarketSnapshot(snapshots);
+      if (!active) continue;
+
+      const event = await eventAsOfIdentity(
+        eventIdentityKey,
+        active.capturedAt,
+        repositories.events,
+      );
+      if (!event) {
+        continue;
+      }
+      work.push(repairWindowFromSnapshot(active, event));
+    }
+  } catch (error) {
+    return {
+      status: "FAILED",
+      evaluatedAt,
+      candidateEvents: 1,
+      qualifiedWindows: new Set(
+        history
+          .map((snapshot) => snapshot.metadata?.eventWindowId)
+          .filter((id): id is string => typeof id === "string"),
+      ).size,
+      dueSlots: groups.size,
+      captured: 0,
+      corrected: 0,
+      alreadyCaptured: 0,
+      unavailableEventSlots: 0,
+      failed: 1,
+      slots: [{
+        eventIdentityKey,
+        eventId: history[0]?.eventRefs[0]?.eventId ?? "unavailable",
+        role: "PRE",
+        targetAt: history[0]?.capturedAt ?? evaluatedAt,
+        status: "FAILED",
+        message: error instanceof Error
+          ? error.message
+          : "Snapshot repair metadata validation failed.",
+      }],
+    };
+  }
+
   const slots: EventWindowCaptureSlotReport[] = [];
-  for (const item of due) {
+  for (const item of work) {
     slots.push(await captureSlot({
       window: item.window,
       slot: item.slot,
@@ -735,14 +917,14 @@ export async function runEventWindowSnapshotRepair(
   const alreadyCaptured = slots.filter(
     (slot) => slot.status === "ALREADY_CAPTURED",
   ).length;
-  const unavailableEventSlots = slots.filter(
+  const unavailableEventSlots = groups.size - work.length + slots.filter(
     (slot) => slot.status === "EVENT_NOT_AVAILABLE_AS_OF_TARGET",
   ).length;
   const failed = slots.filter((slot) => slot.status === "FAILED").length;
   const succeeded = captured + corrected + alreadyCaptured;
 
   const status: EventWindowCaptureReport["status"] =
-    failed === slots.length
+    failed > 0 && failed === slots.length
       ? "FAILED"
       : failed > 0 || unavailableEventSlots > 0
         ? "PARTIAL"
@@ -753,9 +935,13 @@ export async function runEventWindowSnapshotRepair(
   return {
     status,
     evaluatedAt,
-    candidateEvents: candidates.length,
-    qualifiedWindows: windows.length,
-    dueSlots: due.length,
+    candidateEvents: history.length > 0 ? 1 : 0,
+    qualifiedWindows: new Set(
+      history
+        .map((snapshot) => snapshot.metadata?.eventWindowId)
+        .filter((id): id is string => typeof id === "string"),
+    ).size,
+    dueSlots: groups.size,
     captured,
     corrected,
     alreadyCaptured,
