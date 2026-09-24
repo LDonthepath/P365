@@ -1,7 +1,7 @@
 # P365 Foundation Master — SSOT v0.1
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
-**Audited ref:** FND-019 implementation based on `main@af1fbefeffba2cd5040fef911ae64da3d1b9c2d8`
+**Audited ref:** EXP-001 implementation based on `main@fabd2b76981f6076a12926112debd44c3f49752d`
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
 **Verification pass:** Re-verified 24 Sep 2026 from `main@57fad3a441721b0513a3d513a6a0244280df11a4`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002, FND-002Q, FND-009, FND-011B, and FND-018A are CLOSED / production-active at their approved boundaries; FND-010A and FND-011A remain production-active. FND-011B passed its final production gate with scheduled historical ingestion HTTP 200 and a Yahoo `GC=F` observation carrying `CME_GLOBEX_GOLD` with `quality=FRESH` inside the qualified open session. FND-009 passed its production gate after an authenticated manual refresh produced `POST /dashboard 200` followed by `GET /dashboard 200`, zero runtime errors, and new CoinGecko/Yahoo/FRED retrieval timestamps well inside their ordinary cache lifetimes, proving cadence-group invalidation rather than a route-only refresh.
@@ -47,7 +47,7 @@ The current system can independently ingest and normalize selected factual Obser
 | Historical retrieval | PASS | FND-001 semantics are implemented against persisted canonical Observation payloads; read-only production verification found 29 contract-eligible FRED macro series with predecessor depth. |
 | Historical continuity | PASS for FND-003 operational boundary | Independent Observation/Event ingestion is driven by production Supabase `pg_cron` and persists to durable Market Memory. Scheduler redesign remains outside FND-002. |
 | Factual baseline | FULL PASS / PRODUCTION E2E VERIFIED | Active application orchestration reads predecessor candidates only from `HistoricalObservationRepository`, with strict measurement and retrieval/as-of bounds and no provider-window fallback; production dashboard execution verified 29 durable history reads. |
-| Expectation baseline | MISSING | Event forecast exists as EventResult data, but no baseline contract/selection lifecycle exists. |
+| Expectation baseline | **EXP-001 IMPLEMENTATION PASS — PREVIEW VERIFIED / OWNER MERGE PENDING** | Provider-scoped point-in-time EventResult history and latest-qualified pre-release Expectation Baseline selection are implemented. `FORECAST`, `CONSENSUS`, and `OFFICIAL_PROJECTION` remain distinct; missing unit/period is PARTIAL; post-release snapshots are ineligible. Vercel preview build is READY/SUCCESS; production activation remains pending owner merge and future qualified EventResult history. |
 | Pricing baseline | MISSING | No canonical market-implied pricing layer. |
 | Historical baseline | MISSING | No approved methodology/query implementation. |
 | Cross-asset baseline | MISSING | No immutable pre-event reference set. |
@@ -78,7 +78,7 @@ Observation identity        FND-018A FULL PASS / CLOSED / PRODUCTION ACTIVE
 Observation provenance      FND-010A PRODUCTION ACTIVE
 Macro freshness             FND-011A PRODUCTION ACTIVE
 Independent ingestion        OPERATIONAL (FND-003A/B/C)
-Expectation baseline         MISSING lifecycle
+Expectation baseline         EXP-001 IMPLEMENTATION PASS / PREVIEW VERIFIED
 Pricing baseline             MISSING
 Market Snapshot              DESIGN ONLY
 Transmission reasoning       MISSING
@@ -95,7 +95,7 @@ Intelligence / Briefing      DEFERRED
 - **Crypto:** CoinGecko covers BTC/ETH spot, BTC/ETH market cap, total crypto market cap, total volume and BTC/ETH dominance. Stablecoin market cap and a defined basic-volatility metric remain open.
 - **Cross-asset:** S&P 500, Nasdaq, Russell 2000, US 2Y, US 10Y, 10Y real yield, DXY, broad USD, Gold futures, WTI, VIX and IG/HY credit spreads are available. DXY and broad USD remain separate instruments. MOVE remains open.
 - **Economic events:** Forex Factory provides a weekly scheduled calendar, Federal Reserve provides official FOMC date anchors, and Biquote trial data provides structured schedules/results for verified US, China and Japan examples. Biquote remains trial-only; response-window completeness and release-time qualification remain open.
-- **Event risk window (presentation only):** the overview lists HIGH-importance canonical Events from 30 minutes ago to 24 hours ahead, grouped by scheduled minute, as schedule facts only (no direction, no advice). Federal Reserve dates are date anchors and are shown without a countdown. The Forex Factory list is capped at the nearest `ECONOMIC_CALENDAR_LIMIT` events of any impact, so the panel states when events beyond its last loaded event are unknown; absence in the panel is not evidence of absence. Cross-provider duplicate titles (FND-019) are not reconciled.
+- **Event risk window (presentation only):** the overview lists HIGH-importance canonical Events from 30 minutes ago to 24 hours ahead, grouped by scheduled minute, as schedule facts only (no direction, no advice). Federal Reserve dates are date anchors and are shown without a countdown. The Forex Factory list is capped at the nearest `ECONOMIC_CALENDAR_LIMIT` events of any impact, so the panel states when events beyond its last loaded event are unknown; absence in the panel is not evidence of absence. Qualified cross-provider Events can now carry FND-019 identity/reconciliation; production activation proof remains under a separate read-only watch.
 - **Semantic breadth:** the FRED registry contains 33 series and current Yahoo/CoinGecko market metrics now receive additive `Observation.semantics` during normalization. Legacy `ObservationDomain` remains unchanged for history compatibility; old Market Memory rows can resolve approved semantics from stable `seriesId`/`metricId` without rewrite.
 - **MVP coverage gaps:** Macro still lacks complete global-policy/expectation/pricing coverage; Crypto lacks qualified stablecoin/ETF-flow/derivatives coverage; Gold has pricing but not a complete durable-history/baseline/flow-positioning reasoning chain.
 - **Post-MVP ontology gaps:** full Equity, broad Credit, broad Commodities beyond Gold, broader volatility/derivatives, EM and other multi-asset domains remain intentionally outside first-class MVP scope unless used as supporting evidence.
@@ -671,6 +671,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 24 Sep 2026 | FND-011B production activation | Scheduled historical ingestion remained HTTP 200 and durable Yahoo Gold inside the qualified open session persisted `CME_GLOBEX_GOLD` with `quality=FRESH`; FND-011B is CLOSED / PRODUCTION ACTIVE. |
 | 24 Sep 2026 | Foundation Exit Gate | PASS for the generic hardening phase. Canonical identity, provenance, freshness, append-only history, repository-backed factual baseline, independent ingestion, and truthful manual invalidation are sufficient to stop broad foundation remediation. Remaining FND-008/FND-010 remainder/FND-012/FND-013/FND-015/FND-016/FND-017 are bounded debt unless a concrete downstream checkpoint depends on them. FND-019 is promoted as the first bounded prerequisite for the Expectation Baseline lifecycle because duplicate provider-specific Events must not create duplicate expectation ownership. FND-021 coverage gaps are completed demand-first inside the Macro + Crypto + Gold vertical slice rather than by breadth-first provider expansion. |
 | 24 Sep 2026 | FND-019 Event identity/reconciliation | Added backward-compatible Event identity v1 without rewriting provider-specific canonical IDs. Qualified exact events reconcile by jurisdiction, schedule instant and semantic key; Biquote EventResult snapshots carry the same provider-independent identity key for future Expectation Baseline ownership. Dashboard reconciliation prefers Biquote deterministically when duplicate Events share identity, preserves all provider Evidence, and fails safe by leaving OTHER/non-exact/unmatched events distinct. |
+| 24 Sep 2026 | EXP-001 Point-in-Time Expectation Baseline | Added provider-scoped EventResult history by provider-independent `eventIdentityKey`, canonical `retrievedAt` availability bounds, and deterministic latest pre-release expectation selection. `FORECAST`, `CONSENSUS`, and `OFFICIAL_PROJECTION` remain distinct; missing unit/period is PARTIAL; post-release snapshots are ineligible. No surprise, pricing, snapshot, transmission, or reasoning output is introduced. |
 
 ## Foundation Exit Gate — 24 Sep 2026
 
@@ -758,8 +759,8 @@ Intelligence / Briefing
 15. FND-011B market-hours freshness                         ← CLOSED / PRODUCTION ACTIVE
 16. FND-009 Manual cache invalidation                       ← CLOSED / PRODUCTION ACTIVE
 17. Foundation Exit Gate                                   ← PASS; stop open-ended hardening
-18. FND-019 Event identity/reconciliation                   ← implementation PASS; production activation pending owner merge
-19. Expectation Baseline lifecycle
+18. FND-019 Event identity/reconciliation                   ← merged; production activation watch pending
+19. EXP-001 Point-in-Time Expectation Baseline               ← implementation PASS; owner merge pending
 20. Pricing Baseline / market-implied layer
 21. Market Snapshot implementation
 22. Event-window cross-asset repricing/transmission
