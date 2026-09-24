@@ -195,10 +195,12 @@ async function main(): Promise<void> {
     "actual release anchor is explicit",
   );
 
-  const medium = qualifyEventWindow(event("medium", "cpi", undefined as never, {
-    scheduledAt: "2026-10-15T12:30:00.000Z",
-    importance: "MEDIUM",
-  }));
+  const medium = qualifyEventWindow(event(
+    "medium",
+    "cpi",
+    "2026-10-15T12:30:00.000Z",
+    { importance: "MEDIUM" },
+  ));
   assertEqual(
     medium.eligible ? null : medium.code,
     "IMPORTANCE_NOT_HIGH",
