@@ -187,6 +187,20 @@ function validateResolvedObservation(
       + " Observation source does not match its Snapshot reference.",
     );
   }
+  if (observation.evidenceId !== ref.evidenceId) {
+    throw new Error(
+      "Snapshot Comparison resolved "
+      + side
+      + " Observation evidence does not match its Snapshot reference.",
+    );
+  }
+  if (observation.quality !== ref.quality) {
+    throw new Error(
+      "Snapshot Comparison resolved "
+      + side
+      + " Observation quality does not match its Snapshot reference.",
+    );
+  }
   if (marketSnapshotObservationKey(observation) !== ref.key) {
     throw new Error(
       "Snapshot Comparison resolved "
@@ -234,6 +248,12 @@ function observationCompatibility(
 
   const beforeUnit = metadataString(before, "unit");
   const afterUnit = metadataString(after, "unit");
+  if (beforeUnit === null || afterUnit === null) {
+    return {
+      compatible: false,
+      reason: "Observation unit is missing; numerical comparison is not qualified.",
+    };
+  }
   if (beforeUnit !== afterUnit) {
     return {
       compatible: false,
