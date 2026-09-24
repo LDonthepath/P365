@@ -716,7 +716,7 @@ function repairWindowFromSnapshot(
   }
 
   const targetAt = new Date(targetMs).toISOString();
-  const toleranceMs = policySlot.toleranceMs;
+  const toleranceMs = EVENT_WINDOW_POLICY_V1.toleranceMs;
   const slot: QualifiedEventWindowSlot = {
     role,
     phase: policySlot.phase,
