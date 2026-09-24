@@ -205,6 +205,24 @@ async function main(): Promise<void> {
   );
   assertEqual(nonNumeric.status, "INCOMPATIBLE", "pricing value must be numeric");
 
+  const emptyValue = selectPricingBaseline(
+    request,
+    [
+      observation(
+        "dxy-empty",
+        "dxy.index.usd",
+        "2026-10-15T12:28:00.000Z",
+        "2026-10-15T12:28:01.000Z",
+        "   ",
+      ),
+    ],
+  );
+  assertEqual(
+    emptyValue.status,
+    "INCOMPATIBLE",
+    "empty pricing value cannot coerce to numeric zero",
+  );
+
   const cpiRequest: PricingBaselineRequest = {
     identity: { domain: "MACRO", seriesKey: "CPIAUCSL" },
     sourceId: "fred",
