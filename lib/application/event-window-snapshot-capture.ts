@@ -735,7 +735,7 @@ function repairWindowFromSnapshot(
       eventIdentityKey,
       semanticKey: identity.semanticKey,
       subject: event.subject,
-      jurisdiction: event.jurisdiction,
+      jurisdiction: identity.jurisdiction,
       sourceId: event.sourceId,
       t0: new Date(t0Ms).toISOString(),
       t0Source,
