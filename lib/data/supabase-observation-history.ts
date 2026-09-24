@@ -6,6 +6,7 @@ type MarketMemoryPayloadRow = { id: string; effective_at: string; payload: Obser
 
 const DEFAULT_CANDIDATE_BATCH_SIZE = 250;
 const DEFAULT_MAX_CANDIDATE_SCAN = 5_000;
+const SUPABASE_REQUEST_TIMEOUT_MS = 10_000;
 
 export type SupabaseHistoricalObservationRepositoryOptions = {
   fetch?: typeof fetch;
@@ -83,6 +84,7 @@ export class SupabaseHistoricalObservationRepository implements HistoricalObserv
       const response = await this.fetcher(`${url}/rest/v1/market_memory?${params.toString()}`, {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         cache: "no-store",
+        signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
       });
       if (!response.ok) {
         const detail = await response.text();

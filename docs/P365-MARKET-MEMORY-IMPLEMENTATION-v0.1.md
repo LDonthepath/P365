@@ -50,19 +50,24 @@ Each canonical record is identified by:
 
 as its deterministic `dedupe_key`.
 
-Repeated dashboard requests therefore do not create another Market Memory row for the same canonical fact at the same effective time.
+Repeated ingestion of the same canonical fact does not create another Market Memory row for the same canonical identity/effective-time key.
 
 ## Live ingestion integration
 
-`getDashboardData()` sends canonical dashboard records to Market Memory after normalization:
+Durable Market Memory writes are owned by the authenticated independent ingestion workers invoked by the production Supabase `pg_cron` schedules.
 
-- Observations
-- Events with a valid occurred/scheduled timestamp
-- Evidence
+The dashboard render path may acquire/cache provider data for presentation and may query durable history for factual baselines, but it does **not** persist Observations, Events, Evidence, Context, or EconomicEventResult rows. A page visit therefore cannot become a second ingestion clock.
+
+The independent workers persist:
+
+- canonical Observations and their Evidence;
+- canonical Events and their Evidence;
+- EconomicEventResult snapshots where applicable;
+- runtime Snapshots through the dedicated CAP-001 capture owner.
 
 News remains represented through canonical Evidence rather than being stored as a second raw-news record.
 
-Persistence is isolated from provider normalization. A persistence failure is surfaced in `unavailableSources` while the dashboard can still return its canonical data; this preserves the rule that persistence failure must not erase or gate the observation/event itself.
+Persistence failure is reported by the owning ingestion worker and must not be hidden as successful durable acquisition. Dashboard availability remains separate from write ownership.
 
 ## Server-only credentials
 
@@ -74,6 +79,8 @@ P365_MEMORY_WRITE_KEY
 ```
 
 `P365_MEMORY_WRITE_KEY` must contain a trusted server-side Supabase secret/service key. These variables must exist only in the trusted server/deployment environment. Never expose the write key through a `NEXT_PUBLIC_` variable or browser code.
+
+Direct Supabase Market Memory requests on the canonical/EventResult adapters and the HistoricalObservation read used by the dashboard factual-baseline path are bounded by a 10-second `AbortSignal.timeout`. Timeout rejection is surfaced to the owning caller rather than allowing a render or ingestion worker to wait indefinitely.
 
 ## Append-only invariant
 
@@ -107,8 +114,8 @@ The P365 Supabase project contains `public.market_memory`, RLS is enabled, and t
 | Market Memory domain contract | READY |
 | Durable Supabase schema | READY |
 | Durable Supabase adapter | READY |
-| Dashboard canonical-record persistence | WIRED |
+| Dashboard durable-write ownership | READ-ONLY — persistence owned by independent cron workers |
 | Deployment secret configuration | **REQUIRED** |
 | End-to-end production verification | **PENDING DEPLOYMENT** |
 
-The repository contains the integration, but production readiness is not claimed until the deployment environment supplies the server-only Supabase variables and a live dashboard request successfully writes and then reuses an idempotent Market Memory record.
+Production durable-write readiness is proven through authenticated ingestion/capture workers using server-only Supabase credentials. Dashboard rendering is not a persistence acceptance path.

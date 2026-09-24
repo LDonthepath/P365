@@ -4,6 +4,7 @@ import type { EconomicEventResultRepository } from "../repositories/types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.P365_MEMORY_WRITE_KEY ?? process.env.SUPABASE_SECRET_KEY;
+const SUPABASE_REQUEST_TIMEOUT_MS = 10_000;
 
 function requireConfig(): { url: string; key: string } {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -41,6 +42,7 @@ async function insert(rows: ReturnType<typeof rowFor>[]): Promise<void> {
     },
     body: JSON.stringify(rows),
     cache: "no-store",
+    signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -69,6 +71,7 @@ export const supabaseEconomicEventResultRepository: EconomicEventResultRepositor
     const response = await fetch(`${url}/rest/v1/market_memory?${params.toString()}`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
     });
 
     if (!response.ok) {
