@@ -100,26 +100,27 @@ async function main(): Promise<void> {
   assertEqual(query.get("record_type"), "eq.EVENT", "adapter scopes Event rows");
   assertEqual(
     query.get("payload->identity->>key"),
-    'eq."' + identityKey + '"',
-    "adapter scopes provider-independent identity",
+    "eq." + identityKey,
+    "adapter scopes provider-independent identity with raw PostgREST eq value",
   );
   assertEqual(
     query.get("payload->>importance"),
-    'eq."HIGH"',
-    "adapter scopes requested importance",
+    "eq.HIGH",
+    "adapter scopes requested importance with raw PostgREST eq value",
   );
 
   const rangeHistory = await repository.findHistory({
     scheduledAtOnOrAfter: "2026-10-15T12:29:00.000Z",
     scheduledAtOnOrBefore: "2026-10-15T12:31:00.000Z",
     retrievedAtOnOrBefore: "2026-10-15T12:40:00.000Z",
+    importance: "HIGH",
     order: "ASC",
     limit: 10,
   });
   assertEqual(
     rangeHistory.map((item) => item.id),
     ["event-early", "event-late"],
-    "scheduled range and retrieval cutoff preserve eligible revisions",
+    "scheduled range, importance and retrieval cutoff preserve eligible revisions",
   );
 
   const mismatch = new SupabaseHistoricalEventRepository({
