@@ -1,4 +1,3 @@
-import type { Context, Event, Evidence, Observation } from "../domain/types";
 import { supabaseCanonicalRepositories, supabaseHistoricalObservationRepository, supabaseMarketSnapshotRepository } from "../data/market-memory-store";
 import { supabaseEconomicEventResultRepository } from "../data/economic-event-result-repository";
 import { supabaseHistoricalEconomicEventResultRepository } from "../data/supabase-event-result-history";
@@ -52,15 +51,3 @@ export const historicalMarketSnapshotRepository: HistoricalMarketSnapshotReposit
   process.env.P365_MEMORY_PERSISTENCE === "memory"
     ? inMemorySnapshotRepository
     : supabaseHistoricalMarketSnapshotRepository;
-
-export async function persistCanonicalDashboardData(
-  repositories: CanonicalRepositories,
-  data: { observations: Observation[]; events: Event[]; evidence: Evidence[]; contexts: Context[] },
-): Promise<void> {
-  await Promise.all([
-    repositories.observations.saveMany(data.observations),
-    repositories.events.saveMany(data.events),
-    repositories.evidence.saveMany(data.evidence),
-    repositories.contexts.saveMany(data.contexts),
-  ]);
-}
