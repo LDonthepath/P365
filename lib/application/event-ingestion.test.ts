@@ -7,8 +7,9 @@ import {
 import { providerFetchPolicy } from "../data/provider-fetch-policy";
 import { providerResult, type CalendarEvent, type ProviderResult } from "../data/types";
 import { economicEventResultDedupeKey, type EconomicEventResult } from "../domain/event-result";
+import { reconcileEvents } from "../domain/event-identity";
 import type { Event } from "../domain/types";
-import { fomcToCanonicalRecords } from "../domain/normalize";
+import { calendarToCanonicalRecords, fomcToCanonicalRecords } from "../domain/normalize";
 import { normalizeBiquoteEconomicCalendar } from "../normalization/biquote-economic-calendar";
 import {
   InMemoryContextRepository,
@@ -181,6 +182,94 @@ async function main(): Promise<void> {
   assert.equal(normalized[2].event.releasedAt, undefined);
   assert.equal(normalized[2].result.releasedAt, undefined);
   assert.equal(normalized[2].evidence.releasedAt, undefined);
+  assert.equal(normalized[2].event.identity, undefined, "tentative Biquote time must not create cross-provider event identity");
+
+  const ffCrude = calendarToCanonicalRecords([{
+    id: "ff-crude",
+    time: "21:30",
+    event: "Crude Oil Inventories",
+    country: "USD",
+    impact: "HIGH",
+    status: "PAST",
+    dateISO: "2026-09-23T14:30:00.000Z",
+  }], "forex-factory").events[0];
+  const bqCrude = normalizeBiquoteEconomicCalendar([
+    biquoteRecord({
+      id: "bq-crude-stocks",
+      eventId: "eia-crude-stocks",
+      name: "EIA Crude Oil Stocks Change",
+      time: "2026-09-23T14:30:00.000Z",
+      actual: -1.2,
+      forecast: -0.8,
+      timeMode: "exact",
+    }),
+  ], retrievedAt)[0];
+  const bqImports = normalizeBiquoteEconomicCalendar([
+    biquoteRecord({
+      id: "bq-crude-imports",
+      eventId: "eia-crude-imports",
+      name: "EIA Crude Oil Imports Change",
+      time: "2026-09-23T14:30:00.000Z",
+      actual: 0.2,
+      timeMode: "exact",
+    }),
+  ], retrievedAt)[0];
+  assert.ok(ffCrude.identity);
+  assert.equal(ffCrude.identity?.key, bqCrude.event.identity?.key, "qualified aliases for the same release must reconcile");
+  assert.equal(bqCrude.result.eventIdentityKey, bqCrude.event.identity?.key, "result must carry provider-independent event ownership");
+  assert.notEqual(ffCrude.identity?.key, bqImports.event.identity?.key, "same-time adjacent releases must not false-merge");
+  const reconciledCrude = reconcileEvents([ffCrude, bqCrude.event, bqImports.event]);
+  assert.equal(reconciledCrude.length, 2);
+  assert.equal(
+    reconciledCrude.find((item) => item.identity?.key === ffCrude.identity?.key)?.sourceId,
+    "biquote",
+    "Biquote must be the deterministic representative when a reconciled Event carries result lifecycle data",
+  );
+
+  const ffBarr = calendarToCanonicalRecords([{
+    id: "ff-barr",
+    time: "21:05",
+    event: "FOMC Member Barr Speaks",
+    country: "USD",
+    impact: "LOW",
+    status: "PAST",
+    dateISO: "2026-09-23T14:05:00.000Z",
+  }], "forex-factory").events[0];
+  const bqBarr = normalizeBiquoteEconomicCalendar([
+    biquoteRecord({
+      id: "bq-barr",
+      eventId: "fed-barr-speech",
+      name: "Fed Vice Chair for Supervision Barr Speech",
+      time: "2026-09-23T14:05:00.000Z",
+      actual: null,
+      forecast: null,
+      previous: null,
+      timeMode: "exact",
+    }),
+  ], retrievedAt)[0].event;
+  assert.equal(ffBarr.identity?.key, bqBarr.identity?.key, "role wording must not split the same Fed-official speech");
+
+  const ffCrudeLater = calendarToCanonicalRecords([{
+    id: "ff-crude-later",
+    time: "21:35",
+    event: "Crude Oil Inventories",
+    country: "USD",
+    impact: "HIGH",
+    status: "UPCOMING",
+    dateISO: "2026-09-23T14:35:00.000Z",
+  }], "forex-factory").events[0];
+  assert.notEqual(ffCrude.identity?.key, ffCrudeLater.identity?.key, "different scheduled instants must remain distinct Events");
+
+  const ffOther = calendarToCanonicalRecords([{
+    id: "ff-other",
+    time: "21:30",
+    event: "Crude Oil Inventories",
+    country: "CAD",
+    impact: "HIGH",
+    status: "UPCOMING",
+    dateISO: "2026-09-23T14:30:00.000Z",
+  }], "forex-factory").events[0];
+  assert.equal(ffOther.identity, undefined, "OTHER jurisdiction must not be reconciled across countries");
 
   const exactResult = normalizeBiquoteEconomicCalendar([
     biquoteRecord({ actual: 3.1, timeMode: "exact" }),

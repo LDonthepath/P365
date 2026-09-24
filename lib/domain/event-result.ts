@@ -14,6 +14,8 @@ export type EventExpectedType =
 export type EconomicEventResult = {
   id: string;
   eventId: Event["id"];
+  /** Provider-independent Event reconciliation key when the Event is qualified. */
+  eventIdentityKey?: string;
   actual?: number;
   expected?: number;
   expectedType?: EventExpectedType;
