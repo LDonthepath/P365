@@ -363,6 +363,77 @@ async function main(): Promise<void> {
   );
   assertEqual(incompatible.quality, "PARTIAL", "incompatibility is explicit");
 
+  const missingUnitAfter = observation(
+    "btc-no-unit",
+    "btc.spot.usd",
+    "68700",
+    "2026-10-15T12:34:50.000Z",
+    "2026-10-15T12:34:55.000Z",
+    {
+      metadata: {
+        metricId: "btc.spot.usd",
+      },
+    },
+  );
+  const missingUnitSnapshot = snapshot({
+    capturedAt: "2026-10-15T12:35:00.000Z",
+    observations: [missingUnitAfter, dxyAfter],
+    primaryEvent,
+    baseline: afterPricing,
+  });
+  const missingUnitComparison = compareMarketSnapshots({
+    before: beforeSnapshot,
+    after: missingUnitSnapshot,
+    observations: [
+      btcBefore,
+      dxyBefore,
+      missingUnitAfter,
+      dxyAfter,
+    ],
+  });
+  const missingUnitBtc = missingUnitComparison.observationChanges.find(
+    (change) => change.key === marketSnapshotObservationKey(btcBefore),
+  );
+  assertEqual(
+    missingUnitBtc?.status,
+    "INCOMPATIBLE",
+    "missing unit blocks numerical comparison",
+  );
+
+  const corruptedQualitySnapshot: MarketSnapshot = {
+    ...afterSnapshot,
+    observationRefs: afterSnapshot.observationRefs.map((ref) =>
+      ref.observationId === "btc-after"
+        ? { ...ref, quality: "STALE" as const }
+        : ref,
+    ),
+  };
+  assertThrows(
+    "resolved canonical quality must match frozen Snapshot reference",
+    () => compareMarketSnapshots({
+      before: beforeSnapshot,
+      after: corruptedQualitySnapshot,
+      observations: [btcBefore, dxyBefore, btcAfter, dxyAfter],
+    }),
+  );
+
+  const corruptedEvidenceSnapshot: MarketSnapshot = {
+    ...afterSnapshot,
+    observationRefs: afterSnapshot.observationRefs.map((ref) =>
+      ref.observationId === "btc-after"
+        ? { ...ref, evidenceId: "wrong-evidence" }
+        : ref,
+    ),
+  };
+  assertThrows(
+    "resolved canonical evidence must match frozen Snapshot reference",
+    () => compareMarketSnapshots({
+      before: beforeSnapshot,
+      after: corruptedEvidenceSnapshot,
+      observations: [btcBefore, dxyBefore, btcAfter, dxyAfter],
+    }),
+  );
+
   const missingResolved = compareMarketSnapshots({
     before: beforeSnapshot,
     after: afterSnapshot,
