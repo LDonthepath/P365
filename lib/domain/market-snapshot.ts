@@ -112,7 +112,6 @@ function observationSeriesKey(observation: Observation): string {
 
 export function marketSnapshotObservationKey(observation: Observation): string {
   return [
-    "OBSERVATION",
     observation.domain,
     observationSeriesKey(observation),
     observation.sourceId,
@@ -121,8 +120,8 @@ export function marketSnapshotObservationKey(observation: Observation): string {
 
 export function marketSnapshotEventKey(event: Event): string {
   return event.identity?.key?.trim()
-    ? "EVENT:" + event.identity.key
-    : "EVENT_ID:" + event.id;
+    ? event.identity.key
+    : "id:" + event.id;
 }
 
 export function marketSnapshotBaselineKey(
@@ -130,7 +129,6 @@ export function marketSnapshotBaselineKey(
 ): string {
   if (baseline.kind === "FACTUAL") {
     return [
-      "BASELINE",
       "FACTUAL",
       baseline.currentObservationId,
       baseline.sourceId,
@@ -138,7 +136,6 @@ export function marketSnapshotBaselineKey(
   }
   if (baseline.kind === "EXPECTATION") {
     return [
-      "BASELINE",
       "EXPECTATION",
       baseline.eventIdentityKey,
       baseline.sourceId,
@@ -146,7 +143,6 @@ export function marketSnapshotBaselineKey(
     ].join(":");
   }
   return [
-    "BASELINE",
     "PRICING",
     baseline.seriesKey,
     baseline.sourceId,
@@ -371,6 +367,16 @@ export function buildMarketSnapshot(request: MarketSnapshotRequest): MarketSnaps
     }))
     .sort((a, b) => a.key.localeCompare(b.key) || a.observationId.localeCompare(b.observationId));
 
+  const observationKeys = new Set<string>();
+  for (const ref of observationRefs) {
+    if (observationKeys.has(ref.key)) {
+      throw new Error(
+        "Market Snapshot cannot contain multiple observations for the same semantic/provider slot.",
+      );
+    }
+    observationKeys.add(ref.key);
+  }
+
   const eventRefs = [...eventById.values()]
     .map((event): MarketSnapshotEventRef => ({
       key: marketSnapshotEventKey(event),
@@ -380,9 +386,27 @@ export function buildMarketSnapshot(request: MarketSnapshotRequest): MarketSnaps
     }))
     .sort((a, b) => a.key.localeCompare(b.key) || a.eventId.localeCompare(b.eventId));
 
+  const eventKeys = new Set<string>();
+  for (const ref of eventRefs) {
+    if (eventKeys.has(ref.key)) {
+      throw new Error(
+        "Market Snapshot requires provider-duplicate Events to be reconciled before capture.",
+      );
+    }
+    eventKeys.add(ref.key);
+  }
+
   const baselineRefs = baselines
     .map(baselineRef)
     .sort((a, b) => a.key.localeCompare(b.key));
+
+  const baselineKeys = new Set<string>();
+  for (const ref of baselineRefs) {
+    if (baselineKeys.has(ref.key)) {
+      throw new Error("Market Snapshot baseline reference keys must be unique.");
+    }
+    baselineKeys.add(ref.key);
+  }
 
   const available = new Set<string>([
     ...observationRefs.map((ref) => "OBSERVATION:" + ref.key),
