@@ -10,10 +10,16 @@ import {
   type QualifiedEventWindowSlot,
 } from "../domain/event-window";
 import {
+  buildMarketSnapshot,
   marketSnapshotBaselineKey,
   type MarketSnapshot,
+  type MarketSnapshotRequest,
   type MarketSnapshotRequirement,
 } from "../domain/market-snapshot";
+import {
+  SNAPSHOT_SUPERSESSION_POLICY_V1,
+  selectActiveMarketSnapshot,
+} from "../domain/snapshot-supersession";
 import type { ExpectationBaseline } from "../domain/expectation-baseline";
 import type { PricingBaseline } from "../domain/pricing-baseline";
 import type { Event, Observation, ObservationDomain } from "../domain/types";
@@ -80,10 +86,12 @@ export type EventWindowCaptureSlotReport = {
   targetAt: string;
   status:
     | "CAPTURED"
+    | "CORRECTED"
     | "ALREADY_CAPTURED"
     | "EVENT_NOT_AVAILABLE_AS_OF_TARGET"
     | "FAILED";
   snapshotId?: string;
+  supersedesSnapshotId?: string;
   snapshotQuality?: MarketSnapshot["quality"];
   message?: string;
 };
@@ -95,6 +103,7 @@ export type EventWindowCaptureReport = {
   qualifiedWindows: number;
   dueSlots: number;
   captured: number;
+  corrected: number;
   alreadyCaptured: number;
   unavailableEventSlots: number;
   failed: number;
@@ -192,11 +201,56 @@ async function existingSlotSnapshot(
     limit: 100,
   });
 
-  return snapshots.find((snapshot) =>
+  const slotSnapshots = snapshots.filter((snapshot) =>
     snapshot.metadata?.eventWindowId === window.id
     && snapshot.metadata?.eventIdentityKey === window.eventIdentityKey
     && snapshot.metadata?.eventWindowRole === slot.role
-  ) ?? null;
+  );
+
+  return selectActiveMarketSnapshot(slotSnapshots);
+}
+
+function snapshotQualityRank(quality: MarketSnapshot["quality"]): number {
+  if (quality === "COMPLETE") return 3;
+  if (quality === "STALE") return 2;
+  if (quality === "PARTIAL") return 1;
+  return 0;
+}
+
+function informativeBaselineCount(snapshot: MarketSnapshot): number {
+  return snapshot.baselineRefs.filter(
+    (ref) => ref.status !== "MISSING" && ref.status !== "UNKNOWN",
+  ).length;
+}
+
+function strictlyImprovesSnapshot(
+  candidate: MarketSnapshot,
+  existing: MarketSnapshot,
+): boolean {
+  const qualityNotWorse =
+    snapshotQualityRank(candidate.quality) >= snapshotQualityRank(existing.quality);
+  const missingNotWorse =
+    candidate.missingRequirements.length <= existing.missingRequirements.length;
+  const observationsNotWorse =
+    candidate.observationRefs.length >= existing.observationRefs.length;
+  const baselinesNotWorse =
+    informativeBaselineCount(candidate) >= informativeBaselineCount(existing);
+
+  if (
+    !qualityNotWorse
+    || !missingNotWorse
+    || !observationsNotWorse
+    || !baselinesNotWorse
+  ) {
+    return false;
+  }
+
+  return (
+    snapshotQualityRank(candidate.quality) > snapshotQualityRank(existing.quality)
+    || candidate.missingRequirements.length < existing.missingRequirements.length
+    || candidate.observationRefs.length > existing.observationRefs.length
+    || informativeBaselineCount(candidate) > informativeBaselineCount(existing)
+  );
 }
 
 async function eventAsOfTarget(
@@ -301,17 +355,6 @@ async function captureSlot(input: {
       input.slot,
       input.repositories.snapshotHistory,
     );
-    if (existing) {
-      return {
-        eventIdentityKey: input.window.eventIdentityKey,
-        eventId: input.window.eventId,
-        role: input.slot.role,
-        targetAt: input.slot.targetAt,
-        status: "ALREADY_CAPTURED",
-        snapshotId: existing.id,
-        snapshotQuality: existing.quality,
-      };
-    }
 
     const event = await eventAsOfTarget(
       input.window,
@@ -342,37 +385,85 @@ async function captureSlot(input: {
       repository: input.repositories.eventResults,
     });
 
-    const snapshot = await captureMarketSnapshot(
-      {
-        capturedAt: input.slot.targetAt,
-        scope: input.window.snapshotScope,
-        observations: pricing.observations,
-        events: [event],
-        baselines: [
-          ...pricing.baselines,
-          expectation.baseline,
-        ],
-        requirements: [
-          {
-            kind: "EVENT",
-            key: input.window.eventIdentityKey,
-          },
-          ...pricing.requirements,
-          expectation.requirement,
-        ],
-        metadata: {
-          captureOwner: "CAP-001",
-          captureMode: "AS_OF_RECONSTRUCTION",
-          eventWindowPolicy: EVENT_WINDOW_POLICY_V1.version,
-          eventWindowId: input.window.id,
-          eventIdentityKey: input.window.eventIdentityKey,
-          eventWindowRole: input.slot.role,
-          eventWindowPhase: input.slot.phase,
-          targetAt: input.slot.targetAt,
-          t0: input.window.t0,
-          t0Source: input.window.t0Source,
+    const baseRequest: MarketSnapshotRequest = {
+      capturedAt: input.slot.targetAt,
+      scope: input.window.snapshotScope,
+      observations: pricing.observations,
+      events: [event],
+      baselines: [
+        ...pricing.baselines,
+        expectation.baseline,
+      ],
+      requirements: [
+        {
+          kind: "EVENT",
+          key: input.window.eventIdentityKey,
         },
+        ...pricing.requirements,
+        expectation.requirement,
+      ],
+      metadata: {
+        captureOwner: "CAP-001",
+        captureMode: "AS_OF_RECONSTRUCTION",
+        eventWindowPolicy: EVENT_WINDOW_POLICY_V1.version,
+        eventWindowId: input.window.id,
+        eventIdentityKey: input.window.eventIdentityKey,
+        eventWindowRole: input.slot.role,
+        eventWindowPhase: input.slot.phase,
+        targetAt: input.slot.targetAt,
+        t0: input.window.t0,
+        t0Source: input.window.t0Source,
       },
+    };
+    const candidate = buildMarketSnapshot(baseRequest);
+
+    if (existing) {
+      const correctionCandidateId = existing.metadata?.correctionCandidateSnapshotId;
+      if (
+        existing.id === candidate.id
+        || correctionCandidateId === candidate.id
+        || !strictlyImprovesSnapshot(candidate, existing)
+      ) {
+        return {
+          eventIdentityKey: input.window.eventIdentityKey,
+          eventId: event.id,
+          role: input.slot.role,
+          targetAt: input.slot.targetAt,
+          status: "ALREADY_CAPTURED",
+          snapshotId: existing.id,
+          snapshotQuality: existing.quality,
+        };
+      }
+
+      const corrected = await captureMarketSnapshot(
+        {
+          ...baseRequest,
+          metadata: {
+            ...baseRequest.metadata,
+            captureOwner: "CAP-001C",
+            captureMode: "AS_OF_RECONSTRUCTION_CORRECTION",
+            correctionPolicy: SNAPSHOT_SUPERSESSION_POLICY_V1,
+            supersedesSnapshotId: existing.id,
+            correctionCandidateSnapshotId: candidate.id,
+          },
+        },
+        input.repositories.snapshots,
+      );
+
+      return {
+        eventIdentityKey: input.window.eventIdentityKey,
+        eventId: event.id,
+        role: input.slot.role,
+        targetAt: input.slot.targetAt,
+        status: "CORRECTED",
+        snapshotId: corrected.id,
+        supersedesSnapshotId: existing.id,
+        snapshotQuality: corrected.quality,
+      };
+    }
+
+    const snapshot = await captureMarketSnapshot(
+      baseRequest,
       input.repositories.snapshots,
     );
 
@@ -454,6 +545,7 @@ export async function runEventWindowSnapshotCapture(
       qualifiedWindows: 0,
       dueSlots: 0,
       captured: 0,
+      corrected: 0,
       alreadyCaptured: 0,
       unavailableEventSlots: 0,
       failed: 1,
@@ -485,6 +577,7 @@ export async function runEventWindowSnapshotCapture(
       qualifiedWindows: windowSet.windows.length,
       dueSlots: 0,
       captured: 0,
+      corrected: 0,
       alreadyCaptured: 0,
       unavailableEventSlots: 0,
       failed: 0,
@@ -502,6 +595,7 @@ export async function runEventWindowSnapshotCapture(
   }
 
   const captured = slots.filter((slot) => slot.status === "CAPTURED").length;
+  const corrected = slots.filter((slot) => slot.status === "CORRECTED").length;
   const alreadyCaptured = slots.filter(
     (slot) => slot.status === "ALREADY_CAPTURED",
   ).length;
@@ -510,7 +604,7 @@ export async function runEventWindowSnapshotCapture(
   ).length;
   const failed = slots.filter((slot) => slot.status === "FAILED").length;
 
-  const succeeded = captured + alreadyCaptured;
+  const succeeded = captured + corrected + alreadyCaptured;
   const status: EventWindowCaptureReport["status"] =
     failed === slots.length
       ? "FAILED"
@@ -527,6 +621,7 @@ export async function runEventWindowSnapshotCapture(
     qualifiedWindows: windowSet.windows.length,
     dueSlots: due.length,
     captured,
+    corrected,
     alreadyCaptured,
     unavailableEventSlots,
     failed,

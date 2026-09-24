@@ -91,6 +91,17 @@ Once a memory record is written:
 - a correction must create a new record or explicit superseding relationship;
 - historical records must not be rewritten using later information.
 
+### Snapshot correction / supersession
+
+Event-window Snapshot repair follows the same invariant. A defective immutable Snapshot is retained permanently. If deterministic as-of reconstruction later proves a strictly more complete/correct slot from facts that were available by the original target time, CAP may append a replacement Snapshot with:
+
+- `correctionPolicy = append-only-snapshot-supersession-v1`;
+- `supersedesSnapshotId = <prior active snapshot id>`;
+- `correctionCandidateSnapshotId = <deterministic canonical reconstruction id>`;
+- the same semantic `capturedAt`, Event identity, window role and target.
+
+Readers must resolve the single active supersession tip for a logical slot. Forks, cycles, missing parents, or cross-scope/time supersession links fail closed. A correction is permitted only when quality/completeness is non-regressing and at least one governed completeness dimension strictly improves.
+
 ## Current database verification
 
 The P365 Supabase project contains `public.market_memory`, RLS is enabled, and the append-only/dedupe triggers are installed. The database currently contains one pre-existing verification record; it is intentionally retained because Market Memory is append-only.
