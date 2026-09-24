@@ -1,7 +1,8 @@
+import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
 
-export type CanonicalRecord = Observation | Event | Evidence | Context;
-export type MarketMemoryRecordType = "OBSERVATION" | "EVENT" | "EVIDENCE" | "CONTEXT";
+export type CanonicalRecord = Observation | Event | Evidence | Context | MarketSnapshot;
+export type MarketMemoryRecordType = "OBSERVATION" | "EVENT" | "EVIDENCE" | "CONTEXT" | "SNAPSHOT";
 
 export function marketMemoryEffectiveAt(
   recordType: MarketMemoryRecordType,
@@ -16,6 +17,7 @@ export function marketMemoryEffectiveAt(
     const evidence = record as Evidence;
     return evidence.publishedAt ?? evidence.releasedAt ?? evidence.retrievedAt;
   }
+  if (recordType === "SNAPSHOT") return (record as MarketSnapshot).capturedAt;
   return (record as Context).createdAt;
 }
 
