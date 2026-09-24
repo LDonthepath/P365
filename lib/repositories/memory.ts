@@ -54,6 +54,10 @@ implements MarketSnapshotRepository, HistoricalMarketSnapshotRepository {
     const bounds = validateMarketSnapshotHistoryQuery(query);
     const matches = [...this.items.values()].filter((snapshot) => {
       if (snapshot.scope !== query.scope) return false;
+      if (
+        query.eventIdentityKey !== undefined
+        && snapshot.metadata?.eventIdentityKey !== query.eventIdentityKey
+      ) return false;
       const capturedAt = marketSnapshotHistoryTimestamp(
         snapshot.capturedAt,
         "MarketSnapshot.capturedAt",
