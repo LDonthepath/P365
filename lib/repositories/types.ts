@@ -1,4 +1,5 @@
 import type { EconomicEventResult, EventExpectedType } from "../domain/event-result";
+import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Context, Event, Evidence, Observation, ObservationDomain } from "../domain/types";
 
 export type ObservationHistoryOrder = "ASC" | "DESC";
@@ -44,6 +45,17 @@ export type ObservationHistoryQuery = {
   limit: number;
 };
 
+export type MarketSnapshotHistoryOrder = "ASC" | "DESC";
+
+export type MarketSnapshotHistoryQuery = {
+  scope: string;
+  capturedAtOnOrAfter?: string;
+  capturedAtOnOrBefore?: string;
+  order: MarketSnapshotHistoryOrder;
+  /** Positive integer capped at 500 records per query. */
+  limit: number;
+};
+
 export type EconomicEventResultHistoryOrder = "ASC" | "DESC";
 
 /**
@@ -74,3 +86,5 @@ export interface ContextRepository { save(context: Context): Promise<void>; save
 export interface EconomicEventResultRepository { save(result: EconomicEventResult): Promise<void>; saveMany(results: EconomicEventResult[]): Promise<void>; findById(id: string): Promise<EconomicEventResult | null>; }
 /** Historical EventResult reads stay separate from canonical write persistence. */
 export interface HistoricalEconomicEventResultRepository { findHistory(query: EconomicEventResultHistoryQuery): Promise<EconomicEventResult[]>; }
+export interface MarketSnapshotRepository { save(snapshot: MarketSnapshot): Promise<void>; saveMany(snapshots: MarketSnapshot[]): Promise<void>; findById(id: string): Promise<MarketSnapshot | null>; }
+export interface HistoricalMarketSnapshotRepository { findHistory(query: MarketSnapshotHistoryQuery): Promise<MarketSnapshot[]>; }

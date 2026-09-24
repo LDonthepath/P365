@@ -1,6 +1,7 @@
 import "server-only";
+import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
-import type { ContextRepository, EventRepository, EvidenceRepository, ObservationRepository } from "../repositories/types";
+import type { ContextRepository, EventRepository, EvidenceRepository, MarketSnapshotRepository, ObservationRepository } from "../repositories/types";
 import { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
 import { marketMemoryDedupeKey, marketMemoryEffectiveAt, type CanonicalRecord, type MarketMemoryRecordType } from "./market-memory-record";
 
@@ -11,6 +12,10 @@ type MarketMemoryRow = {
   captured_at: string;
   dedupe_key: string;
   payload: CanonicalRecord;
+  observation_ids?: string[];
+  event_ids?: string[];
+  evidence_ids?: string[];
+  snapshot_id?: string;
 };
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -26,6 +31,27 @@ function requireConfig(): { url: string; key: string } {
 
 function rowFor(recordType: MarketMemoryRecordType, record: CanonicalRecord): MarketMemoryRow {
   const effective = marketMemoryEffectiveAt(recordType, record);
+  const lineage = recordType === "SNAPSHOT"
+    ? (() => {
+        const snapshot = record as MarketSnapshot;
+        return {
+          observation_ids: [...new Set([
+            ...snapshot.observationRefs.map((ref) => ref.observationId),
+            ...snapshot.baselineRefs.flatMap((ref) => ref.observationIds),
+          ])].sort(),
+          event_ids: [...new Set(
+            snapshot.eventRefs.map((ref) => ref.eventId),
+          )].sort(),
+          evidence_ids: [...new Set([
+            ...snapshot.observationRefs.map((ref) => ref.evidenceId),
+            ...snapshot.eventRefs.map((ref) => ref.evidenceId),
+            ...snapshot.baselineRefs.flatMap((ref) => ref.evidenceIds),
+          ])].sort(),
+          snapshot_id: snapshot.id,
+        };
+      })()
+    : {};
+
   return {
     record_type: recordType,
     canonical_id: record.id,
@@ -36,6 +62,7 @@ function rowFor(recordType: MarketMemoryRecordType, record: CanonicalRecord): Ma
     captured_at: new Date().toISOString(),
     dedupe_key: marketMemoryDedupeKey(recordType, record),
     payload: record,
+    ...lineage,
   };
 }
 
@@ -104,6 +131,9 @@ export const supabaseCanonicalRepositories = {
   evidence: new SupabaseRepository<Evidence>("EVIDENCE") satisfies EvidenceRepository,
   contexts: new SupabaseRepository<Context>("CONTEXT") satisfies ContextRepository,
 };
+
+export const supabaseMarketSnapshotRepository =
+  new SupabaseRepository<MarketSnapshot>("SNAPSHOT") satisfies MarketSnapshotRepository;
 
 export const supabaseHistoricalObservationRepository = new SupabaseHistoricalObservationRepository({ config: requireConfig });
 export { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";

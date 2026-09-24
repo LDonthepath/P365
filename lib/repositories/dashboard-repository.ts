@@ -1,9 +1,10 @@
 import type { Context, Event, Evidence, Observation } from "../domain/types";
-import { supabaseCanonicalRepositories, supabaseHistoricalObservationRepository } from "../data/market-memory-store";
+import { supabaseCanonicalRepositories, supabaseHistoricalObservationRepository, supabaseMarketSnapshotRepository } from "../data/market-memory-store";
 import { supabaseEconomicEventResultRepository } from "../data/economic-event-result-repository";
 import { supabaseHistoricalEconomicEventResultRepository } from "../data/supabase-event-result-history";
-import { InMemoryContextRepository, InMemoryEventRepository, InMemoryEvidenceRepository, InMemoryObservationRepository } from "./memory";
-import type { ContextRepository, EconomicEventResultRepository, EventRepository, EvidenceRepository, HistoricalEconomicEventResultRepository, HistoricalObservationRepository, ObservationRepository } from "./types";
+import { supabaseHistoricalMarketSnapshotRepository } from "../data/supabase-snapshot-history";
+import { InMemoryContextRepository, InMemoryEventRepository, InMemoryEvidenceRepository, InMemoryMarketSnapshotRepository, InMemoryObservationRepository } from "./memory";
+import type { ContextRepository, EconomicEventResultRepository, EventRepository, EvidenceRepository, HistoricalEconomicEventResultRepository, HistoricalMarketSnapshotRepository, HistoricalObservationRepository, MarketSnapshotRepository, ObservationRepository } from "./types";
 
 export type CanonicalRepositories = {
   observations: ObservationRepository;
@@ -30,6 +31,18 @@ export const historicalObservationRepository: HistoricalObservationRepository =
 
 export const economicEventResultRepository: EconomicEventResultRepository = supabaseEconomicEventResultRepository;
 export const historicalEconomicEventResultRepository: HistoricalEconomicEventResultRepository = supabaseHistoricalEconomicEventResultRepository;
+
+const inMemorySnapshotRepository = new InMemoryMarketSnapshotRepository();
+
+export const marketSnapshotRepository: MarketSnapshotRepository =
+  process.env.P365_MEMORY_PERSISTENCE === "memory"
+    ? inMemorySnapshotRepository
+    : supabaseMarketSnapshotRepository;
+
+export const historicalMarketSnapshotRepository: HistoricalMarketSnapshotRepository =
+  process.env.P365_MEMORY_PERSISTENCE === "memory"
+    ? inMemorySnapshotRepository
+    : supabaseHistoricalMarketSnapshotRepository;
 
 export async function persistCanonicalDashboardData(
   repositories: CanonicalRepositories,
