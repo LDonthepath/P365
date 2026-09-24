@@ -412,7 +412,10 @@ export async function runEventWindowSnapshotCapture(
       scheduledAtOnOrBefore: bounds.through,
       retrievedAtOnOrBefore: evaluatedAt,
       importance: "HIGH",
-      order: "ASC",
+      // FND-019 reconciliation is not a revision selector. Newest canonical
+      // Event versions must enter first so releasedAt/occurredAt updates are
+      // retained before provider-level reconciliation.
+      order: "DESC",
       limit: 500,
     });
   } catch (error) {
