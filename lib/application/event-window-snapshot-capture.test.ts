@@ -366,26 +366,24 @@ async function main(): Promise<void> {
   const targetedRepair = await runEventWindowSnapshotRepair(
     {
       eventIdentityKey: historicalRepair.event.identity?.key ?? "",
-      evaluatedAt: "2026-10-15T18:00:00.000Z",
     },
     { repositories: historicalRepair.repositories },
   );
   assertEqual(targetedRepair.status, "SUCCESS", "targeted historical repair succeeds outside cron lookback");
-  assertEqual(targetedRepair.dueSlots, 5, "targeted repair evaluates all five elapsed event-window slots");
+  assertEqual(targetedRepair.dueSlots, 2, "targeted repair touches only immutable slots that already exist");
   assertEqual(targetedRepair.corrected, 2, "targeted repair supersedes the two defective immutable slots");
-  assertEqual(targetedRepair.captured, 3, "targeted repair first-materializes later slots that were never captured");
+  assertEqual(targetedRepair.captured, 0, "targeted repair never creates previously missing logical slots");
   assertEqual(targetedRepair.alreadyCaptured, 0, "first targeted repair has no active healthy slots");
 
   const targetedRetry = await runEventWindowSnapshotRepair(
     {
       eventIdentityKey: historicalRepair.event.identity?.key ?? "",
-      evaluatedAt: "2026-10-15T18:00:00.000Z",
     },
     { repositories: historicalRepair.repositories },
   );
   assertEqual(targetedRetry.corrected, 0, "targeted repair retry appends no new correction");
   assertEqual(targetedRetry.captured, 0, "targeted repair retry first-materializes nothing");
-  assertEqual(targetedRetry.alreadyCaptured, 5, "targeted repair retry resolves all five active tips idempotently");
+  assertEqual(targetedRetry.alreadyCaptured, 2, "targeted repair retry resolves existing active tips idempotently");
 
   const lateEvent = await fixture("2026-10-15T12:26:00.000Z");
   const lateReport = await runEventWindowSnapshotCapture(
