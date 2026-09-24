@@ -126,11 +126,21 @@ export function marketSnapshotEventKey(event: Event): string {
 
 export function marketSnapshotBaselineKey(
   baseline: FactualBaseline | ExpectationBaseline | PricingBaseline,
+  observations: Observation[] = [],
 ): string {
   if (baseline.kind === "FACTUAL") {
+    const current = observations.find(
+      (observation) => observation.id === baseline.currentObservationId,
+    );
+    if (!current) {
+      throw new Error(
+        "Factual baseline Snapshot key requires its current Observation.",
+      );
+    }
     return [
       "FACTUAL",
-      baseline.currentObservationId,
+      current.domain,
+      observationSeriesKey(current),
       baseline.sourceId,
     ].join(":");
   }
@@ -149,9 +159,12 @@ export function marketSnapshotBaselineKey(
   ].join(":");
 }
 
-function factualBaselineRef(baseline: FactualBaseline): MarketSnapshotBaselineRef {
+function factualBaselineRef(
+  baseline: FactualBaseline,
+  observations: Observation[],
+): MarketSnapshotBaselineRef {
   return {
-    key: marketSnapshotBaselineKey(baseline),
+    key: marketSnapshotBaselineKey(baseline, observations),
     kind: "FACTUAL",
     status: baseline.status,
     policy: baseline.qualityPolicy,
@@ -194,8 +207,11 @@ function pricingBaselineRef(baseline: PricingBaseline): MarketSnapshotBaselineRe
 
 function baselineRef(
   baseline: FactualBaseline | ExpectationBaseline | PricingBaseline,
+  observations: Observation[],
 ): MarketSnapshotBaselineRef {
-  if (baseline.kind === "FACTUAL") return factualBaselineRef(baseline);
+  if (baseline.kind === "FACTUAL") {
+    return factualBaselineRef(baseline, observations);
+  }
   if (baseline.kind === "EXPECTATION") return expectationBaselineRef(baseline);
   return pricingBaselineRef(baseline);
 }
@@ -398,8 +414,9 @@ export function buildMarketSnapshot(request: MarketSnapshotRequest): MarketSnaps
     eventKeys.add(ref.key);
   }
 
+  const snapshotObservations = [...observationById.values()];
   const baselineRefs = baselines
-    .map(baselineRef)
+    .map((baseline) => baselineRef(baseline, snapshotObservations))
     .sort((a, b) => a.key.localeCompare(b.key));
 
   const baselineKeys = new Set<string>();
