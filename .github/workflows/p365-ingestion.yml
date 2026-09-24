@@ -145,3 +145,17 @@ jobs:
             --get "${P365_BASE_URL%/}/api/cron/event-ingestion" \
             --data-urlencode "providers=forex-factory,federal-reserve" \
             --data-urlencode "jurisdictions=US,CHINA,JAPAN"
+
+  build-probe:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
