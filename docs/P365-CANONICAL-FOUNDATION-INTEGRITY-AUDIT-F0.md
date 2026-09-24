@@ -47,7 +47,7 @@ The current system can independently ingest and normalize selected factual Obser
 | Historical retrieval | PASS | FND-001 semantics are implemented against persisted canonical Observation payloads; read-only production verification found 29 contract-eligible FRED macro series with predecessor depth. |
 | Historical continuity | PASS for FND-003 operational boundary | Independent Observation/Event ingestion is driven by production Supabase `pg_cron` and persists to durable Market Memory. Scheduler redesign remains outside FND-002. |
 | Factual baseline | FULL PASS / PRODUCTION E2E VERIFIED | Active application orchestration reads predecessor candidates only from `HistoricalObservationRepository`, with strict measurement and retrieval/as-of bounds and no provider-window fallback; production dashboard execution verified 29 durable history reads. |
-| Expectation baseline | **EXP-001 IMPLEMENTATION CHECKPOINT** | Provider-scoped point-in-time EventResult history and latest-qualified pre-release Expectation Baseline selection are implemented on the branch. `FORECAST`, `CONSENSUS`, and `OFFICIAL_PROJECTION` remain distinct; missing unit/period is PARTIAL; post-release snapshots are ineligible. Preview/build verification remains required before merge. |
+| Expectation baseline | **EXP-001 IMPLEMENTATION PASS — PREVIEW VERIFIED / OWNER MERGE PENDING** | Provider-scoped point-in-time EventResult history and latest-qualified pre-release Expectation Baseline selection are implemented. `FORECAST`, `CONSENSUS`, and `OFFICIAL_PROJECTION` remain distinct; missing unit/period is PARTIAL; post-release snapshots are ineligible. Vercel preview build is READY/SUCCESS; production activation remains pending owner merge and future qualified EventResult history. |
 | Pricing baseline | MISSING | No canonical market-implied pricing layer. |
 | Historical baseline | MISSING | No approved methodology/query implementation. |
 | Cross-asset baseline | MISSING | No immutable pre-event reference set. |
@@ -78,7 +78,7 @@ Observation identity        FND-018A FULL PASS / CLOSED / PRODUCTION ACTIVE
 Observation provenance      FND-010A PRODUCTION ACTIVE
 Macro freshness             FND-011A PRODUCTION ACTIVE
 Independent ingestion        OPERATIONAL (FND-003A/B/C)
-Expectation baseline         EXP-001 IMPLEMENTATION CHECKPOINT
+Expectation baseline         EXP-001 IMPLEMENTATION PASS / PREVIEW VERIFIED
 Pricing baseline             MISSING
 Market Snapshot              DESIGN ONLY
 Transmission reasoning       MISSING
@@ -760,7 +760,7 @@ Intelligence / Briefing
 16. FND-009 Manual cache invalidation                       ← CLOSED / PRODUCTION ACTIVE
 17. Foundation Exit Gate                                   ← PASS; stop open-ended hardening
 18. FND-019 Event identity/reconciliation                   ← merged; production activation watch pending
-19. EXP-001 Point-in-Time Expectation Baseline               ← current checkpoint
+19. EXP-001 Point-in-Time Expectation Baseline               ← implementation PASS; owner merge pending
 20. Pricing Baseline / market-implied layer
 21. Market Snapshot implementation
 22. Event-window cross-asset repricing/transmission
