@@ -12,7 +12,6 @@ type RepairRunner = (
 export function createEventWindowSnapshotRepairHandler(
   runner: RepairRunner = (request) => runEventWindowSnapshotRepair(request),
   readSecret: () => string | undefined = () => process.env.CRON_SECRET,
-  now: () => number = () => Date.now(),
 ): (request: Request) => Promise<Response> {
   return async function handle(request: Request): Promise<Response> {
     if (
@@ -39,9 +38,6 @@ export function createEventWindowSnapshotRepairHandler(
     const eventIdentityKey = typeof body.eventIdentityKey === "string"
       ? body.eventIdentityKey.trim()
       : "";
-    const evaluatedAt = typeof body.evaluatedAt === "string"
-      ? body.evaluatedAt.trim()
-      : "";
 
     if (!eventIdentityKey.startsWith("event:v1:")) {
       return Response.json(
@@ -50,24 +46,7 @@ export function createEventWindowSnapshotRepairHandler(
       );
     }
 
-    const evaluatedAtMs = Date.parse(evaluatedAt);
-    if (!Number.isFinite(evaluatedAtMs)) {
-      return Response.json(
-        { error: "evaluatedAt must be a valid ISO timestamp." },
-        { status: 400 },
-      );
-    }
-    if (evaluatedAtMs > now()) {
-      return Response.json(
-        { error: "evaluatedAt cannot be in the future." },
-        { status: 400 },
-      );
-    }
-
-    const report = await runner({
-      eventIdentityKey,
-      evaluatedAt: new Date(evaluatedAtMs).toISOString(),
-    });
+    const report = await runner({ eventIdentityKey });
 
     return Response.json(
       report,
