@@ -743,7 +743,7 @@ Intelligence / Briefing
 1. Documentation consolidation / SSOT                     ← PR #36
 2. FND-004 Context taxonomy repair                        ← corrected
 3. FND-001 Historical Observation repository contract     ← PR #37
-4. Durable history query adapter                          ← PR #39; production E2E pending
+4. Durable history query adapter                          ← PR #39; production E2E verified
 5. Financial Market Ontology & Data Foundation v0.1       ← PR #42 merged
 6. Additive semantic-dimensions compatibility contract    ← merged before PR #45
 7. FND-003A selective fresh Observation worker             ← PR #45 merged
