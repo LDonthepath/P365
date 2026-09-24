@@ -628,3 +628,140 @@ export async function runEventWindowSnapshotCapture(
     slots,
   };
 }
+
+export type EventWindowSnapshotRepairRequest = {
+  eventIdentityKey: string;
+  evaluatedAt: string;
+};
+
+/**
+ * Re-evaluates one historical Event identity outside the normal cron lookback.
+ *
+ * This is an explicit repair path, not a second scheduler. Event selection is
+ * bounded to the requested provider-independent identity and every Snapshot
+ * input remains constrained to the original slot target by captureSlot().
+ */
+export async function runEventWindowSnapshotRepair(
+  request: EventWindowSnapshotRepairRequest,
+  dependencies: {
+    repositories?: EventWindowCaptureRepositories;
+  } = {},
+): Promise<EventWindowCaptureReport> {
+  const eventIdentityKey = request.eventIdentityKey.trim();
+  if (!eventIdentityKey) {
+    throw new Error("Snapshot repair requires a non-empty eventIdentityKey.");
+  }
+
+  const evaluatedAtMs = timestamp(request.evaluatedAt, "repair evaluatedAt");
+  const evaluatedAt = new Date(evaluatedAtMs).toISOString();
+  const repositories = dependencies.repositories ?? await defaultRepositories();
+
+  let candidates: Event[];
+  try {
+    candidates = await repositories.events.findHistory({
+      eventIdentityKey,
+      retrievedAtOnOrBefore: evaluatedAt,
+      order: "DESC",
+      limit: 500,
+    });
+  } catch (error) {
+    return {
+      status: "FAILED",
+      evaluatedAt,
+      candidateEvents: 0,
+      qualifiedWindows: 0,
+      dueSlots: 0,
+      captured: 0,
+      corrected: 0,
+      alreadyCaptured: 0,
+      unavailableEventSlots: 0,
+      failed: 1,
+      slots: [{
+        eventIdentityKey,
+        eventId: "unavailable",
+        role: "PRE",
+        targetAt: evaluatedAt,
+        status: "FAILED",
+        message: error instanceof Error
+          ? error.message
+          : "Historical Event repair query failed.",
+      }],
+    };
+  }
+
+  const qualifiedCandidates = latestEventRevisions(candidates).filter(
+    (event) => event.identity?.key === eventIdentityKey,
+  );
+  const windowSet = buildQualifiedEventWindowSet(qualifiedCandidates);
+  const windows = windowSet.windows.filter(
+    (window) => window.eventIdentityKey === eventIdentityKey,
+  );
+  const due = windows.flatMap((window) =>
+    window.slots
+      .filter((slot) => {
+        const target = Date.parse(slot.targetAt);
+        return Number.isFinite(target) && target <= evaluatedAtMs;
+      })
+      .map((slot) => ({ window, slot })),
+  );
+
+  if (due.length === 0) {
+    return {
+      status: "EMPTY",
+      evaluatedAt,
+      candidateEvents: candidates.length,
+      qualifiedWindows: windows.length,
+      dueSlots: 0,
+      captured: 0,
+      corrected: 0,
+      alreadyCaptured: 0,
+      unavailableEventSlots: 0,
+      failed: 0,
+      slots: [],
+    };
+  }
+
+  const slots: EventWindowCaptureSlotReport[] = [];
+  for (const item of due) {
+    slots.push(await captureSlot({
+      window: item.window,
+      slot: item.slot,
+      repositories,
+    }));
+  }
+
+  const captured = slots.filter((slot) => slot.status === "CAPTURED").length;
+  const corrected = slots.filter((slot) => slot.status === "CORRECTED").length;
+  const alreadyCaptured = slots.filter(
+    (slot) => slot.status === "ALREADY_CAPTURED",
+  ).length;
+  const unavailableEventSlots = slots.filter(
+    (slot) => slot.status === "EVENT_NOT_AVAILABLE_AS_OF_TARGET",
+  ).length;
+  const failed = slots.filter((slot) => slot.status === "FAILED").length;
+  const succeeded = captured + corrected + alreadyCaptured;
+
+  const status: EventWindowCaptureReport["status"] =
+    failed === slots.length
+      ? "FAILED"
+      : failed > 0 || unavailableEventSlots > 0
+        ? "PARTIAL"
+        : succeeded > 0
+          ? "SUCCESS"
+          : "EMPTY";
+
+  return {
+    status,
+    evaluatedAt,
+    candidateEvents: candidates.length,
+    qualifiedWindows: windows.length,
+    dueSlots: due.length,
+    captured,
+    corrected,
+    alreadyCaptured,
+    unavailableEventSlots,
+    failed,
+    slots,
+  };
+}
+
