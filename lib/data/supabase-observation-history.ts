@@ -31,10 +31,6 @@ function isCanonicalObservation(value: unknown): value is Observation {
     && typeof observation.evidenceId === "string";
 }
 
-function postgrestQuoted(value: string): string {
-  return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
-}
-
 export class SupabaseHistoricalObservationRepository implements HistoricalObservationRepository {
   private readonly fetcher: typeof fetch;
   private readonly config: () => { url: string; key: string };
@@ -63,14 +59,14 @@ export class SupabaseHistoricalObservationRepository implements HistoricalObserv
       select: "id,effective_at,payload",
       record_type: "eq.OBSERVATION",
       "payload->>domain": `eq.${query.identity.domain}`,
-      or: `(payload->metadata->>seriesId.eq.${postgrestQuoted(query.identity.seriesKey)},payload->metadata->>metricId.eq.${postgrestQuoted(query.identity.seriesKey)})`,
+      or: `(payload->metadata->>seriesId.eq.${query.identity.seriesKey},payload->metadata->>metricId.eq.${query.identity.seriesKey})`,
       captured_at: `lte.${capturedAtOnOrBefore}`,
       // Transport pagination only: effective_at mirrors the authoritative
       // observedAt instant and row id makes the immutable candidate order
       // stable. Canonical retrievedAt/id ordering is applied below in JS.
       order: `effective_at.${direction},id.${direction}`,
     });
-    if (query.sourceId !== undefined) baseParams.set("payload->>sourceId", `eq.${postgrestQuoted(query.sourceId)}`);
+    if (query.sourceId !== undefined) baseParams.set("payload->>sourceId", `eq.${query.sourceId}`);
     if (query.observedAtOnOrAfter !== undefined) baseParams.set("effective_at", `gte.${new Date(query.observedAtOnOrAfter).toISOString()}`);
     if (query.observedAtOnOrBefore !== undefined) baseParams.append("effective_at", `lte.${new Date(query.observedAtOnOrBefore).toISOString()}`);
 

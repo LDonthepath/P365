@@ -16,6 +16,7 @@ type MarketMemorySnapshotRow = {
 
 const DEFAULT_CANDIDATE_BATCH_SIZE = 100;
 const DEFAULT_MAX_CANDIDATE_SCAN = 5_000;
+const SUPABASE_REQUEST_TIMEOUT_MS = 10_000;
 
 export type SupabaseHistoricalMarketSnapshotRepositoryOptions = {
   fetch?: typeof fetch;
@@ -23,10 +24,6 @@ export type SupabaseHistoricalMarketSnapshotRepositoryOptions = {
   candidateBatchSize?: number;
   maxCandidateScan?: number;
 };
-
-function postgrestQuoted(value: string): string {
-  return '"' + value.replaceAll("\\", "\\\\").replaceAll('"', '\\"') + '"';
-}
 
 function isMarketSnapshot(value: unknown): value is MarketSnapshot {
   if (!value || typeof value !== "object") return false;
@@ -74,7 +71,7 @@ implements HistoricalMarketSnapshotRepository {
     const baseParams = new URLSearchParams({
       select: "id,effective_at,payload",
       record_type: "eq.SNAPSHOT",
-      "payload->>scope": "eq." + postgrestQuoted(query.scope),
+      "payload->>scope": "eq." + query.scope,
       order: "effective_at.asc,id.asc",
     });
     if (query.capturedAtOnOrAfter !== undefined) {
@@ -104,6 +101,7 @@ implements HistoricalMarketSnapshotRepository {
             Authorization: "Bearer " + config.key,
           },
           cache: "no-store",
+          signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
         },
       );
       if (!response.ok) {

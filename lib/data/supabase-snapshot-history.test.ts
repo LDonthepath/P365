@@ -85,8 +85,8 @@ async function main(): Promise<void> {
   assertEqual(query.get("record_type"), "eq.SNAPSHOT", "adapter scopes SNAPSHOT rows");
   assertEqual(
     query.get("payload->>scope"),
-    'eq."MVP_MACRO_CRYPTO_GOLD_EVENT"',
-    "adapter scopes Snapshot reasoning scope",
+    "eq.MVP_MACRO_CRYPTO_GOLD_EVENT",
+    "adapter scopes Snapshot reasoning scope with raw equality value",
   );
   assertEqual(
     query.getAll("effective_at"),
