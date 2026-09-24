@@ -62,6 +62,8 @@ export type MarketSnapshotHistoryOrder = "ASC" | "DESC";
 
 export type MarketSnapshotHistoryQuery = {
   scope: string;
+  /** Optional event-window ownership filter for targeted repair/read paths. */
+  eventIdentityKey?: string;
   capturedAtOnOrAfter?: string;
   capturedAtOnOrBefore?: string;
   order: MarketSnapshotHistoryOrder;
