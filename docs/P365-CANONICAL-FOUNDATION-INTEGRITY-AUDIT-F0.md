@@ -48,7 +48,7 @@ The current system can independently ingest and normalize selected factual Obser
 | Historical continuity | PASS for FND-003 operational boundary | Independent Observation/Event ingestion is driven by production Supabase `pg_cron` and persists to durable Market Memory. Scheduler redesign remains outside FND-002. |
 | Factual baseline | FULL PASS / PRODUCTION E2E VERIFIED | Active application orchestration reads predecessor candidates only from `HistoricalObservationRepository`, with strict measurement and retrieval/as-of bounds and no provider-window fallback; production dashboard execution verified 29 durable history reads. |
 | Expectation baseline | **EXP-001 MERGED / PRODUCTION DEPLOYED / E2E DATA PROOF PENDING** | Provider-scoped point-in-time EventResult history and latest-qualified pre-release Expectation Baseline selection are deployed on `main`. `FORECAST`, `CONSENSUS`, and `OFFICIAL_PROJECTION` remain distinct; post-release snapshots are ineligible. Production runtime is healthy, but no qualified FND-019 `EVENT_RESULT.eventIdentityKey` row exists yet, so natural E2E baseline proof remains pending. |
-| Pricing baseline | **PRC-001 IMPLEMENTATION CHECKPOINT** | Point-in-time provider-scoped baseline selection is implemented for existing canonical Observations whose approved `informationClass=PRICING`. Both `observedAt` and `retrievedAt` must be within the caller's as-of view; caller supplies an explicit maximum observation age. This checkpoint does not fabricate OIS/Fed-funds/SOFR-futures probabilities; policy-path market-implied pricing remains a source-coverage gap. Preview/build verification remains required before merge. |
+| Pricing baseline | **PRC-001 IMPLEMENTATION PASS — PREVIEW VERIFIED / OWNER MERGE PENDING** | Point-in-time provider-scoped baseline selection is implemented for existing canonical Observations whose approved `informationClass=PRICING`. Both `observedAt` and `retrievedAt` must be within the caller's as-of view; caller supplies an explicit maximum observation age. Vercel preview build is READY/SUCCESS. This checkpoint does not fabricate OIS/Fed-funds/SOFR-futures probabilities; policy-path market-implied pricing remains a source-coverage gap. |
 | Historical baseline | MISSING | No approved methodology/query implementation. |
 | Cross-asset baseline | MISSING | No immutable pre-event reference set. |
 | Market Snapshot | MISSING implementation | Contract exists; capture/storage/comparison do not. |
@@ -79,7 +79,7 @@ Observation provenance      FND-010A PRODUCTION ACTIVE
 Macro freshness             FND-011A PRODUCTION ACTIVE
 Independent ingestion        OPERATIONAL (FND-003A/B/C)
 Expectation baseline         EXP-001 MERGED / PRODUCTION DEPLOYED / E2E PENDING
-Pricing baseline             PRC-001 IMPLEMENTATION CHECKPOINT
+Pricing baseline             PRC-001 IMPLEMENTATION PASS / PREVIEW VERIFIED
 Market Snapshot              DESIGN ONLY
 Transmission reasoning       MISSING
 Financial-market ontology    DOCUMENTED / ADDITIVE RUNTIME COMPATIBILITY IMPLEMENTED
@@ -762,7 +762,7 @@ Intelligence / Briefing
 17. Foundation Exit Gate                                   ← PASS; stop open-ended hardening
 18. FND-019 Event identity/reconciliation                   ← merged; production activation watch pending
 19. EXP-001 Point-in-Time Expectation Baseline               ← merged / production deployed; E2E data proof pending
-20. PRC-001 Point-in-Time Canonical Pricing Baseline           ← current checkpoint
+20. PRC-001 Point-in-Time Canonical Pricing Baseline           ← implementation PASS; owner merge pending
 21. Market Snapshot implementation
 22. Event-window cross-asset repricing/transmission
 23. MVP Macro + Crypto + Gold evidence completion           ← demand-driven by the vertical slice, not breadth-first expansion
