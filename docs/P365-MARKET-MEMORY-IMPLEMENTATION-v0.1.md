@@ -80,6 +80,8 @@ P365_MEMORY_WRITE_KEY
 
 `P365_MEMORY_WRITE_KEY` must contain a trusted server-side Supabase secret/service key. These variables must exist only in the trusted server/deployment environment. Never expose the write key through a `NEXT_PUBLIC_` variable or browser code.
 
+Direct Supabase Market Memory requests on the canonical/EventResult adapters and the HistoricalObservation read used by the dashboard factual-baseline path are bounded by a 10-second `AbortSignal.timeout`. Timeout rejection is surfaced to the owning caller rather than allowing a render or ingestion worker to wait indefinitely.
+
 ## Append-only invariant
 
 Once a memory record is written:
