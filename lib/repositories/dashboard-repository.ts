@@ -1,8 +1,9 @@
 import type { Context, Event, Evidence, Observation } from "../domain/types";
 import { supabaseCanonicalRepositories, supabaseHistoricalObservationRepository } from "../data/market-memory-store";
 import { supabaseEconomicEventResultRepository } from "../data/economic-event-result-repository";
+import { supabaseHistoricalEconomicEventResultRepository } from "../data/supabase-event-result-history";
 import { InMemoryContextRepository, InMemoryEventRepository, InMemoryEvidenceRepository, InMemoryObservationRepository } from "./memory";
-import type { ContextRepository, EconomicEventResultRepository, EventRepository, EvidenceRepository, HistoricalObservationRepository, ObservationRepository } from "./types";
+import type { ContextRepository, EconomicEventResultRepository, EventRepository, EvidenceRepository, HistoricalEconomicEventResultRepository, HistoricalObservationRepository, ObservationRepository } from "./types";
 
 export type CanonicalRepositories = {
   observations: ObservationRepository;
@@ -28,6 +29,7 @@ export const historicalObservationRepository: HistoricalObservationRepository =
     : supabaseHistoricalObservationRepository;
 
 export const economicEventResultRepository: EconomicEventResultRepository = supabaseEconomicEventResultRepository;
+export const historicalEconomicEventResultRepository: HistoricalEconomicEventResultRepository = supabaseHistoricalEconomicEventResultRepository;
 
 export async function persistCanonicalDashboardData(
   repositories: CanonicalRepositories,
