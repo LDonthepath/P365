@@ -220,6 +220,7 @@ function validateBaselineAvailability(
   baseline: FactualBaseline | ExpectationBaseline | PricingBaseline,
   capturedAtMs: number,
   observationIds: Set<string>,
+  eventIdentityKeys: Set<string>,
 ): void {
   if (baseline.kind === "FACTUAL") {
     if (!observationIds.has(baseline.currentObservationId)) {
@@ -236,6 +237,25 @@ function validateBaselineAvailability(
       );
     }
     return;
+  }
+
+  if (
+    baseline.kind === "PRICING"
+    && baseline.observationId
+    && !observationIds.has(baseline.observationId)
+  ) {
+    throw new Error(
+      "Pricing baseline Observation must be included in the snapshot reference set.",
+    );
+  }
+
+  if (
+    baseline.kind === "EXPECTATION"
+    && !eventIdentityKeys.has(baseline.eventIdentityKey)
+  ) {
+    throw new Error(
+      "Expectation baseline Event identity must be included in the snapshot Event reference set.",
+    );
   }
 
   const asOfMs = timestamp(baseline.asOf, baseline.kind + " baseline asOf");
@@ -370,9 +390,19 @@ export function buildMarketSnapshot(request: MarketSnapshotRequest): MarketSnaps
   }
 
   const observationIds = new Set(observationById.keys());
+  const eventIdentityKeys = new Set(
+    [...eventById.values()]
+      .map((event) => event.identity?.key)
+      .filter((key): key is string => typeof key === "string" && key.length > 0),
+  );
   const baselines = request.baselines ?? [];
   for (const baseline of baselines) {
-    validateBaselineAvailability(baseline, capturedAtMs, observationIds);
+    validateBaselineAvailability(
+      baseline,
+      capturedAtMs,
+      observationIds,
+      eventIdentityKeys,
+    );
   }
 
   const observationRefs = [...observationById.values()]
