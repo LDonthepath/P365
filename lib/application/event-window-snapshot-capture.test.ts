@@ -327,8 +327,13 @@ async function main(): Promise<void> {
     limit: 10,
   });
   assert(
-    staleStored.some((item) => item.quality === "STALE"),
-    "caller age tolerance propagates stale quality instead of fabricating freshness",
+    staleStored.some((item) =>
+      item.baselineRefs.some((ref) =>
+        ref.key.includes("PRICING:btc.spot.usd:coingecko-market")
+        && ref.status === "STALE"
+      )
+    ),
+    "caller age tolerance preserves stale BTC pricing baseline lineage",
   );
 
   const revisionEvents = new InMemoryEventRepository();
