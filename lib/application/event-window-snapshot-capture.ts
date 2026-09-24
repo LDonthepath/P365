@@ -848,7 +848,30 @@ export async function runEventWindowSnapshotRepair(
         }],
       };
     }
-    const key = [windowId, role, new Date(Date.parse(targetAt)).toISOString()].join("|");
+    const targetMs = Date.parse(targetAt);
+    if (!Number.isFinite(targetMs)) {
+      return {
+        status: "FAILED",
+        evaluatedAt,
+        candidateEvents: 1,
+        qualifiedWindows: 0,
+        dueSlots: 0,
+        captured: 0,
+        corrected: 0,
+        alreadyCaptured: 0,
+        unavailableEventSlots: 0,
+        failed: 1,
+        slots: [{
+          eventIdentityKey,
+          eventId: snapshot.eventRefs[0]?.eventId ?? "unavailable",
+          role,
+          targetAt: snapshot.capturedAt,
+          status: "FAILED",
+          message: "Existing Snapshot repair targetAt is invalid.",
+        }],
+      };
+    }
+    const key = [windowId, role, new Date(targetMs).toISOString()].join("|");
     const group = groups.get(key) ?? [];
     group.push(snapshot);
     groups.set(key, group);
@@ -858,11 +881,18 @@ export async function runEventWindowSnapshotRepair(
     window: QualifiedEventWindow;
     slot: QualifiedEventWindowSlot;
   }> = [];
+  const preflightSlots: EventWindowCaptureSlotReport[] = [];
 
   try {
     for (const snapshots of groups.values()) {
       const active = selectActiveMarketSnapshot(snapshots);
       if (!active) continue;
+
+      const role = active.metadata?.eventWindowRole;
+      const targetAt = active.metadata?.targetAt;
+      if (!isEventWindowRole(role) || typeof targetAt !== "string") {
+        throw new Error("Active Snapshot is missing governed repair role/target metadata.");
+      }
 
       const event = await eventAsOfIdentity(
         eventIdentityKey,
@@ -870,6 +900,16 @@ export async function runEventWindowSnapshotRepair(
         repositories.events,
       );
       if (!event) {
+        preflightSlots.push({
+          eventIdentityKey,
+          eventId: active.eventRefs[0]?.eventId ?? "unavailable",
+          role,
+          targetAt,
+          status: "EVENT_NOT_AVAILABLE_AS_OF_TARGET",
+          snapshotId: active.id,
+          snapshotQuality: active.quality,
+          message: "Primary Event identity was not available to P365 by the immutable slot target.",
+        });
         continue;
       }
       work.push(repairWindowFromSnapshot(active, event));
@@ -903,7 +943,7 @@ export async function runEventWindowSnapshotRepair(
     };
   }
 
-  const slots: EventWindowCaptureSlotReport[] = [];
+  const slots: EventWindowCaptureSlotReport[] = [...preflightSlots];
   for (const item of work) {
     slots.push(await captureSlot({
       window: item.window,
@@ -917,7 +957,7 @@ export async function runEventWindowSnapshotRepair(
   const alreadyCaptured = slots.filter(
     (slot) => slot.status === "ALREADY_CAPTURED",
   ).length;
-  const unavailableEventSlots = groups.size - work.length + slots.filter(
+  const unavailableEventSlots = slots.filter(
     (slot) => slot.status === "EVENT_NOT_AVAILABLE_AS_OF_TARGET",
   ).length;
   const failed = slots.filter((slot) => slot.status === "FAILED").length;
