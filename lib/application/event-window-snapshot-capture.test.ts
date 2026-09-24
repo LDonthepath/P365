@@ -331,6 +331,46 @@ async function main(): Promise<void> {
     "caller age tolerance propagates stale quality instead of fabricating freshness",
   );
 
+  const revisionEvents = new InMemoryEventRepository();
+  const oldRevision = event("cpi-old", "2026-10-15T12:00:00.000Z");
+  const releasedRevision: Event = {
+    ...event("cpi-new", "2026-10-15T12:31:10.000Z"),
+    occurredAt: "2026-10-15T12:31:00.000Z",
+    releasedAt: "2026-10-15T12:31:00.000Z",
+    status: "PAST",
+  };
+  await revisionEvents.saveMany([oldRevision, releasedRevision]);
+  const revisionHistory = new InMemoryHistoricalEventRepository(revisionEvents);
+  const revisionSnapshots = new InMemoryMarketSnapshotRepository();
+  const revisionReport = await runEventWindowSnapshotCapture(
+    { now: "2026-10-15T12:37:00.000Z" },
+    {
+      repositories: {
+        ...first.repositories,
+        events: revisionHistory,
+        snapshots: revisionSnapshots,
+        snapshotHistory: revisionSnapshots,
+      },
+    },
+  );
+  assertEqual(
+    revisionReport.captured,
+    2,
+    "latest provider Event revision controls the qualified window",
+  );
+  assertEqual(
+    (await revisionSnapshots.findHistory({
+      scope: "MVP_MACRO_CRYPTO_GOLD_EVENT",
+      order: "ASC",
+      limit: 10,
+    })).map((item) => item.capturedAt),
+    [
+      "2026-10-15T12:26:00.000Z",
+      "2026-10-15T12:36:00.000Z",
+    ],
+    "releasedAt revision shifts deterministic PRE and T+5 targets",
+  );
+
   const noEvents = new InMemoryEventRepository();
   const noEventHistory = new InMemoryHistoricalEventRepository(noEvents);
   const emptySnapshots = new InMemoryMarketSnapshotRepository();
