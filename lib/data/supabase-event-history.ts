@@ -16,6 +16,7 @@ type MarketMemoryEventRow = {
 
 const DEFAULT_CANDIDATE_BATCH_SIZE = 200;
 const DEFAULT_MAX_CANDIDATE_SCAN = 5_000;
+const SUPABASE_REQUEST_TIMEOUT_MS = 10_000;
 
 export type SupabaseHistoricalEventRepositoryOptions = {
   fetch?: typeof fetch;
@@ -23,10 +24,6 @@ export type SupabaseHistoricalEventRepositoryOptions = {
   candidateBatchSize?: number;
   maxCandidateScan?: number;
 };
-
-function postgrestQuoted(value: string): string {
-  return '"' + value.replaceAll("\\", "\\\\").replaceAll('"', '\\"') + '"';
-}
 
 function isCanonicalEvent(value: unknown): value is Event {
   if (!value || typeof value !== "object") return false;
@@ -93,13 +90,13 @@ implements HistoricalEventRepository {
     if (query.eventIdentityKey !== undefined) {
       baseParams.set(
         "payload->identity->>key",
-        "eq." + postgrestQuoted(query.eventIdentityKey),
+        "eq." + query.eventIdentityKey,
       );
     }
     if (query.importance !== undefined) {
       baseParams.set(
         "payload->>importance",
-        "eq." + postgrestQuoted(query.importance),
+        "eq." + query.importance,
       );
     }
 
@@ -123,6 +120,7 @@ implements HistoricalEventRepository {
             Authorization: "Bearer " + config.key,
           },
           cache: "no-store",
+          signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
         },
       );
       if (!response.ok) {
