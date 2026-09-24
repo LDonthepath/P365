@@ -1,10 +1,10 @@
 # P365 Foundation Master — SSOT v0.1
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
-**Audited ref:** FND-009 implementation based on `main@9934c1761657817109a2636fd11e621252b7789f`
+**Audited ref:** Foundation Exit Gate based on `main@57fad3a441721b0513a3d513a6a0244280df11a4`
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 24 Sep 2026 from `main@9934c1761657817109a2636fd11e621252b7789f`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002, FND-002Q, and FND-018A are FULL PASS/CLOSED; FND-010A and FND-011A remain production-active. FND-011B is merged and deployed; scheduled market-fast ingestion returned HTTP 200 on the new production deployment and new rows persisted the qualified freshness calendar, while the final Yahoo open-session FRESH activation proof remains pending. FND-009 is the active implementation checkpoint.
+**Verification pass:** Re-verified 24 Sep 2026 from `main@57fad3a441721b0513a3d513a6a0244280df11a4`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002, FND-002Q, FND-009, FND-011B, and FND-018A are CLOSED / production-active at their approved boundaries; FND-010A and FND-011A remain production-active. FND-011B passed its final production gate with scheduled historical ingestion HTTP 200 and a Yahoo `GC=F` observation carrying `CME_GLOBEX_GOLD` with `quality=FRESH` inside the qualified open session. FND-009 passed its production gate after an authenticated manual refresh produced `POST /dashboard 200` followed by `GET /dashboard 200`, zero runtime errors, and new CoinGecko/Yahoo/FRED retrieval timestamps well inside their ordinary cache lifetimes, proving cadence-group invalidation rather than a route-only refresh.
 
 ## Documentation authority
 
@@ -23,9 +23,9 @@ Older status, roadmap, gap-analysis, and audit documents are removed rather than
 
 ## 1. Executive verdict
 
-**CHANGES REQUIRED**
+**FOUNDATION HARDENING EXIT: PASS — PRODUCT INTELLIGENCE CHAIN STILL INCOMPLETE**
 
-P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Durable historical continuity is operational; the remaining dominant foundation blockers are expectation/pricing baselines and immutable Market Snapshot. The coarse legacy `MARKET / MACRO / ASSET / OTHER` classification is now preserved only as a compatibility field while approved current Observations receive additive market-domain/information-class semantics. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
+P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Durable historical continuity is operational. The generic foundation-hardening phase is complete enough to exit: the remaining major work—Expectation Baseline, Pricing Baseline, immutable Market Snapshot, repricing/transmission, and later Intelligence—is now product-layer construction rather than justification for continuing open-ended foundation hardening. The coarse legacy `MARKET / MACRO / ASSET / OTHER` classification is now preserved only as a compatibility field while approved current Observations receive additive market-domain/information-class semantics. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
 
 The current system can independently ingest and normalize selected factual Observations and Events, create evidence-backed Context, persist canonical records, query contract-compliant Observation history from durable Market Memory, and compute factual macro baselines from repository history. It cannot yet perform temporally valid event repricing/transmission analysis because expectation/pricing baselines and immutable Market Snapshot remain missing.
 
@@ -529,9 +529,9 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-006 | **HIGH** | Market Snapshot implementation absent; blocks valid pre/post-event reasoning. |
 | FND-007 | **HIGH** | No Pricing baseline/market-implied layer; pricing surprise/repricing conclusions are not allowed. |
 | FND-008 | MEDIUM | FND-003B now gates Biquote `time` → `releasedAt`/`occurredAt` promotion on `timeMode=exact`; broader provider release-time semantics and production qualification remain open. |
-| FND-009 | **IMPLEMENTATION PASS — PRODUCTION VERIFICATION PENDING OWNER MERGE** | Manual refresh now invalidates the authoritative complete dashboard cache-tag set: retained legacy `p365-dashboard` plus `p365-fast`, `p365-medium`, and `p365-slow`. The tag topology is owned centrally by `lib/data/cache-policy.ts`, preventing the Server Action from drifting from cadence-aware provider caching. |
+| FND-009 | **CLOSED / PRODUCTION ACTIVE** | Manual refresh invalidates the authoritative complete dashboard cache-tag set: retained legacy `p365-dashboard` plus `p365-fast`, `p365-medium`, and `p365-slow`. Production E2E verified an authenticated refresh at 02:10:36 UTC with `POST /dashboard 200` → `GET /dashboard 200`, zero runtime errors, and new CoinGecko/Yahoo/FRED retrieval timestamps before their normal cache TTLs expired. |
 | FND-010 | **OBSERVATION PORTION REMEDIATED BY FND-010A / REMAINDER OPEN** | Future qualified FRED/CoinGecko/Yahoo Observations carry typed source-native resource/identity/date provenance while retaining legacy metadata. Exact provider release time is not fabricated. Event/Evidence provenance and broader provider qualification remain separate. |
-| FND-011 | **FND-011A PRODUCTION ACTIVE / FND-011B MERGED — PRODUCTION ACTIVATION PARTIAL PASS** | FRED cadence freshness remains acquisition-time deterministic. FND-011B is deployed in production; scheduled market-fast ingestion is HTTP 200 and new CoinGecko/Yahoo rows persist the qualified freshness calendar. Final Yahoo open-session FRESH evidence remains pending before FND-011B is marked CLOSED / PRODUCTION ACTIVE. Exact holiday/early-close calendars remain an explicit future qualification boundary rather than fabricated runtime state. |
+| FND-011 | **FND-011A PRODUCTION ACTIVE / FND-011B CLOSED / PRODUCTION ACTIVE** | FRED cadence freshness remains acquisition-time deterministic. FND-011B production activation is verified: scheduled historical ingestion returned HTTP 200 and a Yahoo `GC=F` observation inside the qualified CME Globex Gold window persisted `freshnessCalendar=CME_GLOBEX_GOLD` with `quality=FRESH`. Exact holiday/early-close calendars remain an explicit future qualification boundary rather than fabricated runtime state. |
 | FND-012 | MEDIUM | Non-crypto Yahoo adapter reuses `CryptoMarketObservationInput`. |
 | FND-013 | MEDIUM | MOVE remains absent from target cross-asset universe. |
 | FND-014 | MEDIUM | Expectation data exists at trial event-result level but has no baseline lifecycle. |
@@ -667,7 +667,75 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 21 Sep 2026 | FND-002Q Historical Factual Baseline Quality Compatibility | Separated current-observation freshness from historical-predecessor fitness. Stored STALE predecessors remain immutable and traceable but may support a VALID factual comparison when current is FRESH; UNKNOWN/PARTIAL remain insufficient and point-in-time repository bounds remain unchanged. |
 | 23 Sep 2026 | FND-011B market-hours freshness | Added acquisition-time session/provider-window-aware freshness for Yahoo GC/DXY/Russell and explicit continuous 24/7 freshness for CoinGecko. Closed-window wall-clock time no longer makes the latest legitimate Yahoo quote stale; exact holiday/early-close calendars remain intentionally unclaimed. |
 | 24 Sep 2026 | FND-011B final audit correction | Removed an unsupported implication that Russell's 16:31 boundary is an official LSEG publication schedule, aligned elapsed-time chunks to exact minute boundaries, failed safe when a sessioned observedAt falls outside its qualified window, protected persisted freshness-calendar audit metadata from loose metadata override, and synchronized FND-002Q/FND-010A/FND-011A SSOT status with merged production reality. |
-| 24 Sep 2026 | FND-009 manual cache invalidation | Centralized the complete dashboard invalidation tag set and made the manual-refresh Server Action invalidate legacy plus fast/medium/slow cadence groups. Added regression coverage so cadence-aware provider caches cannot silently fall outside manual refresh semantics. Production verification remains pending owner merge/deployment. |
+| 24 Sep 2026 | FND-009 manual cache invalidation | Centralized the complete dashboard invalidation tag set and made the manual-refresh Server Action invalidate legacy plus fast/medium/slow cadence groups. Production E2E passed after owner merge: authenticated manual refresh returned 200, produced no runtime errors, and forced new CoinGecko/Yahoo/FRED retrievals before their ordinary TTLs expired. |
+| 24 Sep 2026 | FND-011B production activation | Scheduled historical ingestion remained HTTP 200 and durable Yahoo Gold inside the qualified open session persisted `CME_GLOBEX_GOLD` with `quality=FRESH`; FND-011B is CLOSED / PRODUCTION ACTIVE. |
+| 24 Sep 2026 | Foundation Exit Gate | PASS for the generic hardening phase. Canonical identity, provenance, freshness, append-only history, repository-backed factual baseline, independent ingestion, and truthful manual invalidation are sufficient to stop broad foundation remediation. Remaining FND-008/FND-010 remainder/FND-012/FND-013/FND-015/FND-016/FND-017 are bounded debt unless a concrete downstream checkpoint depends on them. FND-019 is promoted as the first bounded prerequisite for the Expectation Baseline lifecycle because duplicate provider-specific Events must not create duplicate expectation ownership. FND-021 coverage gaps are completed demand-first inside the Macro + Crypto + Gold vertical slice rather than by breadth-first provider expansion. |
+
+## Foundation Exit Gate — 24 Sep 2026
+
+**Verdict: PASS for foundation hardening.**
+
+This gate does **not** mean P365 is feature-complete and does not authorize State/Regime/Risk/Intelligence. It means the platform has enough verified factual infrastructure to stop open-ended hardening and move into the next product dependency chain.
+
+| Exit criterion | Result | Evidence / boundary |
+|---|---|---|
+| Canonical factual contracts are stable enough for downstream references | PASS | Observation/Event/Evidence/Context contracts are active; additive semantics preserve legacy history compatibility. |
+| Durable point-in-time history exists | PASS | Append-only Market Memory and `HistoricalObservationRepository` are production-verified. |
+| Factual predecessor baseline is repository-backed | PASS | FND-002 + FND-002Q are closed and production E2E verified. |
+| Future Observation identity/revision semantics are deterministic | PASS | FND-018A is closed / production-active. |
+| Current Observation provenance is traceable | PASS at current Observation boundary | FND-010A is production-active; Event/Evidence provenance remains bounded debt until a downstream consumer requires it. |
+| Freshness semantics are fit for current Macro/Crypto/Gold facts | PASS at qualified boundary | FND-011A and FND-011B are production-active; no fabricated holiday/early-close or release timestamps are introduced. |
+| Independent acquisition does not depend on dashboard traffic | PASS | Supabase `pg_cron` drives authenticated Vercel Observation/Event ingestion. |
+| Explicit manual refresh is truthful | PASS | FND-009 production E2E proves cadence-tagged providers are fetched again inside their ordinary TTLs. |
+| Higher-order reasoning remains gated | PASS | State/Regime/Risk/Intelligence are still deferred. |
+
+### Debt classification after exit
+
+**Blocking the immediate next lifecycle**
+
+- **FND-019 Event identity/reconciliation** — resolve before expectation ownership is treated as provider-independent. The same real release can currently exist as separate Forex Factory and Biquote Events.
+
+**Allowed to remain bounded while product-layer work proceeds**
+
+- **FND-008** broader release-time qualification: only exact-qualified event times may participate in exact-timing surprise/repricing workflows until expanded.
+- **FND-010 remainder** Event/Evidence structured provenance: add when the consuming lifecycle needs stronger traceability.
+- **FND-012** Yahoo input type naming/shape debt.
+- **FND-013** MOVE coverage gap.
+- **FND-015** broader test governance.
+- **FND-016** presentation-language/status debt.
+- **FND-017** dependency security remediation remains operational debt and should be handled independently from market reasoning scope.
+
+**Demand-driven MVP completion**
+
+- **FND-021** is not a mandate to maximize provider breadth before building the intelligence chain. Add Macro/Crypto/Gold observations only when a defined Expectation, Pricing, Snapshot, Repricing, or Transmission question requires them and source qualification is adequate.
+
+### Post-exit rule
+
+Do not reopen generic foundation work merely because a theoretical improvement exists. A new foundation correction after this gate requires one of:
+
+1. a reproduced correctness defect in production;
+2. a security/reliability defect;
+3. a concrete downstream contract that cannot be implemented safely without it.
+
+Otherwise continue the product dependency chain:
+
+```text
+FND-019 Event reconciliation
+  ↓
+Expectation Baseline
+  ↓
+Pricing Baseline
+  ↓
+Market Snapshot
+  ↓
+Repricing / Transmission
+  ↓
+Demand-driven Macro + Crypto + Gold evidence completion
+  ↓
+Derived State / Risk / Regime
+  ↓
+Intelligence / Briefing
+```
 
 ## Active remediation sequence
 
@@ -686,15 +754,17 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 12. FND-010A Structured Observation provenance             ← production active
 13. FND-011A FRED/Macro cadence-aware freshness             ← production active
 14. FND-002Q Historical Baseline Quality Compatibility      ← FULL PASS / CLOSED / production E2E verified
-15. FND-011B market-hours freshness                         ← merged / production activation partial pass
-16. FND-009 Manual cache invalidation                         ← current implementation checkpoint
-17. MVP market-universe completion: Macro + Crypto + Gold, one domain/provider checkpoint at a time
-18. Expectation Baseline lifecycle
-19. Pricing Baseline / market-implied layer
-20. Market Snapshot implementation
-21. Event-window cross-asset repricing/transmission
-22. Secondary positioning / flows enrichment inside Macro + Crypto + Gold
-23. Derived State → Risk/Regime → Intelligence → Briefing only after gates pass
+15. FND-011B market-hours freshness                         ← CLOSED / PRODUCTION ACTIVE
+16. FND-009 Manual cache invalidation                       ← CLOSED / PRODUCTION ACTIVE
+17. Foundation Exit Gate                                   ← PASS; stop open-ended hardening
+18. FND-019 Event identity/reconciliation                   ← bounded prerequisite for expectation lifecycle
+19. Expectation Baseline lifecycle
+20. Pricing Baseline / market-implied layer
+21. Market Snapshot implementation
+22. Event-window cross-asset repricing/transmission
+23. MVP Macro + Crypto + Gold evidence completion           ← demand-driven by the vertical slice, not breadth-first expansion
+24. Secondary positioning / flows enrichment inside Macro + Crypto + Gold
+25. Derived State → Risk/Regime → Intelligence → Briefing only after gates pass
 ```
 
 One logical remediation = one PR = one verification checkpoint. This sequence may only change when a verified dependency requires it; changes must be recorded here.
