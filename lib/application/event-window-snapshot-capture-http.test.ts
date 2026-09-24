@@ -22,6 +22,7 @@ const report: EventWindowCaptureReport = {
   qualifiedWindows: 1,
   dueSlots: 2,
   captured: 2,
+  corrected: 0,
   alreadyCaptured: 0,
   unavailableEventSlots: 0,
   failed: 0,
