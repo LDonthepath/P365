@@ -9,7 +9,7 @@ on:
       - ".github/workflows/fnd017-security-verify.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -30,6 +30,17 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
+      - name: Persist resolved lockfile
+        if: success()
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: refresh lockfile for Next.js security upgrade"
+            git push origin HEAD:${GITHUB_HEAD_REF}
+          fi
       - name: Upload verification artifact
         if: always()
         uses: actions/upload-artifact@v4
