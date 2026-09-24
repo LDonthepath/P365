@@ -74,6 +74,12 @@ implements HistoricalMarketSnapshotRepository {
       "payload->>scope": "eq." + query.scope,
       order: "effective_at.asc,id.asc",
     });
+    if (query.eventIdentityKey !== undefined) {
+      baseParams.set(
+        "payload->metadata->>eventIdentityKey",
+        "eq." + query.eventIdentityKey,
+      );
+    }
     if (query.capturedAtOnOrAfter !== undefined) {
       baseParams.append("effective_at", "gte." + new Date(bounds.from!).toISOString());
     }
@@ -120,6 +126,14 @@ implements HistoricalMarketSnapshotRepository {
         if (row.payload.scope !== query.scope) {
           throw new Error(
             "Supabase Snapshot history returned a record outside the requested scope.",
+          );
+        }
+        if (
+          query.eventIdentityKey !== undefined
+          && row.payload.metadata?.eventIdentityKey !== query.eventIdentityKey
+        ) {
+          throw new Error(
+            "Supabase Snapshot history returned a record outside the requested Event identity.",
           );
         }
         const capturedAt = Date.parse(row.payload.capturedAt);
