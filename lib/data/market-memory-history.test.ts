@@ -135,8 +135,13 @@ async function main(): Promise<void> {
     row(observation("tie-z", "OTHER", "offset-order", "2026-08-01T09:00:00+09:00", "2026-09-01T00:45:00+01:00")),
     row(observation("not-observation", "MACRO", "CPIAUCSL", "2026-09-01T00:00:00.000Z", "2026-09-01T00:01:00.000Z"), "EVIDENCE"),
   ];
+  const requests: string[] = [];
+  const fakeFetch = fakePostgrest(rows);
   const repository = new SupabaseHistoricalObservationRepository({
-    fetch: fakePostgrest(rows),
+    fetch: (async (input: string | URL | Request, init?: RequestInit) => {
+      requests.push(String(input));
+      return fakeFetch(input, init);
+    }) as typeof fetch,
     config: () => ({ url: "https://example.supabase.co", key: "server-only-test-key" }),
     candidateBatchSize: 2,
     maxCandidateScan: 50,
@@ -150,6 +155,13 @@ async function main(): Promise<void> {
     "FRED history retains subject/id/source changes and excludes malformed/non-Observation rows");
   assertEqual((await repository.findHistory(query({ sourceId: "fred" }))).map((item) => item.id),
     ["fred-old", "fred-original", "fred-correction"], "optional provenance filter");
+  const sourceQuery = new URL(requests.at(-1)!).searchParams;
+  assertEqual(sourceQuery.get("payload->>sourceId"), "eq.fred", "sourceId uses raw PostgREST equality value");
+  assertEqual(
+    sourceQuery.get("or"),
+    "(payload->metadata->>seriesId.eq.CPIAUCSL,payload->metadata->>metricId.eq.CPIAUCSL)",
+    "semantic series filter uses raw PostgREST equality values",
+  );
   assertEqual((await repository.findHistory(query({ sourceId: "fred" })))[2]?.identity?.version,
     "v1", "versioned and legacy Observation payloads remain readable together");
   assertEqual((await repository.findHistory(query({ sourceId: "fred" })))[1]?.quality,
