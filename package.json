@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.1",
-    "next": "^15.3.6",
+    "next": "^15.5.26",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
@@ -20,7 +20,7 @@
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "eslint": "^9.25.1",
-    "eslint-config-next": "15.3.0",
+    "eslint-config-next": "^15.5.26",
     "typescript": "^5.8.3"
   }
 }
