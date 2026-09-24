@@ -69,7 +69,8 @@ export type EventWindowSnapshotMatchStatus =
   | "QUALIFIED"
   | "DEGRADED"
   | "OUTSIDE_WINDOW"
-  | "INCOMPATIBLE_SCOPE";
+  | "INCOMPATIBLE_SCOPE"
+  | "MISSING_EVENT_REFERENCE";
 
 export type EventWindowSnapshotMatch = {
   status: EventWindowSnapshotMatchStatus;
@@ -269,6 +270,18 @@ export function matchSnapshotToEventWindow(
       timingErrorMs: null,
       snapshotQuality: snapshot.quality,
       reason: "Snapshot scope does not match the event-window policy scope.",
+    };
+  }
+
+  if (!snapshot.eventRefs.some((ref) => ref.key === window.eventIdentityKey)) {
+    return {
+      status: "MISSING_EVENT_REFERENCE",
+      role: null,
+      phase: null,
+      targetAt: null,
+      timingErrorMs: null,
+      snapshotQuality: snapshot.quality,
+      reason: "Snapshot does not reference the primary qualified Event identity.",
     };
   }
 
