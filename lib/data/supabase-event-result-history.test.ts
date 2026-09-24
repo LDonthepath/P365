@@ -96,18 +96,18 @@ async function main(): Promise<void> {
   );
   assertEqual(
     query.get("payload->>eventIdentityKey"),
-    'eq."' + key + '"',
-    "adapter scopes provider-independent event identity",
+    "eq." + key,
+    "adapter scopes provider-independent event identity with raw equality value",
   );
   assertEqual(
     query.get("payload->>sourceId"),
-    'eq."biquote"',
-    "adapter scopes provider provenance",
+    "eq.biquote",
+    "adapter scopes provider provenance with raw equality value",
   );
   assertEqual(
     query.get("payload->>expectedType"),
-    'eq."FORECAST"',
-    "adapter scopes expectation semantics",
+    "eq.FORECAST",
+    "adapter scopes expectation semantics with raw equality value",
   );
 
   const invalid = new SupabaseHistoricalEconomicEventResultRepository({
