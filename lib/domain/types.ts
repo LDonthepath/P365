@@ -129,6 +129,22 @@ export type ObservationProvenance = {
   vintageDate?: string;
 };
 export type EventStatus = "UPCOMING" | "ACTIVE" | "PAST" | "UNKNOWN";
+
+/**
+ * Additive provider-independent reconciliation identity for Event writes
+ * created after FND-019. Legacy Events remain valid without this field.
+ */
+export type EventIdentity = {
+  version: "v1";
+  /** Stable jurisdiction + exact schedule + semantic-event key. */
+  key: string;
+  /** Provider-neutral normalized event family/name. */
+  semanticKey: string;
+  /** Exact schedule instant used for reconciliation. */
+  scheduledAt: string;
+  jurisdiction: Exclude<Jurisdiction, "OTHER">;
+};
+
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
 
 export type Source = { id: string; name: string; type: SourceType; status: SourceHealthStatus };
@@ -197,6 +213,8 @@ export type Event = {
   importance: "HIGH" | "MEDIUM" | "LOW";
   sourceId: string;
   evidenceId: string;
+  /** Additive provider-independent identity. Optional for legacy/unqualified Events. */
+  identity?: EventIdentity;
 };
 
 export type ContextScope =

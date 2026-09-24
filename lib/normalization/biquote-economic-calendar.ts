@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { BiquoteEconomicCalendarRecord } from "../data/biquote-economic-calendar";
 import { biquoteJurisdiction } from "../data/event-jurisdiction";
 import type { EconomicEventResult } from "../domain/event-result";
+import { buildEventIdentity } from "../domain/event-identity";
 import type { Evidence, Event } from "../domain/types";
 
 export type BiquoteEconomicCalendarCanonical = {
@@ -52,7 +53,15 @@ export function normalizeBiquoteEconomicCalendar(
     const evidenceId = `biquote-economic-event-evidence-${record.id}`;
     const eventId = `biquote-economic-event-${record.id}`;
     const hasActual = record.actual !== null && record.actual !== undefined;
-    const hasExactActualTime = hasActual && record.timeMode?.toLowerCase() === "exact";
+    const hasExactTime = record.timeMode?.toLowerCase() === "exact";
+    const hasExactActualTime = hasActual && hasExactTime;
+    const identity = hasExactTime
+      ? buildEventIdentity({
+          subject: record.name,
+          jurisdiction: biquoteJurisdiction(record.countryCode),
+          scheduledAt: record.time,
+        })
+      : undefined;
     const resultId = `biquote-economic-event-result-${record.id}-${snapshotFingerprint(record)}`;
     const evidence: Evidence = {
       id: evidenceId,
@@ -83,6 +92,7 @@ export function normalizeBiquoteEconomicCalendar(
         timeMode: record.timeMode ?? null,
         source: record.source ?? null,
         sourceUrl: record.sourceUrl ?? null,
+        eventIdentityKey: identity?.key ?? null,
       },
     };
     const event: Event = {
@@ -99,10 +109,12 @@ export function normalizeBiquoteEconomicCalendar(
       importance: mapImportance(record.importance),
       sourceId: "biquote",
       evidenceId,
+      ...(identity ? { identity } : {}),
     };
     const result: EconomicEventResult = {
       id: resultId,
       eventId,
+      ...(identity ? { eventIdentityKey: identity.key } : {}),
       ...(isFiniteNumber(record.actual) ? { actual: record.actual } : {}),
       ...(isFiniteNumber(record.forecast) ? { expected: record.forecast, expectedType: "FORECAST" as const } : {}),
       ...(isFiniteNumber(record.previous) ? { previous: record.previous } : {}),

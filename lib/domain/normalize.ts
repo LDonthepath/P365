@@ -5,6 +5,7 @@ import type { FomcEventInput } from "../data/federal-reserve-events";
 import { forexFactoryJurisdiction } from "../data/event-jurisdiction";
 import type { DataQuality, Evidence, Event, Observation, ObservationSemantics, ProviderHealth, SourceHealthStatus } from "./types";
 import { buildObservationIdentity, observationEvidenceId, observationRevisionId } from "./observation-identity";
+import { buildEventIdentity } from "./event-identity";
 import { assertCurrentObservationInvariants } from "./observation-provenance";
 import { requireObservationSemantics } from "./observation-semantics";
 import { qualityFromFreshness, qualityFromMacroCadence, qualityFromMarketHours, freshnessPolicyForFamily } from "./freshness";
@@ -63,31 +64,50 @@ export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] 
 
 export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
   const retrievedAt = new Date().toISOString();
-  const evidence = items.map((item) => ({
-    id: hashId("evidence", `${sourceId}:${item.id}`),
-    sourceId,
-    kind: "EVENT" as const,
-    subject: item.event,
-    content: `${item.country} · ${item.impact} impact · ${item.status}`,
-    capturedAt: retrievedAt,
-    retrievedAt,
-    metadata: { country: item.country, impact: item.impact, status: item.status, scheduledAt: item.dateISO },
-  }));
+  const canonical = items.map((item) => {
+    const jurisdiction = forexFactoryJurisdiction(item.country);
+    const scheduledAt = new Date(item.dateISO).toISOString();
+    const identity = buildEventIdentity({
+      subject: item.event,
+      jurisdiction,
+      scheduledAt,
+    });
+    const evidence: Evidence = {
+      id: hashId("evidence", `${sourceId}:${item.id}`),
+      sourceId,
+      kind: "EVENT",
+      subject: item.event,
+      content: `${item.country} · ${item.impact} impact · ${item.status}`,
+      capturedAt: retrievedAt,
+      retrievedAt,
+      metadata: {
+        country: item.country,
+        impact: item.impact,
+        status: item.status,
+        scheduledAt,
+        eventIdentityKey: identity?.key ?? null,
+      },
+    };
+    const event: Event = {
+      id: hashId("event", `${sourceId}:${item.id}`),
+      subject: item.event,
+      description: `${item.country} economic event`,
+      jurisdiction,
+      scheduledAt,
+      retrievedAt,
+      status: item.status === "PAST" ? "PAST" : "UPCOMING",
+      importance: item.impact,
+      sourceId,
+      evidenceId: evidence.id,
+      ...(identity ? { identity } : {}),
+    };
+    return { event, evidence };
+  });
 
-  const events = items.map((item, index) => ({
-    id: hashId("event", `${sourceId}:${item.id}`),
-    subject: item.event,
-    description: `${item.country} economic event`,
-    jurisdiction: forexFactoryJurisdiction(item.country),
-    scheduledAt: new Date(item.dateISO).toISOString(),
-    retrievedAt,
-    status: item.status === "PAST" ? "PAST" as const : "UPCOMING" as const,
-    importance: item.impact,
-    sourceId,
-    evidenceId: evidence[index].id,
-  }));
-
-  return { events, evidence };
+  return {
+    events: canonical.map((item) => item.event),
+    evidence: canonical.map((item) => item.evidence),
+  };
 }
 
 export function cryptoMarketToObservations(items: CryptoMarketObservationInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {

@@ -1,7 +1,7 @@
 # P365 Foundation Master — SSOT v0.1
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
-**Audited ref:** Foundation Exit Gate based on `main@57fad3a441721b0513a3d513a6a0244280df11a4`
+**Audited ref:** FND-019 implementation based on `main@af1fbefeffba2cd5040fef911ae64da3d1b9c2d8`
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
 **Verification pass:** Re-verified 24 Sep 2026 from `main@57fad3a441721b0513a3d513a6a0244280df11a4`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002, FND-002Q, FND-009, FND-011B, and FND-018A are CLOSED / production-active at their approved boundaries; FND-010A and FND-011A remain production-active. FND-011B passed its final production gate with scheduled historical ingestion HTTP 200 and a Yahoo `GC=F` observation carrying `CME_GLOBEX_GOLD` with `quality=FRESH` inside the qualified open session. FND-009 passed its production gate after an authenticated manual refresh produced `POST /dashboard 200` followed by `GET /dashboard 200`, zero runtime errors, and new CoinGecko/Yahoo/FRED retrieval timestamps well inside their ordinary cache lifetimes, proving cadence-group invalidation rather than a route-only refresh.
@@ -539,7 +539,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-016 | LOW | UI still has English/raw-status governance leakage. |
 | FND-017 | MEDIUM | Known Next.js dependency security remediation remains open per roadmap. |
 | FND-018 | **OBSERVATION FND-018A FULL PASS / CLOSED / REMAINDER OPEN** | Production-active Observation writes use SHA-256 versioned measurement/revision identity: identical factual refetches dedupe, changed values survive as distinct immutable revisions, and `retrievedAt` remains availability rather than revision content. Legacy rows remain readable without rewrite. Event/Evidence and other record-family lineage remain separate. |
-| FND-019 | MEDIUM | Current Event aggregation can represent the same real economic event from Forex Factory and Biquote as separate canonical Events; provider-independent event identity/reconciliation is not yet defined. |
+| FND-019 | **IMPLEMENTATION CHECKPOINT** | Additive Event identity v1 now defines a conservative provider-independent reconciliation key from qualified jurisdiction + exact scheduled instant + deterministic semantic event key. Provider-specific `Event.id`, Evidence and source lineage remain immutable; `EconomicEventResult` carries the provider-independent event key; dashboard aggregation reconciles qualified duplicates deterministically while unqualified/`OTHER`/non-exact events remain separate. Production verification remains pending owner merge. |
 | FND-020 | **REMEDIATED** | Additive semantic dimensions preserve legacy `ObservationDomain` and FND-001 history identity. FND-018A changes only future Observation revision IDs; legacy canonical IDs/rows remain immutable and readable without destructive backfill. |
 | FND-021 | **HIGH / MVP COVERAGE GAP** | The approved MVP is **Macro + Crypto + Gold**. Current Macro remains materially US/Fed-centric and incomplete in policy expectations/pricing; Crypto lacks several qualified structural inputs such as stablecoin/ETF-flow/derivatives; Gold exists as pricing but lacks a complete historical/baseline/flow-positioning chain. Full Equity, broad Credit, broad Commodities beyond Gold and other multi-asset domains are post-MVP unless used as supporting evidence. |
 
@@ -670,6 +670,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 24 Sep 2026 | FND-009 manual cache invalidation | Centralized the complete dashboard invalidation tag set and made the manual-refresh Server Action invalidate legacy plus fast/medium/slow cadence groups. Production E2E passed after owner merge: authenticated manual refresh returned 200, produced no runtime errors, and forced new CoinGecko/Yahoo/FRED retrievals before their ordinary TTLs expired. |
 | 24 Sep 2026 | FND-011B production activation | Scheduled historical ingestion remained HTTP 200 and durable Yahoo Gold inside the qualified open session persisted `CME_GLOBEX_GOLD` with `quality=FRESH`; FND-011B is CLOSED / PRODUCTION ACTIVE. |
 | 24 Sep 2026 | Foundation Exit Gate | PASS for the generic hardening phase. Canonical identity, provenance, freshness, append-only history, repository-backed factual baseline, independent ingestion, and truthful manual invalidation are sufficient to stop broad foundation remediation. Remaining FND-008/FND-010 remainder/FND-012/FND-013/FND-015/FND-016/FND-017 are bounded debt unless a concrete downstream checkpoint depends on them. FND-019 is promoted as the first bounded prerequisite for the Expectation Baseline lifecycle because duplicate provider-specific Events must not create duplicate expectation ownership. FND-021 coverage gaps are completed demand-first inside the Macro + Crypto + Gold vertical slice rather than by breadth-first provider expansion. |
+| 24 Sep 2026 | FND-019 Event identity/reconciliation | Added backward-compatible Event identity v1 without rewriting provider-specific canonical IDs. Qualified exact events reconcile by jurisdiction, schedule instant and semantic key; Biquote EventResult snapshots carry the same provider-independent identity key for future Expectation Baseline ownership. Dashboard reconciliation prefers Biquote deterministically when duplicate Events share identity, preserves all provider Evidence, and fails safe by leaving OTHER/non-exact/unmatched events distinct. |
 
 ## Foundation Exit Gate — 24 Sep 2026
 
@@ -757,7 +758,7 @@ Intelligence / Briefing
 15. FND-011B market-hours freshness                         ← CLOSED / PRODUCTION ACTIVE
 16. FND-009 Manual cache invalidation                       ← CLOSED / PRODUCTION ACTIVE
 17. Foundation Exit Gate                                   ← PASS; stop open-ended hardening
-18. FND-019 Event identity/reconciliation                   ← bounded prerequisite for expectation lifecycle
+18. FND-019 Event identity/reconciliation                   ← current implementation checkpoint
 19. Expectation Baseline lifecycle
 20. Pricing Baseline / market-implied layer
 21. Market Snapshot implementation
