@@ -1,0 +1,40 @@
+name: FND-017 dependency verification
+
+on:
+  pull_request:
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.ts"
+      - ".github/workflows/fnd017-security-verify.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Refresh lockfile and install
+        run: npm install
+      - name: Capture audit
+        shell: bash
+        run: npm audit --json > npm-audit.json || true
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Upload verification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fnd017-verification
+          path: |
+            package-lock.json
+            npm-audit.json
