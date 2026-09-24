@@ -539,7 +539,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-016 | LOW | UI still has English/raw-status governance leakage. |
 | FND-017 | MEDIUM | Known Next.js dependency security remediation remains open per roadmap. |
 | FND-018 | **OBSERVATION FND-018A FULL PASS / CLOSED / REMAINDER OPEN** | Production-active Observation writes use SHA-256 versioned measurement/revision identity: identical factual refetches dedupe, changed values survive as distinct immutable revisions, and `retrievedAt` remains availability rather than revision content. Legacy rows remain readable without rewrite. Event/Evidence and other record-family lineage remain separate. |
-| FND-019 | **IMPLEMENTATION CHECKPOINT** | Additive Event identity v1 now defines a conservative provider-independent reconciliation key from qualified jurisdiction + exact scheduled instant + deterministic semantic event key. Provider-specific `Event.id`, Evidence and source lineage remain immutable; `EconomicEventResult` carries the provider-independent event key; dashboard aggregation reconciles qualified duplicates deterministically while unqualified/`OTHER`/non-exact events remain separate. Production verification remains pending owner merge. |
+| FND-019 | **IMPLEMENTATION PASS — PREVIEW VERIFIED / PRODUCTION ACTIVATION PENDING OWNER MERGE** | Additive Event identity v1 defines a conservative provider-independent reconciliation key from qualified jurisdiction + exact scheduled instant + deterministic semantic event key. Provider-specific `Event.id`, Evidence and source lineage remain unchanged; `EconomicEventResult` carries the provider-independent event key; dashboard aggregation reconciles qualified duplicates deterministically while unqualified/`OTHER`/non-exact events remain separate. Regression coverage includes verified production-shaped pairs (`Crude Oil Inventories` ↔ `EIA Crude Oil Stocks Change`; Barr speech role wording) and a same-timestamp non-match (`EIA Crude Oil Imports Change`). Vercel preview build is READY/SUCCESS. |
 | FND-020 | **REMEDIATED** | Additive semantic dimensions preserve legacy `ObservationDomain` and FND-001 history identity. FND-018A changes only future Observation revision IDs; legacy canonical IDs/rows remain immutable and readable without destructive backfill. |
 | FND-021 | **HIGH / MVP COVERAGE GAP** | The approved MVP is **Macro + Crypto + Gold**. Current Macro remains materially US/Fed-centric and incomplete in policy expectations/pricing; Crypto lacks several qualified structural inputs such as stablecoin/ETF-flow/derivatives; Gold exists as pricing but lacks a complete historical/baseline/flow-positioning chain. Full Equity, broad Credit, broad Commodities beyond Gold and other multi-asset domains are post-MVP unless used as supporting evidence. |
 
@@ -758,7 +758,7 @@ Intelligence / Briefing
 15. FND-011B market-hours freshness                         ← CLOSED / PRODUCTION ACTIVE
 16. FND-009 Manual cache invalidation                       ← CLOSED / PRODUCTION ACTIVE
 17. Foundation Exit Gate                                   ← PASS; stop open-ended hardening
-18. FND-019 Event identity/reconciliation                   ← current implementation checkpoint
+18. FND-019 Event identity/reconciliation                   ← implementation PASS; production activation pending owner merge
 19. Expectation Baseline lifecycle
 20. Pricing Baseline / market-implied layer
 21. Market Snapshot implementation
