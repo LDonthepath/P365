@@ -79,6 +79,7 @@ function snapshot(
   capturedAt: string,
   quality: MarketSnapshot["quality"] = "COMPLETE",
   scope = EVENT_WINDOW_POLICY_V1.snapshotScope,
+  eventIdentityKey: string | null = "event:v1:US:2026-10-15T12:30:00.000Z:cpi",
 ): MarketSnapshot {
   return {
     id: "snapshot-" + capturedAt,
@@ -86,7 +87,14 @@ function snapshot(
     capturedAt,
     scope,
     observationRefs: [],
-    eventRefs: [],
+    eventRefs: eventIdentityKey
+      ? [{
+          key: eventIdentityKey,
+          eventId: "event-cpi",
+          evidenceId: "evidence-event-cpi",
+          sourceId: "biquote",
+        }]
+      : [],
     baselineRefs: [],
     stateRefs: [],
     sourceHealthRefs: [],
@@ -297,6 +305,21 @@ async function main(): Promise<void> {
     incompatible.status,
     "INCOMPATIBLE_SCOPE",
     "Snapshot scope must match event-window scope",
+  );
+
+  const missingPrimaryEvent = matchSnapshotToEventWindow(
+    window,
+    snapshot(
+      "2026-10-15T12:35:00.000Z",
+      "COMPLETE",
+      EVENT_WINDOW_POLICY_V1.snapshotScope,
+      null,
+    ),
+  );
+  assertEqual(
+    missingPrimaryEvent.status,
+    "MISSING_EVENT_REFERENCE",
+    "timely Snapshot must explicitly reference the primary Event identity",
   );
 
   const sameTimeJobs = event(
