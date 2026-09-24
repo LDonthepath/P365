@@ -1,8 +1,9 @@
 import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
-import type { ContextRepository, EventRepository, EvidenceRepository, HistoricalMarketSnapshotRepository, HistoricalObservationRepository, MarketSnapshotHistoryQuery, MarketSnapshotRepository, ObservationHistoryQuery, ObservationRepository } from "./types";
+import type { ContextRepository, EventHistoryQuery, EventRepository, EvidenceRepository, HistoricalEventRepository, HistoricalMarketSnapshotRepository, HistoricalObservationRepository, MarketSnapshotHistoryQuery, MarketSnapshotRepository, ObservationHistoryQuery, ObservationRepository } from "./types";
 import { compareObservationHistory, observationHistoryTimestamp, observationSemanticSeriesKey, validateObservationHistoryQuery } from "./observation-history";
 import { compareMarketSnapshotHistory, marketSnapshotHistoryTimestamp, validateMarketSnapshotHistoryQuery } from "./snapshot-history";
+import { compareEventHistory, validateEventHistoryQuery } from "./event-history";
 
 export class InMemoryObservationRepository implements ObservationRepository, HistoricalObservationRepository {
   private readonly items = new Map<string, Observation>();
@@ -63,6 +64,39 @@ implements MarketSnapshotRepository, HistoricalMarketSnapshotRepository {
     matches.sort(compareMarketSnapshotHistory);
     if (query.order === "DESC") matches.reverse();
     return matches.slice(0, query.limit);
+  }
+}
+
+export class InMemoryHistoricalEventRepository
+implements HistoricalEventRepository {
+  constructor(private readonly source: InMemoryEventRepository) {}
+
+  async findHistory(query: EventHistoryQuery): Promise<Event[]> {
+    const bounds = validateEventHistoryQuery(query);
+    const candidates = this.source.all().filter((event) => {
+      if (
+        query.eventIdentityKey !== undefined
+        && event.identity?.key !== query.eventIdentityKey
+      ) return false;
+      if (
+        query.importance !== undefined
+        && event.importance !== query.importance
+      ) return false;
+
+      const scheduledValue = event.identity?.scheduledAt ?? event.scheduledAt;
+      if (!scheduledValue) return false;
+      const scheduled = Date.parse(scheduledValue);
+      const retrieved = Date.parse(event.retrievedAt);
+      if (!Number.isFinite(scheduled) || !Number.isFinite(retrieved)) return false;
+
+      return (bounds.scheduledFrom === undefined || scheduled >= bounds.scheduledFrom)
+        && (bounds.scheduledThrough === undefined || scheduled <= bounds.scheduledThrough)
+        && (bounds.retrievedThrough === undefined || retrieved <= bounds.retrievedThrough);
+    });
+
+    candidates.sort(compareEventHistory);
+    if (query.order === "DESC") candidates.reverse();
+    return candidates.slice(0, query.limit);
   }
 }
 
