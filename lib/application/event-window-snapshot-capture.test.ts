@@ -14,6 +14,7 @@ import type {
 import {
   EVENT_WINDOW_CAPTURE_SERIES,
   runEventWindowSnapshotCapture,
+  runEventWindowSnapshotRepair,
 } from "./event-window-snapshot-capture";
 
 function assertEqual(actual: unknown, expected: unknown, label: string): void {
@@ -336,6 +337,61 @@ async function main(): Promise<void> {
     })).length,
     4,
     "corrected retry preserves append-only row count",
+  );
+
+  const historicalRepair = await fixture();
+  const historicalEmptyObservations = new InMemoryObservationRepository();
+  await runEventWindowSnapshotCapture(
+    { now: "2026-10-15T12:36:00.000Z" },
+    {
+      repositories: {
+        ...historicalRepair.repositories,
+        observations: historicalEmptyObservations,
+        canonicalObservations: historicalEmptyObservations,
+      },
+    },
+  );
+
+  const expiredNormalRun = await runEventWindowSnapshotCapture(
+    { now: "2026-10-15T15:30:00.000Z" },
+    { repositories: historicalRepair.repositories },
+  );
+  assertEqual(
+    expiredNormalRun.dueSlots,
+    0,
+    "normal cron does not widen the 90-minute reconstruction window",
+  );
+
+  const repairByIdentity = await runEventWindowSnapshotRepair(
+    historicalRepair.event.identity!.key,
+    { repositories: historicalRepair.repositories },
+  );
+  assertEqual(repairByIdentity.status, "SUCCESS", "historical repair succeeds outside normal lookback");
+  assertEqual(repairByIdentity.dueSlots, 2, "repair touches only two existing logical slots");
+  assertEqual(repairByIdentity.captured, 0, "repair never first-materializes historical slots");
+  assertEqual(repairByIdentity.corrected, 2, "repair appends corrected versions for defective existing slots");
+
+  const historicalRows = await historicalRepair.snapshots.findHistory({
+    scope: "MVP_MACRO_CRYPTO_GOLD_EVENT",
+    order: "ASC",
+    limit: 10,
+  });
+  assertEqual(historicalRows.length, 4, "historical repair retains predecessors and appends two corrections");
+
+  const repairRetry = await runEventWindowSnapshotRepair(
+    historicalRepair.event.identity!.key,
+    { repositories: historicalRepair.repositories },
+  );
+  assertEqual(repairRetry.corrected, 0, "historical repair retry appends no new corrections");
+  assertEqual(repairRetry.alreadyCaptured, 2, "historical repair retry resolves active tips");
+  assertEqual(
+    (await historicalRepair.snapshots.findHistory({
+      scope: "MVP_MACRO_CRYPTO_GOLD_EVENT",
+      order: "ASC",
+      limit: 10,
+    })).length,
+    4,
+    "historical repair retry preserves append-only row count",
   );
 
   const lateEvent = await fixture("2026-10-15T12:26:00.000Z");
