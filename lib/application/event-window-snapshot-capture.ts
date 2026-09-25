@@ -599,13 +599,38 @@ export async function runEventWindowSnapshotRepair(
 
   const window = windows[0];
   const existingSlots: QualifiedEventWindowSlot[] = [];
-  for (const slot of window.slots) {
-    const existing = await existingSlotSnapshot(
-      window,
-      slot,
-      repositories.snapshotHistory,
-    );
-    if (existing) existingSlots.push(slot);
+  try {
+    for (const slot of window.slots) {
+      const existing = await existingSlotSnapshot(
+        window,
+        slot,
+        repositories.snapshotHistory,
+      );
+      if (existing) existingSlots.push(slot);
+    }
+  } catch (error) {
+    return {
+      status: "FAILED",
+      evaluatedAt,
+      candidateEvents: candidates.length,
+      qualifiedWindows: 1,
+      dueSlots: 0,
+      captured: 0,
+      corrected: 0,
+      alreadyCaptured: 0,
+      unavailableEventSlots: 0,
+      failed: 1,
+      slots: [{
+        eventIdentityKey: normalizedIdentity,
+        eventId: window.eventId,
+        role: "PRE",
+        targetAt: window.t0,
+        status: "FAILED",
+        message: error instanceof Error
+          ? error.message
+          : "Existing Snapshot history resolution failed.",
+      }],
+    };
   }
 
   if (existingSlots.length === 0) {
