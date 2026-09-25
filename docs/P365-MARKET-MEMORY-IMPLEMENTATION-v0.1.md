@@ -102,6 +102,19 @@ Event-window Snapshot repair follows the same invariant. A defective immutable S
 
 Readers must resolve the single active supersession tip for a logical slot. Forks, cycles, missing parents, or cross-scope/time supersession links fail closed. A correction is permitted only when quality/completeness is non-regressing and at least one governed completeness dimension strictly improves.
 
+### Historical Snapshot repair boundary
+
+Normal CAP discovery remains bounded to the 90-minute reconstruction window. Historical repair is an explicit, authenticated exception path for already-materialized logical slots that have aged out of that window.
+
+The repair path:
+
+- requires an explicit provider-independent `eventIdentityKey`;
+- is POST-only and protected by the existing `CRON_SECRET` bearer contract;
+- does not have a scheduler;
+- does not create a historical slot that is absent from durable Snapshot history;
+- preserves the original Event Window role, `targetAt`, semantic `capturedAt`, and point-in-time cutoffs;
+- delegates any actual replacement to the append-only Snapshot supersession policy above.
+
 ## Current database verification
 
 The P365 Supabase project contains `public.market_memory`, RLS is enabled, and the append-only/dedupe triggers are installed. The database currently contains one pre-existing verification record; it is intentionally retained because Market Memory is append-only.
