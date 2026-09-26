@@ -503,6 +503,201 @@ async function defaultRepositories(): Promise<EventWindowCaptureRepositories> {
 }
 
 /**
+ * Repairs already-materialized event-window slots for one explicit historical
+ * Event identity. This path deliberately bypasses the normal 90-minute
+ * discovery window but never creates a historical slot that does not already
+ * exist in durable Snapshot history.
+ */
+export async function runEventWindowSnapshotRepair(
+  eventIdentityKey: string,
+  dependencies: {
+    repositories?: EventWindowCaptureRepositories;
+  } = {},
+): Promise<EventWindowCaptureReport> {
+  const normalizedIdentity = eventIdentityKey.trim();
+  const evaluatedAt = new Date().toISOString();
+  if (!normalizedIdentity) {
+    return {
+      status: "FAILED",
+      evaluatedAt,
+      candidateEvents: 0,
+      qualifiedWindows: 0,
+      dueSlots: 0,
+      captured: 0,
+      corrected: 0,
+      alreadyCaptured: 0,
+      unavailableEventSlots: 0,
+      failed: 1,
+      slots: [{
+        eventIdentityKey: "unavailable",
+        eventId: "unavailable",
+        role: "PRE",
+        targetAt: evaluatedAt,
+        status: "FAILED",
+        message: "Historical Snapshot repair requires a non-empty Event identity key.",
+      }],
+    };
+  }
+
+  const repositories = dependencies.repositories ?? await defaultRepositories();
+
+  let candidates: Event[];
+  try {
+    candidates = await repositories.events.findHistory({
+      eventIdentityKey: normalizedIdentity,
+      retrievedAtOnOrBefore: evaluatedAt,
+      importance: "HIGH",
+      order: "DESC",
+      limit: 500,
+    });
+  } catch (error) {
+    return {
+      status: "FAILED",
+      evaluatedAt,
+      candidateEvents: 0,
+      qualifiedWindows: 0,
+      dueSlots: 0,
+      captured: 0,
+      corrected: 0,
+      alreadyCaptured: 0,
+      unavailableEventSlots: 0,
+      failed: 1,
+      slots: [{
+        eventIdentityKey: normalizedIdentity,
+        eventId: "unavailable",
+        role: "PRE",
+        targetAt: evaluatedAt,
+        status: "FAILED",
+        message: error instanceof Error
+          ? error.message
+          : "Historical Event lookup failed.",
+      }],
+    };
+  }
+
+  const windowSet = buildQualifiedEventWindowSet(
+    latestEventRevisions(candidates),
+  );
+  const windows = windowSet.windows.filter(
+    (window) => window.eventIdentityKey === normalizedIdentity,
+  );
+  if (windows.length !== 1) {
+    return {
+      status: windows.length === 0 ? "EMPTY" : "FAILED",
+      evaluatedAt,
+      candidateEvents: candidates.length,
+      qualifiedWindows: windows.length,
+      dueSlots: 0,
+      captured: 0,
+      corrected: 0,
+      alreadyCaptured: 0,
+      unavailableEventSlots: 0,
+      failed: windows.length > 1 ? 1 : 0,
+      slots: [],
+    };
+  }
+
+  const window = windows[0];
+  const existingSlots: QualifiedEventWindowSlot[] = [];
+  try {
+    for (const slot of window.slots) {
+      const existing = await existingSlotSnapshot(
+        window,
+        slot,
+        repositories.snapshotHistory,
+      );
+      if (existing) existingSlots.push(slot);
+    }
+  } catch (error) {
+    return {
+      status: "FAILED",
+      evaluatedAt,
+      candidateEvents: candidates.length,
+      qualifiedWindows: 1,
+      dueSlots: 0,
+      captured: 0,
+      corrected: 0,
+      alreadyCaptured: 0,
+      unavailableEventSlots: 0,
+      failed: 1,
+      slots: [{
+        eventIdentityKey: normalizedIdentity,
+        eventId: window.eventId,
+        role: "PRE",
+        targetAt: window.t0,
+        status: "FAILED",
+        message: error instanceof Error
+          ? error.message
+          : "Existing Snapshot history resolution failed.",
+      }],
+    };
+  }
+
+  if (existingSlots.length === 0) {
+    return {
+      status: "EMPTY",
+      evaluatedAt,
+      candidateEvents: candidates.length,
+      qualifiedWindows: 1,
+      dueSlots: 0,
+      captured: 0,
+      corrected: 0,
+      alreadyCaptured: 0,
+      unavailableEventSlots: 0,
+      failed: 0,
+      slots: [],
+    };
+  }
+
+  const slots: EventWindowCaptureSlotReport[] = [];
+  for (const slot of existingSlots) {
+    slots.push(await captureSlot({
+      window,
+      slot,
+      repositories,
+    }));
+  }
+
+  const captured = slots.filter((slot) => slot.status === "CAPTURED").length;
+  const corrected = slots.filter((slot) => slot.status === "CORRECTED").length;
+  const alreadyCaptured = slots.filter(
+    (slot) => slot.status === "ALREADY_CAPTURED",
+  ).length;
+  const unavailableEventSlots = slots.filter(
+    (slot) => slot.status === "EVENT_NOT_AVAILABLE_AS_OF_TARGET",
+  ).length;
+  const failed = slots.filter((slot) => slot.status === "FAILED").length;
+
+  // Historical repair must never first-materialize a missing logical slot.
+  // A CAPTURED result here indicates the slot disappeared between the
+  // existence check and capture attempt, so fail closed rather than calling it
+  // a successful repair.
+  const unexpectedCaptured = captured > 0;
+  const status: EventWindowCaptureReport["status"] =
+    unexpectedCaptured || failed === slots.length
+      ? "FAILED"
+      : failed > 0 || unavailableEventSlots > 0
+        ? "PARTIAL"
+        : corrected + alreadyCaptured > 0
+          ? "SUCCESS"
+          : "EMPTY";
+
+  return {
+    status,
+    evaluatedAt,
+    candidateEvents: candidates.length,
+    qualifiedWindows: 1,
+    dueSlots: existingSlots.length,
+    captured,
+    corrected,
+    alreadyCaptured,
+    unavailableEventSlots,
+    failed: failed + (unexpectedCaptured ? captured : 0),
+    slots,
+  };
+}
+
+/**
  * Materializes deterministic event-window Snapshots from durable history.
  *
  * capturedAt is the semantic slot target, not wall-clock execution time.
