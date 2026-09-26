@@ -328,6 +328,16 @@ function main(): void {
     () => assessEventRepricing(input({ thresholds: [] })),
   );
   assertThrows(
+    "unsupported threshold basis fails closed",
+    () => assessEventRepricing(input({
+      thresholds: [{
+        observationKey: btcKey,
+        basis: "UNSUPPORTED" as EventRepricingThreshold["basis"],
+        minimumMagnitude: 0.5,
+      }],
+    })),
+  );
+  assertThrows(
     "threshold magnitude must be positive",
     () => assessEventRepricing(input({
       thresholds: [{
