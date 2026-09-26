@@ -1,7 +1,7 @@
 # P365 Cross-Asset Transmission Contract v0.1
 
 **Checkpoint:** TRN-001  
-**Status:** feature branch; owner review/merge required  
+**Status:** PR #75 open; owner review/merge required  
 **Scope:** Macro + Crypto + Gold event-window cross-asset response coherence  
 **Prerequisites:** CMP-001, RPR-001, EVW-001, CAP-001 natural production proof
 
