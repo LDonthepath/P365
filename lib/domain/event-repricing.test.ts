@@ -5,10 +5,9 @@ import {
   type EventRepricingThreshold,
 } from "./event-repricing";
 import type { EventWindowContaminant } from "./event-window";
-import {
-  SNAPSHOT_COMPARISON_POLICY_V1,
-  type SnapshotComparison,
-  type SnapshotObservationChange,
+import type {
+  SnapshotComparison,
+  SnapshotObservationChange,
 } from "./snapshot-comparison";
 
 function assertEqual<T>(actual: T, expected: T, label: string): void {
@@ -71,7 +70,7 @@ function comparison(
   return {
     id: "snapshot-comparison-v1-test",
     version: "v1",
-    policy: SNAPSHOT_COMPARISON_POLICY_V1,
+    policy: "point-in-time-semantic-slot-comparison-v1",
     scope: "MVP_MACRO_CRYPTO_GOLD_EVENT",
     beforeSnapshotId: "snapshot-pre",
     afterSnapshotId: "snapshot-post",
