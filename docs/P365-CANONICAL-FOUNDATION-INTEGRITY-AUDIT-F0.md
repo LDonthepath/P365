@@ -4,7 +4,7 @@
 **Audited ref:** `main@bb36fa81be57b8a11603c28e739e5bd2745c7d7a` after RPR-001 merge
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 26 Sep 2026 from `main@55027a693aec1892926368c36c67e5eda4160b83`. Production scheduling is owned exclusively by Supabase `pg_cron`; recurring GitHub Actions ingestion schedules are retired. FND-002, FND-002Q, FND-009, FND-011B, FND-017, FND-018A, FND-019, FND-022 and CAP-001A/B/C are closed / production-active at their approved boundaries. CAP-001D is merged and production-ready as a manual authenticated targeted historical Snapshot repair path. The natural **Durable Goods Orders** event on 25 Sep 2026 produced COMPLETE PRE/T+5/T+15/T+30/T+60 Snapshots with four Observation refs, VALID Biquote FORECAST Expectation lineage, VALID BTC/ETH/DXY/Gold Pricing baselines, and no missing requirements. This closes the CAP natural-production evidence gate. RPR-001 is merged and production-ready at PR #74 / `bb36fa81be57b8a11603c28e739e5bd2745c7d7a`. TRN-001 is implemented in PR #75 as a read-only explicit-methodology cross-asset response-coherence contract and remains owner-merge pending.
+**Verification pass:** Re-verified 26 Sep 2026 from `main@bb36fa81be57b8a11603c28e739e5bd2745c7d7a`. Production scheduling is owned exclusively by Supabase `pg_cron`; recurring GitHub Actions ingestion schedules are retired. FND-002, FND-002Q, FND-009, FND-011B, FND-017, FND-018A, FND-019, FND-022 and CAP-001A/B/C are closed / production-active at their approved boundaries. CAP-001D is merged and production-ready as a manual authenticated targeted historical Snapshot repair path. The natural **Durable Goods Orders** event on 25 Sep 2026 produced COMPLETE PRE/T+5/T+15/T+30/T+60 Snapshots with four Observation refs, VALID Biquote FORECAST Expectation lineage, VALID BTC/ETH/DXY/Gold Pricing baselines, and no missing requirements. This closes the CAP natural-production evidence gate. RPR-001 is merged and production-ready at PR #74 / `bb36fa81be57b8a11603c28e739e5bd2745c7d7a`. TRN-001 is implemented in PR #75 as a read-only explicit-methodology cross-asset response-coherence contract and remains owner-merge pending.
 
 ## Documentation authority
 
@@ -25,7 +25,7 @@ Older status, roadmap, gap-analysis, and audit documents are removed rather than
 
 **FOUNDATION HARDENING EXIT: PASS — PRODUCT INTELLIGENCE CHAIN STILL INCOMPLETE**
 
-P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Durable historical continuity is operational. The generic foundation-hardening phase is complete enough to exit: the remaining major work—Expectation Baseline, Pricing Baseline, immutable Market Snapshot, repricing/transmission, and later Intelligence—is now product-layer construction rather than justification for continuing open-ended foundation hardening. The coarse legacy `MARKET / MACRO / ASSET / OTHER` classification is now preserved only as a compatibility field while approved current Observations receive additive market-domain/information-class semantics. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
+P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Durable historical continuity is operational. The generic foundation-hardening phase is complete enough to exit: Expectation Baseline, Pricing Baseline, immutable Market Snapshot, governed capture, comparison, and RPR-001 repricing are now implemented at their approved boundaries; the remaining product-layer work centers on TRN-001 cross-asset response coherence, demand-driven relationship evidence, and later Intelligence rather than open-ended foundation hardening. The coarse legacy `MARKET / MACRO / ASSET / OTHER` classification is now preserved only as a compatibility field while approved current Observations receive additive market-domain/information-class semantics. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
 
 The current system independently ingests and normalizes selected factual Observations and Events, persists canonical records to durable Market Memory, queries point-in-time Observation/Event/EventResult/Snapshot history, and computes factual, expectation, and pricing baselines at approved boundaries. SNP-001, EVW-001, CMP-001 and CAP-001 are merged and production-active. Natural Durable Goods Orders production evidence on 25 Sep 2026 proves the complete governed capture chain: PRE/T+5/T+15/T+30/T+60 were materialized as COMPLETE immutable Snapshots with four BTC/ETH/DXY/Gold Observation refs, VALID pre-release Biquote FORECAST expectation lineage, VALID Pricing baselines, and zero missing requirements. CAP-001A/B corrected history-filter defects discovered by Initial Jobless Claims; CAP-001C adds append-only Snapshot supersession; CAP-001D adds explicit authenticated repair for historical slots that have aged out of the recurring 90-minute discovery window. RPR-001 is merged and production-ready as threshold-governed market-response classification without production threshold defaults or causal attribution. TRN-001 in PR #75 adds explicit-methodology cross-asset response-coherence testing while preserving `causalAttribution=NOT_EVALUATED`; causal interpretation remains prohibited.
 
@@ -84,7 +84,7 @@ Market Snapshot              SNP-001 + CAP-001 NATURAL PRODUCTION E2E VERIFIED
 Event Window Policy           EVW-001 PRODUCTION E2E VERIFIED
 Snapshot Comparison           CMP-001 DEPLOYED / NATURAL INPUTS VERIFIED / EXPLICIT EXECUTION NEXT
 Runtime Snapshot Capture       CAP-001 A/B/C CLOSED / NATURAL E2E PASS / D REPAIR READY
-Transmission reasoning       RPR-001 NEXT / TRN-001 AFTER REPRICING
+Repricing / Transmission    RPR-001 MERGED / TRN-001 PR #75 OPEN
 Financial-market ontology    DOCUMENTED / ADDITIVE RUNTIME COMPATIBILITY IMPLEMENTED
 MVP Macro+Crypto+Gold       PARTIAL / ACTIVE TARGET
 Broader multi-asset coverage  POST-MVP / ONTOLOGY-DEFINED
@@ -451,18 +451,15 @@ Therefore older documents that still say equities/DXY/gold/oil/VIX/credit are mi
 
 ### Expectation
 
-Biquote supplies forecast data, but a canonical **Expectation Baseline lifecycle** does not exist. A provider forecast field alone is not enough to establish the correct pre-release expectation snapshot.
+EXP-001 is merged and natural-production verified. Pre-release EventResult history is selected point-in-time by provider-independent Event identity, with forecast/consensus/projection semantics preserved and post-release information excluded from the pre-event baseline.
 
 ### Repricing
 
-No canonical market-implied pricing layer exists. Therefore P365 cannot distinguish:
-- factual surprise;
-- expectation surprise;
-- pricing surprise.
+PRC-001 provides qualified point-in-time pricing baselines, CMP-001 provides no-lookahead PRE→post factual comparison, and RPR-001 is merged / production-ready as an explicit-threshold market-response contract. RPR-001 still has no universal production threshold defaults and does not infer factual surprise or causality.
 
 ### Transmission
 
-Cross-asset facts exist, but there is no synchronized pre/post-event observation set or comparison contract. Therefore “asset X confirmed event Y” is not yet a valid system conclusion.
+CAP-001 now provides synchronized governed PRE/T+5/T+15/T+30/T+60 event-window Snapshots, and CMP-001/RPR-001 provide the qualified comparison/repricing inputs needed downstream. TRN-001 in PR #75 adds explicit versioned driver→response relationship rules and evaluates only threshold-qualified cross-asset response coherence. Static relationship assumptions and causal claims remain prohibited; degraded, unresolved, or contaminated evidence must fail closed.
 
 ## 14. UI / presentation audit
 
@@ -719,7 +716,7 @@ This gate does **not** mean P365 is feature-complete and does not authorize Stat
 
 **Blocking the immediate next lifecycle**
 
-- **None at the generic foundation layer.** FND-019 and FND-017 are closed / production-active. The next dependency is product-layer **RPR-001 Event Repricing Contract**.
+- **None at the generic foundation layer.** FND-019 and FND-017 are closed / production-active. RPR-001 is merged; the active product-layer dependency is **TRN-001 Cross-Asset Transmission Contract (PR #75)**.
 
 **Allowed to remain bounded while product-layer work proceeds**
 
