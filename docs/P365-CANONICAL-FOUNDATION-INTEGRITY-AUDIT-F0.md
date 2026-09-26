@@ -1,10 +1,10 @@
 # P365 Foundation Master — SSOT v0.1
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
-**Audited ref:** CAP-001 implementation based on `main@f8fce4de6cb2dc112b45fc6188567b6ae00676db`
+**Audited ref:** `main@55027a693aec1892926368c36c67e5eda4160b83` after CAP-001D merge
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.
 
-**Verification pass:** Re-verified 24 Sep 2026 from `main@57fad3a441721b0513a3d513a6a0244280df11a4`. FND-003A/B/C remain operational through Supabase `pg_cron` → authenticated Vercel ingestion endpoints → durable Supabase Market Memory. FND-002, FND-002Q, FND-009, FND-011B, and FND-018A are CLOSED / production-active at their approved boundaries; FND-010A and FND-011A remain production-active. FND-011B passed its final production gate with scheduled historical ingestion HTTP 200 and a Yahoo `GC=F` observation carrying `CME_GLOBEX_GOLD` with `quality=FRESH` inside the qualified open session. FND-009 passed its production gate after an authenticated manual refresh produced `POST /dashboard 200` followed by `GET /dashboard 200`, zero runtime errors, and new CoinGecko/Yahoo/FRED retrieval timestamps well inside their ordinary cache lifetimes, proving cadence-group invalidation rather than a route-only refresh.
+**Verification pass:** Re-verified 26 Sep 2026 from `main@55027a693aec1892926368c36c67e5eda4160b83`. Production scheduling is owned exclusively by Supabase `pg_cron`; recurring GitHub Actions ingestion schedules are retired. FND-002, FND-002Q, FND-009, FND-011B, FND-017, FND-018A, FND-019, FND-022 and CAP-001A/B/C are closed / production-active at their approved boundaries. CAP-001D is merged and production-ready as a manual authenticated targeted historical Snapshot repair path. The natural **Durable Goods Orders** event on 25 Sep 2026 produced COMPLETE PRE/T+5/T+15/T+30/T+60 Snapshots with four Observation refs, VALID Biquote FORECAST Expectation lineage, VALID BTC/ETH/DXY/Gold Pricing baselines, and no missing requirements. This closes the CAP natural-production evidence gate. Repricing and Transmission remain unimplemented.
 
 ## Documentation authority
 
@@ -27,7 +27,7 @@ Older status, roadmap, gap-analysis, and audit documents are removed rather than
 
 P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Durable historical continuity is operational. The generic foundation-hardening phase is complete enough to exit: the remaining major work—Expectation Baseline, Pricing Baseline, immutable Market Snapshot, repricing/transmission, and later Intelligence—is now product-layer construction rather than justification for continuing open-ended foundation hardening. The coarse legacy `MARKET / MACRO / ASSET / OTHER` classification is now preserved only as a compatibility field while approved current Observations receive additive market-domain/information-class semantics. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
 
-The current system can independently ingest and normalize selected factual Observations and Events, create evidence-backed Context, persist canonical records, query contract-compliant Observation/Event history from durable Market Memory, and compute factual, expectation, and pricing reference baselines at their approved boundaries. SNP-001, EVW-001 and CMP-001 are merged and production-deployed as immutable Snapshot, qualified event-window, and factual Snapshot-comparison capabilities. Production Snapshot rows remain empty because the governed runtime capture owner is not yet merged/activated. CAP-001 now implements that runtime owner on the branch: deterministic as-of reconstruction for PRE/T+5/T+15/T+30/T+60 using durable Event/Observation/EventResult history, fixed MVP BTC/ETH/DXY/Gold capture slots, explicit missing/stale quality, authenticated cron boundary, and idempotent slot detection. Repricing, transmission and causal interpretation remain unimplemented and prohibited.
+The current system independently ingests and normalizes selected factual Observations and Events, persists canonical records to durable Market Memory, queries point-in-time Observation/Event/EventResult/Snapshot history, and computes factual, expectation, and pricing baselines at approved boundaries. SNP-001, EVW-001, CMP-001 and CAP-001 are merged and production-active. Natural Durable Goods Orders production evidence on 25 Sep 2026 proves the complete governed capture chain: PRE/T+5/T+15/T+30/T+60 were materialized as COMPLETE immutable Snapshots with four BTC/ETH/DXY/Gold Observation refs, VALID pre-release Biquote FORECAST expectation lineage, VALID Pricing baselines, and zero missing requirements. CAP-001A/B corrected history-filter defects discovered by Initial Jobless Claims; CAP-001C adds append-only Snapshot supersession; CAP-001D adds explicit authenticated repair for historical slots that have aged out of the recurring 90-minute discovery window. Repricing, transmission and causal interpretation remain unimplemented and prohibited.
 
 ### Foundation readiness by layer
 
@@ -47,13 +47,13 @@ The current system can independently ingest and normalize selected factual Obser
 | Historical retrieval | PASS | FND-001 semantics are implemented against persisted canonical Observation payloads; read-only production verification found 29 contract-eligible FRED macro series with predecessor depth. |
 | Historical continuity | PASS for FND-003 operational boundary | Independent Observation/Event ingestion is driven by production Supabase `pg_cron` and persists to durable Market Memory. Scheduler redesign remains outside FND-002. |
 | Factual baseline | FULL PASS / PRODUCTION E2E VERIFIED | Active application orchestration reads predecessor candidates only from `HistoricalObservationRepository`, with strict measurement and retrieval/as-of bounds and no provider-window fallback; production dashboard execution verified 29 durable history reads. |
-| Expectation baseline | **EXP-001 MERGED / PRODUCTION DEPLOYED / E2E DATA PROOF PENDING** | Provider-scoped point-in-time EventResult history and latest-qualified pre-release Expectation Baseline selection are deployed on `main`. `FORECAST`, `CONSENSUS`, and `OFFICIAL_PROJECTION` remain distinct; post-release snapshots are ineligible. Production runtime is healthy, but no qualified FND-019 `EVENT_RESULT.eventIdentityKey` row exists yet, so natural E2E baseline proof remains pending. |
-| Pricing baseline | **PRC-001 MERGED / PRODUCTION DEPLOYED / CONTRACT + DURABLE INPUT VERIFIED** | Point-in-time provider-scoped selection is deployed for existing canonical `PRICING` Observations with `observedAt` + `retrievedAt` as-of protection and explicit caller age tolerance. Production durable history contains qualified BTC/ETH, DXY, Gold, rates/real-yield/inflation-compensation and other pricing inputs. No active runtime consumer calls the selector yet. OIS/Fed-funds/SOFR-futures policy-path pricing remains a separate source-coverage gap. |
+| Expectation baseline | **EXP-001 FULL PASS / PRODUCTION E2E VERIFIED** | Durable Goods Orders on 25 Sep 2026 produced a provider-independent Event identity with Biquote `FORECAST` EventResult lineage selected as `VALID` in every PRE/T+ slot. `FORECAST`, `CONSENSUS`, and `OFFICIAL_PROJECTION` remain distinct and post-release lookahead remains prohibited. |
+| Pricing baseline | **PRC-001 FULL PASS AT CURRENT MVP CAPTURE BOUNDARY / PRODUCTION E2E VERIFIED** | CAP-001 actively consumes provider-scoped point-in-time Pricing baselines. Durable Goods Orders natural production evidence shows BTC, ETH, DXY and Gold Pricing baselines `VALID` across PRE/T+5/T+15/T+30/T+60 with `observedAt` + `retrievedAt` cutoffs preserved. OIS/Fed-funds/SOFR-futures policy-path pricing remains a separate coverage gap. |
 | Historical baseline | MISSING | No approved methodology/query implementation. |
-| Cross-asset baseline | **PARTIAL / SNP-001 + EVW-001 + CMP-001 PRODUCTION CAPABILITIES / CAP-001 RUNTIME OWNER IMPLEMENTED** | Immutable Snapshot persistence/query, qualified event windows, and factual Snapshot comparison are production-deployed. CAP-001 adds deterministic runtime materialization of PRE/T+5/T+15/T+30/T+60 reference sets from durable history for BTC/ETH/DXY/Gold plus expectation/pricing baseline lineage. Production scheduler activation and natural Snapshot evidence remain pending owner merge/activation; repricing semantics remain separate. |
-| Market Snapshot | **SNP-001 PRODUCTION DEPLOYED / CAP-001 RUNTIME OWNER IMPLEMENTED — OWNER MERGE + ACTIVATION PENDING** | Immutable reference-only Snapshot construction/persistence is production-deployed. CAP-001 implements deterministic as-of event-window materialization on the branch, but production verification still has zero `SNAPSHOT` rows because the new `/api/cron/snapshot-capture` route is not yet merged or scheduled. |
+| Cross-asset baseline | **CAPTURE CHAIN FULL PASS / CMP-001 INPUTS PRODUCTION-VERIFIED** | Immutable Snapshot persistence/query and qualified event windows are production-active. Durable Goods Orders naturally materialized COMPLETE PRE/T+5/T+15/T+30/T+60 BTC/ETH/DXY/Gold reference sets with expectation/pricing lineage. CMP-001 is deployed and now has natural compatible inputs; explicit comparison execution belongs to the next Repricing consumer path. |
+| Market Snapshot | **SNP-001 + CAP-001 FULL PASS / NATURAL PRODUCTION E2E VERIFIED** | Supabase `pg_cron` drives the authenticated CAP runtime owner. Durable Goods Orders produced all five governed event-window Snapshot roles as COMPLETE with valid point-in-time lineage and no missing requirements. Append-only correction/supersession and targeted historical repair are available through CAP-001C/D. |
 | Cross-asset factual coverage | PARTIAL | Useful universe exists; MOVE remains absent and docs disagree on credit coverage. |
-| Transmission reasoning | **CMP-001 MERGED / CAP-001 RUNTIME EVIDENCE GATE IN PROGRESS / REPRICING + TRANSMISSION STILL MISSING** | Factual Snapshot comparison is production-deployed. CAP-001 supplies the missing runtime Snapshot owner, but production PRE/POST evidence remains pending merge/scheduler activation. No thresholding, repricing classification, causal attribution, cross-asset transmission conclusion, State or Intelligence is implemented. |
+| Transmission reasoning | **CMP-001 DEPLOYED / NATURAL SNAPSHOT INPUTS VERIFIED / RPR-001 NEXT** | Compatible PRE/post production Snapshots now exist naturally. No repricing threshold, response classification, causal attribution, cross-asset transmission conclusion, State or Intelligence is implemented. The next isolated checkpoint is RPR-001 Event Repricing Contract. |
 | State/Regime/Risk/Intelligence | DEFERRED / PASS boundary | Builder files exist but are not active pipeline owners. |
 | Market Briefing | DEFERRED | Correctly not fabricated. |
 | UI/presentation | PASS / PARTIAL | UI mostly presents canonical facts and explicit pending states; several English/internal labels remain presentation debt. |
@@ -78,13 +78,13 @@ Observation identity        FND-018A FULL PASS / CLOSED / PRODUCTION ACTIVE
 Observation provenance      FND-010A PRODUCTION ACTIVE
 Macro freshness             FND-011A PRODUCTION ACTIVE
 Independent ingestion        OPERATIONAL (FND-003A/B/C)
-Expectation baseline         EXP-001 MERGED / PRODUCTION DEPLOYED / E2E PENDING
-Pricing baseline             PRC-001 MERGED / PRODUCTION DEPLOYED
-Market Snapshot              SNP-001 MERGED / PRODUCTION DEPLOYED / RUNTIME CAPTURE PENDING
-Event Window Policy           EVW-001 MERGED / PRODUCTION DEPLOYED
-Snapshot Comparison           CMP-001 MERGED / PRODUCTION DEPLOYED / RUNTIME E2E PENDING
-Runtime Snapshot Capture       CAP-001 IMPLEMENTATION PASS / PREVIEW VERIFIED
-Transmission reasoning       MISSING
+Expectation baseline         EXP-001 FULL PASS / NATURAL PRODUCTION E2E VERIFIED
+Pricing baseline             PRC-001 PRODUCTION E2E VERIFIED FOR BTC/ETH/DXY/GOLD
+Market Snapshot              SNP-001 + CAP-001 NATURAL PRODUCTION E2E VERIFIED
+Event Window Policy           EVW-001 PRODUCTION E2E VERIFIED
+Snapshot Comparison           CMP-001 DEPLOYED / NATURAL INPUTS VERIFIED / EXPLICIT EXECUTION NEXT
+Runtime Snapshot Capture       CAP-001 A/B/C CLOSED / NATURAL E2E PASS / D REPAIR READY
+Transmission reasoning       RPR-001 NEXT / TRN-001 AFTER REPRICING
 Financial-market ontology    DOCUMENTED / ADDITIVE RUNTIME COMPATIBILITY IMPLEMENTED
 MVP Macro+Crypto+Gold       PARTIAL / ACTIVE TARGET
 Broader multi-asset coverage  POST-MVP / ONTOLOGY-DEFINED
@@ -98,7 +98,7 @@ Intelligence / Briefing      DEFERRED
 - **Crypto:** CoinGecko covers BTC/ETH spot, BTC/ETH market cap, total crypto market cap, total volume and BTC/ETH dominance. Stablecoin market cap and a defined basic-volatility metric remain open.
 - **Cross-asset:** S&P 500, Nasdaq, Russell 2000, US 2Y, US 10Y, 10Y real yield, DXY, broad USD, Gold futures, WTI, VIX and IG/HY credit spreads are available. DXY and broad USD remain separate instruments. MOVE remains open.
 - **Economic events:** Forex Factory provides a weekly scheduled calendar, Federal Reserve provides official FOMC date anchors, and Biquote trial data provides structured schedules/results for verified US, China and Japan examples. Biquote remains trial-only; response-window completeness and release-time qualification remain open.
-- **Event risk window (presentation only):** the overview lists HIGH-importance canonical Events from 30 minutes ago to 24 hours ahead, grouped by scheduled minute, as schedule facts only (no direction, no advice). Federal Reserve dates are date anchors and are shown without a countdown. The Forex Factory list is capped at the nearest `ECONOMIC_CALENDAR_LIMIT` events of any impact, so the panel states when events beyond its last loaded event are unknown; absence in the panel is not evidence of absence. Qualified cross-provider Events can now carry FND-019 identity/reconciliation; production activation proof remains under a separate read-only watch.
+- **Event risk window (presentation only):** the overview lists HIGH-importance canonical Events from 30 minutes ago to 24 hours ahead, grouped by scheduled minute, as schedule facts only (no direction, no advice). Federal Reserve dates are date anchors and are shown without a countdown. The Forex Factory list is capped at the nearest `ECONOMIC_CALENDAR_LIMIT` events of any impact, so the panel states when events beyond its last loaded event are unknown; absence in the panel is not evidence of absence. Qualified cross-provider Events carry FND-019 identity/reconciliation in production. Durable Goods Orders on 25 Sep 2026 verified the same provider-independent identity across Biquote/Forex Factory schedule rows, with Biquote EventResult lineage consumed by CAP.
 - **Semantic breadth:** the FRED registry contains 33 series and current Yahoo/CoinGecko market metrics now receive additive `Observation.semantics` during normalization. Legacy `ObservationDomain` remains unchanged for history compatibility; old Market Memory rows can resolve approved semantics from stable `seriesId`/`metricId` without rewrite.
 - **MVP coverage gaps:** Macro still lacks complete global-policy/expectation/pricing coverage; Crypto lacks qualified stablecoin/ETF-flow/derivatives coverage; Gold has pricing but not a complete durable-history/baseline/flow-positioning reasoning chain.
 - **Post-MVP ontology gaps:** full Equity, broad Credit, broad Commodities beyond Gold, broader volatility/derivatives, EM and other multi-asset domains remain intentionally outside first-class MVP scope unless used as supporting evidence.
@@ -337,7 +337,7 @@ Production history demonstrates the defect this corrects: on Sunday 20 Sep at 13
 
 ProviderHealth maps SUCCESS to HEALTHY regardless of canonical item quality, with a special FRED override when all normalized macro facts are stale. That means health and data quality are related but not uniformly composed across providers.
 
-FND-009 corrects the confirmed manual-refresh defect. Dashboard-cached providers now share one authoritative invalidation topology in `lib/data/cache-policy.ts`: the retained legacy `p365-dashboard` tag plus cadence groups `p365-fast`, `p365-medium`, and `p365-slow`. The **Muat ulang manual** Server Action iterates that complete set rather than invalidating only the legacy tag. This preserves provider-specific cache cadence while making explicit user refresh semantics truthful again. Production verification remains gated on owner merge/deployment; independent ingestion continues to use `cache: "no-store"` and is unaffected.
+FND-009 closed the confirmed manual-refresh defect. Dashboard-cached providers share one authoritative invalidation topology in `lib/data/cache-policy.ts`: the retained legacy `p365-dashboard` tag plus cadence groups `p365-fast`, `p365-medium`, and `p365-slow`. The **Muat ulang manual** Server Action iterates that complete set rather than invalidating only the legacy tag. Production E2E verified fresh CoinGecko/Yahoo/FRED retrievals before ordinary TTL expiry. Independent ingestion continues to use `cache: "no-store"` and is unaffected.
 
 ## 8. Context audit
 
@@ -529,7 +529,7 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-003 | **REMEDIATED OPERATIONALLY** | Production Supabase `pg_cron` invokes authenticated Vercel Observation/Event ingestion endpoints and durable Market Memory contains continuing canonical writes. GitHub scheduler redesign is not reopened by FND-002. |
 | FND-004 | **HIGH / INITIAL REMEDIATION PR #36 / REGRESSION CORRECTED IN THIS CHECKPOINT** | Historical broad-ASSET mixing was removed in PR #36, but its `crypto.*` prefix excluded CoinGecko BTC/ETH asset-level metrics. The corrected selector now uses qualified CoinGecko provenance plus non-empty canonical `metricId`, with focused runtime-builder regression coverage. |
 | FND-005 | **HIGH / REMEDIATED IN PR #36** | Historical finding: documentation SSOT materially drifted from code. Consolidation made this file authoritative and retired competing current-state documents. |
-| FND-006 | **SNP-001 REMEDIATED / PRODUCTION DEPLOYED** | Immutable point-in-time Snapshot capture, append-only persistence and historical retrieval are production-deployed. No runtime capture owner exists yet, so durable Snapshot rows remain empty until the event-window capture lifecycle is activated. |
+| FND-006 | **SNP-001 + CAP-001 FULL PASS / PRODUCTION E2E VERIFIED** | Immutable point-in-time Snapshot capture, append-only persistence and historical retrieval are production-active. Durable Goods Orders naturally produced COMPLETE PRE/T+5/T+15/T+30/T+60 Snapshots with full current-MVP Observation/Baseline lineage. |
 | FND-007 | **PRC-001 BASELINE CONTRACT REMEDIATED / POLICY-PATH COVERAGE PARTIAL** | Canonical point-in-time Pricing Baseline is merged and production-deployed for approved `PRICING` observations. OIS/Fed-funds/SOFR-futures implied policy-path coverage remains missing, so policy-probability repricing claims are still prohibited. |
 | FND-008 | MEDIUM | FND-003B now gates Biquote `time` → `releasedAt`/`occurredAt` promotion on `timeMode=exact`; broader provider release-time semantics and production qualification remain open. |
 | FND-009 | **CLOSED / PRODUCTION ACTIVE** | Manual refresh invalidates the authoritative complete dashboard cache-tag set: retained legacy `p365-dashboard` plus `p365-fast`, `p365-medium`, and `p365-slow`. Production E2E verified an authenticated refresh at 02:10:36 UTC with `POST /dashboard 200` → `GET /dashboard 200`, zero runtime errors, and new CoinGecko/Yahoo/FRED retrieval timestamps before their normal cache TTLs expired. |
@@ -537,19 +537,19 @@ Do not compensate for missing tests with broader architectural rewrites.
 | FND-011 | **FND-011A PRODUCTION ACTIVE / FND-011B CLOSED / PRODUCTION ACTIVE** | FRED cadence freshness remains acquisition-time deterministic. FND-011B production activation is verified: scheduled historical ingestion returned HTTP 200 and a Yahoo `GC=F` observation inside the qualified CME Globex Gold window persisted `freshnessCalendar=CME_GLOBEX_GOLD` with `quality=FRESH`. Exact holiday/early-close calendars remain an explicit future qualification boundary rather than fabricated runtime state. |
 | FND-012 | MEDIUM | Non-crypto Yahoo adapter reuses `CryptoMarketObservationInput`. |
 | FND-013 | MEDIUM | MOVE remains absent from target cross-asset universe. |
-| FND-014 | **EXP-001 BASELINE CONTRACT REMEDIATED / E2E DATA PROOF PENDING** | Provider-scoped point-in-time Expectation Baseline is merged and production-deployed; natural qualified `eventIdentityKey` EventResult history is still accruing, so production E2E proof remains pending. |
+| FND-014 | **EXP-001 FULL PASS / PRODUCTION E2E VERIFIED** | Durable Goods Orders natural production capture selected the qualified Biquote FORECAST EventResult through provider-independent `eventIdentityKey` as a VALID pre-release Expectation baseline across all governed slots. |
 | FND-015 | MEDIUM | Foundation-critical coverage remains incomplete, although FND-003A/B now have focused runner, auth, normalization, cache-policy, idempotency and failure-isolation regression tests. |
 | FND-016 | LOW | UI still has English/raw-status governance leakage. |
-| FND-017 | **REMEDIATED IN PR #65 / OWNER MERGE PENDING** | Upgrades the Next.js 15 maintenance line to `15.5.26`, aligns `eslint-config-next` to `15.5.26`, moves stable `typedRoutes` out of `experimental`, and overrides vulnerable transitive PostCSS/Sharp versions to `8.5.28`/`0.35.4`. Verified resolver output reports `npm audit` 0 vulnerabilities; lint and production build pass. |
+| FND-017 | **CLOSED / PRODUCTION-ACTIVE** | PR #65 is merged and deployed. Production resolves Next.js 15.5.26, `eslint-config-next` 15.5.26, PostCSS 8.5.28 and Sharp 0.35.4; verification reported `npm audit` 0 vulnerabilities, lint/build PASS, and no post-deploy runtime errors. |
 | FND-018 | **OBSERVATION FND-018A FULL PASS / CLOSED / REMAINDER OPEN** | Production-active Observation writes use SHA-256 versioned measurement/revision identity: identical factual refetches dedupe, changed values survive as distinct immutable revisions, and `retrievedAt` remains availability rather than revision content. Legacy rows remain readable without rewrite. Event/Evidence and other record-family lineage remain separate. |
-| FND-019 | **IMPLEMENTATION PASS — PREVIEW VERIFIED / PRODUCTION ACTIVATION PENDING OWNER MERGE** | Additive Event identity v1 defines a conservative provider-independent reconciliation key from qualified jurisdiction + exact scheduled instant + deterministic semantic event key. Provider-specific `Event.id`, Evidence and source lineage remain unchanged; `EconomicEventResult` carries the provider-independent event key; dashboard aggregation reconciles qualified duplicates deterministically while unqualified/`OTHER`/non-exact events remain separate. Regression coverage includes verified production-shaped pairs (`Crude Oil Inventories` ↔ `EIA Crude Oil Stocks Change`; Barr speech role wording) and a same-timestamp non-match (`EIA Crude Oil Imports Change`). Vercel preview build is READY/SUCCESS. |
+| FND-019 | **CLOSED / PRODUCTION-ACTIVE** | Provider-independent Event identity v1 is active in production. Durable Goods Orders carried the same identity across Biquote/Forex Factory schedule rows, and Biquote EventResult lineage used that identity in natural CAP capture. Provider-specific IDs/Evidence remain preserved; unqualified/non-exact events remain distinct. |
 | FND-020 | **REMEDIATED** | Additive semantic dimensions preserve legacy `ObservationDomain` and FND-001 history identity. FND-018A changes only future Observation revision IDs; legacy canonical IDs/rows remain immutable and readable without destructive backfill. |
 | FND-021 | **HIGH / MVP COVERAGE GAP** | The approved MVP is **Macro + Crypto + Gold**. Current Macro remains materially US/Fed-centric and incomplete in policy expectations/pricing; Crypto lacks several qualified structural inputs such as stablecoin/ETF-flow/derivatives; Gold exists as pricing but lacks a complete historical/baseline/flow-positioning chain. Full Equity, broad Credit, broad Commodities beyond Gold and other multi-asset domains are post-MVP unless used as supporting evidence. |
 | FND-022 | **CLOSED / PRODUCTION-ACTIVE** | PR #66 merged as `fa52e6d9729aca1327bee687bd67bc7206b8c5b0`; production deployment is READY. Dashboard rendering no longer persists normalized canonical records or EventResults; durable ingestion ownership remains exclusively with authenticated cron workers. The four direct Supabase Market Memory/EventResult fetches plus the HistoricalObservation query used by dashboard factual baselines fail bounded after 10 seconds via `AbortSignal.timeout`. |
 | CAP-001A | **CLOSED / PRODUCTION-ACTIVE** | PR #67 merged as `3b374be8fc9db9e7855b0efc2dc0767d0c8f07f4`. The first production CAP run after deployment at 12:51Z moved from `candidateEvents=0` to `candidateEvents=1`, `qualifiedWindows=1` and reconstructed PRE/T+5/T+15. Event-history candidate filtering is therefore fixed. |
 | CAP-001B | **CLOSED / PRODUCTION-ACTIVE** | PR #68 merged as `0e188867fc4b1388d207d0e502a6f2e9ef60afbe`. Production run at 13:36Z returned `candidateEvents=1`, `dueSlots=5`, `captured=0`, `alreadyCaptured=5`, proving Observation/EventResult/Snapshot history filters and exact-slot lookup are now functioning. Existing defective PARTIAL Snapshots remain immutable and require CAP-001C supersession. |
 | CAP-001C | **CLOSED / PRODUCTION-ACTIVE** | PR #69 merged as `de57880958eecdc61d60ff992f3229d8ebd13205`; production deployment is READY. Append-only Snapshot correction/supersession is active. The first normal cron after deployment returned `EMPTY` because the Jobless Claims slots were already outside the intentionally bounded 90-minute discovery window; this is expected and does not invalidate the correction contract. |
-| CAP-001D | **IMPLEMENTED IN PR / OWNER MERGE PENDING** | Adds a manual authenticated historical Snapshot repair path for explicit provider-independent `eventIdentityKey`. It bypasses only the normal 90-minute discovery bound; it does not widen the scheduled cron and will not first-materialize missing historical slots. Only already-existing logical slots are eligible, and CAP-001C supersession/no-lookahead rules remain authoritative. The endpoint is POST-only and requires the existing CRON bearer secret. |
+| CAP-001D | **MERGED / PRODUCTION READY** | PR #71 merged as `55027a693aec1892926368c36c67e5eda4160b83`; exact Vercel production deployment is READY. The POST-only authenticated targeted repair path bypasses only the normal 90-minute discovery bound, never first-materializes missing historical slots, and reuses CAP-001C supersession/no-lookahead rules. Initial Jobless Claims historical defective rows remain available as repair evidence; targeted repair has not yet been invoked in production. |
 
 ## 19. Repair order
 
@@ -675,6 +675,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 24 Sep 2026 | CAP-001B remaining history-filter correction | After CAP-001A restored Event candidates, production reconstruction created PRE/T+5/T+15 as PARTIAL because Observation, EventResult and Snapshot history adapters still emitted quoted PostgREST scalar filters. CAP-001B converts those remaining filters to raw equality values and bounds EventResult/Snapshot history reads at 10 seconds. The already-written PARTIAL rows are retained append-only and require a separate explicit correction/supersession path rather than overwrite/delete. |
 | 24 Sep 2026 | CAP-001C append-only Snapshot supersession | Introduces immutable correction chains for event-window Snapshots. Corrected rows never overwrite/delete predecessors; they append a new deterministic Snapshot with explicit supersession metadata. Only strictly improving reconstructions can supersede an active slot, and subsequent retries resolve the single active chain tip idempotently. |
 | 25 Sep 2026 | CAP-001D targeted historical Snapshot repair | Adds an authenticated explicit Event-identity repair path for historical slots that have aged out of the 90-minute cron discovery window. It only repairs logical slots already present in durable Snapshot history, preserves original semantic target times, and reuses CAP-001C append-only supersession. No recurring scheduler is attached to the repair endpoint. |
+| 25 Sep 2026 | Durable Goods natural CAP production proof | Biquote HIGH Durable Goods Orders at 12:30Z naturally produced PRE/T+5/T+15/T+30/T+60 Snapshots through the recurring production CAP scheduler. All five Snapshots are COMPLETE, reference four BTC/ETH/DXY/Gold Observations, carry VALID Pricing baselines and a VALID Biquote FORECAST Expectation baseline, and have no missing requirements. This closes the CAP natural-production evidence gate and authorizes RPR-001 as the next dependency checkpoint. |
+| 26 Sep 2026 | CAP-001D production activation | PR #71 merged as `55027a693aec1892926368c36c67e5eda4160b83`; exact production deployment is READY. Historical repair remains manual/authenticated and is not attached to recurring cron. |
 | 20 Sep 2026 | FND-002 repository-backed factual baseline | Replaced active current-provider-window baseline ownership with application-layer `HistoricalObservationRepository` queries, strict point-in-time predecessor bounds, deterministic revision selection, and explicit no-fallback outage behavior. Production `/dashboard` E2E subsequently passed with 29 service-role history reads. |
 | 20 Sep 2026 | FND-018A Observation identity/revision lineage | Added versioned SHA-256 measurement/revision identity for FRED/CoinGecko/Yahoo Observations, normalized factual values and Observation dedupe timestamps, preserved legacy history without rewrite, and retained point-in-time availability semantics. Post-merge production activation verified v1 writes, legacy coexistence, zero duplicate v1 revision groups, dashboard HTTP 200, and 29 history reads. |
 | 20 Sep 2026 | FND-010A structured Observation provenance | Added optional typed provider resource/native identity/date provenance for future FRED/CoinGecko/Yahoo Observations, strict current-write invariants, credential-free resource validation, and an explicit P365 retrieval-vs-source-release-vs-storage-time boundary. Production activation wrote 10 structured-provenance identity-v1 rows without duplicates/runtime errors; FRED may remain deduped when factual revisions are unchanged. |
@@ -691,7 +693,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 24 Sep 2026 | SNP-001 Immutable Market Snapshot | Added deterministic reference-only Market Snapshot v1 with explicit scope requirements, point-in-time no-lookahead checks, provider-duplicate Event rejection, baseline lineage validation, explicit COMPLETE/PARTIAL/STALE/UNKNOWN quality, append-only `SNAPSHOT` persistence using existing Market Memory schema, native lineage columns, and historical scope/time retrieval. Snapshot values remain authoritative in canonical facts/baselines; automatic capture triggers, comparison, repricing, transmission, State and Intelligence remain out of scope. |
 | 24 Sep 2026 | EVW-001 Qualified Event Window & Snapshot Capture Policy | Added provider-independent qualification for HIGH exact point-events using Event identity, with qualified release time overriding schedule when available; excluded unqualified/date-anchor/duration-like events; defined PRE/T+5/T+15/T+30/T+60 targets with ±2.5 minute capture tolerance; required matching Snapshot scope and primary Event reference; preserved degraded Snapshot quality rather than fabricating validity; and added contamination detection for distinct qualified HIGH events between baseline and evaluated captures. FND-019 reconciliation is reused before plan creation. No automatic scheduler, Snapshot comparison, repricing or transmission logic is activated. |
 | 24 Sep 2026 | CMP-001 Point-in-Time Snapshot Comparison | Added deterministic reference-safe comparison for compatible immutable Snapshots. Canonical Observation values are resolved by ID, revalidated against frozen Snapshot source/evidence/quality/semantic slots and capture cutoffs, and compared only when unit/frequency compatibility is sufficient. Output preserves raw before/after values, absolute/percent deltas, added/removed/incompatible/unknown slots, structural Event/Baseline lineage changes, missing canonical resolutions, Snapshot quality, event-window role/timing, and contamination status. No repricing threshold, causal attribution, transmission conclusion, State, Regime, Risk or Intelligence is introduced. |
-| 24 Sep 2026 | CAP-001 Event-Window Runtime Snapshot Capture | Added a durable HistoricalEventRepository plus an authenticated `/api/cron/snapshot-capture` runtime owner. The runner selects the latest Event revision per provider before FND-019 reconciliation, reconstructs due EVW-001 PRE/T+5/T+15/T+30/T+60 slots at deterministic target timestamps, constrains every Observation/EventResult to availability at or before each target, materializes fixed BTC/ETH/DXY/Gold pricing slots plus expectation lineage, preserves missing/stale/unknown quality, and detects already-materialized slots idempotently. During CAP-001 audit, legacy pg_cron job `capture-snapshot-schedule` was proven orphaned: it called Supabase Edge Function `bright-responder`, which writes to removed table `public.market_snapshots`, had no P365 repo consumer, and returned repeated HTTP 500 responses. The orphaned cron job was unscheduled successfully on 24 Sep 2026. The Edge Function remains deployed but inert because the available Supabase connector exposes no delete-function operation; it must not be reused for CAP-001. Production activation must use a distinct authenticated P365 snapshot-capture scheduler. No repricing/transmission logic is activated. |
+| 24 Sep 2026 | CAP-001 Event-Window Runtime Snapshot Capture | Added a durable HistoricalEventRepository plus an authenticated `/api/cron/snapshot-capture` runtime owner. The runner selects the latest Event revision per provider before FND-019 reconciliation, reconstructs due EVW-001 PRE/T+5/T+15/T+30/T+60 slots at deterministic target timestamps, constrains every Observation/EventResult to availability at or before each target, materializes fixed BTC/ETH/DXY/Gold pricing slots plus expectation lineage, preserves missing/stale/unknown quality, and detects already-materialized slots idempotently. During CAP-001 audit, legacy pg_cron job `capture-snapshot-schedule` was proven orphaned: it called Supabase Edge Function `bright-responder`, which writes to removed table `public.market_snapshots`, had no P365 repo consumer, and returned repeated HTTP 500 responses. The orphaned cron job was unscheduled successfully on 24 Sep 2026. The Edge Function remains deployed but inert because the available Supabase connector exposes no delete-function operation; it must not be reused for CAP-001. Production activation subsequently moved to the distinct authenticated `p365-snapshot-capture` Supabase `pg_cron` job. No repricing/transmission logic is activated. |
 
 ## Foundation Exit Gate — 24 Sep 2026
 
@@ -715,7 +717,7 @@ This gate does **not** mean P365 is feature-complete and does not authorize Stat
 
 **Blocking the immediate next lifecycle**
 
-- **FND-019 Event identity/reconciliation** — resolve before expectation ownership is treated as provider-independent. The same real release can currently exist as separate Forex Factory and Biquote Events.
+- **None at the generic foundation layer.** FND-019 and FND-017 are closed / production-active. The next dependency is product-layer **RPR-001 Event Repricing Contract**.
 
 **Allowed to remain bounded while product-layer work proceeds**
 
@@ -725,7 +727,6 @@ This gate does **not** mean P365 is feature-complete and does not authorize Stat
 - **FND-013** MOVE coverage gap.
 - **FND-015** broader test governance.
 - **FND-016** presentation-language/status debt.
-- **FND-017** dependency security remediation is addressed by PR #65; owner merge/production deployment remain the only pending gates.
 
 **Demand-driven MVP completion**
 
@@ -742,15 +743,15 @@ Do not reopen generic foundation work merely because a theoretical improvement e
 Otherwise continue the product dependency chain:
 
 ```text
-FND-019 Event reconciliation
+Verified canonical facts + Event identity
   ↓
-Expectation Baseline
+Verified Expectation + Pricing baselines
   ↓
-Pricing Baseline
+Verified natural PRE/T+5/T+15/T+30/T+60 Snapshots
   ↓
-Market Snapshot
+RPR-001 Event Repricing
   ↓
-Repricing / Transmission
+TRN-001 Cross-Asset Transmission
   ↓
 Demand-driven Macro + Crypto + Gold evidence completion
   ↓
@@ -762,34 +763,38 @@ Intelligence / Briefing
 ## Active remediation sequence
 
 ```text
-1. Documentation consolidation / SSOT                     ← PR #36
-2. FND-004 Context taxonomy repair                        ← corrected
-3. FND-001 Historical Observation repository contract     ← PR #37
-4. Durable history query adapter                          ← PR #39; production E2E verified
-5. Financial Market Ontology & Data Foundation v0.1       ← PR #42 merged
-6. Additive semantic-dimensions compatibility contract    ← merged before PR #45
-7. FND-003A selective fresh Observation worker             ← PR #45 merged
-8. FND-003B independent US/China/Japan Event ingestion     ← PR #46 merged
-9. FND-003C external cadence + production verification     ← operational via Supabase pg_cron
-10. FND-002 Repository-backed Factual Baseline             ← FULL PASS / CLOSED
-11. FND-018A Observation identity/revision lineage         ← FULL PASS / CLOSED / production active
-12. FND-010A Structured Observation provenance             ← production active
-13. FND-011A FRED/Macro cadence-aware freshness             ← production active
-14. FND-002Q Historical Baseline Quality Compatibility      ← FULL PASS / CLOSED / production E2E verified
-15. FND-011B market-hours freshness                         ← CLOSED / PRODUCTION ACTIVE
-16. FND-009 Manual cache invalidation                       ← CLOSED / PRODUCTION ACTIVE
-17. Foundation Exit Gate                                   ← PASS; stop open-ended hardening
-18. FND-019 Event identity/reconciliation                   ← merged; production activation watch pending
-19. EXP-001 Point-in-Time Expectation Baseline               ← merged / production deployed; E2E data proof pending
-20. PRC-001 Point-in-Time Canonical Pricing Baseline           ← merged / production deployed; contract + durable input verified
-21. SNP-001 Immutable Market Snapshot                            ← merged / production deployed; runtime capture pending
-22. EVW-001 Qualified Event Window & Snapshot Capture Policy      ← merged / production deployed; runtime capture pending
-22A. CMP-001 Point-in-Time Snapshot Comparison                     ← merged / production deployed; runtime E2E pending
-22A.1 CAP-001 Event-Window Runtime Snapshot Capture                 ← implementation PASS; owner merge + scheduler activation pending
-22B. Repricing / cross-asset transmission                           ← blocked on CAP-001 production Snapshot evidence
-23. MVP Macro + Crypto + Gold evidence completion           ← demand-driven by the vertical slice, not breadth-first expansion
-24. Secondary positioning / flows enrichment inside Macro + Crypto + Gold
-25. Derived State → Risk/Regime → Intelligence → Briefing only after gates pass
+1. Documentation consolidation / SSOT                          ← PR #36 / CLOSED
+2. FND-004 Context taxonomy repair                             ← CLOSED
+3. FND-001 Historical Observation repository contract          ← PR #37 / CLOSED
+4. Durable history query adapter                               ← PR #39 / production E2E verified
+5. Financial Market Ontology & Data Foundation v0.1            ← PR #42 / CLOSED
+6. Additive semantic-dimensions compatibility                  ← CLOSED
+7. FND-003A selective fresh Observation worker                 ← PR #45 / production-active
+8. FND-003B independent US/China/Japan Event ingestion         ← PR #46 / production-active
+9. FND-003C production cadence                                 ← Supabase pg_cron sole automatic scheduler
+10. FND-002 + FND-002Q Factual Baseline                        ← FULL PASS / production E2E verified
+11. FND-018A Observation identity/revision lineage              ← FULL PASS / production-active
+12. FND-010A Structured Observation provenance                 ← production-active at Observation boundary
+13. FND-011A/B freshness semantics                             ← production-active
+14. FND-009 Manual cache invalidation                          ← CLOSED / production-active
+15. FND-017 Next.js dependency security                        ← CLOSED / production-active
+16. Foundation Exit Gate                                       ← PASS
+17. FND-019 Event identity/reconciliation                       ← CLOSED / production-active
+18. EXP-001 Point-in-Time Expectation Baseline                  ← FULL PASS / natural E2E verified
+19. PRC-001 Point-in-Time Pricing Baseline                      ← natural E2E verified for BTC/ETH/DXY/Gold
+20. SNP-001 Immutable Market Snapshot                           ← FULL PASS / natural E2E verified
+21. EVW-001 Qualified Event Window Policy                       ← FULL PASS / natural E2E verified
+22. CMP-001 Point-in-Time Snapshot Comparison                   ← deployed; natural compatible inputs verified
+22A. CAP-001 Runtime Snapshot Capture                           ← natural E2E PASS
+22A.1 CAP-001A Event-history filter correction                 ← CLOSED / production-active
+22A.2 CAP-001B remaining history-filter correction             ← CLOSED / production-active
+22A.3 CAP-001C append-only Snapshot supersession               ← CLOSED / production-active
+22A.4 CAP-001D targeted historical Snapshot repair             ← PR #71 / production READY
+22B. RPR-001 Event Repricing Contract                           ← NEXT ACTIVE CHECKPOINT
+22C. TRN-001 Cross-Asset Transmission                          ← after RPR-001
+23. Demand-driven Macro + Crypto + Gold evidence completion    ← only when downstream contract requires it
+24. Secondary positioning / flows enrichment                   ← after repricing/transmission needs are explicit
+25. Derived State → Risk/Regime → Intelligence → Briefing      ← remains deferred
 ```
 
 One logical remediation = one PR = one verification checkpoint. This sequence may only change when a verified dependency requires it; changes must be recorded here.

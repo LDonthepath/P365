@@ -139,7 +139,7 @@ The P365 Supabase project contains `public.market_memory`, RLS is enabled, and t
 | Durable Supabase schema | READY |
 | Durable Supabase adapter | READY |
 | Dashboard durable-write ownership | READ-ONLY — persistence owned by independent cron workers |
-| Deployment secret configuration | **REQUIRED** |
-| End-to-end production verification | **PENDING DEPLOYMENT** |
+| Deployment secret configuration | VERIFIED IN PRODUCTION |
+| End-to-end production verification | **PASS — NATURAL EVENT-WINDOW SNAPSHOTS VERIFIED** |
 
-Production durable-write readiness is proven through authenticated ingestion/capture workers using server-only Supabase credentials. Dashboard rendering is not a persistence acceptance path.
+Production durable-write readiness is proven through authenticated ingestion/capture workers using server-only Supabase credentials. Dashboard rendering is not a persistence acceptance path. Durable Goods Orders on 25 Sep 2026 naturally produced COMPLETE PRE/T+5/T+15/T+30/T+60 Snapshots with four Observation refs, VALID Expectation/Pricing baselines and zero missing requirements. CAP-001D adds a separate manual authenticated targeted historical repair path; it is not scheduled automatically.
