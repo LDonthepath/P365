@@ -115,6 +115,15 @@ function normalizeThresholds(
     keys.add(observationKey);
 
     if (
+      threshold.basis !== "ABSOLUTE_PERCENT_CHANGE"
+      && threshold.basis !== "ABSOLUTE_CHANGE"
+    ) {
+      throw new Error(
+        "Event Repricing threshold basis is not supported.",
+      );
+    }
+
+    if (
       !Number.isFinite(threshold.minimumMagnitude)
       || threshold.minimumMagnitude <= 0
     ) {
