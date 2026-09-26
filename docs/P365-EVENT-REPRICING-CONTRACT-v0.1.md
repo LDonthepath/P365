@@ -1,7 +1,7 @@
 # P365 Event Repricing Contract v0.1
 
 **Checkpoint:** RPR-001  
-**Status:** Implementation checkpoint; owner merge required  
+**Status:** PR #74 open; owner merge required  
 **Scope:** Macro + Crypto + Gold event-window market response  
 **Prerequisites:** EVW-001, CMP-001, CAP-001 natural production proof
 
