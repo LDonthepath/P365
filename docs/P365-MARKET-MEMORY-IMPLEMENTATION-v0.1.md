@@ -139,7 +139,7 @@ The P365 Supabase project contains `public.market_memory`, RLS is enabled, and t
 | Durable Supabase schema | READY |
 | Durable Supabase adapter | READY |
 | Dashboard durable-write ownership | READ-ONLY — persistence owned by independent cron workers |
-| Deployment secret configuration | **REQUIRED** |
-| End-to-end production verification | **PENDING DEPLOYMENT** |
+| Deployment secret configuration | **PRODUCTION CONFIGURED** |
+| End-to-end production verification | **VERIFIED — Durable Goods natural PRE/T+5/T+15/T+30/T+60 capture** |
 
-Production durable-write readiness is proven through authenticated ingestion/capture workers using server-only Supabase credentials. Dashboard rendering is not a persistence acceptance path.
+Production durable-write readiness is proven through authenticated ingestion/capture workers using server-only Supabase credentials. Dashboard rendering is not a persistence acceptance path. Natural Durable Goods Orders capture on 25 Sep 2026 produced five COMPLETE event-window Snapshots with full BTC/ETH/DXY/Gold Observation lineage, VALID pricing/expectation baselines, no missing requirements, and point-in-time-safe PRE/T+5 references.
