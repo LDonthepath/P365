@@ -51,7 +51,7 @@ The current system independently ingests and normalizes selected factual Observa
 | Event surprise | **SUR-001 PR #76 OPEN / OWNER MERGE PENDING** | Reuses EXP-001 strict pre-release expectation ownership and durable EventResult history. Actual selection is constrained to the same Event identity/source and `releaseAt <= retrievedAt <= asOf`; VALID output is raw actual-minus-expectation arithmetic only, with no materiality, causality, State/Regime/Intelligence, or trading semantics. |
 | Pricing baseline | **PRC-001 FULL PASS AT CURRENT MVP CAPTURE BOUNDARY / PRODUCTION E2E VERIFIED** | CAP-001 actively consumes provider-scoped point-in-time Pricing baselines. Durable Goods Orders natural production evidence shows BTC, ETH, DXY and Gold Pricing baselines `VALID` across PRE/T+5/T+15/T+30/T+60 with `observedAt` + `retrievedAt` cutoffs preserved. OIS/Fed-funds/SOFR-futures policy-path pricing remains a separate coverage gap. |
 | Historical baseline | MISSING | No approved methodology/query implementation. |
-| Cross-asset baseline | **CAPTURE CHAIN FULL PASS / CMP-001 INPUTS PRODUCTION-VERIFIED** | Immutable Snapshot persistence/query and qualified event windows are production-active. Durable Goods Orders naturally materialized COMPLETE PRE/T+5/T+15/T+30/T+60 BTC/ETH/DXY/Gold reference sets with expectation/pricing lineage. CMP-001 is deployed and now has natural compatible inputs; explicit comparison execution belongs to the next Repricing consumer path. |
+| Cross-asset baseline | **CAPTURE CHAIN FULL PASS / CMP-001 CONSUMED BY RPR/TRN** | Immutable Snapshot persistence/query and qualified event windows are production-active. Durable Goods Orders naturally materialized COMPLETE PRE/T+5/T+15/T+30/T+60 BTC/ETH/DXY/Gold reference sets with expectation/pricing lineage. CMP-001 is deployed and is consumed by the merged RPR-001 → TRN-001 read-only chain. |
 | Market Snapshot | **SNP-001 + CAP-001 FULL PASS / NATURAL PRODUCTION E2E VERIFIED** | Supabase `pg_cron` drives the authenticated CAP runtime owner. Durable Goods Orders produced all five governed event-window Snapshot roles as COMPLETE with valid point-in-time lineage and no missing requirements. Append-only correction/supersession and targeted historical repair are available through CAP-001C/D. |
 | Cross-asset factual coverage | PARTIAL | Useful universe exists; MOVE remains absent and docs disagree on credit coverage. |
 | Transmission reasoning | **TRN-001 MERGED / PR #75 / `7a8a3bc60467b1a59a15a48496115adc806b5a51`** | TRN-001 consumes RPR-001 and evaluates only explicit versioned driver→response relationship rules. Both sides must independently satisfy RPR thresholds; degraded/missing inputs fail closed, contamination is preserved, no static cross-asset rule is hardcoded, and causal attribution remains `NOT_EVALUATED`. |
@@ -83,7 +83,7 @@ Expectation baseline         EXP-001 FULL PASS / NATURAL PRODUCTION E2E VERIFIED
 Pricing baseline             PRC-001 PRODUCTION E2E VERIFIED FOR BTC/ETH/DXY/GOLD
 Market Snapshot              SNP-001 + CAP-001 NATURAL PRODUCTION E2E VERIFIED
 Event Window Policy           EVW-001 PRODUCTION E2E VERIFIED
-Snapshot Comparison           CMP-001 DEPLOYED / NATURAL INPUTS VERIFIED / EXPLICIT EXECUTION NEXT
+Snapshot Comparison           CMP-001 DEPLOYED / CONSUMED BY RPR-001 → TRN-001
 Runtime Snapshot Capture       CAP-001 A/B/C CLOSED / NATURAL E2E PASS / D REPAIR READY
 Event Surprise             SUR-001 PR #76 OPEN / OWNER MERGE PENDING
 Repricing / Transmission    RPR-001 + TRN-001 MERGED
@@ -461,7 +461,7 @@ PRC-001 provides qualified point-in-time pricing baselines, CMP-001 provides no-
 
 ### Transmission
 
-CAP-001 now provides synchronized governed PRE/T+5/T+15/T+30/T+60 event-window Snapshots, and CMP-001/RPR-001 provide the qualified comparison/repricing inputs needed downstream. TRN-001 in PR #75 adds explicit versioned driver→response relationship rules and evaluates only threshold-qualified cross-asset response coherence. Static relationship assumptions and causal claims remain prohibited; degraded, unresolved, or contaminated evidence must fail closed.
+CAP-001 now provides synchronized governed PRE/T+5/T+15/T+30/T+60 event-window Snapshots, and CMP-001/RPR-001 provide the qualified comparison/repricing inputs needed downstream. Merged TRN-001 / PR #75 adds explicit versioned driver→response relationship rules and evaluates only threshold-qualified cross-asset response coherence. Static relationship assumptions and causal claims remain prohibited; degraded, unresolved, or contaminated evidence must fail closed.
 
 ## 14. UI / presentation audit
 
