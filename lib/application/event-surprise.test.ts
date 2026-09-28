@@ -248,6 +248,27 @@ async function main(): Promise<void> {
     "partial expectation cannot be promoted into valid surprise",
   );
 
+  let mismatchedAsOfRejected = false;
+  try {
+    assessEventSurprise({
+      request: {
+        ...request,
+        asOf: "2026-10-15T12:24:00.000Z",
+      },
+      expectation: baseline,
+      candidates: [],
+    });
+  } catch (error) {
+    mismatchedAsOfRejected = error instanceof Error
+      && error.message
+        === "Event Surprise expectation baseline must use the same point-in-time as-of cutoff.";
+  }
+  assertEqual(
+    mismatchedAsOfRejected,
+    true,
+    "expectation baseline from another as-of knowledge state is rejected",
+  );
+
   const preReleaseRequest: EventSurpriseRequest = {
     ...request,
     asOf: "2026-10-15T12:25:00.000Z",
