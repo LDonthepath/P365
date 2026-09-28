@@ -1,7 +1,7 @@
 # P365 Integrated Event Response Evidence Contract v0.1
 
 **Checkpoint:** EVR-001  
-**Status:** implementation branch; owner review/merge required  
+**Status:** PR #77 open; owner review/merge required  
 **Scope:** Read-only integration of SUR-001, RPR-001 and TRN-001 for one qualified post-event knowledge state  
 **Prerequisites:** SUR-001, RPR-001, TRN-001, CMP-001, EVW-001
 
