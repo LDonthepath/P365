@@ -36,6 +36,7 @@ The expectation side inherits EXP-001:
 - same provider-independent `eventIdentityKey`;
 - explicit `sourceId`;
 - explicit expectation type when requested;
+- the same caller-owned `asOf` knowledge state;
 - strict pre-release cutoff;
 - canonical `retrievedAt` availability semantics.
 
