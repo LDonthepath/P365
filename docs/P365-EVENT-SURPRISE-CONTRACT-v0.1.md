@@ -1,7 +1,7 @@
 # P365 Event Surprise Contract v0.1
 
 **Checkpoint:** SUR-001  
-**Status:** PR #76 open; owner review/merge required  
+**Status:** MERGED — PR #76, merge `9613893e697552cdcaa7015a551ed0867e1f1ef1`  
 **Scope:** Point-in-time factual scheduled-event surprise  
 **Prerequisites:** FND-019 Event identity, durable EconomicEventResult history, EXP-001 Expectation Baseline
 
