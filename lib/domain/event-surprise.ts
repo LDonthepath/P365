@@ -239,6 +239,12 @@ function assertExpectationLineage(
     );
   }
 
+  if (Date.parse(expectation.asOf) !== Date.parse(request.asOf)) {
+    throw new Error(
+      "Event Surprise expectation baseline must use the same point-in-time as-of cutoff.",
+    );
+  }
+
   if (
     request.expectedType !== undefined
     && expectation.expectedType !== null
