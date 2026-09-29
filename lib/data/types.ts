@@ -31,7 +31,8 @@ export type ProviderId =
   | "fred"
   | "federal-reserve"
   | "biquote"
-  | "yahoo-finance";
+  | "yahoo-finance"
+  | "massive";
 
 export type ProviderErrorCode =
   | "CONFIGURATION"
