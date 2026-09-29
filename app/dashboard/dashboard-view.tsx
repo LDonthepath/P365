@@ -326,7 +326,12 @@ function OverviewWhatChanged({ observations, baselines }: { observations: Observ
         <div><span>STATUS</span><strong>{baselines.length ? "FACTUAL ONLY" : "NO BASELINE"}</strong></div>
       </div>
     </div>
-    {validChanges.length > 0 && <div className="monitor-list" style={{ marginTop: "1rem" }}>{validChanges.slice(0, 6).map((item) => <div key={item.seriesId}><strong>{item.seriesId}</strong><span>{item.currentValue} vs {item.baselineValue} · Δ {formatBaselineDelta(item.changeValue)}</span></div>)}</div>}
+    {validChanges.length > 0 && <div className="monitor-list" style={{ marginTop: "1rem" }}>{validChanges.slice(0, 6).map((item) => {
+      const observation = observations.find((candidate) => String(candidate.metadata?.seriesId ?? "") === item.seriesId);
+      const unit = String(observation?.metadata?.unit ?? "");
+      const label = MACRO_SERIES_LABELS[item.seriesId] ?? observation?.subject ?? item.seriesId;
+      return <div key={item.seriesId}><strong>{label}</strong><span>{formatMacroValue(item.currentValue, unit)} dibanding {formatMacroValue(item.baselineValue ?? "", unit)} · perubahan {item.changeValue !== null && item.changeValue > 0 ? "+" : ""}{formatMacroValue(String(item.changeValue ?? ""), unit)}</span></div>;
+    })}</div>}
   </section>;
 }
 
