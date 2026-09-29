@@ -7,12 +7,14 @@ import type { Event } from "../domain/types";
 import { buildRepositoryBackedMacroFactualBaselines } from "./factual-baseline";
 import { getIntradayEventMonitor, type IntradayEventMonitorResult } from "./intraday-event-monitor";
 import { buildNetLiquidityReadModel, type NetLiquidityReadModel } from "./net-liquidity";
+import { buildRatesInflationReadModel, type RatesInflationReadModel } from "./rates-inflation";
 
 export type DashboardData = NormalizedDashboardData & {
   macroBaselines: Record<string, FactualBaseline>;
   intradayEventMonitor: IntradayEventMonitorResult;
   durableHighImpactEvents: Event[];
   netLiquidity: NetLiquidityReadModel;
+  ratesInflation: RatesInflationReadModel;
 };
 
 async function getDurableHighImpactEvents(now = new Date()): Promise<Event[]> {
@@ -39,10 +41,11 @@ export async function getDashboardData(): Promise<DashboardData> {
   const intradayEventMonitorPromise = getIntradayEventMonitor();
   const durableHighImpactEventsPromise = getDurableHighImpactEvents();
   const netLiquidityPromise = buildNetLiquidityReadModel(historicalObservationRepository);
+  const ratesInflationPromise = buildRatesInflationReadModel(historicalObservationRepository);
   const ingestion = await ingestDashboardData();
   const normalized = normalizeDashboardData(ingestion);
 
-  const [macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity] = await Promise.all([
+  const [macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity, ratesInflation] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
       historicalObservationRepository,
@@ -50,10 +53,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     intradayEventMonitorPromise,
     durableHighImpactEventsPromise,
     netLiquidityPromise,
+    ratesInflationPromise,
   ]);
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes
   // are owned by the authenticated cron ingestion workers so a page visit
   // cannot become a second ingestion/persistence clock.
-  return { ...normalized, macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity };
+  return { ...normalized, macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity, ratesInflation };
 }
