@@ -83,7 +83,7 @@ export async function fetchMassiveZtContracts(date: string): Promise<ProviderRes
     active: "true",
     type: "single",
     limit: "100",
-    sort: "last_trade_date.asc",
+    sort: "ticker.asc",
   });
   const response = await massiveGet<ContractsResponse>("/futures/v1/contracts", params);
   if ("error" in response) return providerResult("massive", "ERROR", [], response.error);
