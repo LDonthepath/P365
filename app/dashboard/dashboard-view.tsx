@@ -326,7 +326,7 @@ function OverviewMarketNow({ observations }: { observations: Observation[] }) {
     <div className="intraday-now-head"><div><h2 id="intraday-now-title">Konteks intraday utama</h2><p className="lead-copy">Tiga pasar utama untuk membaca kondisi Bitcoin. Angka yang tidak terbaru tetap ditandai dan tidak diperlakukan sebagai data live.</p></div></div>
     <div className="intraday-now-grid">{items.map(({ id, label, unit, observation }) => <article className="intraday-now-item" key={id}>
       <div className="intraday-now-label"><span>{label}</span><span className={`intraday-quality ${observation?.quality === "FRESH" ? "fresh" : "attention"}`}>{observation?.quality === "FRESH" ? "TERBARU" : observation ? "PERLU DICEK" : "BELUM ADA"}</span></div>
-      <strong>{observation ? (unit === "USD" ? formatMoney(Number(observation.value)) : Number(observation.value).toFixed(2)) : "—"}</strong>
+      <strong>{observation && numberValue(observation.value) !== null ? (unit === "USD" ? formatMoney(numberValue(observation.value)!) : numberValue(observation.value)!.toFixed(2)) : "—"}</strong>
       <small>{observation ? relativeTimeID(observation.observedAt) : "Data belum tersedia"}</small>
     </article>)}</div>
   </section>;
