@@ -195,7 +195,10 @@ async function buildMonitorForIdentity(
     eventIdentityKey: latestIdentity,
     retrievedAtOnOrBefore: latestCapturedAt,
     order: "DESC",
-    limit: 20,
+    // One bounded superset serves result display plus canonical EXP/SUR selection.
+    // Keep the existing SUR/EXP history bound so pre-release expectations cannot
+    // be hidden by a dense post-release revision history.
+    limit: 500,
   });
   const result = results.find((item) =>
     item.actual !== undefined || item.expected !== undefined || item.previous !== undefined);
