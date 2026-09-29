@@ -14,7 +14,7 @@ export type NetLiquidityPoint = {
 };
 
 export type NetLiquidityReadModel =
-  | { status: "OK"; latest: NetLiquidityPoint; change1wBillionsUsd: number | null; change1wFrom: string | null; change4wBillionsUsd: number | null; change4wFrom: string | null }
+  | { status: "OK"; latest: NetLiquidityPoint; change1wBillionsUsd: number | null; change1wFrom: string | null; change4wBillionsUsd: number | null; change4wFrom: string | null; history: NetLiquidityPoint[] }
   | { status: "UNAVAILABLE"; reason: string };
 
 function seriesKey(o: Observation): string | null {
@@ -72,6 +72,15 @@ export async function buildNetLiquidityReadModel(repository: HistoricalObservati
   if (!latest) return { status: "UNAVAILABLE", reason: "Komponen likuiditas belum lengkap." };
   const p1w = point(rows, asOf.getTime() - 7 * DAY);
   const p4w = point(rows, asOf.getTime() - 28 * DAY);
+  const firstBySeries = SERIES.map((key) => rows.filter((o) => seriesKey(o) === key).sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt))[0]).filter((o): o is Observation => Boolean(o));
+  const overlapStart = firstBySeries.length === SERIES.length ? Math.max(...firstBySeries.map((o) => Date.parse(o.observedAt))) : asOf.getTime();
+  const weeklyHistory: NetLiquidityPoint[] = [];
+  for (let at = overlapStart; at <= asOf.getTime(); at += 7 * DAY) {
+    const p = point(rows, at);
+    if (p && !weeklyHistory.some((existing) => existing.asOf === p.asOf)) weeklyHistory.push(p);
+  }
+  if (!weeklyHistory.some((existing) => existing.asOf === latest.asOf)) weeklyHistory.push(latest);
+
   return {
     status: "OK",
     latest,
@@ -79,5 +88,6 @@ export async function buildNetLiquidityReadModel(repository: HistoricalObservati
     change1wFrom: p1w?.asOf ?? null,
     change4wBillionsUsd: p4w ? latest.valueBillionsUsd - p4w.valueBillionsUsd : null,
     change4wFrom: p4w?.asOf ?? null,
+    history: weeklyHistory,
   };
 }
