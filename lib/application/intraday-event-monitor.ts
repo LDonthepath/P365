@@ -3,8 +3,8 @@ import { unstable_cache } from "next/cache";
 import { EVENT_WINDOW_POLICY_V1, type EventWindowRole } from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
 import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
-import type { EventSurpriseAssessment } from "../domain/event-surprise";
-import { assessRepositoryBackedEventSurprise } from "./event-surprise";
+import { assessEventSurprise, type EventSurpriseAssessment } from "../domain/event-surprise";
+import { selectExpectationBaseline } from "../domain/expectation-baseline";
 import {
   reconstructHistoricalZtEvent,
   type RatesReconstructionPoint,
@@ -195,19 +195,30 @@ async function buildMonitorForIdentity(
     eventIdentityKey: latestIdentity,
     retrievedAtOnOrBefore: latestCapturedAt,
     order: "DESC",
-    limit: 20,
+    // One bounded superset serves result display plus canonical EXP/SUR selection.
+    // Keep the existing SUR/EXP history bound so pre-release expectations cannot
+    // be hidden by a dense post-release revision history.
+    limit: 500,
   });
   const result = results.find((item) =>
     item.actual !== undefined || item.expected !== undefined || item.previous !== undefined);
   const t0 = String(ordered[0].snapshot.metadata?.t0 ?? event.releasedAt ?? event.scheduledAt ?? "");
   const surprise = result?.sourceId && t0
-    ? await assessRepositoryBackedEventSurprise({
-        eventIdentityKey: latestIdentity,
-        sourceId: result.sourceId,
-        releaseAt: t0,
-        asOf: latestCapturedAt,
-        ...(result.expectedType ? { expectedType: result.expectedType } : {}),
-      }, historicalEconomicEventResultRepository)
+    ? (() => {
+        const request = {
+          eventIdentityKey: latestIdentity,
+          sourceId: result.sourceId,
+          releaseAt: t0,
+          asOf: latestCapturedAt,
+          ...(result.expectedType ? { expectedType: result.expectedType } : {}),
+        };
+        const sourceHistory = results.filter((item) => item.sourceId === result.sourceId);
+        return assessEventSurprise({
+          request,
+          expectation: selectExpectationBaseline(request, sourceHistory),
+          candidates: sourceHistory,
+        });
+      })()
     : undefined;
   const missingRequirements = ordered.reduce(
     (sum, item) => sum + item.snapshot.missingRequirements.length, 0);
