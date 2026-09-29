@@ -14,7 +14,7 @@ export type NetLiquidityPoint = {
 };
 
 export type NetLiquidityReadModel =
-  | { status: "OK"; latest: NetLiquidityPoint; change1wBillionsUsd: number | null; change4wBillionsUsd: number | null }
+  | { status: "OK"; latest: NetLiquidityPoint; change1wBillionsUsd: number | null; change1wFrom: string | null; change4wBillionsUsd: number | null; change4wFrom: string | null }
   | { status: "UNAVAILABLE"; reason: string };
 
 function seriesKey(o: Observation): string | null {
@@ -76,6 +76,8 @@ export async function buildNetLiquidityReadModel(repository: HistoricalObservati
     status: "OK",
     latest,
     change1wBillionsUsd: p1w ? latest.valueBillionsUsd - p1w.valueBillionsUsd : null,
+    change1wFrom: p1w?.asOf ?? null,
     change4wBillionsUsd: p4w ? latest.valueBillionsUsd - p4w.valueBillionsUsd : null,
+    change4wFrom: p4w?.asOf ?? null,
   };
 }
