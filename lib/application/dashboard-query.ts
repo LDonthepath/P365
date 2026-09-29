@@ -6,11 +6,13 @@ import { historicalEventRepository, historicalObservationRepository } from "../r
 import type { Event } from "../domain/types";
 import { buildRepositoryBackedMacroFactualBaselines } from "./factual-baseline";
 import { getIntradayEventMonitor, type IntradayEventMonitorResult } from "./intraday-event-monitor";
+import { buildNetLiquidityReadModel, type NetLiquidityReadModel } from "./net-liquidity";
 
 export type DashboardData = NormalizedDashboardData & {
   macroBaselines: Record<string, FactualBaseline>;
   intradayEventMonitor: IntradayEventMonitorResult;
   durableHighImpactEvents: Event[];
+  netLiquidity: NetLiquidityReadModel;
 };
 
 async function getDurableHighImpactEvents(now = new Date()): Promise<Event[]> {
@@ -36,20 +38,22 @@ export async function getDashboardData(): Promise<DashboardData> {
   // alongside provider ingestion/normalization and baseline work.
   const intradayEventMonitorPromise = getIntradayEventMonitor();
   const durableHighImpactEventsPromise = getDurableHighImpactEvents();
+  const netLiquidityPromise = buildNetLiquidityReadModel(historicalObservationRepository);
   const ingestion = await ingestDashboardData();
   const normalized = normalizeDashboardData(ingestion);
 
-  const [macroBaselines, intradayEventMonitor, durableHighImpactEvents] = await Promise.all([
+  const [macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
       historicalObservationRepository,
     ),
     intradayEventMonitorPromise,
     durableHighImpactEventsPromise,
+    netLiquidityPromise,
   ]);
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes
   // are owned by the authenticated cron ingestion workers so a page visit
   // cannot become a second ingestion/persistence clock.
-  return { ...normalized, macroBaselines, intradayEventMonitor, durableHighImpactEvents };
+  return { ...normalized, macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity };
 }
