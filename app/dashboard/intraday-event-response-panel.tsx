@@ -1,6 +1,6 @@
 "use client";
 
-import type { IntradayEventMonitorResult, IntradaySeriesKey } from "@/lib/application/intraday-event-monitor";
+import type { IntradayEventMonitor, IntradayEventMonitorResult, IntradaySeriesKey } from "@/lib/application/intraday-event-monitor";
 import type { EventWindowRole } from "@/lib/domain/event-window";
 
 const SERIES: Array<{ key: IntradaySeriesKey; label: string }> = [
@@ -30,12 +30,12 @@ function relationLabel(relation: string): string {
   if (relation === "INLINE") return "sesuai perkiraan";
   return "belum dapat dibandingkan dengan perkiraan";
 }
-function windowLabel(data: Extract<IntradayEventMonitorResult, { status: "OK" }>["data"]): string {
+function windowLabel(data: IntradayEventMonitor): string {
   if (data.windowStatus.status === "COMPLETE") return "Data reaksi 1 jam lengkap";
   if (data.windowStatus.status === "RUNNING") return `Masih memantau hingga ${ROLE_LABEL[data.windowStatus.nextRole]}`;
   return "Sebagian data reaksi tidak tersedia";
 }
-function reactionSentence(data: Extract<IntradayEventMonitorResult, { status: "OK" }>["data"], key: IntradaySeriesKey, label: string): string | null {
+function reactionSentence(data: IntradayEventMonitor, key: IntradaySeriesKey, label: string): string | null {
   const preferredRoles: EventWindowRole[] = ["T_PLUS_60", "T_PLUS_30", "T_PLUS_15", "T_PLUS_5"];
   for (const role of preferredRoles) {
     const item = data.moves.find((entry) => entry.role === role);
@@ -59,7 +59,10 @@ export function IntradayEventResponsePanel({ result }: { result: IntradayEventMo
     <h2 id="intraday-event-response-title">Data reaksi pasar sementara tidak dapat dimuat.</h2>
   </section>;
 
-  const data = result.data;
+  return <>{result.data.map((data) => <IntradayEventResponseCard key={data.eventIdentityKey} data={data} />)}</>;
+}
+
+function IntradayEventResponseCard({ data }: { data: IntradayEventMonitor }) {
   const reactionLines = [
     reactionSentence(data, "btc.spot.usd", "Bitcoin"),
     reactionSentence(data, "dxy.index.usd", "Dolar AS"),
