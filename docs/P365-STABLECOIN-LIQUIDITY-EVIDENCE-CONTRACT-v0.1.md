@@ -2,9 +2,9 @@
 
 **Status:** Active canonical contract and source-qualification gate
 
-**Checkpoint:** CRYPTO-LIQ-001A
+**Checkpoints:** CRYPTO-LIQ-001A contract; CRYPTO-LIQ-001B factual runtime
 
-**Runtime status:** Not implemented
+**Runtime status:** **RUNTIME IMPLEMENTED / PRODUCTION ACTIVATION PENDING**
 
 **Source verdict:** **QUALIFIED_CANDIDATE — INTERNAL/NON-COMMERCIAL MVP**
 
@@ -12,9 +12,9 @@
 
 ## 1. Purpose
 
-This document freezes the canonical meaning, provider-field mapping, temporal rules, lineage requirements, and permitted-use boundary for one USD stablecoin aggregate before runtime implementation.
+This document freezes the canonical meaning, provider-field mapping, temporal rules, lineage requirements, and permitted-use boundary for one USD stablecoin aggregate. CRYPTO-LIQ-001B implements that bounded factual runtime without changing the frozen metric.
 
-It is a factual evidence contract only. It does not authorize a provider fetcher, ingestion, persistence, backfill, scheduler, application read model, UI, Supabase change, or higher-order reasoning.
+It remains a factual evidence contract only. CRYPTO-LIQ-001B authorizes the provider fetcher, canonical normalization, callable durable ingestion, bounded backfill, and read-only factual model described below; it does not authorize scheduling, UI, Supabase changes, public redistribution, or higher-order reasoning.
 
 ## 2. Reasoning question
 
@@ -189,14 +189,14 @@ This aggregate is a daily 24/7 crypto factual series. That statement defines cad
 
 The existing generic `MARKET_DAILY` five-day maximum age must not be applied automatically merely because it exists. Such a threshold could make a stalled daily provider series appear current.
 
-CRYPTO-LIQ-001B must explicitly qualify:
+CRYPTO-LIQ-001B explicitly qualifies:
 
 - acquisition freshness at normalization time;
 - read/presentation recency relative to a shared `asOf`;
 - behavior when the endpoint, timestamp, or cadence becomes stale;
 - fail-closed behavior when the freshness policy cannot be evaluated.
 
-The runtime must distinguish immutable persisted Observation `quality` from any later read-model recency assessment. This contract intentionally does not invent a new threshold.
+The implemented rule compares UTC effective calendar dates: the same UTC date and immediately previous UTC date are current; older dates are stale; future or invalid timestamps are unknown. The runtime distinguishes immutable persisted Observation `quality` from later read-model recency assessment and does not reuse generic `MARKET_DAILY`.
 
 ## 14. Source qualification
 
@@ -299,11 +299,12 @@ CRYPTO-LIQ-001B may begin only after this contract PR has been audited and merge
 
 ## 19. Non-goals
 
-This contract does not implement or authorize:
+CRYPTO-LIQ-001B does not implement or authorize:
 
-- runtime provider code or application API calls;
-- ingestion, scheduler, cron, persistence, Supabase, Market Memory writes, or backfill;
-- application read models, dashboard cards, or other UI;
+- scheduler or cron activation;
+- production backfill execution or a claim that production Market Memory already contains this history;
+- Supabase schema changes;
+- dashboard cards or other UI;
 - a liquidity State, market Regime, Risk, or Intelligence output;
 - BTC directional inference or causal attribution;
 - stablecoin issuance/redemption;
@@ -313,4 +314,4 @@ This contract does not implement or authorize:
 - ETF flows, derivatives, REL-002, confirmation/contradiction, or trading signals;
 - a new dependency or package.
 
-The v0.1 contract freezes one provider-native factual aggregate and the conditions that must be satisfied before it may enter the P365 runtime.
+The v0.1 contract freezes one provider-native factual aggregate. Its runtime remains callable and unscheduled until a separately verified production activation step.

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
+import type { DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { MacroObservationInput } from "../data/fred";
 import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
 import { providerFetchPolicy } from "../data/provider-fetch-policy";
@@ -58,6 +59,32 @@ function macroInput(): MacroObservationInput {
   };
 }
 
+function stablecoinInput(observedAt: string, value: number): DefiLlamaStablecoinObservationInput {
+  return {
+    metricId: "crypto.usd_stablecoin_market_cap.usd",
+    value,
+    observedAt,
+    retrievedAt: "2026-09-29T12:00:00.000Z",
+    providerResource: "/stablecoincharts/all",
+    pegType: "peggedUSD",
+    unit: "USD",
+    provenance: {
+      version: "v1",
+      providerResource: "/stablecoincharts/all",
+      observationDate: observedAt.slice(0, 10),
+    },
+    metadata: {
+      metricId: "crypto.usd_stablecoin_market_cap.usd",
+      unit: "USD",
+      pegType: "peggedUSD",
+      providerResource: "/stablecoincharts/all",
+      providerEffectiveDate: observedAt.slice(0, 10),
+      providerEffectiveTimestamp: observedAt,
+      frequency: "DAILY",
+    },
+  };
+}
+
 function repositories(): { repositories: CanonicalRepositories; observations: InMemoryObservationRepository } {
   const observations = new InMemoryObservationRepository();
   return {
@@ -82,6 +109,7 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
     dxy: record("dxy", marketResult("yahoo-finance", [])),
     russell: record("russell", marketResult("yahoo-finance", [])),
     fred: record("fred", providerResult("fred", "EMPTY", [])),
+    defillama: record("defillama", providerResult("defillama", "EMPTY", [])),
   };
 }
 
@@ -148,6 +176,44 @@ async function main(): Promise<void> {
   assert.equal(incompleteBackfill.providers[0].status, "ERROR");
   assert.match(incompleteBackfill.providers[0].error ?? "", /could not prove completeness/);
 
+  const defillamaStore = repositories();
+  const defillamaAcquisition = acquisition([]);
+  defillamaAcquisition.defillama = async () => providerResult("defillama", "SUCCESS", [
+    stablecoinInput("2026-09-27T00:00:00.000Z", 100),
+    stablecoinInput("2026-09-29T00:00:00.000Z", 110),
+  ]);
+  const defillamaForward = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["defillama"] },
+    { acquisition: defillamaAcquisition, repositories: defillamaStore.repositories },
+  );
+  assert.equal(defillamaForward.persistedObservations, 1, "routine DefiLlama FORWARD persists only latest row");
+  assert.equal(defillamaForward.providers[0].acquired, 2);
+  assert.equal(defillamaForward.providers[0].normalized, 1);
+
+  const defillamaBackfillStore = repositories();
+  const defillamaBackfillAcquisition = acquisition([]);
+  defillamaBackfillAcquisition.defillama = defillamaAcquisition.defillama;
+  const defillamaBackfill = await runHistoricalIngestion(
+    {
+      mode: "BACKFILL",
+      providers: ["defillama"],
+      defillama: { from: "2026-09-01", to: "2026-09-29" },
+    },
+    { acquisition: defillamaBackfillAcquisition, repositories: defillamaBackfillStore.repositories },
+  );
+  assert.equal(defillamaBackfill.persistedObservations, 2, "explicit DefiLlama BACKFILL retains bounded selected rows");
+  const defillamaBackfillHistory = await defillamaBackfillStore.observations.findHistory({
+    identity: { domain: "MARKET", seriesKey: "crypto.usd_stablecoin_market_cap.usd" },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(defillamaBackfillHistory.length, 2);
+  assert.equal(
+    defillamaBackfillHistory[0]?.quality,
+    "STALE",
+    "old backfill quality remains truthful without making factual history unavailable",
+  );
+
   const partialStore = repositories();
   const partialAcquisition = acquisition([]);
   partialAcquisition.gold = async () => marketResult("yahoo-finance", [], "ERROR");
@@ -158,6 +224,16 @@ async function main(): Promise<void> {
   assert.equal(partial.status, "PARTIAL", "one provider failure must not suppress another provider write");
   assert.equal(partial.persistedObservations, 1);
   assert.equal(partial.providers.find((item) => item.provider === "gold")?.error, "provider failed");
+
+  const isolatedStore = repositories();
+  const isolatedAcquisition = acquisition([]);
+  isolatedAcquisition.defillama = async () => providerResult("defillama", "ERROR", [], "DefiLlama unavailable");
+  const isolated = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["coingecko", "defillama"] },
+    { acquisition: isolatedAcquisition, repositories: isolatedStore.repositories },
+  );
+  assert.equal(isolated.status, "PARTIAL");
+  assert.equal(isolated.persistedObservations, 1, "DefiLlama failure cannot suppress another successful provider");
 
   const failingStore = repositories();
   failingStore.repositories.observations.saveMany = async () => { throw new Error("storage unavailable"); };
@@ -184,7 +260,7 @@ async function main(): Promise<void> {
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=gold&from=2026-09-01&to=2026-09-20")),
-    { ok: false, error: "BACKFILL is currently supported only for fred" },
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred or defillama" },
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred&from=2026-09-01&to=2026-09-20")),
@@ -196,6 +272,37 @@ async function main(): Promise<void> {
         fred: { observationStart: "2026-09-01", observationEnd: "2026-09-20", limit: 100 },
       },
     },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=defillama&from=2026-09-01&to=2026-10-05")),
+    {
+      ok: true,
+      options: {
+        mode: "BACKFILL",
+        providers: ["defillama"],
+        defillama: { from: "2026-09-01", to: "2026-10-05" },
+      },
+    },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=defillama&from=2026-09-01&to=2026-10-06")),
+    { ok: false, error: "DefiLlama BACKFILL is limited to 35 calendar days" },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred,defillama&from=2026-09-01&to=2026-09-20")),
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred or defillama" },
+  );
+  await assert.rejects(
+    runHistoricalIngestion(
+      {
+        mode: "BACKFILL",
+        providers: ["defillama"],
+        defillama: { from: "2026-09-01", to: "2026-10-06" },
+      },
+      { acquisition: acquisition([]), repositories: repositories().repositories },
+    ),
+    /limited to 35 calendar days/,
+    "runtime must reject an over-wide DefiLlama backfill even outside the HTTP parser",
   );
 }
 

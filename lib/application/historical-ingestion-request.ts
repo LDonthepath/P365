@@ -1,4 +1,5 @@
 import {
+  defiLlamaBackfillRangeError,
   HISTORICAL_INGESTION_PROVIDERS,
   type HistoricalIngestionMode,
   type HistoricalIngestionOptions,
@@ -32,15 +33,17 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
   }
   const mode: HistoricalIngestionMode = rawMode === "BACKFILL" ? "BACKFILL" : "FORWARD";
   if (mode === "FORWARD") return { ok: true, options: { mode, providers } };
-  if (providers.some((provider) => provider !== "fred")) {
-    return { ok: false, error: "BACKFILL is currently supported only for fred" };
+  if (providers.length !== 1 || !["fred", "defillama"].includes(providers[0])) {
+    return { ok: false, error: "BACKFILL requires exactly one supported provider: fred or defillama" };
   }
 
   const from = parseDate(searchParams.get("from"));
   const to = parseDate(searchParams.get("to"));
   if (!from || !to || from > to) return { ok: false, error: "BACKFILL requires valid from/to date bounds" };
-  return {
-    ok: true,
-    options: { mode, providers, fred: { observationStart: from, observationEnd: to, limit: 100 } },
-  };
+  if (providers[0] === "defillama") {
+    const rangeError = defiLlamaBackfillRangeError({ from, to });
+    if (rangeError) return { ok: false, error: rangeError };
+    return { ok: true, options: { mode, providers, defillama: { from, to } } };
+  }
+  return { ok: true, options: { mode, providers, fred: { observationStart: from, observationEnd: to, limit: 100 } } };
 }

@@ -1,4 +1,5 @@
 import type { Observation, ObservationProvenance } from "./types";
+import { USD_STABLECOIN_MARKET_CAP_SERIES_KEY } from "./observation-semantics";
 
 export const OBSERVATION_PROVENANCE_VERSION = "v1" as const;
 
@@ -7,6 +8,7 @@ export const OBSERVATION_PROVIDER_RESOURCES = {
   coinGeckoSimplePrice: "/simple/price",
   coinGeckoGlobal: "/global",
   yahooChart: "/v8/finance/chart",
+  defiLlamaStablecoinChartsAll: "/stablecoincharts/all",
 } as const;
 
 function assertNonEmpty(value: string | undefined, field: string): void {
@@ -72,6 +74,12 @@ export function assertCurrentObservationInvariants(observation: Observation): vo
   }
 
   const provenance = observation.provenance;
+  if (
+    provenance.providerResource === OBSERVATION_PROVIDER_RESOURCES.defiLlamaStablecoinChartsAll
+    && observation.sourceId !== "defillama-stablecoins"
+  ) {
+    throw new Error("DefiLlama stablecoin Observation must use its canonical sourceId.");
+  }
   if (observation.sourceId === "fred") {
     if (
       provenance.providerResource !== OBSERVATION_PROVIDER_RESOURCES.fredObservations
@@ -121,6 +129,26 @@ export function assertCurrentObservationInvariants(observation: Observation): vo
     }
     if (provenance.nativeSymbol !== metadataString(observation, "symbol")) {
       throw new Error("Yahoo native symbol must match compatibility metadata.");
+    }
+  }
+
+  if (observation.sourceId === "defillama-stablecoins") {
+    if (
+      observation.domain !== "MARKET"
+      || seriesKey !== USD_STABLECOIN_MARKET_CAP_SERIES_KEY
+      || provenance.providerResource !== OBSERVATION_PROVIDER_RESOURCES.defiLlamaStablecoinChartsAll
+      || provenance.observationDate !== observation.observedAt.slice(0, 10)
+      || provenance.observationDate !== metadataString(observation, "providerEffectiveDate")
+      || metadataString(observation, "providerEffectiveTimestamp") !== observation.observedAt
+      || metadataString(observation, "providerResource") !== OBSERVATION_PROVIDER_RESOURCES.defiLlamaStablecoinChartsAll
+      || provenance.nativeSeriesId !== undefined
+      || provenance.nativeInstrumentId !== undefined
+      || provenance.nativeSymbol !== undefined
+      || provenance.vintageDate !== undefined
+      || metadataString(observation, "pegType") !== "peggedUSD"
+      || metadataString(observation, "unit") !== "USD"
+    ) {
+      throw new Error("DefiLlama stablecoin Observation provenance is inconsistent with its canonical fact.");
     }
   }
 }

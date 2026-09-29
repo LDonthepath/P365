@@ -28,6 +28,7 @@ export type ProviderId =
   | "coindesk-rss"
   | "forex-factory"
   | "coingecko"
+  | "defillama"
   | "fred"
   | "federal-reserve"
   | "biquote"

@@ -53,6 +53,7 @@ function main(): void {
     "eth.market_cap.usd",
     "crypto.total_market_cap.usd",
     "crypto.total_volume_24h.usd",
+    "crypto.usd_stablecoin_market_cap.usd",
     "crypto.btc_dominance.pct",
     "crypto.eth_dominance.pct",
   ];
@@ -88,6 +89,18 @@ function main(): void {
       asset: "GOLD",
     },
     "Gold futures semantics",
+  );
+
+  assertEqual(
+    requireObservationSemantics("crypto.usd_stablecoin_market_cap.usd"),
+    {
+      ontologyVersion: "v0.1",
+      marketDomain: "CRYPTO",
+      informationClass: "OBSERVATION",
+      jurisdiction: "GLOBAL",
+      asset: "USD_STABLECOINS",
+    },
+    "USD stablecoin market-cap semantics",
   );
 
   assertEqual(

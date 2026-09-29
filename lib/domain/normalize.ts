@@ -1,5 +1,6 @@
 import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
+import type { DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { MacroObservationInput } from "../data/fred";
 import type { FomcEventInput } from "../data/federal-reserve-events";
 import { forexFactoryJurisdiction } from "../data/event-jurisdiction";
@@ -8,13 +9,14 @@ import { buildObservationIdentity, observationEvidenceId, observationRevisionId 
 import { buildEventIdentity } from "./event-identity";
 import { assertCurrentObservationInvariants } from "./observation-provenance";
 import { requireObservationSemantics } from "./observation-semantics";
-import { qualityFromFreshness, qualityFromMacroCadence, qualityFromMarketHours, freshnessPolicyForFamily } from "./freshness";
+import { qualityFromDailyUtcCadence, qualityFromFreshness, qualityFromMacroCadence, qualityFromMarketHours, freshnessPolicyForFamily } from "./freshness";
 import type { MarketFreshnessCalendar } from "./freshness";
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
   yahooFinance: { id: "yahoo-finance", name: "Yahoo Finance (Gold, Russell 2000 & DXY)", type: "MARKET" },
   coinGeckoMarket: { id: "coingecko-market", name: "CoinGecko Market", type: "MARKET" },
+  defiLlamaStablecoins: { id: "defillama-stablecoins", name: "DefiLlama Stablecoins", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   forexFactory: { id: "forex-factory", name: "Forex Factory", type: "CALENDAR" },
   biquote: { id: "biquote", name: "Biquote Economic Calendar", type: "CALENDAR" },
@@ -152,6 +154,62 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
       semantics: requireObservationSemantics(item.metricId),
       metadata,
     });
+    assertCurrentObservationInvariants(observation);
+    return { evidence, observation };
+  });
+
+  return {
+    observations: normalized.map((item) => item.observation),
+    evidence: normalized.map((item) => item.evidence),
+  };
+}
+
+/** Converts validated DefiLlama peggedUSD aggregates into canonical facts. */
+export function stablecoinLiquidityToCanonicalRecords(
+  items: DefiLlamaStablecoinObservationInput[],
+): { observations: Observation[]; evidence: Evidence[] } {
+  const sourceId = P365_SOURCES.defiLlamaStablecoins.id;
+  const normalized = items.map((item) => {
+    const value = String(item.value);
+    const metadata = { ...item.metadata, metricId: item.metricId, unit: item.unit, pegType: item.pegType };
+    const identity = buildObservationIdentity({
+      domain: "MARKET",
+      seriesKey: item.metricId,
+      observedAt: item.observedAt,
+      sourceId,
+      value,
+      unit: item.unit,
+      frequency: "DAILY",
+    });
+    const evidenceId = observationEvidenceId(identity);
+    const evidence: Evidence = {
+      id: evidenceId,
+      sourceId,
+      kind: "OBSERVATION",
+      subject: item.metricId,
+      content: `${item.metricId} = ${item.value} (${item.observedAt})`,
+      capturedAt: item.retrievedAt,
+      retrievedAt: item.retrievedAt,
+      metadata,
+    };
+    const observation: Observation = {
+      id: observationRevisionId(identity),
+      domain: "MARKET",
+      subject: item.metricId,
+      value,
+      observedAt: item.observedAt,
+      retrievedAt: item.retrievedAt,
+      sourceId,
+      quality: qualityFromDailyUtcCadence({
+        observedAt: item.observedAt,
+        evaluatedAt: item.retrievedAt,
+      }),
+      evidenceId,
+      identity,
+      provenance: item.provenance,
+      semantics: requireObservationSemantics(item.metricId),
+      metadata,
+    };
     assertCurrentObservationInvariants(observation);
     return { evidence, observation };
   });
