@@ -17,6 +17,7 @@ const ROLES: EventWindowRole[] = ["PRE", "T_PLUS_5", "T_PLUS_15", "T_PLUS_30", "
 const SERIES = ["btc.spot.usd", "eth.spot.usd", "dxy.index.usd", "gold.futures.usd"] as const;
 const MONITOR_TIMEOUT_MS = 4_000;
 const MASSIVE_HISTORICAL_DELAY_MS = 8 * 60 * 60 * 1000;
+const RATES_CONTEXT_TIMEOUT_MS = 1_500;
 export type IntradaySeriesKey = typeof SERIES[number];
 
 export type IntradayEventMove = {
@@ -202,6 +203,31 @@ async function buildMonitorForIdentity(
   };
 }
 
+async function reconstructRatesContext(
+  t0: string,
+): Promise<IntradayRatesReconstruction | null> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const timeoutResult = new Promise<null>((resolve) => {
+      timeout = setTimeout(() => resolve(null), RATES_CONTEXT_TIMEOUT_MS);
+    });
+    const reconstruction = reconstructHistoricalZtEvent(t0)
+      .then((result): IntradayRatesReconstruction | null =>
+        result.status === "OK"
+          ? {
+              instrument: result.instrument,
+              productCode: result.productCode,
+              ticker: result.ticker,
+              points: result.points,
+            }
+          : null)
+      .catch(() => null);
+    return await Promise.race([reconstruction, timeoutResult]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitorResult> {
   const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const snapshots = await historicalMarketSnapshotRepository.findHistory({
@@ -248,15 +274,8 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
   )];
   const ratesByT0 = new Map<string, IntradayRatesReconstruction>();
   for (const t0 of historicalT0s) {
-    const rates = await reconstructHistoricalZtEvent(t0);
-    if (rates.status === "OK") {
-      ratesByT0.set(t0, {
-        instrument: rates.instrument,
-        productCode: rates.productCode,
-        ticker: rates.ticker,
-        points: rates.points,
-      });
-    }
+    const rates = await reconstructRatesContext(t0);
+    if (rates) ratesByT0.set(t0, rates);
   }
   for (const monitor of data) {
     const ratesReconstruction = ratesByT0.get(monitor.t0);
