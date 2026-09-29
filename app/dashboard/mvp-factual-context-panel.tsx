@@ -24,6 +24,10 @@ const QUALITY_LABELS: Record<DataQuality, string> = {
   UNKNOWN: "KUALITAS TIDAK DIKETAHUI",
 };
 
+export function netLiquidityQualityLabel(quality: DataQuality): string {
+  return `PROXY FAKTUAL · ${QUALITY_LABELS[quality]}`;
+}
+
 const RECENCY_LABELS: Record<"CURRENT" | "STALE" | "UNKNOWN", string> = {
   CURRENT: "TERKINI",
   STALE: "SUDAH LAMA",
@@ -150,7 +154,7 @@ function NetLiquidityCard({ data }: { data: NetLiquidityReadModel }) {
     return <article className="factual-metric-card compact"><div className="factual-card-head"><span>Likuiditas bersih</span><span>TIDAK TERSEDIA</span></div><strong className="factual-primary-value">—</strong><p className="muted">{data.reason}</p></article>;
   }
   return <article className="factual-metric-card compact">
-    <div className="factual-card-head"><span>Likuiditas bersih</span><span>PROXY FAKTUAL</span></div>
+    <div className="factual-card-head"><span>Likuiditas bersih</span><span>{netLiquidityQualityLabel(data.latest.quality)}</span></div>
     <strong className="factual-primary-value">{new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(data.latest.valueBillionsUsd)} miliar USD</strong>
     <p className="factual-trace">Observasi komponen terakhir {dateTime(data.latest.asOf)}</p>
     <div className="factual-horizons two">
