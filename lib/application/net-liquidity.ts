@@ -72,14 +72,12 @@ export async function buildNetLiquidityReadModel(repository: HistoricalObservati
   if (!latest) return { status: "UNAVAILABLE", reason: "Komponen likuiditas belum lengkap." };
   const p1w = point(rows, asOf.getTime() - 7 * DAY);
   const p4w = point(rows, asOf.getTime() - 28 * DAY);
-  const firstBySeries = SERIES.map((key) => rows.filter((o) => seriesKey(o) === key).sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt))[0]).filter((o): o is Observation => Boolean(o));
-  const overlapStart = firstBySeries.length === SERIES.length ? Math.max(...firstBySeries.map((o) => Date.parse(o.observedAt))) : asOf.getTime();
-  const weeklyHistory: NetLiquidityPoint[] = [];
-  for (let at = overlapStart; at <= asOf.getTime(); at += 7 * DAY) {
-    const p = point(rows, at);
-    if (p && !weeklyHistory.some((existing) => existing.asOf === p.asOf)) weeklyHistory.push(p);
-  }
-  if (!weeklyHistory.some((existing) => existing.asOf === latest.asOf)) weeklyHistory.push(latest);
+  const walclDates = rows.filter((o) => seriesKey(o) === "WALCL").map((o) => Date.parse(o.observedAt));
+  const tgaDates = new Set(rows.filter((o) => seriesKey(o) === "WTREGEN").map((o) => Date.parse(o.observedAt)));
+  const actualWeeklyAnchors = [...new Set(walclDates.filter((at) => tgaDates.has(at)))].sort((a, b) => a - b);
+  const weeklyHistory = actualWeeklyAnchors
+    .map((at) => point(rows, at))
+    .filter((p): p is NetLiquidityPoint => Boolean(p));
 
   return {
     status: "OK",
