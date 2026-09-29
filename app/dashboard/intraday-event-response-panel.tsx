@@ -35,6 +35,23 @@ function windowLabel(data: IntradayEventMonitor): string {
   if (data.windowStatus.status === "RUNNING") return `Masih memantau hingga ${ROLE_LABEL[data.windowStatus.nextRole]}`;
   return "Sebagian data reaksi tidak tersedia";
 }
+function ratesReactionSentence(data: IntradayEventMonitor): string | null {
+  const rates = data.ratesReconstruction;
+  if (!rates) return null;
+  const pre = rates.points.find((point) => point.role === "PRE");
+  if (pre?.price === null || pre?.price === undefined || pre.price === 0) return null;
+  const preferredRoles: EventWindowRole[] = ["T_PLUS_60", "T_PLUS_30", "T_PLUS_15", "T_PLUS_5"];
+  for (const role of preferredRoles) {
+    const point = rates.points.find((item) => item.role === role);
+    if (point?.price === null || point?.price === undefined) continue;
+    const change = ((point.price - pre.price) / pre.price) * 100;
+    const verb = change > 0 ? "naik" : change < 0 ? "turun" : "relatif datar";
+    const amount = change === 0 ? "" : ` ${Math.abs(change).toFixed(3)}%`;
+    return `Harga futures Treasury AS 2 tahun (ZT) ${verb}${amount} setelah ${ROLE_LABEL[role].toLowerCase()}.`;
+  }
+  return null;
+}
+
 function reactionSentence(data: IntradayEventMonitor, key: IntradaySeriesKey, label: string): string | null {
   const preferredRoles: EventWindowRole[] = ["T_PLUS_60", "T_PLUS_30", "T_PLUS_15", "T_PLUS_5"];
   for (const role of preferredRoles) {
@@ -64,9 +81,10 @@ export function IntradayEventResponsePanel({ result }: { result: IntradayEventMo
 
 function IntradayEventResponseCard({ data }: { data: IntradayEventMonitor }) {
   const reactionLines = [
-    reactionSentence(data, "btc.spot.usd", "Bitcoin"),
+    ratesReactionSentence(data),
     reactionSentence(data, "dxy.index.usd", "Dolar AS"),
     reactionSentence(data, "gold.futures.usd", "Emas"),
+    reactionSentence(data, "btc.spot.usd", "Bitcoin"),
   ].filter((line): line is string => Boolean(line));
 
   return <section className="panel" aria-labelledby="intraday-event-response-title">
@@ -92,6 +110,9 @@ function IntradayEventResponseCard({ data }: { data: IntradayEventMonitor }) {
         ? <ul style={{ margin: ".65rem 0 0", paddingLeft: "1.2rem", lineHeight: 1.8 }}>{reactionLines.map((line) => <li key={line}>{line}</li>)}</ul>
         : <p className="muted" style={{ marginTop: ".5rem" }}>Belum ada cukup data harga setelah rilis.</p>}
       <p className="muted" style={{ marginTop: ".65rem" }}>Ini menunjukkan pergerakan yang terjadi setelah rilis, bukan bukti bahwa rilis tersebut menyebabkan pergerakan dan bukan rekomendasi transaksi.</p>
+      {data.ratesReconstruction
+        ? <p className="muted" style={{ marginTop: ".35rem" }}>ZT adalah harga futures Treasury AS 2 tahun ({data.ratesReconstruction.ticker}), bukan yield Treasury 2 tahun. Data ini direkonstruksi secara historis dan bukan feed suku bunga live.</p>
+        : null}
     </div>
 
     <details style={{ marginTop: "1rem", borderTop: "1px solid var(--line)", paddingTop: "1rem" }}>
@@ -99,10 +120,19 @@ function IntradayEventResponseCard({ data }: { data: IntradayEventMonitor }) {
       <div style={{ overflowX: "auto", marginTop: ".75rem" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620 }}>
           <thead><tr><th style={{ textAlign: "left", padding: ".6rem" }}>Pasar</th>{ROLES.map((role) => <th key={role} style={{ textAlign: "right", padding: ".6rem" }}>{ROLE_LABEL[role]}</th>)}</tr></thead>
-          <tbody>{SERIES.map((series) => <tr key={series.key}><th style={{ textAlign: "left", padding: ".6rem" }}>{series.label}</th>{ROLES.map((role) => {
-            const item = data.moves.find((entry) => entry.role === role);
-            return <td key={role} style={{ textAlign: "right", padding: ".6rem" }}>{!item ? "—" : role === "PRE" ? value(item.values[series.key]) : move(item.changePct[series.key])}</td>;
-          })}</tr>)}</tbody>
+          <tbody>
+            {data.ratesReconstruction ? <tr><th style={{ textAlign: "left", padding: ".6rem" }}>Treasury AS 2T futures (ZT)</th>{ROLES.map((role) => {
+              const point = data.ratesReconstruction?.points.find((item) => item.role === role);
+              const pre = data.ratesReconstruction?.points.find((item) => item.role === "PRE");
+              const change = role !== "PRE" && point?.price !== null && point?.price !== undefined && pre?.price
+                ? ((point.price - pre.price) / pre.price) * 100 : undefined;
+              return <td key={role} style={{ textAlign: "right", padding: ".6rem" }}>{role === "PRE" ? value(point?.price ?? undefined) : move(change)}</td>;
+            })}</tr> : null}
+            {SERIES.map((series) => <tr key={series.key}><th style={{ textAlign: "left", padding: ".6rem" }}>{series.label}</th>{ROLES.map((role) => {
+              const item = data.moves.find((entry) => entry.role === role);
+              return <td key={role} style={{ textAlign: "right", padding: ".6rem" }}>{!item ? "—" : role === "PRE" ? value(item.values[series.key]) : move(item.changePct[series.key])}</td>;
+            })}</tr>)}
+          </tbody>
         </table>
       </div>
       <p className="muted" style={{ marginBottom: 0 }}>Angka setelah rilis adalah perubahan terhadap harga sebelum rilis. Detail kualitas dan sumber tetap dipertahankan oleh sistem sebagai evidence.</p>
