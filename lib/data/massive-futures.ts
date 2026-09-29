@@ -66,7 +66,7 @@ async function massiveGet<T>(path: string, params: URLSearchParams): Promise<{ d
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) return { error: `Massive HTTP ${response.status}` };
+    if (!response.ok) {\n      const detail = (await response.text()).slice(0, 1000);\n      return { error: `Massive HTTP ${response.status}: ${detail}` };\n    }
     return { data: await response.json() as T };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Massive request failed" };
