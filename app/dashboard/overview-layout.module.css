@@ -1,3 +1,21 @@
+.overviewLayout :global(.intraday-now){margin-bottom:20px}
+.overviewLayout :global(.intraday-now-head){display:flex;justify-content:space-between;gap:20px;align-items:flex-end}
+.overviewLayout :global(.intraday-now-head h2){margin-bottom:6px}
+.overviewLayout :global(.intraday-now-grid){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+.overviewLayout :global(.intraday-now-item){padding:16px;border:1px solid var(--line);background:var(--panel-2);min-width:0}
+.overviewLayout :global(.intraday-now-label){display:flex;justify-content:space-between;gap:10px;align-items:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em}
+.overviewLayout :global(.intraday-quality){font-size:9px;color:var(--muted)}
+.overviewLayout :global(.intraday-quality.fresh){color:var(--lime)}
+.overviewLayout :global(.intraday-quality.attention){color:var(--muted)}
+.overviewLayout :global(.intraday-now-item strong){display:block;font-size:clamp(1.45rem,3vw,2.2rem);line-height:1.05;letter-spacing:-.03em;margin-top:12px}
+.overviewLayout :global(.intraday-now-item small){display:block;color:var(--muted);margin-top:7px}
+.overviewLayout :global(.intraday-priority-grid),.overviewLayout :global(.intraday-secondary-grid){display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.82fr);gap:20px;margin-bottom:20px}
+.overviewLayout :global(.intraday-priority-grid > .panel),.overviewLayout :global(.intraday-secondary-grid > .panel){margin:0}
+.overviewLayout :global(.intraday-priority-grid .overview-change-layer){margin-top:0}
+.overviewLayout :global(.intraday-priority-grid .change-layer-grid){display:block}
+.overviewLayout :global(.intraday-priority-grid .state-meta){display:none}
+.overviewLayout :global(.intraday-priority-grid .monitor-list > div:nth-child(n+5)){display:none}
+.overviewLayout :global(.intraday-secondary-grid > .panel){min-width:0}
 .overviewLayout :global(.dashboard-content:has(.market-state) > .panel:has(#crypto-foundation-title)){
   display:none;
 }
@@ -154,4 +172,14 @@
   .overviewLayout :global(.dashboard-content:has(.market-state) .market-watch .watch-row > *:last-child){
     justify-self:start;
   }
+}
+
+@media(max-width:900px){
+  .overviewLayout :global(.intraday-priority-grid),.overviewLayout :global(.intraday-secondary-grid){grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .overviewLayout :global(.intraday-now){margin-bottom:12px}
+  .overviewLayout :global(.intraday-now-grid){grid-template-columns:1fr;gap:8px;margin-top:12px}
+  .overviewLayout :global(.intraday-now-item){padding:13px}
+  .overviewLayout :global(.intraday-priority-grid),.overviewLayout :global(.intraday-secondary-grid){gap:12px;margin-bottom:12px}
 }
