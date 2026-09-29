@@ -1,4 +1,119 @@
-/* UX-001 — intraday-first overview hierarchy */
+/* MVP-SLICE-001 — Macro → BTC + Gold factual overview hierarchy */
+.overviewLayout :global(.mvp-factual-context){
+  margin-bottom:20px;
+}
+
+.overviewLayout :global(.mvp-factual-context > .lead-copy){
+  max-width:900px;
+}
+
+.overviewLayout :global(.factual-group){
+  margin-top:20px;
+  padding-top:18px;
+  border-top:1px solid var(--line);
+}
+
+.overviewLayout :global(.factual-group-head){
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:12px;
+}
+
+.overviewLayout :global(.factual-group-head span),
+.overviewLayout :global(.factual-group-head small),
+.overviewLayout :global(.factual-card-head),
+.overviewLayout :global(.factual-horizon > span){
+  font-family:'DM Mono',monospace;
+  font-size:9px;
+  letter-spacing:.08em;
+  color:var(--muted);
+}
+
+.overviewLayout :global(.factual-group-head h3){
+  margin:4px 0 0;
+  font-size:1rem;
+}
+
+.overviewLayout :global(.factual-card-grid){
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+
+.overviewLayout :global(.factual-card-grid.macro){
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+
+.overviewLayout :global(.factual-traded-grid){
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+
+.overviewLayout :global(.factual-metric-card){
+  min-width:0;
+  padding:16px;
+  border:1px solid var(--line);
+  background:var(--panel-2);
+}
+
+.overviewLayout :global(.factual-card-head){
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.overviewLayout :global(.factual-card-head span:last-child){
+  text-align:right;
+}
+
+.overviewLayout :global(.factual-primary-value){
+  display:block;
+  margin-top:10px;
+  font-size:clamp(1.25rem,2.2vw,1.8rem);
+  line-height:1.05;
+  letter-spacing:-.03em;
+}
+
+.overviewLayout :global(.factual-trace),
+.overviewLayout :global(.factual-acquisition-note){
+  margin:7px 0 0;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.45;
+}
+
+.overviewLayout :global(.factual-horizons){
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin-top:14px;
+}
+
+.overviewLayout :global(.factual-horizons.two){
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+.overviewLayout :global(.factual-horizon){
+  min-width:0;
+  padding-top:9px;
+  border-top:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.factual-horizon strong),
+.overviewLayout :global(.factual-horizon small){
+  display:block;
+  margin-top:5px;
+}
+
+.overviewLayout :global(.factual-horizon small){
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.4;
+}
+
 .overviewLayout :global(.intraday-now){
   margin-bottom:20px;
 }
@@ -98,6 +213,10 @@
 }
 
 @media(max-width:900px){
+  .overviewLayout :global(.factual-card-grid.macro){
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
   .overviewLayout :global(.intraday-priority-grid),
   .overviewLayout :global(.intraday-secondary-grid){
     grid-template-columns:1fr;
@@ -105,6 +224,30 @@
 }
 
 @media(max-width:760px){
+  .overviewLayout :global(.mvp-factual-context){
+    margin-bottom:12px;
+  }
+
+  .overviewLayout :global(.factual-group-head){
+    align-items:flex-start;
+    flex-direction:column;
+    gap:5px;
+  }
+
+  .overviewLayout :global(.factual-card-grid),
+  .overviewLayout :global(.factual-card-grid.macro),
+  .overviewLayout :global(.factual-traded-grid){
+    grid-template-columns:1fr;
+  }
+
+  .overviewLayout :global(.factual-horizons){
+    grid-template-columns:1fr;
+  }
+
+  .overviewLayout :global(.factual-horizons.two){
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
   .overviewLayout :global(.intraday-now){
     margin-bottom:12px;
   }

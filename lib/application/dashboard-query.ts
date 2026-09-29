@@ -8,6 +8,10 @@ import { buildRepositoryBackedMacroFactualBaselines } from "./factual-baseline";
 import { getIntradayEventMonitor, type IntradayEventMonitorResult } from "./intraday-event-monitor";
 import { buildNetLiquidityReadModel, type NetLiquidityReadModel } from "./net-liquidity";
 import { buildRatesInflationReadModel, type RatesInflationReadModel } from "./rates-inflation";
+import {
+  buildMacroCryptoGoldFactualContext,
+  type MacroCryptoGoldFactualContext,
+} from "./mvp-factual-context";
 
 export type DashboardData = NormalizedDashboardData & {
   macroBaselines: Record<string, FactualBaseline>;
@@ -15,6 +19,7 @@ export type DashboardData = NormalizedDashboardData & {
   durableHighImpactEvents: Event[];
   netLiquidity: NetLiquidityReadModel;
   ratesInflation: RatesInflationReadModel;
+  mvpFactualContext: MacroCryptoGoldFactualContext;
 };
 
 async function getDurableHighImpactEvents(now = new Date()): Promise<Event[]> {
@@ -36,16 +41,25 @@ async function getDurableHighImpactEvents(now = new Date()): Promise<Event[]> {
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
+  const asOf = new Date();
   // Start the independent durable event-response read immediately so it runs
   // alongside provider ingestion/normalization and baseline work.
   const intradayEventMonitorPromise = getIntradayEventMonitor();
   const durableHighImpactEventsPromise = getDurableHighImpactEvents();
-  const netLiquidityPromise = buildNetLiquidityReadModel(historicalObservationRepository);
-  const ratesInflationPromise = buildRatesInflationReadModel(historicalObservationRepository);
+  const netLiquidityPromise = buildNetLiquidityReadModel(historicalObservationRepository, asOf);
+  const ratesInflationPromise = buildRatesInflationReadModel(historicalObservationRepository, asOf);
+  const mvpFactualContextPromise = buildMacroCryptoGoldFactualContext(
+    historicalObservationRepository,
+    asOf,
+    {
+      netLiquidity: netLiquidityPromise,
+      ratesInflation: ratesInflationPromise,
+    },
+  );
   const ingestion = await ingestDashboardData();
   const normalized = normalizeDashboardData(ingestion);
 
-  const [macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity, ratesInflation] = await Promise.all([
+  const [macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity, ratesInflation, mvpFactualContext] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
       historicalObservationRepository,
@@ -54,10 +68,19 @@ export async function getDashboardData(): Promise<DashboardData> {
     durableHighImpactEventsPromise,
     netLiquidityPromise,
     ratesInflationPromise,
+    mvpFactualContextPromise,
   ]);
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes
   // are owned by the authenticated cron ingestion workers so a page visit
   // cannot become a second ingestion/persistence clock.
-  return { ...normalized, macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity, ratesInflation };
+  return {
+    ...normalized,
+    macroBaselines,
+    intradayEventMonitor,
+    durableHighImpactEvents,
+    netLiquidity,
+    ratesInflation,
+    mvpFactualContext,
+  };
 }
