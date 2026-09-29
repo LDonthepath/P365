@@ -4,6 +4,10 @@ import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { EventSurpriseAssessment } from "../domain/event-surprise";
 import { assessRepositoryBackedEventSurprise } from "./event-surprise";
 import {
+  reconstructHistoricalZtEvent,
+  type RatesReconstructionPoint,
+} from "./rates-historical-reconstruction";
+import {
   canonicalRepositories,
   historicalEconomicEventResultRepository,
   historicalMarketSnapshotRepository,
@@ -12,6 +16,7 @@ import {
 const ROLES: EventWindowRole[] = ["PRE", "T_PLUS_5", "T_PLUS_15", "T_PLUS_30", "T_PLUS_60"];
 const SERIES = ["btc.spot.usd", "eth.spot.usd", "dxy.index.usd", "gold.futures.usd"] as const;
 const MONITOR_TIMEOUT_MS = 4_000;
+const MASSIVE_HISTORICAL_DELAY_MS = 8 * 60 * 60 * 1000;
 export type IntradaySeriesKey = typeof SERIES[number];
 
 export type IntradayEventMove = {
@@ -27,6 +32,13 @@ export type IntradayWindowStatus =
   | { status: "RUNNING"; nextRole: EventWindowRole }
   | { status: "INCOMPLETE"; missingRole: EventWindowRole | null };
 
+export type IntradayRatesReconstruction = {
+  instrument: "2-Year Treasury Note futures";
+  productCode: "ZT";
+  ticker: string;
+  points: RatesReconstructionPoint[];
+};
+
 export type IntradayEventMonitor = {
   eventIdentityKey: string;
   eventId: string;
@@ -39,6 +51,7 @@ export type IntradayEventMonitor = {
   unit?: string;
   resultSource?: string;
   surprise?: EventSurpriseAssessment;
+  ratesReconstruction?: IntradayRatesReconstruction;
   moves: IntradayEventMove[];
   missingRequirements: number;
   windowStatus: IntradayWindowStatus;
@@ -220,6 +233,36 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
   const data = await Promise.all(
     selectedIdentities.map((identity) => buildMonitorForIdentity(identity, snapshots, now)),
   );
+
+  // Massive free-tier futures data is historical/delayed. Reconstruct once per
+  // release cohort so simultaneous events do not duplicate provider requests.
+  // Failure or unavailability is intentionally fail-soft: canonical event
+  // response evidence remains usable without this research-only context.
+  const historicalT0s = [...new Set(
+    data
+      .map((monitor) => monitor.t0)
+      .filter((t0) => {
+        const t0Ms = Date.parse(t0);
+        return Number.isFinite(t0Ms) && now.getTime() - t0Ms >= MASSIVE_HISTORICAL_DELAY_MS;
+      }),
+  )];
+  const ratesByT0 = new Map<string, IntradayRatesReconstruction>();
+  for (const t0 of historicalT0s) {
+    const rates = await reconstructHistoricalZtEvent(t0);
+    if (rates.status === "OK") {
+      ratesByT0.set(t0, {
+        instrument: rates.instrument,
+        productCode: rates.productCode,
+        ticker: rates.ticker,
+        points: rates.points,
+      });
+    }
+  }
+  for (const monitor of data) {
+    const ratesReconstruction = ratesByT0.get(monitor.t0);
+    if (ratesReconstruction) monitor.ratesReconstruction = ratesReconstruction;
+  }
+
   data.sort((a, b) => a.subject.localeCompare(b.subject));
   return data.length ? { status: "OK", data } : { status: "EMPTY" };
 }
