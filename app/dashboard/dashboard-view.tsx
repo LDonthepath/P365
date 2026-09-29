@@ -310,6 +310,28 @@ function CryptoMarketPanel({ observations, providerHealth }: { observations: Obs
   </section>;
 }
 
+function OverviewMarketNow({ observations }: { observations: Observation[] }) {
+  const definitions = [
+    { id: "btc.spot.usd", label: "BITCOIN", unit: "USD" as const },
+    { id: "dxy.index.usd", label: "DXY", unit: "INDEX" as const },
+    { id: "gold.futures.usd", label: "EMAS", unit: "USD" as const },
+  ];
+  const items = definitions.map((definition) => {
+    const observation = observations.find((item) => item.subject === definition.id);
+    return { ...definition, observation };
+  });
+
+  return <section className="panel intraday-now" aria-labelledby="intraday-now-title">
+    <div className="panel-label"><span>KONDISI PASAR SEKARANG</span><span>BTC · DXY · EMAS</span></div>
+    <div className="intraday-now-head"><div><h2 id="intraday-now-title">Konteks intraday utama</h2><p className="lead-copy">Tiga pasar utama untuk membaca kondisi Bitcoin. Angka yang tidak terbaru tetap ditandai dan tidak diperlakukan sebagai data live.</p></div></div>
+    <div className="intraday-now-grid">{items.map(({ id, label, unit, observation }) => <article className="intraday-now-item" key={id}>
+      <div className="intraday-now-label"><span>{label}</span><span className={`intraday-quality ${observation?.quality === "FRESH" ? "fresh" : "attention"}`}>{observation?.quality === "FRESH" ? "TERBARU" : observation ? "PERLU DICEK" : "BELUM ADA"}</span></div>
+      <strong>{observation ? (unit === "USD" ? formatMoney(Number(observation.value)) : Number(observation.value).toFixed(2)) : "—"}</strong>
+      <small>{observation ? relativeTimeID(observation.observedAt) : "Data belum tersedia"}</small>
+    </article>)}</div>
+  </section>;
+}
+
 function OverviewWhatChanged({ observations, baselines }: { observations: Observation[]; baselines: BaselinePresentation[] }) {
   const validChanges = baselines.filter((item) => item.status === "VALID" && item.changeValue !== null);
   const staleBaselines = baselines.filter((item) => item.status === "STALE");
@@ -406,7 +428,18 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
     <nav id="dashboard-navigation" className={`filters${navOpen ? " open" : ""}`} aria-label="Bagian dashboard" role="tablist">{menuItems.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeMenu === item.id} className={activeMenu === item.id ? "active" : ""} onClick={() => { setActiveMenu(item.id); setNavOpen(false); }}>{item.label}</button>)}<span>WIB / ASIA-JAKARTA</span></nav>
 
     <div className="dashboard-content" role="tabpanel">
-      {activeMenu === "overview" && <><section className="market-state panel" aria-labelledby="state-title"><div className="panel-label"><span>01 / STATUS PASAR GLOBAL</span><StatusBadge value="PENDING" /></div><div className="state-grid"><div><h2 id="state-title">Belum ada kesimpulan status pasar.</h2><p>{observations.length ? "Observasi pasar tersedia, tetapi P365 belum memiliki aturan domain spesifik untuk menggabungkannya menjadi satu status pasar." : "Tidak ada observasi pasar yang dapat diverifikasi pada request ini, sehingga P365 tidak menampilkan status pasar."}</p></div><div className="state-meta"><div><span>CONFIDENCE</span><strong>BELUM ADA</strong></div><div><span>OBSERVASI</span><strong>{observations.length} · {STATUS_LABEL_ID[marketStatus]}</strong></div><div><span>EVIDENCE KANONIK</span><strong>{evidence.length} item</strong></div><div><span>EVENT MENDATANG</span><strong>{calendarEvents.length}</strong></div></div></div></section><EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} /><IntradayEventResponsePanel result={data.intradayEventMonitor} /><NetLiquidityPanel data={data.netLiquidity} /><RatesInflationPanel data={data.ratesInflation} /><OverviewWhatChanged observations={observations} baselines={baselinePresentations} /><OverviewContext contextGroups={contextGroups} selectedContextId={selectedContextId} selectedContext={selectedContext} onSelect={(id) => setSelectedContextId(selectedContextId === id ? null : id)} /><section className="overview-grid"><section className="panel market-watch"><div className="panel-label"><span>CAKUPAN DOMAIN</span><span>RINGKASAN</span></div><h2>Cakupan data</h2>{[["Evidence berita makro", macroNews.length, macroNews.length ? "FRESH" : "PENDING"], ["Evidence berita crypto", cryptoNews.length, cryptoNews.length ? "FRESH" : "PENDING"], ["Observasi pasar", observations.length, marketStatus], ["Provider", `${healthyProviderCount}/${providerHealth.length}`, providerRowStatus]].map(([label, count, status]) => <div className="watch-row" key={String(label)}><span>{label}</span><strong>{count}</strong><StatusBadge value={status as "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE"} /></div>)}</section><section className="panel calendar"><div className="panel-label"><span>EVENT MENDATANG</span><span>{calendarEvents.length} ITEM</span></div><h2>Agenda penting</h2>{calendarEvents.length ? calendarEvents.map((item) => <CalendarRow item={item} key={item.id} />) : <><EmptyPanelNote label="kalender ekonomi" />{calendarProviderMessage && <p className="muted">Diagnostic Forex Factory: {calendarProviderMessage}</p>}</>}</section></section></>}
+      {activeMenu === "overview" && <>
+        <OverviewMarketNow observations={observations} />
+        <div className="intraday-priority-grid">
+          <OverviewWhatChanged observations={observations} baselines={baselinePresentations} />
+          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} />
+        </div>
+        <IntradayEventResponsePanel result={data.intradayEventMonitor} />
+        <div className="intraday-secondary-grid">
+          <NetLiquidityPanel data={data.netLiquidity} />
+          <RatesInflationPanel data={data.ratesInflation} />
+        </div>
+      </>}
       {activeMenu === "heatmap" && <MarketHeatmap observations={observations} baselines={baselinePresentations} />}
       {activeMenu === "macro" && <div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar"><div className="panel-label"><span>OBSERVASI MAKRO</span><span>{macroContexts.length} THEME · {macroObservations.length} METRIC</span></div><h2>Monitor data makro</h2>{macroObservations.length ? macroContexts.map((context) => <MacroThemeCard context={context} observations={macroObservations} baselines={baselinesBySeries} expanded={expandedMacroTheme === context.id} onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)} key={context.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div>}
       {activeMenu === "crypto" && <div className="menu-grid"><CryptoMarketPanel observations={observations} providerHealth={providerHealth} />{showNews(cryptoNews, "BERITA CRYPTO")}</div>}
