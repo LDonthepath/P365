@@ -14,7 +14,7 @@ export type NetLiquidityPoint = {
 };
 
 export type NetLiquidityReadModel =
-  | { status: "OK"; latest: NetLiquidityPoint; change1wBillionsUsd: number | null; change1wFrom: string | null; change4wBillionsUsd: number | null; change4wFrom: string | null }
+  | { status: "OK"; latest: NetLiquidityPoint; change1wBillionsUsd: number | null; change1wFrom: string | null; change4wBillionsUsd: number | null; change4wFrom: string | null; history: NetLiquidityPoint[] }
   | { status: "UNAVAILABLE"; reason: string };
 
 function seriesKey(o: Observation): string | null {
@@ -72,6 +72,13 @@ export async function buildNetLiquidityReadModel(repository: HistoricalObservati
   if (!latest) return { status: "UNAVAILABLE", reason: "Komponen likuiditas belum lengkap." };
   const p1w = point(rows, asOf.getTime() - 7 * DAY);
   const p4w = point(rows, asOf.getTime() - 28 * DAY);
+  const walclDates = rows.filter((o) => seriesKey(o) === "WALCL").map((o) => Date.parse(o.observedAt));
+  const tgaDates = new Set(rows.filter((o) => seriesKey(o) === "WTREGEN").map((o) => Date.parse(o.observedAt)));
+  const actualWeeklyAnchors = [...new Set(walclDates.filter((at) => tgaDates.has(at)))].sort((a, b) => a - b);
+  const weeklyHistory = actualWeeklyAnchors
+    .map((at) => point(rows, at))
+    .filter((p): p is NetLiquidityPoint => Boolean(p));
+
   return {
     status: "OK",
     latest,
@@ -79,5 +86,6 @@ export async function buildNetLiquidityReadModel(repository: HistoricalObservati
     change1wFrom: p1w?.asOf ?? null,
     change4wBillionsUsd: p4w ? latest.valueBillionsUsd - p4w.valueBillionsUsd : null,
     change4wFrom: p4w?.asOf ?? null,
+    history: weeklyHistory,
   };
 }
