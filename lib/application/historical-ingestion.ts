@@ -1,13 +1,17 @@
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
+import type { DefiLlamaStablecoinBackfillRange, DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { FredObservationQuery, MacroObservationInput } from "../data/fred";
 import type { ProviderId, ProviderResult } from "../data/types";
-import { cryptoMarketToObservations, macroToCanonicalRecords, P365_SOURCES } from "../domain/normalize";
+import { cryptoMarketToObservations, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../domain/normalize";
 import type { Evidence, Observation } from "../domain/types";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 
 type MarketResult = ProviderResult<CryptoMarketObservationInput>;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "fred"] as const;
+export const DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS = 35;
+
+export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "fred", "defillama"] as const;
 export type HistoricalIngestionProvider = typeof HISTORICAL_INGESTION_PROVIDERS[number];
 export type HistoricalIngestionMode = "FORWARD" | "BACKFILL";
 
@@ -15,6 +19,7 @@ export type HistoricalIngestionOptions = {
   mode: HistoricalIngestionMode;
   providers: HistoricalIngestionProvider[];
   fred?: Omit<FredObservationQuery, "acquisitionMode" | "requireCompleteRange">;
+  defillama?: DefiLlamaStablecoinBackfillRange;
 };
 
 export type HistoricalIngestionAcquisition = {
@@ -23,6 +28,7 @@ export type HistoricalIngestionAcquisition = {
   gold: () => Promise<MarketResult>;
   russell: () => Promise<MarketResult>;
   dxy: () => Promise<MarketResult>;
+  defillama: () => Promise<ProviderResult<DefiLlamaStablecoinObservationInput>>;
 };
 
 export type HistoricalIngestionProviderReport = {
@@ -43,12 +49,33 @@ export type HistoricalIngestionReport = {
   persistedEvidence: number;
 };
 
+export function defiLlamaBackfillRangeError(range: DefiLlamaStablecoinBackfillRange): string | null {
+  const from = Date.parse(`${range.from}T00:00:00.000Z`);
+  const to = Date.parse(`${range.to}T00:00:00.000Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(range.from)
+    || !/^\d{4}-\d{2}-\d{2}$/.test(range.to)
+    || !Number.isFinite(from)
+    || !Number.isFinite(to)
+    || new Date(from).toISOString().slice(0, 10) !== range.from
+    || new Date(to).toISOString().slice(0, 10) !== range.to
+    || from > to
+  ) {
+    return "DefiLlama BACKFILL requires valid from/to date bounds";
+  }
+  const inclusiveCalendarDays = (to - from) / DAY_MS + 1;
+  return inclusiveCalendarDays > DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS
+    ? `DefiLlama BACKFILL is limited to ${DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS} calendar days`
+    : null;
+}
+
 async function defaultDependencies(options: HistoricalIngestionOptions): Promise<{
   acquisition: HistoricalIngestionAcquisition;
   repositories: CanonicalRepositories;
 }> {
-  const [crypto, fred, yahoo, repositories] = await Promise.all([
+  const [crypto, defillama, fred, yahoo, repositories] = await Promise.all([
     import("../data/crypto-market"),
+    import("../data/defillama-stablecoins"),
     import("../data/fred"),
     import("../data/yahoo-finance-markets"),
     import("../repositories/dashboard-repository"),
@@ -64,6 +91,11 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
       gold: () => yahoo.fetchGoldFuturesSpot("FRESH"),
       russell: () => yahoo.fetchRussell2000Index("FRESH"),
       dxy: () => yahoo.fetchDxyIndex("FRESH"),
+      defillama: () => defillama.fetchDefiLlamaStablecoinObservations({
+        mode: options.mode,
+        acquisitionMode: "FRESH",
+        ...(options.mode === "BACKFILL" ? { range: options.defillama } : {}),
+      }),
     },
     repositories: repositories.canonicalRepositories,
   };
@@ -72,15 +104,26 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
 function providerId(provider: HistoricalIngestionProvider): ProviderId {
   if (provider === "coingecko") return "coingecko";
   if (provider === "fred") return "fred";
+  if (provider === "defillama") return "defillama";
   return "yahoo-finance";
 }
 
 function canonicalize(
   result: ProviderResult<unknown>,
   provider: HistoricalIngestionProvider,
+  mode: HistoricalIngestionMode,
 ): { observations: Observation[]; evidence: Evidence[] } {
   if (provider === "fred") {
     return macroToCanonicalRecords(result.data as MacroObservationInput[], P365_SOURCES.fred.id);
+  }
+  if (provider === "defillama") {
+    const rows = result.data as DefiLlamaStablecoinObservationInput[];
+    const selected = mode === "FORWARD" && rows.length > 0
+      ? [rows.reduce((latest, row) => row.observedAt > latest.observedAt ? row : latest)]
+      : rows;
+    return stablecoinLiquidityToCanonicalRecords(
+      selected,
+    );
   }
   return cryptoMarketToObservations(
     result.data as CryptoMarketObservationInput[],
@@ -90,8 +133,20 @@ function canonicalize(
 
 function validateOptions(options: HistoricalIngestionOptions): void {
   if (options.providers.length === 0) throw new Error("At least one ingestion provider is required");
-  if (options.mode === "BACKFILL" && options.providers.some((provider) => provider !== "fred")) {
-    throw new Error("BACKFILL is currently supported only for fred");
+  if (options.mode === "BACKFILL") {
+    if (options.providers.length !== 1 || !["fred", "defillama"].includes(options.providers[0])) {
+      throw new Error("BACKFILL requires exactly one supported provider: fred or defillama");
+    }
+    if (options.providers[0] === "fred" && !options.fred) {
+      throw new Error("FRED BACKFILL requires explicit options");
+    }
+    if (options.providers[0] === "defillama" && !options.defillama) {
+      throw new Error("DefiLlama BACKFILL requires explicit options");
+    }
+    if (options.providers[0] === "defillama" && options.defillama) {
+      const rangeError = defiLlamaBackfillRangeError(options.defillama);
+      if (rangeError) throw new Error(rangeError);
+    }
   }
 }
 
@@ -116,9 +171,10 @@ async function executeProvider(
   provider: HistoricalIngestionProvider,
   acquisition: HistoricalIngestionAcquisition,
   repositories: CanonicalRepositories,
+  mode: HistoricalIngestionMode,
 ): Promise<HistoricalIngestionProviderReport> {
   const result = await acquire(provider, acquisition);
-  const canonical = canonicalize(result, provider);
+  const canonical = canonicalize(result, provider, mode);
   const normalized = canonical.observations.length;
 
   if (normalized === 0 && canonical.evidence.length === 0) {
@@ -170,7 +226,7 @@ export async function runHistoricalIngestion(
   const repositories = dependencies.repositories ?? defaults.repositories;
   const providers = [...new Set(options.providers)];
   const reports = await Promise.all(
-    providers.map((provider) => executeProvider(provider, acquisition, repositories)),
+    providers.map((provider) => executeProvider(provider, acquisition, repositories, options.mode)),
   );
   const persistedObservations = reports.reduce((total, report) => total + report.persisted, 0);
   const persistedEvidence = reports.reduce((total, report) => total + report.persistedEvidence, 0);

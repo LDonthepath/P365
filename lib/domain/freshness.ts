@@ -35,6 +35,11 @@ export type MarketFreshnessInput = {
   calendar: MarketFreshnessCalendar;
 };
 
+export type DailyUtcCadenceFreshnessInput = {
+  observedAt: string;
+  evaluatedAt: string;
+};
+
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -52,6 +57,30 @@ export function qualityFromFreshness(referenceAt: string, policy: FreshnessPolic
   const referenceMs = new Date(referenceAt).getTime();
   if (!Number.isFinite(referenceMs) || referenceMs > nowMs) return "UNKNOWN";
   return nowMs - referenceMs <= policy.maxAgeMs ? "FRESH" : "STALE";
+}
+
+/**
+ * Assesses a daily 24/7 factual series by UTC effective calendar date. The
+ * current and immediately previous UTC date are current; older dates are
+ * stale. This does not infer a provider publication time or exchange session.
+ */
+export function qualityFromDailyUtcCadence(input: DailyUtcCadenceFreshnessInput): DataQuality {
+  const observedAtMs = Date.parse(input.observedAt);
+  const evaluatedAtMs = Date.parse(input.evaluatedAt);
+  if (
+    !Number.isFinite(observedAtMs)
+    || !Number.isFinite(evaluatedAtMs)
+    || observedAtMs > evaluatedAtMs
+  ) {
+    return "UNKNOWN";
+  }
+
+  const observed = new Date(observedAtMs);
+  const evaluated = new Date(evaluatedAtMs);
+  const observedDay = Date.UTC(observed.getUTCFullYear(), observed.getUTCMonth(), observed.getUTCDate());
+  const evaluatedDay = Date.UTC(evaluated.getUTCFullYear(), evaluated.getUTCMonth(), evaluated.getUTCDate());
+  const calendarDays = Math.floor((evaluatedDay - observedDay) / DAY);
+  return calendarDays <= 1 ? "FRESH" : "STALE";
 }
 
 const NEW_YORK_CLOCK = new Intl.DateTimeFormat("en-US", {
