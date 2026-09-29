@@ -24,6 +24,16 @@ function time(value: string): string {
   if (!value) return "—";
   return new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value)) + " WIB";
 }
+function surpriseLabel(relation: string): string {
+  if (relation === "ABOVE_EXPECTATION") return "Di atas ekspektasi";
+  if (relation === "BELOW_EXPECTATION") return "Di bawah ekspektasi";
+  if (relation === "INLINE") return "Sesuai ekspektasi";
+  return "Belum dapat ditentukan";
+}
+function surpriseMove(value: number | null): string {
+  if (value === null) return "—";
+  return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
 function windowLabel(result: Extract<IntradayEventMonitorResult, { status: "OK" }>["data"]): string {
   const status = result.windowStatus;
   if (status.status === "COMPLETE") return "LENGKAP";
@@ -58,6 +68,17 @@ export function IntradayEventResponsePanel({ result }: { result: IntradayEventMo
       <div><small>ACTUAL</small><strong style={{ display: "block" }}>{value(data.actual, data.unit)}</strong></div>
       <div><small>FORECAST</small><strong style={{ display: "block" }}>{value(data.expected, data.unit)}</strong></div>
       <div><small>PREVIOUS</small><strong style={{ display: "block" }}>{value(data.previous, data.unit)}</strong></div>
+    </div>
+    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+      <div className="panel-label"><span>FAKTUAL SURPRISE</span><span>{data.surprise?.status ?? "BELUM TERSEDIA"}</span></div>
+      {data.surprise?.status === "VALID"
+        ? <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: ".75rem" }}>
+            <div><small>HASIL</small><strong style={{ display: "block" }}>{surpriseLabel(data.surprise.relation)}</strong></div>
+            <div><small>SELISIH</small><strong style={{ display: "block" }}>{value(data.surprise.absoluteSurprise ?? undefined, data.surprise.unit ?? undefined)}</strong></div>
+            <div><small>SELISIH %</small><strong style={{ display: "block" }}>{surpriseMove(data.surprise.percentSurprise)}</strong></div>
+          </div>
+        : <p className="muted" style={{ margin: 0 }}>{data.surprise?.reason ?? "Lineage forecast/actual yang sama belum dapat dibuktikan untuk event ini."}</p>}
+      <p className="muted" style={{ marginBottom: 0 }}>Surprise hanya mengukur Actual terhadap expectation point-in-time dari source yang sama. Materialitas, repricing, transmisi, dan kausalitas belum dievaluasi.</p>
     </div>
     <div style={{ overflowX: "auto", marginTop: "1rem" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
