@@ -223,6 +223,14 @@ function informativeBaselineCount(snapshot: MarketSnapshot): number {
   ).length;
 }
 
+function isTerminalCompleteSnapshot(snapshot: MarketSnapshot): boolean {
+  const expectedBaselineCount = EVENT_WINDOW_CAPTURE_SERIES.length + 1;
+  return snapshot.quality === "COMPLETE"
+    && snapshot.missingRequirements.length === 0
+    && snapshot.observationRefs.length >= EVENT_WINDOW_CAPTURE_SERIES.length
+    && informativeBaselineCount(snapshot) >= expectedBaselineCount;
+}
+
 function strictlyImprovesSnapshot(
   candidate: MarketSnapshot,
   existing: MarketSnapshot,
@@ -281,21 +289,26 @@ async function capturePricingInputs(input: {
   const baselines: PricingBaseline[] = [];
   const requirements: MarketSnapshotRequirement[] = [];
 
-  for (const series of EVENT_WINDOW_CAPTURE_SERIES) {
-    const baseline = await buildRepositoryBackedPricingBaseline(
-      {
-        identity: {
-          domain: series.domain,
-          seriesKey: series.seriesKey,
+  const resolvedBaselines = await Promise.all(
+    EVENT_WINDOW_CAPTURE_SERIES.map(async (series) => ({
+      series,
+      baseline: await buildRepositoryBackedPricingBaseline(
+        {
+          identity: {
+            domain: series.domain,
+            seriesKey: series.seriesKey,
+          },
+          sourceId: series.sourceId,
+          asOf: input.targetAt,
+          maxObservationAgeMs: series.maxObservationAgeMs,
         },
-        sourceId: series.sourceId,
-        asOf: input.targetAt,
-        maxObservationAgeMs: series.maxObservationAgeMs,
-      },
-      input.historical,
-    );
+        input.historical,
+      ),
+    })),
+  );
 
-    baselines.push(baseline);
+  baselines.push(...resolvedBaselines.map((item) => item.baseline));
+  for (const { series, baseline } of resolvedBaselines) {
     requirements.push({
       kind: "OBSERVATION",
       key: staticObservationRequirementKey(series),
@@ -304,14 +317,19 @@ async function capturePricingInputs(input: {
       kind: "BASELINE",
       key: marketSnapshotBaselineKey(baseline),
     });
-
-    if (baseline.observationId) {
-      const observation = await input.canonical.findById(
-        baseline.observationId,
-      );
-      if (observation) observations.push(observation);
-    }
   }
+
+  const resolvedObservations = await Promise.all(
+    resolvedBaselines.map(({ baseline }) =>
+      baseline.observationId
+        ? input.canonical.findById(baseline.observationId)
+        : Promise.resolve(null)),
+  );
+  observations.push(
+    ...resolvedObservations.filter(
+      (observation): observation is Observation => observation !== null,
+    ),
+  );
 
   return { observations, baselines, requirements };
 }
@@ -355,6 +373,21 @@ async function captureSlot(input: {
       input.slot,
       input.repositories.snapshotHistory,
     );
+
+    // The CAP-001 requirement set is fixed. A fully satisfied COMPLETE tip
+    // cannot strictly improve under CAP-001C, so avoid rebuilding all pricing
+    // and expectation inputs on every scheduler retry.
+    if (existing && isTerminalCompleteSnapshot(existing)) {
+      return {
+        eventIdentityKey: input.window.eventIdentityKey,
+        eventId: input.window.eventId,
+        role: input.slot.role,
+        targetAt: input.slot.targetAt,
+        status: "ALREADY_CAPTURED",
+        snapshotId: existing.id,
+        snapshotQuality: existing.quality,
+      };
+    }
 
     const event = await eventAsOfTarget(
       input.window,
