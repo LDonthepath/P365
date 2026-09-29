@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { EVENT_WINDOW_POLICY_V1, type EventWindowRole } from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
+import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
 import type { EventSurpriseAssessment } from "../domain/event-surprise";
 import { assessRepositoryBackedEventSurprise } from "./event-surprise";
 import {
@@ -75,11 +76,42 @@ function identityOf(snapshot: MarketSnapshot): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
-function preferSnapshot(a: MarketSnapshot, b: MarketSnapshot): MarketSnapshot {
-  const score = (s: MarketSnapshot) =>
-    (s.quality === "COMPLETE" ? 4 : s.quality === "STALE" ? 3 : s.quality === "PARTIAL" ? 2 : 1)
-    + (s.metadata?.captureOwner === "CAP-001C" ? 0.5 : 0);
-  return score(b) > score(a) || (score(b) === score(a) && b.id > a.id) ? b : a;
+function selectActiveSnapshotsByRole(
+  snapshots: MarketSnapshot[],
+): Map<EventWindowRole, MarketSnapshot> {
+  const historyByRole = new Map<EventWindowRole, MarketSnapshot[]>();
+  for (const snapshot of snapshots) {
+    const role = roleOf(snapshot);
+    if (!role) continue;
+    const history = historyByRole.get(role) ?? [];
+    history.push(snapshot);
+    historyByRole.set(role, history);
+  }
+
+  const byRole = new Map<EventWindowRole, MarketSnapshot>();
+  for (const [role, history] of historyByRole) {
+    const capturedAtSlots = new Map<number, MarketSnapshot[]>();
+    for (const snapshot of history) {
+      const capturedAt = Date.parse(snapshot.capturedAt);
+      if (!Number.isFinite(capturedAt)) {
+        throw new Error("Intraday event snapshot has an invalid capturedAt.");
+      }
+      const slot = capturedAtSlots.get(capturedAt) ?? [];
+      slot.push(snapshot);
+      capturedAtSlots.set(capturedAt, slot);
+    }
+
+    if (capturedAtSlots.size !== 1) {
+      throw new Error("Intraday event role contains multiple logical capture slots.");
+    }
+
+    const active = selectActiveMarketSnapshot([...capturedAtSlots.values()][0]);
+    if (!active) {
+      throw new Error("Intraday event role has no active canonical snapshot.");
+    }
+    byRole.set(role, active);
+  }
+  return byRole;
 }
 
 function windowStatus(input: {
@@ -109,13 +141,7 @@ async function buildMonitorForIdentity(
   now: Date,
 ): Promise<IntradayEventMonitor> {
   const sameEvent = snapshots.filter((snapshot) => identityOf(snapshot) === latestIdentity);
-  const byRole = new Map<EventWindowRole, MarketSnapshot>();
-  for (const snapshot of sameEvent) {
-    const role = roleOf(snapshot);
-    if (!role) continue;
-    const current = byRole.get(role);
-    byRole.set(role, current ? preferSnapshot(current, snapshot) : snapshot);
-  }
+  const byRole = selectActiveSnapshotsByRole(sameEvent);
   const ordered = ROLES.flatMap((role) => {
     const snapshot = byRole.get(role);
     return snapshot ? [{ role, snapshot }] : [];
