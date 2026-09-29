@@ -330,7 +330,7 @@ function OverviewWhatChanged({ observations, baselines }: { observations: Observ
       const observation = observations.find((candidate) => String(candidate.metadata?.seriesId ?? "") === item.seriesId);
       const unit = String(observation?.metadata?.unit ?? "");
       const label = MACRO_SERIES_LABELS[item.seriesId] ?? observation?.subject ?? item.seriesId;
-      return <div key={item.seriesId}><strong>{label}</strong><span>{formatMacroValue(item.currentValue, unit)} dibanding {formatMacroValue(item.baselineValue ?? "", unit)} · perubahan {item.changeValue !== null && item.changeValue > 0 ? "+" : ""}{formatMacroValue(String(item.changeValue ?? ""), unit)}</span></div>;
+      return <div key={item.seriesId}><strong>{label}</strong><span>{formatMacroValue(item.currentValue, unit)} dibanding {formatMacroValue(item.baselineValue ?? "", unit)} · perubahan {item.changeValue !== null && item.changeValue > 0 ? "+" : ""}{formatBaselineDelta(item.changeValue)}{unit ? ` ${unit}` : ""}</span></div>;
     })}</div>}
   </section>;
 }
