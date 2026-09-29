@@ -126,7 +126,7 @@ function IntradayEventResponseCard({ data }: { data: IntradayEventMonitor }) {
               const pre = data.ratesReconstruction?.points.find((item) => item.role === "PRE");
               const change = role !== "PRE" && point?.price !== null && point?.price !== undefined && pre?.price
                 ? ((point.price - pre.price) / pre.price) * 100 : undefined;
-              return <td key={role} style={{ textAlign: "right", padding: ".6rem" }}>{role === "PRE" ? value(point?.price) : move(change)}</td>;
+              return <td key={role} style={{ textAlign: "right", padding: ".6rem" }}>{role === "PRE" ? value(point?.price ?? undefined) : move(change)}</td>;
             })}</tr> : null}
             {SERIES.map((series) => <tr key={series.key}><th style={{ textAlign: "left", padding: ".6rem" }}>{series.label}</th>{ROLES.map((role) => {
               const item = data.moves.find((entry) => entry.role === role);
