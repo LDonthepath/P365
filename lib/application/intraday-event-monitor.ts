@@ -1,6 +1,8 @@
 import "server-only";
 import { EVENT_WINDOW_POLICY_V1, type EventWindowRole } from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
+import type { EventSurpriseAssessment } from "../domain/event-surprise";
+import { assessRepositoryBackedEventSurprise } from "./event-surprise";
 import {
   canonicalRepositories,
   historicalEconomicEventResultRepository,
@@ -36,6 +38,7 @@ export type IntradayEventMonitor = {
   previous?: number;
   unit?: string;
   resultSource?: string;
+  surprise?: EventSurpriseAssessment;
   moves: IntradayEventMove[];
   missingRequirements: number;
   windowStatus: IntradayWindowStatus;
@@ -158,7 +161,6 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
   const latestCapturedAt = ordered[ordered.length - 1].snapshot.capturedAt;
   const results = await historicalEconomicEventResultRepository.findHistory({
     eventIdentityKey: latestIdentity,
-    sourceId: event.sourceId,
     retrievedAtOnOrBefore: latestCapturedAt,
     order: "DESC",
     limit: 20,
@@ -166,6 +168,15 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
   const result = results.find((item) =>
     item.actual !== undefined || item.expected !== undefined || item.previous !== undefined);
   const t0 = String(ordered[0].snapshot.metadata?.t0 ?? event.releasedAt ?? event.scheduledAt ?? "");
+  const surprise = result?.sourceId && t0
+    ? await assessRepositoryBackedEventSurprise({
+        eventIdentityKey: latestIdentity,
+        sourceId: result.sourceId,
+        releaseAt: t0,
+        asOf: latestCapturedAt,
+        ...(result.expectedType ? { expectedType: result.expectedType } : {}),
+      }, historicalEconomicEventResultRepository)
+    : undefined;
   const missingRequirements = ordered.reduce(
     (sum, item) => sum + item.snapshot.missingRequirements.length, 0);
 
@@ -182,6 +193,7 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
       ...(result?.previous !== undefined ? { previous: result.previous } : {}),
       ...(result?.unit ? { unit: result.unit } : {}),
       ...(result?.sourceId ? { resultSource: result.sourceId } : {}),
+      ...(surprise ? { surprise } : {}),
       moves,
       missingRequirements,
       windowStatus: windowStatus({ t0, byRole, missingRequirements, now }),
