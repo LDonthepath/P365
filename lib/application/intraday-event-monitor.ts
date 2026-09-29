@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { EVENT_WINDOW_POLICY_V1, type EventWindowRole } from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { EventSurpriseAssessment } from "../domain/event-surprise";
@@ -203,6 +204,12 @@ async function buildMonitorForIdentity(
   };
 }
 
+const cachedHistoricalRatesReconstruction = unstable_cache(
+  (t0: string) => reconstructHistoricalZtEvent(t0),
+  ["cal-001-historical-zt-reconstruction"],
+  { revalidate: 24 * 60 * 60 },
+);
+
 async function reconstructRatesContext(
   t0: string,
 ): Promise<IntradayRatesReconstruction | null> {
@@ -211,7 +218,7 @@ async function reconstructRatesContext(
     const timeoutResult = new Promise<null>((resolve) => {
       timeout = setTimeout(() => resolve(null), RATES_CONTEXT_TIMEOUT_MS);
     });
-    const reconstruction = reconstructHistoricalZtEvent(t0)
+    const reconstruction = cachedHistoricalRatesReconstruction(t0)
       .then((result): IntradayRatesReconstruction | null =>
         result.status === "OK"
           ? {
