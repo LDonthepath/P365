@@ -102,12 +102,12 @@ export async function fetchMassiveZtContracts(date: string): Promise<ProviderRes
 }
 
 function ns(iso: string): string {
-  return (BigInt(new Date(iso).getTime()) * 1_000_000n).toString();
+  return (BigInt(new Date(iso).getTime()) * BigInt(1_000_000)).toString();
 }
 
 function isoFromNs(value: number | string): string | null {
   try {
-    const millis = Number(BigInt(String(value)) / 1_000_000n);
+    const millis = Number(BigInt(String(value)) / BigInt(1_000_000));
     return Number.isFinite(millis) ? new Date(millis).toISOString() : null;
   } catch {
     return null;
