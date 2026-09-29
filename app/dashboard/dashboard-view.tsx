@@ -12,6 +12,7 @@ import { buildBaselinePresentations, type BaselinePresentation } from "@/lib/pre
 import { logout, refreshDashboardData } from "./actions";
 import { EventRiskWindowPanel } from "./event-risk-window-panel";
 import { IntradayEventResponsePanel } from "./intraday-event-response-panel";
+import { MvpFactualContextPanel } from "./mvp-factual-context-panel";
 
 type Menu = "overview" | "heatmap" | "macro" | "crypto" | "context" | "intelligence" | "evidence";
 const menuItems: { id: Menu; label: string }[] = [
@@ -310,28 +311,6 @@ function CryptoMarketPanel({ observations, providerHealth }: { observations: Obs
   </section>;
 }
 
-function OverviewMarketNow({ observations }: { observations: Observation[] }) {
-  const definitions = [
-    { id: "btc.spot.usd", label: "BITCOIN", unit: "USD" as const },
-    { id: "dxy.index.usd", label: "DXY", unit: "INDEX" as const },
-    { id: "gold.futures.usd", label: "EMAS", unit: "USD" as const },
-  ];
-  const items = definitions.map((definition) => {
-    const observation = observations.find((item) => item.subject === definition.id);
-    return { ...definition, observation };
-  });
-
-  return <section className="panel intraday-now" aria-labelledby="intraday-now-title">
-    <div className="panel-label"><span>KONDISI PASAR SEKARANG</span><span>BTC · DXY · EMAS</span></div>
-    <div className="intraday-now-head"><div><h2 id="intraday-now-title">Konteks intraday utama</h2><p className="lead-copy">Tiga pasar utama untuk membaca kondisi Bitcoin. Angka yang tidak terbaru tetap ditandai dan tidak diperlakukan sebagai data live.</p></div></div>
-    <div className="intraday-now-grid">{items.map(({ id, label, unit, observation }) => <article className="intraday-now-item" key={id}>
-      <div className="intraday-now-label"><span>{label}</span><span className={`intraday-quality ${observation?.quality === "FRESH" ? "fresh" : "attention"}`}>{observation?.quality === "FRESH" ? "TERBARU" : observation ? "PERLU DICEK" : "BELUM ADA"}</span></div>
-      <strong>{observation && numberValue(observation.value) !== null ? (unit === "USD" ? formatMoney(numberValue(observation.value)!) : numberValue(observation.value)!.toFixed(2)) : "—"}</strong>
-      <small>{observation ? relativeTimeID(observation.observedAt) : "Data belum tersedia"}</small>
-    </article>)}</div>
-  </section>;
-}
-
 function OverviewWhatChanged({ observations, baselines }: { observations: Observation[]; baselines: BaselinePresentation[] }) {
   const validChanges = baselines.filter((item) => item.status === "VALID" && item.changeValue !== null);
   return <section className="panel overview-change-layer" aria-labelledby="what-changed-title">
@@ -422,7 +401,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
 
     <div className="dashboard-content" role="tabpanel">
       {activeMenu === "overview" && <>
-        <OverviewMarketNow observations={observations} />
+        <MvpFactualContextPanel data={data.mvpFactualContext} />
         <div className="intraday-priority-grid">
           <OverviewWhatChanged observations={observations} baselines={baselinePresentations} />
           <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} />
