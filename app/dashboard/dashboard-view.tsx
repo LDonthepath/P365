@@ -334,22 +334,15 @@ function OverviewMarketNow({ observations }: { observations: Observation[] }) {
 
 function OverviewWhatChanged({ observations, baselines }: { observations: Observation[]; baselines: BaselinePresentation[] }) {
   const validChanges = baselines.filter((item) => item.status === "VALID" && item.changeValue !== null);
-  const staleBaselines = baselines.filter((item) => item.status === "STALE");
   return <section className="panel overview-change-layer" aria-labelledby="what-changed-title">
-    <div className="panel-label"><span>02 / WHAT CHANGED</span><span>FACTUAL BASELINE</span></div>
+    <div className="panel-label"><span>APA YANG BERUBAH</span><span>FAKTUAL</span></div>
     <div className="change-layer-grid">
       <div>
-        <h2 id="what-changed-title">Perubahan faktual tersedia untuk {validChanges.length} seri.</h2>
-        <p className="lead-copy">Layer ini hanya membandingkan observasi terbaru dengan factual baseline yang valid. Delta tidak diterjemahkan menjadi arah pasar, regime, surprise, atau implikasi trading.</p>
-      </div>
-      <div className="state-meta">
-        <div><span>OBSERVASI TERSEDIA</span><strong>{observations.length}</strong></div>
-        <div><span>BASELINE VALID</span><strong>{validChanges.length}</strong></div>
-        <div><span>BASELINE STALE</span><strong>{staleBaselines.length}</strong></div>
-        <div><span>STATUS</span><strong>{baselines.length ? "FACTUAL ONLY" : "NO BASELINE"}</strong></div>
+        <h2 id="what-changed-title">Perubahan penting terbaru</h2>
+        <p className="lead-copy">Perbandingan observasi terbaru dengan data pembanding yang valid. Ditampilkan sebagai fakta, tanpa kesimpulan arah pasar.</p>
       </div>
     </div>
-    {validChanges.length > 0 && <div className="monitor-list" style={{ marginTop: "1rem" }}>{validChanges.slice(0, 6).map((item) => {
+    {validChanges.length > 0 && <div className="monitor-list" style={{ marginTop: "1rem" }}>{validChanges.slice(0, 4).map((item) => {
       const observation = observations.find((candidate) => String(candidate.metadata?.seriesId ?? "") === item.seriesId);
       const unit = String(observation?.metadata?.unit ?? "");
       const label = MACRO_SERIES_LABELS[item.seriesId] ?? observation?.subject ?? item.seriesId;
