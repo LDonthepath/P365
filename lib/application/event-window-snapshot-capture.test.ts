@@ -35,11 +35,14 @@ function assert(condition: boolean, label: string): void {
 
 class StaticEventResultHistory
 implements HistoricalEconomicEventResultRepository {
+  queries = 0;
+
   constructor(private readonly results: EconomicEventResult[] = []) {}
 
   async findHistory(
     query: EconomicEventResultHistoryQuery,
   ): Promise<EconomicEventResult[]> {
+    this.queries += 1;
     return this.results
       .filter((result) =>
         result.eventIdentityKey === query.eventIdentityKey
@@ -136,7 +139,10 @@ function seriesObservationPair(
   ];
 }
 
-async function fixture(eventRetrievedAt = "2026-10-15T12:00:00.000Z") {
+async function fixture(
+  eventRetrievedAt = "2026-10-15T12:00:00.000Z",
+  eventResults: EconomicEventResult[] = [],
+) {
   const canonicalEvents = new InMemoryEventRepository();
   await canonicalEvents.save(event("biquote-cpi", eventRetrievedAt));
   const historicalEvents = new InMemoryHistoricalEventRepository(canonicalEvents);
@@ -170,16 +176,18 @@ async function fixture(eventRetrievedAt = "2026-10-15T12:00:00.000Z") {
   ]);
 
   const snapshots = new InMemoryMarketSnapshotRepository();
+  const eventResultHistory = new StaticEventResultHistory(eventResults);
 
   return {
     event: event("biquote-cpi", eventRetrievedAt),
     observations,
     snapshots,
+    eventResultHistory,
     repositories: {
       events: historicalEvents,
       observations,
       canonicalObservations: observations,
-      eventResults: new StaticEventResultHistory(),
+      eventResults: eventResultHistory,
       snapshots,
       snapshotHistory: snapshots,
     },
@@ -266,6 +274,47 @@ async function main(): Promise<void> {
     })).length,
     2,
     "idempotent retry preserves two rows",
+  );
+
+  const completeExpectation: EconomicEventResult = {
+    id: "forecast-cpi",
+    eventId: "biquote-cpi",
+    eventIdentityKey: first.event.identity!.key,
+    expected: 2.8,
+    expectedType: "FORECAST",
+    unit: "%",
+    period: "Sep 2026",
+    retrievedAt: "2026-10-15T12:20:00.000Z",
+    sourceId: "biquote",
+    evidenceId: "evidence-forecast-cpi",
+  };
+  const complete = await fixture(
+    "2026-10-15T12:00:00.000Z",
+    [completeExpectation],
+  );
+  const completeFirst = await runEventWindowSnapshotCapture(
+    { now: "2026-10-15T12:36:00.000Z" },
+    { repositories: complete.repositories },
+  );
+  assertEqual(
+    completeFirst.slots.map((slot) => slot.snapshotQuality),
+    ["COMPLETE", "COMPLETE"],
+    "qualified expectation produces terminal COMPLETE slots",
+  );
+  const expectationQueriesAfterFirstRun = complete.eventResultHistory.queries;
+  const completeRetry = await runEventWindowSnapshotCapture(
+    { now: "2026-10-15T12:36:30.000Z" },
+    { repositories: complete.repositories },
+  );
+  assertEqual(
+    completeRetry.alreadyCaptured,
+    2,
+    "terminal COMPLETE retry remains idempotent",
+  );
+  assertEqual(
+    complete.eventResultHistory.queries,
+    expectationQueriesAfterFirstRun,
+    "terminal COMPLETE retry skips expectation reconstruction",
   );
 
   const repair = await fixture();
