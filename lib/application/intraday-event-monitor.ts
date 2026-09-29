@@ -45,7 +45,7 @@ export type IntradayEventMonitor = {
 };
 
 export type IntradayEventMonitorResult =
-  | { status: "OK"; data: IntradayEventMonitor }
+  | { status: "OK"; data: IntradayEventMonitor[] }
   | { status: "EMPTY" }
   | { status: "ERROR" };
 
@@ -88,18 +88,11 @@ function windowStatus(input: {
   return { status: "INCOMPLETE", missingRole };
 }
 
-async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitorResult> {
-  const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const snapshots = await historicalMarketSnapshotRepository.findHistory({
-    scope: EVENT_WINDOW_POLICY_V1.snapshotScope,
-    capturedAtOnOrAfter: since,
-    capturedAtOnOrBefore: now.toISOString(),
-    order: "DESC",
-    limit: 100,
-  });
-  const latestIdentity = snapshots.map(identityOf).find((value): value is string => Boolean(value));
-  if (!latestIdentity) return { status: "EMPTY" };
-
+async function buildMonitorForIdentity(
+  latestIdentity: string,
+  snapshots: MarketSnapshot[],
+  now: Date,
+): Promise<IntradayEventMonitor> {
   const sameEvent = snapshots.filter((snapshot) => identityOf(snapshot) === latestIdentity);
   const byRole = new Map<EventWindowRole, MarketSnapshot>();
   for (const snapshot of sameEvent) {
@@ -112,15 +105,13 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
     const snapshot = byRole.get(role);
     return snapshot ? [{ role, snapshot }] : [];
   });
-  if (!ordered.length) return { status: "EMPTY" };
+  if (!ordered.length) throw new Error("Intraday event has no recognized capture roles.");
 
   const eventRef = ordered[0].snapshot.eventRefs.find((ref) => ref.key === latestIdentity);
   if (!eventRef) throw new Error("Intraday event snapshot is missing its primary event reference.");
   const event = await canonicalRepositories.events.findById(eventRef.eventId);
   if (!event) throw new Error("Intraday event snapshot references an unavailable canonical event.");
 
-  // Only resolve observations referenced by the selected role snapshots, and
-  // de-duplicate IDs before repository reads. No unrelated history is loaded.
   const observationIds = [...new Set(ordered.flatMap(({ snapshot }) =>
     snapshot.observationRefs.map((ref) => ref.observationId)))];
   const resolved = await Promise.all(
@@ -181,24 +172,56 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
     (sum, item) => sum + item.snapshot.missingRequirements.length, 0);
 
   return {
-    status: "OK",
-    data: {
-      eventIdentityKey: latestIdentity,
-      eventId: event.id,
-      subject: event.subject,
-      jurisdiction: event.identity?.jurisdiction ?? event.jurisdiction ?? "UNKNOWN",
-      t0,
-      ...(result?.actual !== undefined ? { actual: result.actual } : {}),
-      ...(result?.expected !== undefined ? { expected: result.expected } : {}),
-      ...(result?.previous !== undefined ? { previous: result.previous } : {}),
-      ...(result?.unit ? { unit: result.unit } : {}),
-      ...(result?.sourceId ? { resultSource: result.sourceId } : {}),
-      ...(surprise ? { surprise } : {}),
-      moves,
-      missingRequirements,
-      windowStatus: windowStatus({ t0, byRole, missingRequirements, now }),
-    },
+    eventIdentityKey: latestIdentity,
+    eventId: event.id,
+    subject: event.subject,
+    jurisdiction: event.identity?.jurisdiction ?? event.jurisdiction ?? "UNKNOWN",
+    t0,
+    ...(result?.actual !== undefined ? { actual: result.actual } : {}),
+    ...(result?.expected !== undefined ? { expected: result.expected } : {}),
+    ...(result?.previous !== undefined ? { previous: result.previous } : {}),
+    ...(result?.unit ? { unit: result.unit } : {}),
+    ...(result?.sourceId ? { resultSource: result.sourceId } : {}),
+    ...(surprise ? { surprise } : {}),
+    moves,
+    missingRequirements,
+    windowStatus: windowStatus({ t0, byRole, missingRequirements, now }),
   };
+}
+
+async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitorResult> {
+  const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const snapshots = await historicalMarketSnapshotRepository.findHistory({
+    scope: EVENT_WINDOW_POLICY_V1.snapshotScope,
+    capturedAtOnOrAfter: since,
+    capturedAtOnOrBefore: now.toISOString(),
+    order: "DESC",
+    limit: 100,
+  });
+
+  const identities = [...new Set(snapshots.map(identityOf).filter((value): value is string => Boolean(value)))];
+  if (!identities.length) return { status: "EMPTY" };
+
+  // The panel represents the latest release cohort, not one arbitrary latest snapshot.
+  // Events sharing the same t0 remain independent monitor cards with independent evidence.
+  const t0ByIdentity = new Map<string, number>();
+  for (const snapshot of snapshots) {
+    const identity = identityOf(snapshot);
+    if (!identity || t0ByIdentity.has(identity)) continue;
+    const rawT0 = snapshot.metadata?.t0;
+    const parsed = typeof rawT0 === "string" ? Date.parse(rawT0) : Number.NaN;
+    if (Number.isFinite(parsed)) t0ByIdentity.set(identity, parsed);
+  }
+  const latestT0 = Math.max(...t0ByIdentity.values());
+  const selectedIdentities = Number.isFinite(latestT0)
+    ? identities.filter((identity) => t0ByIdentity.get(identity) === latestT0)
+    : identities.slice(0, 1);
+
+  const data = await Promise.all(
+    selectedIdentities.map((identity) => buildMonitorForIdentity(identity, snapshots, now)),
+  );
+  data.sort((a, b) => a.subject.localeCompare(b.subject));
+  return data.length ? { status: "OK", data } : { status: "EMPTY" };
 }
 
 export async function getIntradayEventMonitor(
