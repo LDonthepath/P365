@@ -42,14 +42,28 @@ export async function reconstructHistoricalZtEvent(eventAt: string): Promise<Rat
     return { status: contracts.status === "ERROR" ? "ERROR" : "UNAVAILABLE", reason: contracts.message ?? "No active ZT contract found" };
   }
 
-  // Explicit research policy: nearest-maturity active single ZT contract.
-  // The selected ticker is returned so roll-period samples remain auditable.
-  const contract = contracts.data[0];
+  // Research policy: choose the nearest-maturity active single ZT contract
+  // that has observable 1-minute bars in the event window. "Active" alone does
+  // not establish that a listed contract is trading during the sampled window.
   const from = new Date(eventMs - 7 * 60_000).toISOString();
   const to = new Date(eventMs + 62 * 60_000).toISOString();
-  const bars = await fetchMassiveMinuteBars({ ticker: contract.ticker, from, to });
-  if (bars.status !== "SUCCESS" || !bars.data.length) {
-    return { status: bars.status === "ERROR" ? "ERROR" : "UNAVAILABLE", reason: bars.message ?? "No 1-minute ZT bars available" };
+  let contract = null;
+  let bars = null;
+
+  for (const candidate of contracts.data) {
+    const candidateBars = await fetchMassiveMinuteBars({ ticker: candidate.ticker, from, to });
+    if (candidateBars.status === "ERROR") {
+      return { status: "ERROR", reason: candidateBars.message ?? "Massive minute-bar request failed" };
+    }
+    if (candidateBars.status === "SUCCESS" && candidateBars.data.length) {
+      contract = candidate;
+      bars = candidateBars;
+      break;
+    }
+  }
+
+  if (!contract || !bars) {
+    return { status: "UNAVAILABLE", reason: "No active ZT contract has 1-minute bars in the event window" };
   }
 
   const points = (Object.entries(OFFSETS) as Array<[RatesReconstructionRole, number]>).map(([role, minutes]) => {
