@@ -1,12 +1,12 @@
 # P365 US Spot Bitcoin ETF Daily Net Flow Evidence Contract v0.1
 
-**Status:** **CONTRACT FROZEN / PROVISIONAL PROVIDER APPROVED — RUNTIME ELIGIBLE**
+**Status:** **RUNTIME IMPLEMENTED / LIVE ENTITLEMENT & PRODUCTION ACTIVATION PENDING**
 
-**Checkpoint:** CRYPTO-FLOW-001A.1 provisional maturity and owner-approved runtime boundary
+**Checkpoint:** CRYPTO-FLOW-001B factual runtime and durable-history integration
 
 **Canonical series key:** `crypto.us_spot_btc_etf_net_flow.usd`
 
-**Runtime status:** **MISSING / ELIGIBLE FOR CRYPTO-FLOW-001B AFTER OWNER MERGE**
+**Runtime status:** **IMPLEMENTED / NOT PRODUCTION-ACTIVE**
 
 **Primary provider verdict:** **SoSoValue PROVISIONAL PROVIDER APPROVED — INTERNAL/NON-COMMERCIAL MVP**
 
@@ -16,7 +16,7 @@
 
 This document freezes the factual meaning, semantic classification, time rules, revision behavior, provisional maturity policy, and source-qualification boundary for US spot Bitcoin ETF daily net flow. It selects SoSoValue as the first provider for the P365 internal/non-commercial MVP and retains Farside and CoinGlass as references or fallbacks.
 
-This checkpoint does not implement provider integration, credentials, normalization, ingestion, persistence, scheduling, UI, or reasoning. After owner merge, CRYPTO-FLOW-001B may implement and test the bounded runtime defined here without changing FND-018A Observation identity.
+CRYPTO-FLOW-001B implements the bounded provider, normalization, historical-ingestion, durable-history read-model, and regression-test paths defined here without changing FND-018A Observation identity. No scheduler, production backfill/write, UI, or reasoning is activated. No authorized `SOSOVALUE_API_KEY` was available in the implementation environment, so live entitlement and the actual authenticated response shape remain unverified.
 
 ## 2. Reasoning question
 
@@ -162,7 +162,7 @@ SoSoValue's official summary-history documentation supports `start_date`, `end_d
 
 Historical and bounded BACKFILL rows may be canonicalized only when they satisfy `SOSOVALUE_ETF_FLOW_MATURITY_V0_1`. In a multi-date response, the newest valid provider trading date is excluded and only earlier valid dates are maturity-eligible. A BACKFILL candidate must be evaluated against provider data containing at least one valid trading date later than the candidate; it must not appear mature merely because a requested range ended on that date or because it is not today's date.
 
-CRYPTO-FLOW-001B must define and test a bounded rolling recheck window sufficient to detect recent provider corrections while remaining inside the API quota. This contract does not freeze an unnecessarily large window.
+CRYPTO-FLOW-001B implements the rolling recheck as one authenticated FORWARD request with `limit=50`. It validates the bounded response, excludes the newest valid provider date, and canonicalizes all earlier maturity-eligible rows returned. Unchanged facts dedupe and changed facts append under FND-018A without an extra provider call.
 
 ## 11. Revision semantics
 
@@ -240,7 +240,7 @@ Do not fabricate native instrument IDs, publication/release timestamps, constitu
 
 This metric must use US ETF trading-session semantics, not a 24/7 crypto calendar and not generic wall-clock daily freshness.
 
-A future read model may treat only the latest matured-eligible trading session as current background. It must distinguish:
+The CRYPTO-FLOW-001B read model returns only stored maturity-eligible canonical facts and preserves acquisition quality as `UNKNOWN`. It exposes the latest fact, previous actual trading-session fact, and at most five recent actual sessions without interpolation. It does not infer current/stale status. A future calendar-qualified layer may distinguish:
 
 - matured-eligible latest canonical session;
 - provisional newest provider trading date;
@@ -248,7 +248,7 @@ A future read model may treat only the latest matured-eligible trading session a
 - holiday/weekend no-session;
 - unknown exchange/session status.
 
-Exact session calendar and acquisition-lag behavior must be qualified in CRYPTO-FLOW-001B. This document does not invent a close, publication, or provider-finality time.
+Exact session calendar and acquisition-lag behavior remain unqualified. CRYPTO-FLOW-001B therefore does not invent a close, publication, provider-finality time, or market-recency classification.
 
 ## 15. SoSoValue qualification
 
@@ -372,27 +372,27 @@ This is a product-governance risk acceptance and source-qualification record, no
 
 ## 19. Runtime gate
 
-After owner merge of CRYPTO-FLOW-001A.1, CRYPTO-FLOW-001B may begin. The provider-selection gate is closed by the owner's SoSoValue decision, and canonical eligibility is governed by provider-date advancement rather than guessed provider finality.
+CRYPTO-FLOW-001B is implemented against the provider-selection and provider-date-advancement contract. The server-only adapter calls the official resource with `symbol=BTC`, `country_code=US`, and `limit=50`, enforces a 10-second timeout and FRESH/no-store acquisition, and strictly validates unique descending trading dates plus finite numeric `total_net_inflow` values. It supports the documented bare row array and common `data` envelope only; the exact authenticated live shape remains pending because no authorized key was available.
 
-CRYPTO-FLOW-001B must implement and prove:
+Implemented and deterministically tested:
 
-1. authenticated Demo/free entitlement actually works;
-2. the exact live response schema and documented fields;
-3. strict missing/zero validation;
-4. `SOSOVALUE_ETF_FLOW_MATURITY_V0_1` selection;
-5. unconditional newest-valid-provider-date exclusion;
-6. a bounded, quota-safe rolling correction recheck window;
-7. deterministic provider-trading-date anchoring;
-8. exact semantics and provenance, including maturity policy and completion basis;
-9. unchanged FND-018A idempotency and append-only correction behavior;
-10. point-in-time historical reads;
-11. server-only API-key handling;
-12. quota-safe acquisition;
-13. no UI or reasoning expansion.
+1. strict missing/null/malformed/non-finite rejection and explicit numeric zero acceptance;
+2. `SOSOVALUE_ETF_FLOW_MATURITY_V0_1` selection and unconditional newest-row exclusion;
+3. one-request `limit=50` FORWARD rolling correction recheck;
+4. SoSoValue-only BACKFILL with an inclusive 28-calendar-day maximum, same-response later-date witness, and returned-coverage proof;
+5. deterministic trading-date midnight-UTC anchoring;
+6. exact `MARKET / CRYPTO / FLOW / US / ETF / BTC / USD` semantics and provenance;
+7. unchanged FND-018A idempotency and append-only correction behavior;
+8. bounded point-in-time history reads with revision collapse and at most five actual sessions;
+9. server-only credential handling, 10-second timeout, and explicit provider error classification;
+10. provider failure isolation in multi-provider FORWARD runs;
+11. no UI, reasoning, scheduler, or production-write expansion.
+
+Remaining activation gates are an authorized authenticated smoke read proving Demo/free entitlement and exact live response shape, owner audit/merge, deployment, and a separately approved CRYPTO-FLOW-001C production scheduler/backfill activation. Current status is **RUNTIME IMPLEMENTED / LIVE ENTITLEMENT & PRODUCTION ACTIVATION PENDING**.
 
 The historical provider-native universe remains unversioned and provider-owned. This known limitation does not authorize constituent reconstruction or invented historical membership.
 
-A guessed wall-clock delay remains insufficient. CRYPTO-FLOW-001B must not claim SoSoValue provider-native `FINAL` status and must fail closed when provider-date advancement cannot be proven.
+A guessed wall-clock delay remains insufficient. The CRYPTO-FLOW-001B runtime does not claim SoSoValue provider-native `FINAL` status and fails closed when provider-date advancement cannot be proven.
 
 ## 20. Future UI semantics
 
@@ -411,10 +411,10 @@ It must not label flow as bullish/bearish, institutional accumulation, BTC deman
 
 ## 21. Non-goals
 
-This contract does not implement or authorize:
+This checkpoint does not implement or authorize:
 
-- provider fetcher, API key, environment variable, or dependency;
-- normalization, ingestion, Supabase, Market Memory writes, backfill, or scheduler;
+- committed credentials, Supabase changes, production Market Memory writes, or scheduler activation;
+- production backfill or live provider-data persistence;
 - dashboard/UI;
 - cumulative ETF-flow signal or percentile;
 - P365 constituent aggregation;
@@ -425,4 +425,4 @@ This contract does not implement or authorize:
 - paid subscription;
 - website scraping or undocumented endpoint use.
 
-The frozen result is one factual flow contract with a provisional owner-approved provider, an explicit sequence-based maturity policy, and a bounded internal/non-commercial runtime boundary. Full production qualification, commercial/public permission, and effective-dated universe methodology remain open.
+The result is one implemented factual flow runtime with a provisional owner-approved provider, an explicit sequence-based maturity policy, and a bounded internal/non-commercial runtime boundary. Live entitlement, production activation, commercial/public permission, and effective-dated universe methodology remain open.

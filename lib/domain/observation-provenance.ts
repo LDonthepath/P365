@@ -1,5 +1,5 @@
 import type { Observation, ObservationProvenance } from "./types";
-import { USD_STABLECOIN_MARKET_CAP_SERIES_KEY } from "./observation-semantics";
+import { BTC_ETF_NET_FLOW_SERIES_KEY, USD_STABLECOIN_MARKET_CAP_SERIES_KEY } from "./observation-semantics";
 
 export const OBSERVATION_PROVENANCE_VERSION = "v1" as const;
 
@@ -9,6 +9,7 @@ export const OBSERVATION_PROVIDER_RESOURCES = {
   coinGeckoGlobal: "/global",
   yahooChart: "/v8/finance/chart",
   defiLlamaStablecoinChartsAll: "/stablecoincharts/all",
+  soSoValueEtfSummaryHistory: "/etfs/summary-history",
 } as const;
 
 function assertNonEmpty(value: string | undefined, field: string): void {
@@ -149,6 +150,30 @@ export function assertCurrentObservationInvariants(observation: Observation): vo
       || metadataString(observation, "unit") !== "USD"
     ) {
       throw new Error("DefiLlama stablecoin Observation provenance is inconsistent with its canonical fact.");
+    }
+  }
+
+  if (observation.sourceId === "sosovalue-etf-flow") {
+    if (
+      observation.domain !== "MARKET"
+      || seriesKey !== BTC_ETF_NET_FLOW_SERIES_KEY
+      || provenance.providerResource !== OBSERVATION_PROVIDER_RESOURCES.soSoValueEtfSummaryHistory
+      || provenance.observationDate !== observation.observedAt.slice(0, 10)
+      || provenance.observationDate !== metadataString(observation, "providerTradingDate")
+      || provenance.nativeSymbol !== "BTC"
+      || metadataString(observation, "providerSymbol") !== "BTC"
+      || metadataString(observation, "countryCode") !== "US"
+      || metadataString(observation, "aggregateField") !== "total_net_inflow"
+      || metadataString(observation, "unit") !== "USD"
+      || metadataString(observation, "frequency") !== "DAILY"
+      || metadataString(observation, "providerResource") !== OBSERVATION_PROVIDER_RESOURCES.soSoValueEtfSummaryHistory
+      || metadataString(observation, "maturityPolicy") !== "SOSOVALUE_ETF_FLOW_MATURITY_V0_1"
+      || metadataString(observation, "completionBasis") !== "P365_PROVIDER_DATE_ADVANCEMENT"
+      || provenance.nativeSeriesId !== undefined
+      || provenance.nativeInstrumentId !== undefined
+      || provenance.vintageDate !== undefined
+    ) {
+      throw new Error("SoSoValue ETF-flow Observation provenance is inconsistent with its canonical fact.");
     }
   }
 }

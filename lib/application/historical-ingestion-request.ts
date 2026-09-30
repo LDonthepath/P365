@@ -5,6 +5,7 @@ import {
   type HistoricalIngestionOptions,
   type HistoricalIngestionProvider,
 } from "./historical-ingestion";
+import { soSoValueBackfillRangeError } from "../data/sosovalue-etf-flow";
 
 export type HistoricalIngestionRequestParseResult =
   | { ok: true; options: HistoricalIngestionOptions }
@@ -33,8 +34,8 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
   }
   const mode: HistoricalIngestionMode = rawMode === "BACKFILL" ? "BACKFILL" : "FORWARD";
   if (mode === "FORWARD") return { ok: true, options: { mode, providers } };
-  if (providers.length !== 1 || !["fred", "defillama"].includes(providers[0])) {
-    return { ok: false, error: "BACKFILL requires exactly one supported provider: fred or defillama" };
+  if (providers.length !== 1 || !["fred", "defillama", "sosovalue"].includes(providers[0])) {
+    return { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, or sosovalue" };
   }
 
   const from = parseDate(searchParams.get("from"));
@@ -44,6 +45,11 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
     const rangeError = defiLlamaBackfillRangeError({ from, to });
     if (rangeError) return { ok: false, error: rangeError };
     return { ok: true, options: { mode, providers, defillama: { from, to } } };
+  }
+  if (providers[0] === "sosovalue") {
+    const rangeError = soSoValueBackfillRangeError({ from, to });
+    if (rangeError) return { ok: false, error: rangeError };
+    return { ok: true, options: { mode, providers, sosovalue: { from, to } } };
   }
   return { ok: true, options: { mode, providers, fred: { observationStart: from, observationEnd: to, limit: 100 } } };
 }

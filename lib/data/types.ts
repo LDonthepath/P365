@@ -29,6 +29,7 @@ export type ProviderId =
   | "forex-factory"
   | "coingecko"
   | "defillama"
+  | "sosovalue"
   | "fred"
   | "federal-reserve"
   | "biquote"
