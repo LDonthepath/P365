@@ -118,7 +118,7 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
   const normalized = items.map((item) => {
     const domain = item.metricId.startsWith("crypto.") ? "MARKET" as const : "ASSET" as const;
     const value = String(item.value);
-    const metadata = { ...item.metadata, symbol: item.symbol, metricId: item.metricId, freshnessCalendar: item.freshnessCalendar };
+    const metadata = { ...item.metadata, symbol: item.symbol, metricId: item.metricId, freshnessCalendar: item.freshnessCalendar, observationEffectiveAt: item.observedAt };
     const identity = buildObservationIdentity({
       domain,
       seriesKey: item.metricId,
@@ -173,7 +173,7 @@ export function stablecoinLiquidityToCanonicalRecords(
   const sourceId = P365_SOURCES.defiLlamaStablecoins.id;
   const normalized = items.map((item) => {
     const value = String(item.value);
-    const metadata = { ...item.metadata, metricId: item.metricId, unit: item.unit, pegType: item.pegType };
+    const metadata = { ...item.metadata, metricId: item.metricId, unit: item.unit, pegType: item.pegType, observationEffectiveAt: item.observedAt };
     const identity = buildObservationIdentity({
       domain: "MARKET",
       seriesKey: item.metricId,
@@ -229,7 +229,7 @@ export function btcEtfFlowToCanonicalRecords(
   const sourceId = P365_SOURCES.soSoValueEtfFlow.id;
   const normalized = items.map((item) => {
     const value = String(item.value);
-    const metadata = { ...item.metadata, metricId: item.metricId };
+    const metadata = { ...item.metadata, metricId: item.metricId, observationEffectiveAt: item.observedAt };
     const identity = buildObservationIdentity({
       domain: "MARKET",
       seriesKey: item.metricId,
@@ -285,6 +285,7 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
       unit: item.series.unit,
       source: item.series.source,
       observationDate: item.observationDate,
+      observationEffectiveAt: item.observationDate,
       releasedAt: item.releasedAt,
       previousValue: item.previousValue,
       vintageDate: item.vintageDate,

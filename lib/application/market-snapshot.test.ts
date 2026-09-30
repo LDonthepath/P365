@@ -7,7 +7,7 @@ import {
   type MarketSnapshotRequest,
 } from "../domain/market-snapshot";
 import type { PricingBaseline } from "../domain/pricing-baseline";
-import type { Event, Observation } from "../domain/types";
+import type { Event, Evidence, Observation } from "../domain/types";
 import {
   marketMemoryDedupeKey,
   marketMemoryEffectiveAt,
@@ -351,6 +351,32 @@ async function main(): Promise<void> {
     marketMemoryDedupeKey("SNAPSHOT", snapshot),
     "SNAPSHOT:" + snapshot.id + ":" + capturedAt,
     "snapshot Market Memory dedupe key is immutable",
+  );
+
+  const observationEvidenceA: Evidence = {
+    id: "evidence-observation-v1-test",
+    sourceId: "sosovalue-etf-flow",
+    kind: "OBSERVATION",
+    subject: "crypto.us_spot_btc_etf_net_flow.usd",
+    content: "same factual revision",
+    capturedAt: "2026-09-30T15:31:54.000Z",
+    retrievedAt: "2026-09-30T15:31:54.000Z",
+    metadata: { observationEffectiveAt: "2026-09-28T00:00:00.000Z" },
+  };
+  const observationEvidenceB: Evidence = {
+    ...observationEvidenceA,
+    capturedAt: "2026-09-30T15:37:00.000Z",
+    retrievedAt: "2026-09-30T15:37:00.000Z",
+  };
+  assertEqual(
+    marketMemoryEffectiveAt("EVIDENCE", observationEvidenceA),
+    "2026-09-28T00:00:00.000Z",
+    "observation Evidence effective time uses semantic observation time",
+  );
+  assertEqual(
+    marketMemoryDedupeKey("EVIDENCE", observationEvidenceA),
+    marketMemoryDedupeKey("EVIDENCE", observationEvidenceB),
+    "observation Evidence refetch keeps a stable Market Memory dedupe key",
   );
 
   const repository = new InMemoryMarketSnapshotRepository();
