@@ -120,7 +120,24 @@ Flow for trading date T may become knowable only after the session and after pro
 
 ## 9. Partial/final semantics
 
-A daily aggregate must distinguish `FINAL`/`COMPLETE` from `PARTIAL`, `ESTIMATED`, or `PENDING` when the provider exposes such status. Partial and final values for the same trading date are factual revisions and must remain distinguishable.
+> Partial, estimated, pending, or otherwise non-qualified-complete ETF flow aggregates **MUST NOT** be persisted as canonical `crypto.us_spot_btc_etf_net_flow.usd` Observations.
+
+The v0.1 canonicalization boundary is:
+
+```text
+PARTIAL / ESTIMATED / PENDING / otherwise non-qualified-complete
+→ not canonicalized
+
+qualified FINAL / COMPLETE
+→ canonical Observation
+
+later changed canonical factual value
+→ append-only factual revision under FND-018A
+```
+
+Provider-stage partial data may exist transiently during acquisition, but it is not a canonical factual Observation under this v0.1 contract.
+
+If finality changes while the numeric value remains identical, no new factual revision exists under FND-018A. This is why v0.1 excludes partial values from canonical persistence. A future product requirement for durable partial-state history when the numeric value is unchanged requires a separate contract/record family or an explicit identity-evolution checkpoint; it is not solved here.
 
 The audited SoSoValue summary response contains `date`, `total_net_inflow`, `total_value_traded`, `total_net_assets`, and `cum_net_inflow`, but no completion/finality field. Its current ETF list is also not effective-dated. The public SoSoValue dashboard displays an update-status concept, but the official summary-history API contract does not expose it. Consequently, P365 cannot prove from the API response that a same-day aggregate is complete.
 
@@ -151,7 +168,9 @@ MARKET
 
 A changed canonical factual value for the same measurement creates a distinct revision fingerprint and a new append-only Observation. `retrievedAt` remains knowledge/availability time and must not enter the factual revision identity.
 
-Partial, completed, and corrected values must never overwrite earlier Market Memory rows. Preserve an explicit provider finality/revision field if one becomes available. None of the three audited sources documents a canonical vintage/revision identifier for this metric.
+Under FND-018A, the revision fingerprint covers the measurement identity, source, canonical factual value, unit, and frequency. Finality metadata alone does not create a new Observation revision. For the same measurement, a later changed canonical factual value creates a new append-only factual revision; an identical value with a changed finality label does not.
+
+Only qualified completed/final values enter this canonical series, and later factual corrections must never overwrite earlier Market Memory rows. Preserve an explicit provider finality/revision field on the accepted canonical final Observation if one becomes available. None of the three audited sources documents a canonical vintage/revision identifier for this metric.
 
 ## 12. Missing/zero rules
 
@@ -179,8 +198,10 @@ A future canonical Observation must retain at minimum:
 - original unit/scale and any USD conversion rule;
 - provider-native aggregate field name;
 - retrieval timestamp;
-- completion/finality or revision status when available;
+- completion/finality metadata on the accepted canonical final Observation when available;
 - effective-date constituent tickers and methodology/version when available.
+
+Finality/completion metadata may be retained on the accepted canonical final Observation when the provider supplies it. A status-only transition does not automatically create a separate Observation revision under FND-018A.
 
 Do not fabricate native instrument IDs, publication/release timestamps, constituent completeness, or methodology versions. Provider identity remains provenance and must not enter the logical series key.
 
@@ -312,18 +333,22 @@ This is a source-qualification record, not legal advice. Any later permission mu
 
 ## 19. Runtime gate
 
+> The selected provider/policy must allow P365 to determine that a daily aggregate is qualified complete **before** canonical persistence.
+
 CRYPTO-FLOW-001B may begin only after all of these are satisfied:
 
 1. exact endpoint and fields are re-verified;
 2. free-plan historical coverage is confirmed with an authorized key;
 3. provider universe semantics and GBTC/mini-trust treatment are explicit;
-4. partial/final status or an authoritative completion policy is understood;
+4. qualified completion is determinable from an explicit provider finality field or an authoritative completion policy;
 5. trading-date/time semantics are qualified;
 6. missing/zero behavior is known;
 7. append-only revisions can be preserved;
 8. automated API acquisition and durable internal storage are permitted;
 9. internal/non-commercial MVP use is permitted;
 10. the owner explicitly approves the selected provider.
+
+If a provider exposes no explicit finality field, CRYPTO-FLOW-001B remains blocked until an authoritative completion policy is qualified. A guessed wall-clock delay is insufficient.
 
 At CRYPTO-FLOW-001A close, gates 3, 4, 8, and 9 are unresolved for SoSoValue, and live Demo entitlement under gate 2 has not been exercised. Therefore 001B is blocked.
 
