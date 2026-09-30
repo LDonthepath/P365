@@ -567,7 +567,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
             </div>
           </div>
         </details>
-      </>
+      </>}
       {activeMenu === "heatmap" && <MarketHeatmap observations={observations} baselines={baselinePresentations} />}
       {activeMenu === "macro" && <><div className="page-intro"><span>MAKRO</span><h1>Faktor makro yang perlu dipantau</h1><p>Mulai dari rates, inflasi, likuiditas, tenaga kerja, USD, dan pertumbuhan. Buka kartu hanya jika ingin detail indikator.</p></div><div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar"><div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div><h2>Indikator utama</h2>{macroObservations.length ? macroContexts.map((context) => <MacroThemeCard context={context} observations={macroObservations} baselines={baselinesBySeries} expanded={expandedMacroTheme === context.id} onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)} key={context.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div></>}
       {activeMenu === "crypto" && <>
