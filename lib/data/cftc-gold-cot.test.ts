@@ -21,7 +21,7 @@ function row(date: string): Record<string, unknown> {
     swap__positions_spread_all: "35000",
     m_money_positions_long_all: "210000",
     m_money_positions_short_all: "35000",
-    m_money_positions_spread_all: "25000",
+    m_money_positions_spread: "25000",
     other_rept_positions_long: "45000",
     other_rept_positions_short: "30000",
     other_rept_positions_spread: "15000",
