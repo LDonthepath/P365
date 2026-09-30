@@ -81,6 +81,11 @@ export type ParticipantClass =
   | "CORPORATE"
   | "HOUSEHOLD"
   | "NONBANK"
+  | "PRODUCER_MERCHANT_PROCESSOR_USER"
+  | "SWAP_DEALER"
+  | "MANAGED_MONEY"
+  | "OTHER_REPORTABLES"
+  | "NONREPORTABLE"
   | "OTHER";
 
 export type ObservationSemantics = {
