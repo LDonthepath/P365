@@ -1,22 +1,22 @@
 # P365 US Spot Bitcoin ETF Daily Net Flow Evidence Contract v0.1
 
-**Status:** **CONTRACT DEFINED — PROVIDER QUALIFICATION OPEN**
+**Status:** **CONTRACT FROZEN / PROVISIONAL PROVIDER APPROVED — RUNTIME ELIGIBLE**
 
-**Checkpoint:** CRYPTO-FLOW-001A source qualification
+**Checkpoint:** CRYPTO-FLOW-001A.1 provisional maturity and owner-approved runtime boundary
 
 **Canonical series key:** `crypto.us_spot_btc_etf_net_flow.usd`
 
-**Runtime status:** **MISSING / BLOCKED PENDING SOURCE GATES**
+**Runtime status:** **MISSING / ELIGIBLE FOR CRYPTO-FLOW-001B AFTER OWNER MERGE**
 
-**Primary candidate verdict:** **SoSoValue CONDITIONAL CANDIDATE — API USE PERMISSION AND FINALITY/UNIVERSE SEMANTICS REQUIRE CLARIFICATION**
+**Primary provider verdict:** **SoSoValue PROVISIONAL PROVIDER APPROVED — INTERNAL/NON-COMMERCIAL MVP**
 
 **Audit date:** 30 September 2026
 
 ## 1. Purpose
 
-This document freezes the factual meaning, semantic classification, time rules, revision behavior, and source-qualification boundary for US spot Bitcoin ETF daily net flow. It evaluates SoSoValue as the free-first candidate and Farside and CoinGlass as references or fallbacks.
+This document freezes the factual meaning, semantic classification, time rules, revision behavior, provisional maturity policy, and source-qualification boundary for US spot Bitcoin ETF daily net flow. It selects SoSoValue as the first provider for the P365 internal/non-commercial MVP and retains Farside and CoinGlass as references or fallbacks.
 
-This checkpoint does not authorize provider integration, credentials, normalization, ingestion, persistence, scheduling, UI, or reasoning. CRYPTO-FLOW-001B remains blocked because no audited source currently passes every runtime gate.
+This checkpoint does not implement provider integration, credentials, normalization, ingestion, persistence, scheduling, UI, or reasoning. After owner merge, CRYPTO-FLOW-001B may implement and test the bounded runtime defined here without changing FND-018A Observation identity.
 
 ## 2. Reasoning question
 
@@ -85,6 +85,8 @@ A future runtime must preserve, when exposed:
 
 The SoSoValue API can return a current `symbol=BTC&country_code=US` ETF list, but the audited documentation does not make that list effective-dated or expose universe/methodology versions. It also does not explicitly document treatment of GBTC and mini trusts within the historical aggregate. A new ETF must therefore not enter runtime history as an invisible methodology change.
 
+For v0.1 runtime, P365 consumes the provider-native SoSoValue US/BTC aggregate rather than reconstructing constituent sums. The current ETF-list endpoint may support audit and provenance, but P365 must not invent historical constituent membership. Any provider-native universe change remains an explicit known methodology-drift limitation and must retain available provenance.
+
 ## 7. Provider-native vs derived methodology
 
 The preferred canonical value is a provider-native aggregate. SoSoValue documents `total_net_inflow` as the total net inflow of all ETFs for the requested day. CoinGlass documents aggregate `flow_usd`. Farside publishes a provider-generated `Total` column.
@@ -120,40 +122,47 @@ Flow for trading date T may become knowable only after the session and after pro
 
 ## 9. Partial/final semantics
 
-> Partial, estimated, pending, or otherwise non-qualified-complete ETF flow aggregates **MUST NOT** be persisted as canonical `crypto.us_spot_btc_etf_net_flow.usd` Observations.
+SoSoValue does not expose a provider-native `FINAL`, `COMPLETE`, or partial/finality flag on `/etfs/summary-history`. P365 therefore defines the operational policy `SOSOVALUE_ETF_FLOW_MATURITY_V0_1`:
 
-The v0.1 canonicalization boundary is:
+> A SoSoValue daily aggregate for trading date T becomes eligible for canonical persistence only after the same authenticated API response contains at least one valid strictly later provider trading date.
+
+For valid provider trading dates returned in strict descending order:
 
 ```text
-PARTIAL / ESTIMATED / PENDING / otherwise non-qualified-complete
-→ not canonicalized
+T0 > T1 > T2 > ...
 
-qualified FINAL / COMPLETE
-→ canonical Observation
+T0
+→ PROVISIONAL
+→ NOT canonicalized
 
-later changed canonical factual value
-→ append-only factual revision under FND-018A
+T1, T2, ...
+→ MATURED_ELIGIBLE_UNDER_P365_POLICY
+→ may enter canonical Observation
 ```
 
-Provider-stage partial data may exist transiently during acquisition, but it is not a canonical factual Observation under this v0.1 contract.
+This is a P365 operational maturity policy. It is not a claim that SoSoValue marks the value `FINAL`. Provider-stage provisional data may exist transiently during acquisition, but it is not a canonical factual Observation under this v0.1 contract.
 
-If finality changes while the numeric value remains identical, no new factual revision exists under FND-018A. This is why v0.1 excludes partial values from canonical persistence. A future product requirement for durable partial-state history when the numeric value is unchanged requires a separate contract/record family or an explicit identity-evolution checkpoint; it is not solved here.
+The newest valid provider trading date in every response **MUST** remain non-canonical even if the US market is closed, local time is late at night, the dashboard appears complete, or all known ETF tickers appear populated. A guessed wall-clock rule such as “wait until 22:00 ET” remains prohibited.
 
-The audited SoSoValue summary response contains `date`, `total_net_inflow`, `total_value_traded`, `total_net_assets`, and `cum_net_inflow`, but no completion/finality field. Its current ETF list is also not effective-dated. The public SoSoValue dashboard displays an update-status concept, but the official summary-history API contract does not expose it. Consequently, P365 cannot prove from the API response that a same-day aggregate is complete.
+Once a newer provider trading date exists, the prior trading date is no longer the provider's active/latest daily row. P365 may then treat it as matured historical evidence for the internal/non-commercial MVP. This sequence progression does not guarantee that SoSoValue will never revise an older row, so rolling correction detection and append-only revision handling remain mandatory.
 
-Farside states that its table updates in real time, typically during the US evening/night, but exposes no machine finality field. CoinGlass's audited endpoint also exposes no finality field. Runtime must fail closed rather than persist a same-day aggregate as indistinguishable from final. A policy based only on waiting until a guessed clock time is not authorized.
+Maturity metadata alone does not create a factual revision under FND-018A. A future product requirement for durable provisional-state history when the numeric value is unchanged requires a separate contract/record family or an explicit identity-evolution checkpoint; it is not solved here.
 
 ## 10. Historical semantics
 
 Immediate factual needs are:
 
-- latest qualified completed trading-date flow;
+- latest matured-eligible trading-date flow;
 - previous trading-session flow;
 - a factual five-session/approximately one-week context where explicitly requested.
 
 Select actual trading-date observations. Weekends and exchange holidays are not missing observations and must not receive fabricated zero rows. Do not interpolate or forward-fill.
 
-SoSoValue's official summary-history documentation supports `start_date`, `end_date`, and `limit`, excludes weekends/holidays, sorts latest first, and limits queries to the most recent one month. This is sufficient in depth for the immediate prior-session and five-session factual questions, but not for long-history baselines. History depth alone does not overcome the unresolved finality, universe, and permission gates.
+SoSoValue's official summary-history documentation supports `start_date`, `end_date`, and `limit`, excludes weekends/holidays, sorts latest first, and limits queries to the most recent one month. This is sufficient in depth for the immediate prior-session and five-session factual questions, but not for long-history baselines. History depth alone does not resolve live entitlement, correction-recheck, or provider-owned universe limitations.
+
+Historical and bounded BACKFILL rows may be canonicalized only when they satisfy `SOSOVALUE_ETF_FLOW_MATURITY_V0_1`. In a multi-date response, the newest valid provider trading date is excluded and only earlier valid dates are maturity-eligible. A BACKFILL candidate must be evaluated against provider data containing at least one valid trading date later than the candidate; it must not appear mature merely because a requested range ended on that date or because it is not today's date.
+
+CRYPTO-FLOW-001B must define and test a bounded rolling recheck window sufficient to detect recent provider corrections while remaining inside the API quota. This contract does not freeze an unnecessarily large window.
 
 ## 11. Revision semantics
 
@@ -170,7 +179,26 @@ A changed canonical factual value for the same measurement creates a distinct re
 
 Under FND-018A, the revision fingerprint covers the measurement identity, source, canonical factual value, unit, and frequency. Finality metadata alone does not create a new Observation revision. For the same measurement, a later changed canonical factual value creates a new append-only factual revision; an identical value with a changed finality label does not.
 
-Only qualified completed/final values enter this canonical series, and later factual corrections must never overwrite earlier Market Memory rows. Preserve an explicit provider finality/revision field on the accepted canonical final Observation if one becomes available. None of the three audited sources documents a canonical vintage/revision identifier for this metric.
+Only values that are `MATURED_ELIGIBLE_UNDER_P365_POLICY` enter this canonical series, and later factual corrections must never overwrite earlier Market Memory rows. Maturity/finality metadata alone does not create a revision. Preserve an explicit provider finality/revision field if one becomes available in the future, but do not infer one from P365 maturity. None of the three audited sources documents a canonical vintage/revision identifier for this metric.
+
+FND-018A behavior remains unchanged:
+
+```text
+Day T value = +100m; latest provider date = T
+→ provisional
+→ no canonical Observation
+
+Later response: latest provider date = T+1; Day T still = +100m
+→ matured eligible
+→ persist +100m
+
+Later provider correction: Day T = +105m
+→ same measurement identity
+→ changed factual value
+→ new append-only revision
+```
+
+An identical value on refetch remains idempotent. `domain + seriesKey + observedAt` remains the measurement identity; no Observation identity change is authorized by this checkpoint.
 
 ## 12. Missing/zero rules
 
@@ -198,10 +226,13 @@ A future canonical Observation must retain at minimum:
 - original unit/scale and any USD conversion rule;
 - provider-native aggregate field name;
 - retrieval timestamp;
-- completion/finality metadata on the accepted canonical final Observation when available;
+- maturity policy `SOSOVALUE_ETF_FLOW_MATURITY_V0_1`;
+- completion basis `P365_PROVIDER_DATE_ADVANCEMENT`;
 - effective-date constituent tickers and methodology/version when available.
 
-Finality/completion metadata may be retained on the accepted canonical final Observation when the provider supplies it. A status-only transition does not automatically create a separate Observation revision under FND-018A.
+A canonical SoSoValue Observation should retain `provider=SoSoValue`, `providerResource=/etfs/summary-history`, `symbol=BTC`, `countryCode=US`, the original `providerTradingDate`, `aggregateField=total_net_inflow`, and `unit=USD`. It must not write `providerFinal=true` unless SoSoValue actually supplies and qualifies that field in the future.
+
+Finality/completion metadata may be retained if the provider later supplies it. A status-only or maturity-only transition does not automatically create a separate Observation revision under FND-018A.
 
 Do not fabricate native instrument IDs, publication/release timestamps, constituent completeness, or methodology versions. Provider identity remains provenance and must not enter the logical series key.
 
@@ -209,17 +240,23 @@ Do not fabricate native instrument IDs, publication/release timestamps, constitu
 
 This metric must use US ETF trading-session semantics, not a 24/7 crypto calendar and not generic wall-clock daily freshness.
 
-A future read model may treat only the latest qualified completed trading session as current background. It must distinguish:
+A future read model may treat only the latest matured-eligible trading session as current background. It must distinguish:
 
-- completed latest session;
-- pending current-session/same-day aggregate;
+- matured-eligible latest canonical session;
+- provisional newest provider trading date;
 - stale provider history relative to expected trading sessions;
 - holiday/weekend no-session;
 - unknown exchange/session status.
 
-Exact session calendar, finality, and acquisition-lag policy must be qualified in CRYPTO-FLOW-001B. This document does not invent a close or publication time.
+Exact session calendar and acquisition-lag behavior must be qualified in CRYPTO-FLOW-001B. This document does not invent a close, publication, or provider-finality time.
 
 ## 15. SoSoValue qualification
+
+### Owner provider decision
+
+> **SoSoValue is selected as the first BTC ETF flow provider for the P365 internal/non-commercial MVP.**
+
+This closes the owner-approval provider-selection gate. Runtime use is approved by the P365 owner only within the internal/non-commercial MVP boundary and only through the official authenticated API. It is not proof that SoSoValue granted broader commercial, redistribution, external API, dataset-resale, or storage rights.
 
 ### Official API mapping
 
@@ -269,11 +306,13 @@ The [Terms linked from the SoSoValue developer page](https://sosovalue-white-pap
 
 The newer SoDEX Terms likewise govern its interface and permit personal/non-commercial use; they do not provide a clear API-data licence for P365. No audited API-specific permission resolves this ambiguity.
 
+The owner explicitly accepts SoSoValue official API use for the internal/non-commercial MVP despite the absence of a separately audited API-data storage licence. This is a product-governance risk acceptance, not legal advice or a claim of commercial permission. Terms must be re-reviewed before any commercial or public deployment.
+
 Verdict:
 
-> **CONDITIONAL CANDIDATE — API USE PERMISSION AND FINALITY/UNIVERSE SEMANTICS REQUIRE CLARIFICATION**
+> **PROVISIONAL PROVIDER APPROVED — INTERNAL/NON-COMMERCIAL MVP**
 
-SoSoValue is technically the strongest free-first candidate, but it is not runtime-ready. Written clarification or explicit API terms must cover automated authenticated acquisition, internal durable storage, and intended non-commercial MVP use. Runtime also needs a qualified completion/finality and effective-dated universe policy.
+SoSoValue is the selected provisional provider and is eligible for the bounded CRYPTO-FLOW-001B implementation after owner merge. Qualification remains limited to the official authenticated API, provider-native aggregate, latest-date exclusion, `SOSOVALUE_ETF_FLOW_MATURITY_V0_1`, append-only corrections, retained universe-methodology limitation, and no public/commercial redistribution. It is not fully production-qualified.
 
 ## 16. Farside assessment
 
@@ -327,30 +366,33 @@ Verdict:
 
 No source is approved for public redistribution, dataset republication, resale, external API exposure, or commercial P365 use.
 
-SoSoValue's free Demo availability is not itself a licence grant. Farside has no verified automation/reuse permission. CoinGlass explicitly separates personal-use lower plans from commercial-use plans and is paid.
+SoSoValue's free Demo availability is not itself a licence grant. The owner accepts the unresolved API-data storage-permission risk only for official authenticated API use within P365's internal/non-commercial MVP. Farside has no verified automation/reuse permission. CoinGlass explicitly separates personal-use lower plans from commercial-use plans and is paid.
 
-This is a source-qualification record, not legal advice. Any later permission must be recorded from the provider's then-current API-specific terms or written authorization. P365 must not claim ownership of provider data.
+This is a product-governance risk acceptance and source-qualification record, not legal advice. Terms must be re-reviewed before commercial/public deployment. Any later permission must be recorded from the provider's then-current API-specific terms or written authorization. P365 must not claim ownership of provider data.
 
 ## 19. Runtime gate
 
-> The selected provider/policy must allow P365 to determine that a daily aggregate is qualified complete **before** canonical persistence.
+After owner merge of CRYPTO-FLOW-001A.1, CRYPTO-FLOW-001B may begin. The provider-selection gate is closed by the owner's SoSoValue decision, and canonical eligibility is governed by provider-date advancement rather than guessed provider finality.
 
-CRYPTO-FLOW-001B may begin only after all of these are satisfied:
+CRYPTO-FLOW-001B must implement and prove:
 
-1. exact endpoint and fields are re-verified;
-2. free-plan historical coverage is confirmed with an authorized key;
-3. provider universe semantics and GBTC/mini-trust treatment are explicit;
-4. qualified completion is determinable from an explicit provider finality field or an authoritative completion policy;
-5. trading-date/time semantics are qualified;
-6. missing/zero behavior is known;
-7. append-only revisions can be preserved;
-8. automated API acquisition and durable internal storage are permitted;
-9. internal/non-commercial MVP use is permitted;
-10. the owner explicitly approves the selected provider.
+1. authenticated Demo/free entitlement actually works;
+2. the exact live response schema and documented fields;
+3. strict missing/zero validation;
+4. `SOSOVALUE_ETF_FLOW_MATURITY_V0_1` selection;
+5. unconditional newest-valid-provider-date exclusion;
+6. a bounded, quota-safe rolling correction recheck window;
+7. deterministic provider-trading-date anchoring;
+8. exact semantics and provenance, including maturity policy and completion basis;
+9. unchanged FND-018A idempotency and append-only correction behavior;
+10. point-in-time historical reads;
+11. server-only API-key handling;
+12. quota-safe acquisition;
+13. no UI or reasoning expansion.
 
-If a provider exposes no explicit finality field, CRYPTO-FLOW-001B remains blocked until an authoritative completion policy is qualified. A guessed wall-clock delay is insufficient.
+The historical provider-native universe remains unversioned and provider-owned. This known limitation does not authorize constituent reconstruction or invented historical membership.
 
-At CRYPTO-FLOW-001A close, gates 3, 4, 8, and 9 are unresolved for SoSoValue, and live Demo entitlement under gate 2 has not been exercised. Therefore 001B is blocked.
+A guessed wall-clock delay remains insufficient. CRYPTO-FLOW-001B must not claim SoSoValue provider-native `FINAL` status and must fail closed when provider-date advancement cannot be proven.
 
 ## 20. Future UI semantics
 
@@ -358,10 +400,10 @@ No UI is authorized by this checkpoint.
 
 A later approved UI may present only factual content such as:
 
-- completed trading date;
+- matured-eligible trading date;
 - net USD flow with explicit sign;
 - source and retrieval/as-of time;
-- completed/partial/pending/unknown state through translated labels;
+- matured/provisional/unknown state through translated labels;
 - actual previous-session or five-session context;
 - provider universe disclosure.
 
@@ -383,4 +425,4 @@ This contract does not implement or authorize:
 - paid subscription;
 - website scraping or undocumented endpoint use.
 
-The frozen result is one factual flow contract with provider qualification intentionally left open until permission, finality, and universe semantics are strong enough for durable runtime use.
+The frozen result is one factual flow contract with a provisional owner-approved provider, an explicit sequence-based maturity policy, and a bounded internal/non-commercial runtime boundary. Full production qualification, commercial/public permission, and effective-dated universe methodology remain open.
