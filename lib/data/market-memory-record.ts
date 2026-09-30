@@ -15,7 +15,11 @@ export function marketMemoryEffectiveAt(
   }
   if (recordType === "EVIDENCE") {
     const evidence = record as Evidence;
-    return evidence.publishedAt ?? evidence.releasedAt ?? evidence.retrievedAt;
+    const observationEffectiveAt = evidence.kind === "OBSERVATION"
+      && typeof evidence.metadata?.observationEffectiveAt === "string"
+      ? evidence.metadata.observationEffectiveAt
+      : undefined;
+    return observationEffectiveAt ?? evidence.publishedAt ?? evidence.releasedAt ?? evidence.retrievedAt;
   }
   if (recordType === "SNAPSHOT") return (record as MarketSnapshot).capturedAt;
   return (record as Context).createdAt;
@@ -31,6 +35,7 @@ export function marketMemoryDedupeKey(
   // cannot defeat factual-version idempotency. Other record families retain
   // their legacy contract and stay outside this checkpoint.
   const dedupeEffectiveAt = recordType === "OBSERVATION"
+    || (recordType === "EVIDENCE" && (record as Evidence).kind === "OBSERVATION")
     ? new Date(effectiveAt).toISOString()
     : effectiveAt;
   return `${recordType}:${record.id}:${dedupeEffectiveAt}`;
