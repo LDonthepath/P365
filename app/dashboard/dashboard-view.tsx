@@ -514,7 +514,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
   const [expandedMacroTheme, setExpandedMacroTheme] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const { macroNews, cryptoNews, calendarEvents, events, calendarProviderMessage, unavailableSources, observations, macroObservations, macroBaselines, contexts, evidence, providerHealth } = data;
+  const { macroNews, cryptoNews, calendarEvents, events, observations, macroObservations, macroBaselines, contexts, evidence, providerHealth } = data;
   const baselinePresentations = buildBaselinePresentations(macroBaselines);
   const baselinesBySeries = new Map(baselinePresentations.map((item) => [item.seriesId, item]));
 
@@ -534,12 +534,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
 
   function handleManualRefresh() { startRefresh(async () => { const result = await refreshDashboardData(); setLastRefreshedAt(result.refreshedAt); router.refresh(); }); }
 
-  const marketStatus = observationStatus(observations.map((item) => item.quality));
   const providerStatus = sourceStatus(providerHealth);
-  const healthyProviderCount = providerHealth.filter((item) => item.status === "HEALTHY").length;
-  const providerRowStatus: "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE" =
-    providerHealth.length === 0 ? "PENDING" : healthyProviderCount === providerHealth.length ? "FRESH" : healthyProviderCount === 0 ? "UNAVAILABLE" : "PARTIAL";
-  const highImpactEvents = calendarEvents.filter((item) => item.impact === "HIGH").length;
   const cryptoContexts = contexts.filter((context) => context.scope === "CRYPTO_MARKET");
   const macroContexts = contexts.filter((context) => context.scope.startsWith("MACRO_"));
   const economicEventContexts = contexts.filter((context) => context.scope === "ECONOMIC_EVENTS");
