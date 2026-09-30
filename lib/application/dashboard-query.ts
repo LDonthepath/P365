@@ -12,6 +12,9 @@ import {
   buildMacroCryptoGoldFactualContext,
   type MacroCryptoGoldFactualContext,
 } from "./mvp-factual-context";
+import { buildStablecoinLiquidityReadModel, type StablecoinLiquidityReadModel } from "./stablecoin-liquidity";
+import { buildBtcEtfFlowReadModel, type BtcEtfFlowReadModel } from "./btc-etf-flow";
+import { buildGoldPositioningReadModel, type GoldPositioningReadModel } from "./gold-positioning";
 
 export type DashboardData = NormalizedDashboardData & {
   macroBaselines: Record<string, FactualBaseline>;
@@ -20,6 +23,9 @@ export type DashboardData = NormalizedDashboardData & {
   netLiquidity: NetLiquidityReadModel;
   ratesInflation: RatesInflationReadModel;
   mvpFactualContext: MacroCryptoGoldFactualContext;
+  stablecoinLiquidity: StablecoinLiquidityReadModel;
+  btcEtfFlow: BtcEtfFlowReadModel;
+  goldPositioning: GoldPositioningReadModel;
 };
 
 async function getDurableHighImpactEvents(now = new Date()): Promise<Event[]> {
@@ -56,10 +62,23 @@ export async function getDashboardData(): Promise<DashboardData> {
       ratesInflation: ratesInflationPromise,
     },
   );
+  const stablecoinLiquidityPromise = buildStablecoinLiquidityReadModel(historicalObservationRepository, asOf);
+  const btcEtfFlowPromise = buildBtcEtfFlowReadModel(historicalObservationRepository, asOf);
+  const goldPositioningPromise = buildGoldPositioningReadModel(historicalObservationRepository, asOf);
   const ingestion = await ingestDashboardData();
   const normalized = normalizeDashboardData(ingestion);
 
-  const [macroBaselines, intradayEventMonitor, durableHighImpactEvents, netLiquidity, ratesInflation, mvpFactualContext] = await Promise.all([
+  const [
+    macroBaselines,
+    intradayEventMonitor,
+    durableHighImpactEvents,
+    netLiquidity,
+    ratesInflation,
+    mvpFactualContext,
+    stablecoinLiquidity,
+    btcEtfFlow,
+    goldPositioning,
+  ] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
       historicalObservationRepository,
@@ -69,6 +88,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     netLiquidityPromise,
     ratesInflationPromise,
     mvpFactualContextPromise,
+    stablecoinLiquidityPromise,
+    btcEtfFlowPromise,
+    goldPositioningPromise,
   ]);
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes
@@ -82,5 +104,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     netLiquidity,
     ratesInflation,
     mvpFactualContext,
+    stablecoinLiquidity,
+    btcEtfFlow,
+    goldPositioning,
   };
 }
