@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
+import {
+  CFTC_GOLD_CONTRACT_MARKET_CODE,
+  CFTC_GOLD_COT_DATASET_ID,
+  CFTC_GOLD_COT_PROVIDER_RESOURCE,
+  CFTC_GOLD_COT_REPORT_FAMILY,
+  type CftcGoldCotObservationInput,
+} from "../data/cftc-gold-cot";
 import type { MacroObservationInput } from "../data/fred";
 import {
   SOSOVALUE_ETF_FLOW_COMPLETION_BASIS,
@@ -130,6 +137,49 @@ function etfFlowInput(date: string, value: number): SoSoValueBtcEtfFlowObservati
   };
 }
 
+function cftcInput(value: number): CftcGoldCotObservationInput {
+  const reportDate = "2026-09-29";
+  return {
+    metricId: "gold.cftc.managed_money.long.contracts",
+    value,
+    observedAt: `${reportDate}T00:00:00.000Z`,
+    retrievedAt: "2026-10-02T19:31:00.000Z",
+    reportDate,
+    datasetId: CFTC_GOLD_COT_DATASET_ID,
+    contractMarketCode: CFTC_GOLD_CONTRACT_MARKET_CODE,
+    marketName: "GOLD - COMMODITY EXCHANGE INC.",
+    reportFamily: CFTC_GOLD_COT_REPORT_FAMILY,
+    providerResource: CFTC_GOLD_COT_PROVIDER_RESOURCE,
+    providerField: "m_money_positions_long_all",
+    participantCategory: "MANAGED_MONEY",
+    positionSide: "LONG",
+    unit: "CONTRACTS",
+    frequency: "WEEKLY",
+    provenance: {
+      version: "v1",
+      providerResource: CFTC_GOLD_COT_PROVIDER_RESOURCE,
+      nativeSeriesId: "m_money_positions_long_all",
+      nativeInstrumentId: CFTC_GOLD_CONTRACT_MARKET_CODE,
+      observationDate: reportDate,
+    },
+    metadata: {
+      metricId: "gold.cftc.managed_money.long.contracts",
+      provider: "CFTC",
+      providerResource: CFTC_GOLD_COT_PROVIDER_RESOURCE,
+      datasetId: CFTC_GOLD_COT_DATASET_ID,
+      contractMarketCode: CFTC_GOLD_CONTRACT_MARKET_CODE,
+      marketName: "GOLD - COMMODITY EXCHANGE INC.",
+      reportFamily: CFTC_GOLD_COT_REPORT_FAMILY,
+      reportDate,
+      providerField: "m_money_positions_long_all",
+      participantCategory: "MANAGED_MONEY",
+      positionSide: "LONG",
+      unit: "CONTRACTS",
+      frequency: "WEEKLY",
+    },
+  };
+}
+
 function repositories(): { repositories: CanonicalRepositories; observations: InMemoryObservationRepository } {
   const observations = new InMemoryObservationRepository();
   return {
@@ -156,6 +206,7 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
     fred: record("fred", providerResult("fred", "EMPTY", [])),
     defillama: record("defillama", providerResult("defillama", "EMPTY", [])),
     sosovalue: record("sosovalue", providerResult("sosovalue", "EMPTY", [])),
+    cftc: record("cftc", providerResult("cftc", "EMPTY", [])),
   };
 }
 
@@ -309,6 +360,34 @@ async function main(): Promise<void> {
   assert.equal(sosovalueIsolated.status, "PARTIAL");
   assert.equal(sosovalueIsolated.persistedObservations, 1, "SoSoValue failure cannot suppress CoinGecko");
 
+  const cftcStore = repositories();
+  const cftcAcquisition = acquisition([]);
+  cftcAcquisition.cftc = async () => providerResult("cftc", "SUCCESS", [cftcInput(210000)]);
+  const cftcForward = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["cftc"] },
+    { acquisition: cftcAcquisition, repositories: cftcStore.repositories },
+  );
+  assert.equal(cftcForward.status, "SUCCESS");
+  assert.equal(cftcForward.persistedObservations, 1);
+  assert.equal(cftcForward.persistedEvidence, 1);
+  const cftcHistory = await cftcStore.observations.findHistory({
+    identity: { domain: "MARKET", seriesKey: "gold.cftc.managed_money.long.contracts" },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(cftcHistory.length, 1);
+  assert.equal(cftcHistory[0]?.quality, "UNKNOWN");
+  assert.equal(cftcHistory[0]?.semantics?.participant, "MANAGED_MONEY");
+
+  const cftcFailureAcquisition = acquisition([]);
+  cftcFailureAcquisition.cftc = async () => providerResult("cftc", "ERROR", [], "CFTC unavailable");
+  const cftcIsolated = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["coingecko", "cftc"] },
+    { acquisition: cftcFailureAcquisition, repositories: repositories().repositories },
+  );
+  assert.equal(cftcIsolated.status, "PARTIAL");
+  assert.equal(cftcIsolated.persistedObservations, 1, "CFTC failure cannot suppress CoinGecko");
+
   const failingStore = repositories();
   failingStore.repositories.observations.saveMany = async () => { throw new Error("storage unavailable"); };
   const failed = await runHistoricalIngestion(
@@ -334,7 +413,7 @@ async function main(): Promise<void> {
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=gold&from=2026-09-01&to=2026-09-20")),
-    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, or sosovalue" },
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" },
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred&from=2026-09-01&to=2026-09-20")),
@@ -364,7 +443,7 @@ async function main(): Promise<void> {
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred,defillama&from=2026-09-01&to=2026-09-20")),
-    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, or sosovalue" },
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" },
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=sosovalue&from=2026-09-02&to=2026-09-29")),
@@ -380,9 +459,29 @@ async function main(): Promise<void> {
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred,sosovalue&from=2026-09-01&to=2026-09-20")),
-    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, or sosovalue" },
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" },
     "mixed-provider BACKFILL remains rejected",
   );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=cftc")),
+    { ok: true, options: { mode: "FORWARD", providers: ["cftc"] } },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=cftc&from=2025-09-28&to=2026-10-02")),
+    {
+      ok: true,
+      options: { mode: "BACKFILL", providers: ["cftc"], cftc: { from: "2025-09-28", to: "2026-10-02" } },
+    },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=cftc&from=2025-09-27&to=2026-10-02")),
+    { ok: false, error: "CFTC Gold COT BACKFILL is limited to 370 calendar days" },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=cftc,sosovalue&from=2026-09-01&to=2026-09-20")),
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" },
+  );
+
   await assert.rejects(
     runHistoricalIngestion(
       {
