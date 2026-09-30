@@ -178,8 +178,14 @@ test("accepts only documented successful envelopes and rejects provider-level fa
   const nonArrayData = await acquire({ code: 0, data: { rows: rows() } });
   assert.equal(nonArrayData.status, "ERROR");
 
-  const unknownField = await acquire({ code: 0, message: "success", data: rows(), success: true });
+  const unknownField = await acquire({ code: 0, message: "success", data: rows(), success: true, trace_id: "abc" });
   assert.equal(unknownField.status, "ERROR");
+  assert.equal(
+    unknownField.message,
+    "SoSoValue malformed payload: success envelope contains unsupported fields: success,trace_id",
+    "diagnostic must expose only unsupported field names, deterministically sorted",
+  );
+  assert.doesNotMatch(unknownField.message ?? "", /abc|test-key-never-persist/);
 });
 
 test("future provider dates fail closed and cannot become maturity witnesses", async () => {

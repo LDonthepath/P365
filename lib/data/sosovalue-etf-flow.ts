@@ -72,8 +72,13 @@ function responseRows(payload: unknown): unknown[] {
   }
   const record = payload as Record<string, unknown>;
   const documentedEnvelopeKeys = new Set(["code", "message", "data"]);
-  if (Object.keys(record).some((key) => !documentedEnvelopeKeys.has(key))) {
-    throw new Error("SoSoValue malformed payload: success envelope contains unsupported fields");
+  const unsupportedEnvelopeKeys = Object.keys(record)
+    .filter((key) => !documentedEnvelopeKeys.has(key))
+    .sort();
+  if (unsupportedEnvelopeKeys.length > 0) {
+    throw new Error(
+      `SoSoValue malformed payload: success envelope contains unsupported fields: ${unsupportedEnvelopeKeys.join(",")}`,
+    );
   }
   if (record.code !== 0) {
     throw new Error("SoSoValue malformed payload: provider envelope code must be 0");
