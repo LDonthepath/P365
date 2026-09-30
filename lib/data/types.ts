@@ -30,6 +30,7 @@ export type ProviderId =
   | "coingecko"
   | "defillama"
   | "sosovalue"
+  | "cftc"
   | "fred"
   | "federal-reserve"
   | "biquote"

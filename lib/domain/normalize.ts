@@ -2,6 +2,7 @@ import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
+import type { CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { MacroObservationInput } from "../data/fred";
 import type { FomcEventInput } from "../data/federal-reserve-events";
 import { forexFactoryJurisdiction } from "../data/event-jurisdiction";
@@ -19,6 +20,7 @@ export const P365_SOURCES = {
   coinGeckoMarket: { id: "coingecko-market", name: "CoinGecko Market", type: "MARKET" },
   defiLlamaStablecoins: { id: "defillama-stablecoins", name: "DefiLlama Stablecoins", type: "MARKET" },
   soSoValueEtfFlow: { id: "sosovalue-etf-flow", name: "SoSoValue ETF Flow", type: "MARKET" },
+  cftcGoldCot: { id: "cftc-gold-cot", name: "CFTC Gold COT", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   forexFactory: { id: "forex-factory", name: "Forex Factory", type: "CALENDAR" },
   biquote: { id: "biquote", name: "Biquote Economic Calendar", type: "CALENDAR" },
@@ -246,6 +248,63 @@ export function btcEtfFlowToCanonicalRecords(
       kind: "OBSERVATION",
       subject: item.metricId,
       content: `${item.metricId} = ${item.value} (${item.providerTradingDate})`,
+      capturedAt: item.retrievedAt,
+      retrievedAt: item.retrievedAt,
+      metadata,
+    };
+    const observation: Observation = {
+      id: observationRevisionId(identity),
+      domain: "MARKET",
+      subject: item.metricId,
+      value,
+      observedAt: item.observedAt,
+      retrievedAt: item.retrievedAt,
+      sourceId,
+      quality: "UNKNOWN",
+      evidenceId,
+      identity,
+      provenance: item.provenance,
+      semantics: requireObservationSemantics(item.metricId),
+      metadata,
+    };
+    assertCurrentObservationInvariants(observation);
+    return { evidence, observation };
+  });
+
+  return {
+    observations: normalized.map((item) => item.observation),
+    evidence: normalized.map((item) => item.evidence),
+  };
+}
+
+/** Converts validated CFTC Disaggregated Futures Only Gold positions into canonical facts. */
+export function cftcGoldCotToCanonicalRecords(
+  items: CftcGoldCotObservationInput[],
+): { observations: Observation[]; evidence: Evidence[] } {
+  const sourceId = P365_SOURCES.cftcGoldCot.id;
+  const normalized = items.map((item) => {
+    const value = String(item.value);
+    const metadata = {
+      ...item.metadata,
+      metricId: item.metricId,
+      observationEffectiveAt: item.observedAt,
+    };
+    const identity = buildObservationIdentity({
+      domain: "MARKET",
+      seriesKey: item.metricId,
+      observedAt: item.observedAt,
+      sourceId,
+      value,
+      unit: item.unit,
+      frequency: item.frequency,
+    });
+    const evidenceId = observationEvidenceId(identity);
+    const evidence: Evidence = {
+      id: evidenceId,
+      sourceId,
+      kind: "OBSERVATION",
+      subject: item.metricId,
+      content: `${item.metricId} = ${item.value} contracts (${item.reportDate})`,
       capturedAt: item.retrievedAt,
       retrievedAt: item.retrievedAt,
       metadata,

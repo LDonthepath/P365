@@ -1,6 +1,7 @@
 import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
 import {
   approvedObservationSemanticKeys,
+  CFTC_GOLD_COT_SERIES_KEYS,
   observationSemanticsForSeriesKey,
   requireObservationSemantics,
   resolveObservationSemantics,
@@ -57,6 +58,7 @@ function main(): void {
     "crypto.us_spot_btc_etf_net_flow.usd",
     "crypto.btc_dominance.pct",
     "crypto.eth_dominance.pct",
+    ...Object.values(CFTC_GOLD_COT_SERIES_KEYS),
   ];
 
   for (const key of requiredMetricKeys) {
@@ -90,6 +92,20 @@ function main(): void {
       asset: "BTC",
     },
     "BTC spot semantics",
+  );
+
+  assertEqual(
+    requireObservationSemantics(CFTC_GOLD_COT_SERIES_KEYS.managedMoneyLong),
+    {
+      ontologyVersion: "v0.1",
+      marketDomain: "COMMODITY",
+      informationClass: "POSITIONING",
+      jurisdiction: "US",
+      instrument: "FUTURE",
+      asset: "GOLD",
+      participant: "MANAGED_MONEY",
+    },
+    "CFTC Gold managed-money positioning semantics",
   );
 
   assertEqual(
