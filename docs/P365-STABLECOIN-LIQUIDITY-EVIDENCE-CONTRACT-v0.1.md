@@ -2,9 +2,9 @@
 
 **Status:** Active canonical contract and source-qualification gate
 
-**Checkpoints:** CRYPTO-LIQ-001A contract; CRYPTO-LIQ-001B factual runtime
+**Checkpoints:** CRYPTO-LIQ-001A contract; CRYPTO-LIQ-001B factual runtime; CRYPTO-LIQ-001C production activation
 
-**Runtime status:** **RUNTIME IMPLEMENTED / PRODUCTION ACTIVATION PENDING**
+**Runtime status:** **PRODUCTION-ACTIVE — INTERNAL/NON-COMMERCIAL MVP**
 
 **Source verdict:** **QUALIFIED_CANDIDATE — INTERNAL/NON-COMMERCIAL MVP**
 
@@ -12,9 +12,9 @@
 
 ## 1. Purpose
 
-This document freezes the canonical meaning, provider-field mapping, temporal rules, lineage requirements, and permitted-use boundary for one USD stablecoin aggregate. CRYPTO-LIQ-001B implements that bounded factual runtime without changing the frozen metric.
+This document freezes the canonical meaning, provider-field mapping, temporal rules, lineage requirements, and permitted-use boundary for one USD stablecoin aggregate. CRYPTO-LIQ-001B implements that bounded factual runtime without changing the frozen metric, and CRYPTO-LIQ-001C records its separately verified production activation.
 
-It remains a factual evidence contract only. CRYPTO-LIQ-001B authorizes the provider fetcher, canonical normalization, callable durable ingestion, bounded backfill, and read-only factual model described below; it does not authorize scheduling, UI, Supabase changes, public redistribution, or higher-order reasoning.
+It remains a factual evidence contract only. CRYPTO-LIQ-001B authorizes the provider fetcher, canonical normalization, callable durable ingestion, bounded backfill, and read-only factual model described below. The separately operated production scheduler does not authorize UI, public redistribution, or higher-order reasoning.
 
 ## 2. Reasoning question
 
@@ -243,11 +243,11 @@ A fresh licensing review and, where required, explicit permission or an appropri
 - republication of DefiLlama datasets;
 - resale or external API exposure.
 
-Future implementation must retain source attribution and re-check the then-current Terms before activation.
+Runtime operation must retain source attribution. Any commercial or public-product activation requires a fresh review of the then-current Terms and, where required, permission or an appropriate licence.
 
-## 16. Future runtime requirements
+## 16. Runtime requirements
 
-CRYPTO-LIQ-001B may implement only the factual runtime chain approved by its gate:
+CRYPTO-LIQ-001B implements only the factual runtime chain approved by its gate:
 
 - a DefiLlama provider fetcher using the exact public resource;
 - explicit provider result states and validation;
@@ -259,7 +259,28 @@ CRYPTO-LIQ-001B may implement only the factual runtime chain approved by its gat
 - an explicitly qualified freshness policy;
 - focused deterministic tests.
 
-001B must reuse existing `ProviderResult<T>`, Observation, semantic mapping, identity, provenance, and historical repository contracts. Any necessary additive mapping must be isolated and backward-compatible. No constituent summation or alternate metric fallback is permitted.
+001B reuses existing `ProviderResult<T>`, Observation, semantic mapping, identity, provenance, and historical repository contracts. Its additive mappings remain isolated and backward-compatible. No constituent summation or alternate metric fallback is permitted.
+
+### Production activation evidence
+
+Production activation was verified after PR #103 merged and the Vercel deployment reached `READY` at exact merge SHA `5638872ad1a8a006593aa54b310a88a09db89873`.
+
+An authenticated bounded DefiLlama BACKFILL for `2026-08-26` through `2026-09-29` persisted 35 canonical Observation rows across 35 distinct provider-effective dates for source `defillama-stablecoins` and series `crypto.usd_stablecoin_market_cap.usd`. Read-only verification included:
+
+| Horizon | Provider-effective time | Value (USD) | Acquisition quality |
+|---|---|---:|---|
+| Latest | `2026-09-29T00:00:00Z` | 311262369758.53 | `FRESH` |
+| 1D predecessor | `2026-09-28T00:00:00Z` | 311470047825 | `FRESH` |
+| 1W predecessor | `2026-09-22T00:00:00Z` | 310349625823 | `STALE` |
+| 4W predecessor | `2026-09-01T00:00:00Z` | 307292864580 | `STALE` |
+
+Historical `STALE` acquisition quality remains valid factual history and is not represented as current or fresh. The latest verified Observation preserves `MARKET`, `defillama-stablecoins`, `/stablecoincharts/all`, `peggedUSD`, `USD`, `DAILY`, and `CRYPTO / OBSERVATION / GLOBAL / USD_STABLECOINS` provenance and semantics. Provider-effective time remains separate from P365 `retrievedAt`; no release, publication, or native instrument identity was fabricated.
+
+The durable DefiLlama Observation count remained 35 after a separate authenticated production FORWARD invocation. This proves that an unchanged latest factual refetch is idempotent in production. Changed-value correction behavior remains governed by the append-only runtime contract and tests; it is not claimed from this unchanged-value production check.
+
+Supabase `pg_cron` remains the sole recurring scheduler. The active standalone job `p365-stablecoin` runs at `17 1,13 * * *` (01:17 and 13:17 UTC) and targets `/api/cron/historical-ingestion` with `mode=FORWARD&providers=defillama`. DefiLlama is intentionally not part of `p365-market-fast`: twice-daily acquisition provides bounded redundancy for a daily source without implying intraday cadence. Temporary activation and backfill jobs were removed. The permanent cron set is `p365-market-fast`, `p365-event-fast`, `p365-fred`, `p365-event-calendar`, `p365-snapshot-capture`, and `p365-stablecoin`.
+
+The job's existence, active configuration, cadence, explicit production invocation success, durable backfill, and FORWARD idempotency are verified. This checkpoint does not claim that a naturally elapsed permanent `p365-stablecoin` scheduled execution has already completed. No stablecoin UI or reasoning layer is activated.
 
 ## 17. Future UI semantics
 
@@ -314,4 +335,4 @@ CRYPTO-LIQ-001B does not implement or authorize:
 - ETF flows, derivatives, REL-002, confirmation/contradiction, or trading signals;
 - a new dependency or package.
 
-The v0.1 contract freezes one provider-native factual aggregate. Its runtime remains callable and unscheduled until a separately verified production activation step.
+The v0.1 contract freezes one provider-native factual aggregate. Its production runtime and standalone scheduler are active for the approved internal/non-commercial MVP boundary; UI and reasoning remain absent.
