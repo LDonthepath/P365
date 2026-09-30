@@ -1,8 +1,8 @@
 # P365 Gold CFTC COT Positioning Contract v0.1
 
-**Status:** RUNTIME IMPLEMENTED / LIVE PRE VERIFICATION & PRODUCTION ACTIVATION PENDING
+**Status:** PRODUCTION-ACTIVE
 
-**Checkpoints:** GOLD-POS-001A contract/source qualification; GOLD-POS-001B factual runtime
+**Checkpoints:** GOLD-POS-001A contract/source qualification; GOLD-POS-001B factual runtime; GOLD-POS-001C production activation
 
 **MVP scope:** Gold
 
@@ -545,4 +545,41 @@ reasoning.
 
 Checkpoint status:
 
-> **RUNTIME IMPLEMENTED / LIVE PRE VERIFICATION & PRODUCTION ACTIVATION PENDING**
+> **PRODUCTION-ACTIVE**
+
+
+## 19. GOLD-POS-001C production activation
+
+Production activation was verified on 30 September 2026.
+
+- exact production main SHA: `94fccaf11eaae232898e586d62af0b3e27b4f281`;
+- live CFTC PRE dataset: `72hh-3qpy`;
+- target contract: `088691`;
+- report family: Disaggregated Futures Only;
+- full live 8-report schema verification: 8/8 correct contract rows, 8/8
+  `FutOnly`, 8 distinct report dates, and all 14 target raw fields present;
+- live value validation: 112/112 target values were non-negative integer
+  strings;
+- exact managed-money spreading field pinned from live PRE as
+  `m_money_positions_spread`;
+- authenticated production FORWARD ingestion succeeded with 112 acquired,
+  112 normalized, 112 durable Observations, and 112 durable Evidence rows;
+- durable shape is exactly 14 canonical series across 8 report dates from
+  2026-08-04 through 2026-09-22;
+- all 112 Observations retain `COMMODITY / POSITIONING / US / FUTURE / GOLD`
+  semantics, dataset/contract provenance, and `quality=UNKNOWN`;
+- an unchanged authenticated rerun succeeded while durable counts remained
+  112 Observations / 112 Evidence, proving unchanged-fact idempotency;
+- no temporary CFTC smoke/idempotency cron jobs remain;
+- active Supabase `pg_cron` job: `p365-cftc-gold-cot`;
+- scheduler job id at activation: `20`;
+- schedule: `48 22 * * *` (22:48 UTC daily);
+- daily acquisition is intentionally after the normal 15:30 US Eastern CFTC
+  release under both EDT and EST and also covers holiday-delayed releases
+  without intraday polling;
+- scheduler cadence is acquisition/recheck policy only and does not fabricate a
+  release timestamp or redefine the Tuesday report/effective date.
+
+No production backfill beyond the bounded FORWARD window, derived net
+positioning, percentile/z-score/crowding, UI, confirmation/contradiction,
+State, Regime, Risk, Intelligence, or trading recommendation is activated.
