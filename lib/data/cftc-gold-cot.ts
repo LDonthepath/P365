@@ -76,7 +76,7 @@ const SERIES = [
   },
   {
     metricId: "gold.cftc.managed_money.spreading.contracts",
-    aliases: ["m_money_positions_spread_all"],
+    aliases: ["m_money_positions_spread"],
     participant: "MANAGED_MONEY",
     side: "SPREADING",
   },
