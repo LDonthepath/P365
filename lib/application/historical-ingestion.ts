@@ -1,8 +1,9 @@
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinBackfillRange, DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { FredObservationQuery, MacroObservationInput } from "../data/fred";
+import { soSoValueBackfillRangeError, type SoSoValueBtcEtfFlowBackfillRange, type SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
 import type { ProviderId, ProviderResult } from "../data/types";
-import { cryptoMarketToObservations, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../domain/normalize";
+import { btcEtfFlowToCanonicalRecords, cryptoMarketToObservations, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../domain/normalize";
 import type { Evidence, Observation } from "../domain/types";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 
@@ -11,7 +12,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS = 35;
 
-export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "fred", "defillama"] as const;
+export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "fred", "defillama", "sosovalue"] as const;
 export type HistoricalIngestionProvider = typeof HISTORICAL_INGESTION_PROVIDERS[number];
 export type HistoricalIngestionMode = "FORWARD" | "BACKFILL";
 
@@ -20,6 +21,7 @@ export type HistoricalIngestionOptions = {
   providers: HistoricalIngestionProvider[];
   fred?: Omit<FredObservationQuery, "acquisitionMode" | "requireCompleteRange">;
   defillama?: DefiLlamaStablecoinBackfillRange;
+  sosovalue?: SoSoValueBtcEtfFlowBackfillRange;
 };
 
 export type HistoricalIngestionAcquisition = {
@@ -29,6 +31,7 @@ export type HistoricalIngestionAcquisition = {
   russell: () => Promise<MarketResult>;
   dxy: () => Promise<MarketResult>;
   defillama: () => Promise<ProviderResult<DefiLlamaStablecoinObservationInput>>;
+  sosovalue: () => Promise<ProviderResult<SoSoValueBtcEtfFlowObservationInput>>;
 };
 
 export type HistoricalIngestionProviderReport = {
@@ -73,10 +76,11 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
   acquisition: HistoricalIngestionAcquisition;
   repositories: CanonicalRepositories;
 }> {
-  const [crypto, defillama, fred, yahoo, repositories] = await Promise.all([
+  const [crypto, defillama, fred, sosovalue, yahoo, repositories] = await Promise.all([
     import("../data/crypto-market"),
     import("../data/defillama-stablecoins"),
     import("../data/fred"),
+    import("../data/sosovalue-etf-flow"),
     import("../data/yahoo-finance-markets"),
     import("../repositories/dashboard-repository"),
   ]);
@@ -96,6 +100,11 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
         acquisitionMode: "FRESH",
         ...(options.mode === "BACKFILL" ? { range: options.defillama } : {}),
       }),
+      sosovalue: () => sosovalue.fetchSoSoValueBtcEtfFlowObservations({
+        mode: options.mode,
+        acquisitionMode: "FRESH",
+        ...(options.mode === "BACKFILL" ? { range: options.sosovalue } : {}),
+      }),
     },
     repositories: repositories.canonicalRepositories,
   };
@@ -105,6 +114,7 @@ function providerId(provider: HistoricalIngestionProvider): ProviderId {
   if (provider === "coingecko") return "coingecko";
   if (provider === "fred") return "fred";
   if (provider === "defillama") return "defillama";
+  if (provider === "sosovalue") return "sosovalue";
   return "yahoo-finance";
 }
 
@@ -125,6 +135,9 @@ function canonicalize(
       selected,
     );
   }
+  if (provider === "sosovalue") {
+    return btcEtfFlowToCanonicalRecords(result.data as SoSoValueBtcEtfFlowObservationInput[]);
+  }
   return cryptoMarketToObservations(
     result.data as CryptoMarketObservationInput[],
     provider === "coingecko" ? P365_SOURCES.coinGeckoMarket.id : P365_SOURCES.yahooFinance.id,
@@ -134,8 +147,8 @@ function canonicalize(
 function validateOptions(options: HistoricalIngestionOptions): void {
   if (options.providers.length === 0) throw new Error("At least one ingestion provider is required");
   if (options.mode === "BACKFILL") {
-    if (options.providers.length !== 1 || !["fred", "defillama"].includes(options.providers[0])) {
-      throw new Error("BACKFILL requires exactly one supported provider: fred or defillama");
+    if (options.providers.length !== 1 || !["fred", "defillama", "sosovalue"].includes(options.providers[0])) {
+      throw new Error("BACKFILL requires exactly one supported provider: fred, defillama, or sosovalue");
     }
     if (options.providers[0] === "fred" && !options.fred) {
       throw new Error("FRED BACKFILL requires explicit options");
@@ -143,8 +156,15 @@ function validateOptions(options: HistoricalIngestionOptions): void {
     if (options.providers[0] === "defillama" && !options.defillama) {
       throw new Error("DefiLlama BACKFILL requires explicit options");
     }
+    if (options.providers[0] === "sosovalue" && !options.sosovalue) {
+      throw new Error("SoSoValue BACKFILL requires explicit options");
+    }
     if (options.providers[0] === "defillama" && options.defillama) {
       const rangeError = defiLlamaBackfillRangeError(options.defillama);
+      if (rangeError) throw new Error(rangeError);
+    }
+    if (options.providers[0] === "sosovalue" && options.sosovalue) {
+      const rangeError = soSoValueBackfillRangeError(options.sosovalue);
       if (rangeError) throw new Error(rangeError);
     }
   }

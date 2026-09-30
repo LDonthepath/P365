@@ -54,6 +54,7 @@ function main(): void {
     "crypto.total_market_cap.usd",
     "crypto.total_volume_24h.usd",
     "crypto.usd_stablecoin_market_cap.usd",
+    "crypto.us_spot_btc_etf_net_flow.usd",
     "crypto.btc_dominance.pct",
     "crypto.eth_dominance.pct",
   ];
@@ -64,6 +65,19 @@ function main(): void {
       `active market metric ${key} must have approved semantic dimensions`,
     );
   }
+
+  assertEqual(
+    requireObservationSemantics("crypto.us_spot_btc_etf_net_flow.usd"),
+    {
+      ontologyVersion: "v0.1",
+      marketDomain: "CRYPTO",
+      informationClass: "FLOW",
+      jurisdiction: "US",
+      instrument: "ETF",
+      asset: "BTC",
+    },
+    "US spot BTC ETF net-flow semantics",
+  );
 
   assertEqual(
     requireObservationSemantics("btc.spot.usd"),

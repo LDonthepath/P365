@@ -3,6 +3,7 @@ import type { Observation, ObservationSemantics } from "./types";
 const V = "v0.1" as const;
 
 export const USD_STABLECOIN_MARKET_CAP_SERIES_KEY = "crypto.usd_stablecoin_market_cap.usd" as const;
+export const BTC_ETF_NET_FLOW_SERIES_KEY = "crypto.us_spot_btc_etf_net_flow.usd" as const;
 
 const SEMANTICS_BY_KEY: Readonly<Record<string, ObservationSemantics>> = {
   FEDFUNDS: { ontologyVersion: V, marketDomain: "POLICY", informationClass: "OBSERVATION", jurisdiction: "US", instrument: "POLICY_RATE" },
@@ -54,6 +55,7 @@ const SEMANTICS_BY_KEY: Readonly<Record<string, ObservationSemantics>> = {
   "crypto.total_market_cap.usd": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "OBSERVATION", jurisdiction: "GLOBAL", asset: "TOTAL_CRYPTO" },
   "crypto.total_volume_24h.usd": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "OBSERVATION", jurisdiction: "GLOBAL", asset: "TOTAL_CRYPTO" },
   [USD_STABLECOIN_MARKET_CAP_SERIES_KEY]: { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "OBSERVATION", jurisdiction: "GLOBAL", asset: "USD_STABLECOINS" },
+  [BTC_ETF_NET_FLOW_SERIES_KEY]: { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "FLOW", jurisdiction: "US", instrument: "ETF", asset: "BTC" },
   "crypto.btc_dominance.pct": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "DERIVED_METRIC", jurisdiction: "GLOBAL", asset: "BTC" },
   "crypto.eth_dominance.pct": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "DERIVED_METRIC", jurisdiction: "GLOBAL", asset: "ETH" },
 };

@@ -1,6 +1,7 @@
 import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
+import type { SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
 import type { MacroObservationInput } from "../data/fred";
 import type { FomcEventInput } from "../data/federal-reserve-events";
 import { forexFactoryJurisdiction } from "../data/event-jurisdiction";
@@ -17,6 +18,7 @@ export const P365_SOURCES = {
   yahooFinance: { id: "yahoo-finance", name: "Yahoo Finance (Gold, Russell 2000 & DXY)", type: "MARKET" },
   coinGeckoMarket: { id: "coingecko-market", name: "CoinGecko Market", type: "MARKET" },
   defiLlamaStablecoins: { id: "defillama-stablecoins", name: "DefiLlama Stablecoins", type: "MARKET" },
+  soSoValueEtfFlow: { id: "sosovalue-etf-flow", name: "SoSoValue ETF Flow", type: "MARKET" },
   coinDesk: { id: "coindesk", name: "CoinDesk", type: "NEWS" },
   forexFactory: { id: "forex-factory", name: "Forex Factory", type: "CALENDAR" },
   biquote: { id: "biquote", name: "Biquote Economic Calendar", type: "CALENDAR" },
@@ -204,6 +206,59 @@ export function stablecoinLiquidityToCanonicalRecords(
         observedAt: item.observedAt,
         evaluatedAt: item.retrievedAt,
       }),
+      evidenceId,
+      identity,
+      provenance: item.provenance,
+      semantics: requireObservationSemantics(item.metricId),
+      metadata,
+    };
+    assertCurrentObservationInvariants(observation);
+    return { evidence, observation };
+  });
+
+  return {
+    observations: normalized.map((item) => item.observation),
+    evidence: normalized.map((item) => item.evidence),
+  };
+}
+
+/** Converts maturity-qualified SoSoValue provider aggregates into canonical facts. */
+export function btcEtfFlowToCanonicalRecords(
+  items: SoSoValueBtcEtfFlowObservationInput[],
+): { observations: Observation[]; evidence: Evidence[] } {
+  const sourceId = P365_SOURCES.soSoValueEtfFlow.id;
+  const normalized = items.map((item) => {
+    const value = String(item.value);
+    const metadata = { ...item.metadata, metricId: item.metricId };
+    const identity = buildObservationIdentity({
+      domain: "MARKET",
+      seriesKey: item.metricId,
+      observedAt: item.observedAt,
+      sourceId,
+      value,
+      unit: item.unit,
+      frequency: "DAILY",
+    });
+    const evidenceId = observationEvidenceId(identity);
+    const evidence: Evidence = {
+      id: evidenceId,
+      sourceId,
+      kind: "OBSERVATION",
+      subject: item.metricId,
+      content: `${item.metricId} = ${item.value} (${item.providerTradingDate})`,
+      capturedAt: item.retrievedAt,
+      retrievedAt: item.retrievedAt,
+      metadata,
+    };
+    const observation: Observation = {
+      id: observationRevisionId(identity),
+      domain: "MARKET",
+      subject: item.metricId,
+      value,
+      observedAt: item.observedAt,
+      retrievedAt: item.retrievedAt,
+      sourceId,
+      quality: "UNKNOWN",
       evidenceId,
       identity,
       provenance: item.provenance,

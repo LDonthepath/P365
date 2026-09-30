@@ -2,6 +2,13 @@ import assert from "node:assert/strict";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { MacroObservationInput } from "../data/fred";
+import {
+  SOSOVALUE_ETF_FLOW_COMPLETION_BASIS,
+  SOSOVALUE_ETF_FLOW_MATURITY_POLICY,
+  SOSOVALUE_ETF_FLOW_MATURITY_STATUS,
+  SOSOVALUE_ETF_FLOW_PROVIDER_RESOURCE,
+  type SoSoValueBtcEtfFlowObservationInput,
+} from "../data/sosovalue-etf-flow";
 import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
 import { providerFetchPolicy } from "../data/provider-fetch-policy";
 import { providerResult, type ProviderResult } from "../data/types";
@@ -85,6 +92,44 @@ function stablecoinInput(observedAt: string, value: number): DefiLlamaStablecoin
   };
 }
 
+function etfFlowInput(date: string, value: number): SoSoValueBtcEtfFlowObservationInput {
+  return {
+    metricId: "crypto.us_spot_btc_etf_net_flow.usd",
+    value,
+    observedAt: `${date}T00:00:00.000Z`,
+    retrievedAt: "2026-09-30T12:00:00.000Z",
+    providerTradingDate: date,
+    providerResource: SOSOVALUE_ETF_FLOW_PROVIDER_RESOURCE,
+    providerSymbol: "BTC",
+    countryCode: "US",
+    aggregateField: "total_net_inflow",
+    unit: "USD",
+    maturityPolicy: SOSOVALUE_ETF_FLOW_MATURITY_POLICY,
+    completionBasis: SOSOVALUE_ETF_FLOW_COMPLETION_BASIS,
+    maturityStatus: SOSOVALUE_ETF_FLOW_MATURITY_STATUS,
+    provenance: {
+      version: "v1",
+      providerResource: SOSOVALUE_ETF_FLOW_PROVIDER_RESOURCE,
+      nativeSymbol: "BTC",
+      observationDate: date,
+    },
+    metadata: {
+      metricId: "crypto.us_spot_btc_etf_net_flow.usd",
+      provider: "SoSoValue",
+      providerResource: SOSOVALUE_ETF_FLOW_PROVIDER_RESOURCE,
+      providerTradingDate: date,
+      providerSymbol: "BTC",
+      countryCode: "US",
+      aggregateField: "total_net_inflow",
+      unit: "USD",
+      maturityPolicy: SOSOVALUE_ETF_FLOW_MATURITY_POLICY,
+      completionBasis: SOSOVALUE_ETF_FLOW_COMPLETION_BASIS,
+      maturityStatus: SOSOVALUE_ETF_FLOW_MATURITY_STATUS,
+      frequency: "DAILY",
+    },
+  };
+}
+
 function repositories(): { repositories: CanonicalRepositories; observations: InMemoryObservationRepository } {
   const observations = new InMemoryObservationRepository();
   return {
@@ -110,6 +155,7 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
     russell: record("russell", marketResult("yahoo-finance", [])),
     fred: record("fred", providerResult("fred", "EMPTY", [])),
     defillama: record("defillama", providerResult("defillama", "EMPTY", [])),
+    sosovalue: record("sosovalue", providerResult("sosovalue", "EMPTY", [])),
   };
 }
 
@@ -235,6 +281,34 @@ async function main(): Promise<void> {
   assert.equal(isolated.status, "PARTIAL");
   assert.equal(isolated.persistedObservations, 1, "DefiLlama failure cannot suppress another successful provider");
 
+  const sosovalueStore = repositories();
+  const sosovalueAcquisition = acquisition([]);
+  sosovalueAcquisition.sosovalue = async () => providerResult("sosovalue", "SUCCESS", [
+    etfFlowInput("2026-09-29", 100),
+    etfFlowInput("2026-09-26", 90),
+  ]);
+  const sosovalueForward = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["sosovalue"] },
+    { acquisition: sosovalueAcquisition, repositories: sosovalueStore.repositories },
+  );
+  assert.equal(sosovalueForward.persistedObservations, 2, "FORWARD retains the provider's bounded matured correction window");
+  const sosovalueHistory = await sosovalueStore.observations.findHistory({
+    identity: { domain: "MARKET", seriesKey: "crypto.us_spot_btc_etf_net_flow.usd" },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(sosovalueHistory.length, 2);
+  assert.ok(sosovalueHistory.every((item) => item.quality === "UNKNOWN"));
+
+  const sosovalueFailureAcquisition = acquisition([]);
+  sosovalueFailureAcquisition.sosovalue = async () => providerResult("sosovalue", "ERROR", [], "SoSoValue unavailable");
+  const sosovalueIsolated = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["coingecko", "sosovalue"] },
+    { acquisition: sosovalueFailureAcquisition, repositories: repositories().repositories },
+  );
+  assert.equal(sosovalueIsolated.status, "PARTIAL");
+  assert.equal(sosovalueIsolated.persistedObservations, 1, "SoSoValue failure cannot suppress CoinGecko");
+
   const failingStore = repositories();
   failingStore.repositories.observations.saveMany = async () => { throw new Error("storage unavailable"); };
   const failed = await runHistoricalIngestion(
@@ -260,7 +334,7 @@ async function main(): Promise<void> {
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=gold&from=2026-09-01&to=2026-09-20")),
-    { ok: false, error: "BACKFILL requires exactly one supported provider: fred or defillama" },
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, or sosovalue" },
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred&from=2026-09-01&to=2026-09-20")),
@@ -290,7 +364,24 @@ async function main(): Promise<void> {
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred,defillama&from=2026-09-01&to=2026-09-20")),
-    { ok: false, error: "BACKFILL requires exactly one supported provider: fred or defillama" },
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, or sosovalue" },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=sosovalue&from=2026-09-02&to=2026-09-29")),
+    {
+      ok: true,
+      options: { mode: "BACKFILL", providers: ["sosovalue"], sosovalue: { from: "2026-09-02", to: "2026-09-29" } },
+    },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=sosovalue&from=2026-09-01&to=2026-09-29")),
+    { ok: false, error: "SoSoValue BACKFILL is limited to 28 calendar days" },
+    "a 28-day date difference is 29 inclusive calendar days and is rejected",
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred,sosovalue&from=2026-09-01&to=2026-09-20")),
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, or sosovalue" },
+    "mixed-provider BACKFILL remains rejected",
   );
   await assert.rejects(
     runHistoricalIngestion(
