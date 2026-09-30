@@ -4,6 +4,22 @@ const V = "v0.1" as const;
 
 export const USD_STABLECOIN_MARKET_CAP_SERIES_KEY = "crypto.usd_stablecoin_market_cap.usd" as const;
 export const BTC_ETF_NET_FLOW_SERIES_KEY = "crypto.us_spot_btc_etf_net_flow.usd" as const;
+export const CFTC_GOLD_COT_SERIES_KEYS = {
+  openInterest: "gold.cftc.comex.open_interest.contracts",
+  producerMerchantLong: "gold.cftc.producer_merchant.long.contracts",
+  producerMerchantShort: "gold.cftc.producer_merchant.short.contracts",
+  swapDealerLong: "gold.cftc.swap_dealer.long.contracts",
+  swapDealerShort: "gold.cftc.swap_dealer.short.contracts",
+  swapDealerSpreading: "gold.cftc.swap_dealer.spreading.contracts",
+  managedMoneyLong: "gold.cftc.managed_money.long.contracts",
+  managedMoneyShort: "gold.cftc.managed_money.short.contracts",
+  managedMoneySpreading: "gold.cftc.managed_money.spreading.contracts",
+  otherReportablesLong: "gold.cftc.other_reportables.long.contracts",
+  otherReportablesShort: "gold.cftc.other_reportables.short.contracts",
+  otherReportablesSpreading: "gold.cftc.other_reportables.spreading.contracts",
+  nonreportableLong: "gold.cftc.nonreportable.long.contracts",
+  nonreportableShort: "gold.cftc.nonreportable.short.contracts",
+} as const;
 
 const SEMANTICS_BY_KEY: Readonly<Record<string, ObservationSemantics>> = {
   FEDFUNDS: { ontologyVersion: V, marketDomain: "POLICY", informationClass: "OBSERVATION", jurisdiction: "US", instrument: "POLICY_RATE" },
@@ -56,6 +72,20 @@ const SEMANTICS_BY_KEY: Readonly<Record<string, ObservationSemantics>> = {
   "crypto.total_volume_24h.usd": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "OBSERVATION", jurisdiction: "GLOBAL", asset: "TOTAL_CRYPTO" },
   [USD_STABLECOIN_MARKET_CAP_SERIES_KEY]: { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "OBSERVATION", jurisdiction: "GLOBAL", asset: "USD_STABLECOINS" },
   [BTC_ETF_NET_FLOW_SERIES_KEY]: { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "FLOW", jurisdiction: "US", instrument: "ETF", asset: "BTC" },
+  [CFTC_GOLD_COT_SERIES_KEYS.openInterest]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD" },
+  [CFTC_GOLD_COT_SERIES_KEYS.producerMerchantLong]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "PRODUCER_MERCHANT_PROCESSOR_USER" },
+  [CFTC_GOLD_COT_SERIES_KEYS.producerMerchantShort]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "PRODUCER_MERCHANT_PROCESSOR_USER" },
+  [CFTC_GOLD_COT_SERIES_KEYS.swapDealerLong]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "SWAP_DEALER" },
+  [CFTC_GOLD_COT_SERIES_KEYS.swapDealerShort]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "SWAP_DEALER" },
+  [CFTC_GOLD_COT_SERIES_KEYS.swapDealerSpreading]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "SWAP_DEALER" },
+  [CFTC_GOLD_COT_SERIES_KEYS.managedMoneyLong]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "MANAGED_MONEY" },
+  [CFTC_GOLD_COT_SERIES_KEYS.managedMoneyShort]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "MANAGED_MONEY" },
+  [CFTC_GOLD_COT_SERIES_KEYS.managedMoneySpreading]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "MANAGED_MONEY" },
+  [CFTC_GOLD_COT_SERIES_KEYS.otherReportablesLong]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "OTHER_REPORTABLES" },
+  [CFTC_GOLD_COT_SERIES_KEYS.otherReportablesShort]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "OTHER_REPORTABLES" },
+  [CFTC_GOLD_COT_SERIES_KEYS.otherReportablesSpreading]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "OTHER_REPORTABLES" },
+  [CFTC_GOLD_COT_SERIES_KEYS.nonreportableLong]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "NONREPORTABLE" },
+  [CFTC_GOLD_COT_SERIES_KEYS.nonreportableShort]: { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "POSITIONING", jurisdiction: "US", instrument: "FUTURE", asset: "GOLD", participant: "NONREPORTABLE" },
   "crypto.btc_dominance.pct": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "DERIVED_METRIC", jurisdiction: "GLOBAL", asset: "BTC" },
   "crypto.eth_dominance.pct": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "DERIVED_METRIC", jurisdiction: "GLOBAL", asset: "ETH" },
 };
