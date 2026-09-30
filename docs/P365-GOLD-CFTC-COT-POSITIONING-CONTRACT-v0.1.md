@@ -1,8 +1,8 @@
 # P365 Gold CFTC COT Positioning Contract v0.1
 
-**Status:** CONTRACT FROZEN / CFTC SOURCE QUALIFIED CANDIDATE — RUNTIME OWNER APPROVAL PENDING
+**Status:** RUNTIME IMPLEMENTED / LIVE PRE VERIFICATION & PRODUCTION ACTIVATION PENDING
 
-**Checkpoint:** GOLD-POS-001A contract and source qualification
+**Checkpoints:** GOLD-POS-001A contract/source qualification; GOLD-POS-001B factual runtime
 
 **MVP scope:** Gold
 
@@ -502,3 +502,47 @@ No runtime code is added by this checkpoint.
 - confirmation/contradiction;
 - State/Regime/Risk/Intelligence;
 - trading recommendation.
+
+
+## 18. GOLD-POS-001B runtime implementation
+
+GOLD-POS-001B implements the qualified CFTC source through the existing
+historical-ingestion owner.
+
+Runtime boundaries:
+
+- provider: CFTC Public Reporting Environment;
+- resource: `/resource/72hh-3qpy.json`;
+- target contract: `088691`;
+- report family: Disaggregated Futures Only;
+- FORWARD: bounded rolling recheck of the 8 most recent weekly reports;
+- BACKFILL: one provider only, explicit from/to bounds, maximum 370 inclusive
+  calendar days per request;
+- source values: raw contract counts only;
+- canonical output: 14 raw weekly series covering open interest plus
+  Producer/Merchant, Swap Dealer, Managed Money, Other Reportables, and
+  Non-reportable long/short/spreading families where the source reports them;
+- canonical quality: `UNKNOWN` until release-calendar-aware freshness is
+  separately qualified;
+- report date is retained as semantic effective time;
+- `retrievedAt` is P365 acquisition availability;
+- no `releasedAt` or `publishedAt` is fabricated;
+- Observation identity/revisions reuse FND-018A;
+- Observation Evidence uses semantic observation effective time for stable
+  Market Memory dedupe;
+- provider field identity and CFTC contract code are retained in provenance;
+- schema mismatch, duplicate report dates, wrong contract, non-Futures-Only
+  rows, malformed counts, and out-of-bound backfill responses fail closed.
+
+The adapter accepts only explicit field-name aliases grounded in the official
+CFTC Disaggregated variable schema. The exact live PRE JSON schema remains a
+production smoke gate: if PRE field identifiers differ, the provider returns
+`ERROR` before canonical persistence rather than guessing.
+
+GOLD-POS-001B does not add a scheduler, production backfill, derived net
+position, percentile/z-score, UI, confirmation/contradiction, or higher-order
+reasoning.
+
+Checkpoint status:
+
+> **RUNTIME IMPLEMENTED / LIVE PRE VERIFICATION & PRODUCTION ACTIVATION PENDING**
