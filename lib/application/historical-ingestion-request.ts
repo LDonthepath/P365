@@ -6,6 +6,7 @@ import {
   type HistoricalIngestionProvider,
 } from "./historical-ingestion";
 import { soSoValueBackfillRangeError } from "../data/sosovalue-etf-flow";
+import { cftcGoldCotBackfillRangeError } from "../data/cftc-gold-cot";
 
 export type HistoricalIngestionRequestParseResult =
   | { ok: true; options: HistoricalIngestionOptions }
@@ -34,8 +35,8 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
   }
   const mode: HistoricalIngestionMode = rawMode === "BACKFILL" ? "BACKFILL" : "FORWARD";
   if (mode === "FORWARD") return { ok: true, options: { mode, providers } };
-  if (providers.length !== 1 || !["fred", "defillama", "sosovalue"].includes(providers[0])) {
-    return { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, or sosovalue" };
+  if (providers.length !== 1 || !["fred", "defillama", "sosovalue", "cftc"].includes(providers[0])) {
+    return { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" };
   }
 
   const from = parseDate(searchParams.get("from"));
@@ -50,6 +51,11 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
     const rangeError = soSoValueBackfillRangeError({ from, to });
     if (rangeError) return { ok: false, error: rangeError };
     return { ok: true, options: { mode, providers, sosovalue: { from, to } } };
+  }
+  if (providers[0] === "cftc") {
+    const rangeError = cftcGoldCotBackfillRangeError({ from, to });
+    if (rangeError) return { ok: false, error: rangeError };
+    return { ok: true, options: { mode, providers, cftc: { from, to } } };
   }
   return { ok: true, options: { mode, providers, fred: { observationStart: from, observationEnd: to, limit: 100 } } };
 }
