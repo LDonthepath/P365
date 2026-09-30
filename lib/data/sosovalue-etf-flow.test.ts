@@ -170,6 +170,18 @@ test("accepts only documented successful envelopes and rejects provider-level fa
   assert.equal(wrapped.status, "SUCCESS");
   assert.deepEqual(wrapped.data.map((item) => item.providerTradingDate), ["2026-09-29", "2026-09-28", "2026-09-26"]);
 
+  const liveCompatibleWrapped = await acquire({
+    code: 0,
+    message: "success",
+    data: rows(),
+    details: { request_id: "provider-metadata-only" },
+  });
+  assert.equal(liveCompatibleWrapped.status, "SUCCESS");
+  assert.deepEqual(
+    liveCompatibleWrapped.data.map((item) => item.providerTradingDate),
+    ["2026-09-29", "2026-09-28", "2026-09-26"],
+  );
+
   const unsuccessful = await acquire({ code: 1001, message: "entitlement denied", data: rows() });
   assert.equal(unsuccessful.status, "ERROR");
   assert.equal(unsuccessful.errorCode, "MALFORMED_PAYLOAD");

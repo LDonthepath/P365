@@ -71,7 +71,7 @@ function responseRows(payload: unknown): unknown[] {
     throw new Error("SoSoValue malformed payload: expected a documented row array or success envelope");
   }
   const record = payload as Record<string, unknown>;
-  const documentedEnvelopeKeys = new Set(["code", "message", "data"]);
+  const documentedEnvelopeKeys = new Set(["code", "message", "data", "details"]);
   const unsupportedEnvelopeKeys = Object.keys(record)
     .filter((key) => !documentedEnvelopeKeys.has(key))
     .sort();
