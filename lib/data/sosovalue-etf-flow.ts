@@ -65,18 +65,28 @@ function isDateOnly(value: unknown): value is string {
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-function responseRows(payload: unknown): unknown[] | null {
+function responseRows(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("SoSoValue malformed payload: expected a documented row array or success envelope");
+  }
   const record = payload as Record<string, unknown>;
-  const documentedEnvelopeKeys = new Set(["data", "code", "message", "msg", "success"]);
-  if (Object.keys(record).some((key) => !documentedEnvelopeKeys.has(key))) return null;
-  return Array.isArray(record.data) ? record.data : null;
+  const documentedEnvelopeKeys = new Set(["code", "message", "data"]);
+  if (Object.keys(record).some((key) => !documentedEnvelopeKeys.has(key))) {
+    throw new Error("SoSoValue malformed payload: success envelope contains unsupported fields");
+  }
+  if (record.code !== 0) {
+    throw new Error("SoSoValue malformed payload: provider envelope code must be 0");
+  }
+  if (!Array.isArray(record.data)) {
+    throw new Error("SoSoValue malformed payload: success envelope data must be an array");
+  }
+  return record.data;
 }
 
-function validateRows(payload: unknown): ValidRow[] {
+function validateRows(payload: unknown, retrievedAt: string): ValidRow[] {
   const rows = responseRows(payload);
-  if (!rows) throw new Error("SoSoValue malformed payload: expected a documented row array or common data envelope");
+  const retrievalUtcDate = retrievedAt.slice(0, 10);
   const validated: ValidRow[] = [];
   const dates = new Set<string>();
   for (const candidate of rows) {
@@ -86,6 +96,9 @@ function validateRows(payload: unknown): ValidRow[] {
     const row = candidate as Record<string, unknown>;
     if (!isDateOnly(row.date)) {
       throw new Error("SoSoValue malformed payload: date must be YYYY-MM-DD");
+    }
+    if (row.date > retrievalUtcDate) {
+      throw new Error(`SoSoValue malformed payload: trading date ${row.date} is later than the UTC retrieval date`);
     }
     if (dates.has(row.date)) {
       throw new Error(`SoSoValue malformed payload: duplicate trading date ${row.date}`);
@@ -205,8 +218,8 @@ export async function fetchSoSoValueBtcEtfFlowObservations(
     } catch {
       throw new Error("SoSoValue invalid JSON response");
     }
-    const rows = validateRows(payload);
     const retrievedAt = now().toISOString();
+    const rows = validateRows(payload, retrievedAt);
     const selected = query.mode === "BACKFILL"
       ? selectBackfillRows(rows, query.range)
       : rows.slice(1);
