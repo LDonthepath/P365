@@ -10,6 +10,7 @@ export const OBSERVATION_PROVIDER_RESOURCES = {
   yahooChart: "/v8/finance/chart",
   defiLlamaStablecoinChartsAll: "/stablecoincharts/all",
   soSoValueEtfSummaryHistory: "/etfs/summary-history",
+  cftcDisaggregatedFuturesOnly: "/resource/72hh-3qpy.json",
 } as const;
 
 function assertNonEmpty(value: string | undefined, field: string): void {
@@ -174,6 +175,27 @@ export function assertCurrentObservationInvariants(observation: Observation): vo
       || provenance.vintageDate !== undefined
     ) {
       throw new Error("SoSoValue ETF-flow Observation provenance is inconsistent with its canonical fact.");
+    }
+  }
+
+  if (observation.sourceId === "cftc-gold-cot") {
+    if (
+      observation.domain !== "MARKET"
+      || provenance.providerResource !== OBSERVATION_PROVIDER_RESOURCES.cftcDisaggregatedFuturesOnly
+      || provenance.observationDate !== observation.observedAt.slice(0, 10)
+      || provenance.observationDate !== metadataString(observation, "reportDate")
+      || provenance.nativeInstrumentId !== "088691"
+      || provenance.nativeInstrumentId !== metadataString(observation, "contractMarketCode")
+      || provenance.nativeSeriesId !== metadataString(observation, "providerField")
+      || metadataString(observation, "datasetId") !== "72hh-3qpy"
+      || metadataString(observation, "reportFamily") !== "DISAGGREGATED_FUTURES_ONLY"
+      || metadataString(observation, "unit") !== "CONTRACTS"
+      || metadataString(observation, "frequency") !== "WEEKLY"
+      || metadataString(observation, "providerResource") !== OBSERVATION_PROVIDER_RESOURCES.cftcDisaggregatedFuturesOnly
+      || provenance.nativeSymbol !== undefined
+      || provenance.vintageDate !== undefined
+    ) {
+      throw new Error("CFTC Gold COT Observation provenance is inconsistent with its canonical fact.");
     }
   }
 }
