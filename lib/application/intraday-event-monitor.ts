@@ -155,12 +155,12 @@ async function buildMonitorForIdentity(
 
   const observationIds = [...new Set(ordered.flatMap(({ snapshot }) =>
     snapshot.observationRefs.map((ref) => ref.observationId)))];
-  const resolved = await Promise.all(
-    observationIds.map((id) => canonicalRepositories.observations.findById(id)),
-  );
-  const observations = new Map(
-    resolved.filter((item) => item !== null).map((item) => [item!.id, item!]),
-  );
+  const resolved = canonicalRepositories.observations.findManyByIds
+    ? await canonicalRepositories.observations.findManyByIds(observationIds)
+    : (await Promise.all(
+        observationIds.map((id) => canonicalRepositories.observations.findById(id)),
+      )).filter((item): item is NonNullable<typeof item> => item !== null);
+  const observations = new Map(resolved.map((item) => [item.id, item]));
 
   const valuesFor = (snapshot: MarketSnapshot): Partial<Record<IntradaySeriesKey, number>> => {
     const values: Partial<Record<IntradaySeriesKey, number>> = {};
