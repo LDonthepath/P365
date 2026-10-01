@@ -61,7 +61,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const netLiquidityPromise = buildNetLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
   const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf);
   const mvpFactualContextPromise = buildMacroCryptoGoldFactualContext(
-    historicalObservationRepository,
+    dashboardHistoricalObservationRepository,
     asOf,
     {
       netLiquidity: netLiquidityPromise,
