@@ -66,16 +66,17 @@ function CoverageNote({ coverage }: { coverage: RiskWindowCoverage }) {
   return null;
 }
 
-export function EventRiskWindowPanel({ events }: { events: Event[] }) {
-  // Time-dependent output is computed after mount to avoid a server/client mismatch.
-  const [now, setNow] = useState<Date | null>(null);
+export function EventRiskWindowPanel({ events, asOf }: { events: Event[]; asOf: string }) {
+  // Seed with the server-provided dashboard cutoff so first paint already has a
+  // deterministic window; switch to the client clock after mount.
+  const [now, setNow] = useState(() => new Date(asOf));
   useEffect(() => {
     setNow(new Date());
     const id = window.setInterval(() => setNow(new Date()), 30_000);
     return () => window.clearInterval(id);
   }, []);
 
-  const view = now ? buildEventRiskWindow(events, now, { calendarLimit: ECONOMIC_CALENDAR_LIMIT }) : null;
+  const view = buildEventRiskWindow(events, now, { calendarLimit: ECONOMIC_CALENDAR_LIMIT });
 
   return (
     <section className="panel" aria-labelledby="event-risk-title">
@@ -84,7 +85,6 @@ export function EventRiskWindowPanel({ events }: { events: Event[] }) {
         <span>{EVENT_RISK_WINDOW_HOURS} JAM KE DEPAN</span>
       </div>
       <h2 id="event-risk-title">Event berdampak tinggi</h2>
-      {!view && <p className="muted">Menghitung jendela waktu…</p>}
       {view && view.slots.length === 0 && (
         <p>Tidak ada event berdampak tinggi yang dimuat dalam {view.windowHours} jam ke depan.</p>
       )}

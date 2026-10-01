@@ -9,6 +9,7 @@ import type { DashboardData } from "@/lib/data/dashboard-data";
 import type { CalendarEvent, NewsItem } from "@/lib/data/types";
 import type { Context, DataQuality, Evidence, Observation, ProviderHealth } from "@/lib/domain/types";
 import { buildBaselinePresentations, type BaselinePresentation } from "@/lib/presentation/baseline";
+import { formatMacroDisplayDelta, formatMacroDisplayValue } from "@/lib/presentation/macro-display";
 import { logout, refreshDashboardData } from "./actions";
 import { EventRiskWindowPanel } from "./event-risk-window-panel";
 import { IntradayEventResponsePanel } from "./intraday-event-response-panel";
@@ -87,27 +88,6 @@ function CalendarRow({ item }: { item: CalendarEvent }) {
   return <article className="calendar-row"><time dateTime={item.dateISO} aria-label={`${item.event}, ${item.status}, ${item.time} WIB`}>{item.time}<small>WIB</small></time><div><h3>{item.event}</h3><p>{item.country} · {item.status}</p></div><span className={`impact ${item.impact.toLowerCase()}`}>{item.impact}</span></article>;
 }
 
-function formatBaselineDelta(value: number | null): string {
-  if (value === null) return "—";
-  return `${value > 0 ? "+" : ""}${value.toFixed(2)}`;
-}
-
-function formatMacroValue(value: string, unit: string): string {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return value;
-  const normalized = unit.trim().toLowerCase();
-  if (normalized.includes("percent") || normalized === "%") return `${numeric.toFixed(2)}%`;
-  if (normalized.includes("dollar") || normalized.includes("usd") || normalized.includes("$") ) {
-    const absolute = Math.abs(numeric);
-    if (absolute >= 1_000_000_000_000) return `$${(numeric / 1_000_000_000_000).toFixed(2)}T`;
-    if (absolute >= 1_000_000_000) return `$${(numeric / 1_000_000_000).toFixed(2)}B`;
-    if (absolute >= 1_000_000) return `$${(numeric / 1_000_000).toFixed(2)}M`;
-    if (absolute >= 1_000) return `$${(numeric / 1_000).toFixed(2)}K`;
-    return `$${numeric.toFixed(2)}`;
-  }
-  return value;
-}
-
 function macroThemeItems(context: Context, observations: Observation[]): Observation[] {
   return context.observationIds.map((id) => observations.find((item) => item.id === id)).filter((item): item is Observation => Boolean(item));
 }
@@ -129,7 +109,7 @@ function MacroThemeCard({ context, observations, baselines, expanded, onToggle }
   return <article className={`macro-theme-card${expanded ? " expanded" : ""}`}>
     <button type="button" className="macro-theme-summary" aria-expanded={expanded} onClick={onToggle}>
       <div className="macro-tile-header"><span className="macro-frequency">{label.toUpperCase()}</span><span className="macro-quality">{headline.quality}</span></div>
-      <div className="macro-tile-main"><div><h3>{MACRO_SERIES_LABELS[headlineSeries] ?? headline.subject}</h3><small>{headlineSeries} · {String(headline.metadata?.frequency ?? "")}</small></div><strong className="macro-value">{formatMacroValue(headline.value, headlineUnit)}</strong></div>
+      <div className="macro-tile-main"><div><h3>{MACRO_SERIES_LABELS[headlineSeries] ?? headline.subject}</h3><small>{headlineSeries} · {String(headline.metadata?.frequency ?? "")}</small></div><strong className="macro-value">{formatMacroDisplayValue(headline.value, headlineUnit)}</strong></div>
       <div className="macro-tile-footer"><span>{items.length} INDIKATOR</span><span>{expanded ? "TUTUP ↑" : "LIHAT DETAIL ↓"}</span></div>
     </button>
     {expanded && <div className="macro-theme-detail">{items.map((item) => {
@@ -137,7 +117,7 @@ function MacroThemeCard({ context, observations, baselines, expanded, onToggle }
       const unit = String(metadata.unit ?? "");
       const seriesId = String(metadata.seriesId ?? "");
       const baseline = baselines.get(seriesId) ?? null;
-      return <div className="macro-detail-row" key={item.id}><div><strong>{MACRO_SERIES_LABELS[seriesId] ?? item.subject}</strong><small>{seriesId} · {String(metadata.frequency ?? "UNKNOWN")} · {item.quality}</small></div><div className="macro-detail-values"><strong>{formatMacroValue(item.value, unit)}</strong><small>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroValue(baseline.baselineValue, unit)} · Δ ${formatBaselineDelta(baseline.changeValue)}` : `Pembanding ${baseline?.status ?? "MISSING"}`}</small></div></div>;
+      return <div className="macro-detail-row" key={item.id}><div><strong>{MACRO_SERIES_LABELS[seriesId] ?? item.subject}</strong><small>{seriesId} · {String(metadata.frequency ?? "UNKNOWN")} · {item.quality}</small></div><div className="macro-detail-values"><strong>{formatMacroDisplayValue(item.value, unit)}</strong><small>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroDisplayValue(baseline.baselineValue, unit)} · ${formatMacroDisplayDelta(baseline.changeValue, unit)}` : `Pembanding ${baseline?.status ?? "MISSING"}`}</small></div></div>;
     })}<div className="macro-theme-metadata"><span>Setiap indikator tetap dihitung terpisah; kartu ini hanya mengelompokkan tampilan.</span><span>Sumber · FRED</span></div></div>}
   </article>;
 }
@@ -154,12 +134,6 @@ function observationStatus(qualities: DataQuality[]): "PENDING" | "FRESH" | "PAR
   return qualities.length === 0 ? "PENDING" : qualities.every((item) => item === "FRESH") ? "FRESH" : "PARTIAL";
 }
 
-function sourceStatus(health: ProviderHealth[]): "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE" {
-  if (!health.length) return "PENDING";
-  if (health.some((item) => item.status === "ERROR" || item.status === "UNAVAILABLE")) return "UNAVAILABLE";
-  if (health.some((item) => item.status === "STALE")) return "PARTIAL";
-  return health.some((item) => item.status === "EMPTY") ? "PENDING" : "FRESH";
-}
 
 function numberValue(value: string): number | null {
   const parsed = Number(value);
@@ -421,7 +395,7 @@ function MarketHeatmap({ observations, baselines }: { observations: Observation[
     if (!observation) return [];
     const seriesId = String(observation.metadata?.seriesId ?? "");
     const baseline = baselineBySeries.get(seriesId);
-    return [{ id: scope, label: MACRO_CONTEXT_LABELS[scope] ?? scope, group: "MACRO" as const, value: formatMacroValue(observation.value, String(observation.metadata?.unit ?? "")), delta: baseline?.status === "VALID" ? baseline.changeValue : null, deltaUnit: "ABSOLUTE" as const, source: `${MACRO_SERIES_LABELS[seriesId] ?? seriesId} · ${seriesId}` }];
+    return [{ id: scope, label: MACRO_CONTEXT_LABELS[scope] ?? scope, group: "MACRO" as const, value: formatMacroDisplayValue(observation.value, String(observation.metadata?.unit ?? "")), delta: baseline?.status === "VALID" ? baseline.changeValue : null, deltaUnit: "ABSOLUTE" as const, source: `${MACRO_SERIES_LABELS[seriesId] ?? seriesId} · ${seriesId}` }];
   });
   const tiles = [...marketTiles, ...macroTiles];
   const groups: Array<HeatmapTile["group"]> = ["CROSS-ASSET", "MACRO", "CRYPTO"];
@@ -465,8 +439,16 @@ function CryptoMarketPanel({ observations, providerHealth }: { observations: Obs
   </section>;
 }
 
+const OVERVIEW_CHANGE_PRIORITY = ["DGS2", "DGS10", "DFII10", "T10YIE", "T10Y2Y"];
+
 function OverviewWhatChanged({ observations, baselines }: { observations: Observation[]; baselines: BaselinePresentation[] }) {
-  const validChanges = baselines.filter((item) => item.status === "VALID" && item.changeValue !== null);
+  const validChanges = baselines
+    .filter((item) => item.status === "VALID" && item.changeValue !== null)
+    .sort((a, b) => {
+      const ai = OVERVIEW_CHANGE_PRIORITY.indexOf(a.seriesId);
+      const bi = OVERVIEW_CHANGE_PRIORITY.indexOf(b.seriesId);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
   return <section className="panel overview-change-layer" aria-labelledby="what-changed-title">
     <div className="panel-label"><span>APA YANG BERUBAH</span><span>FAKTUAL</span></div>
     <div className="change-layer-grid">
@@ -479,7 +461,7 @@ function OverviewWhatChanged({ observations, baselines }: { observations: Observ
       const observation = observations.find((candidate) => String(candidate.metadata?.seriesId ?? "") === item.seriesId);
       const unit = String(observation?.metadata?.unit ?? "");
       const label = MACRO_SERIES_LABELS[item.seriesId] ?? observation?.subject ?? item.seriesId;
-      return <div key={item.seriesId}><strong>{label}</strong><span>{formatMacroValue(item.currentValue, unit)} dibanding {formatMacroValue(item.baselineValue ?? "", unit)} · perubahan {item.changeValue !== null && item.changeValue > 0 ? "+" : ""}{formatBaselineDelta(item.changeValue)}{unit ? ` ${unit}` : ""}</span></div>;
+      return <div key={item.seriesId}><strong>{label}</strong><span>Saat ini {formatMacroDisplayValue(item.currentValue, unit)} · sebelumnya {formatMacroDisplayValue(item.baselineValue ?? "", unit)} · {formatMacroDisplayDelta(item.changeValue, unit)}</span></div>;
     })}</div>}
   </section>;
 }
@@ -534,7 +516,6 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
 
   function handleManualRefresh() { startRefresh(async () => { const result = await refreshDashboardData(); setLastRefreshedAt(result.refreshedAt); router.refresh(); }); }
 
-  const providerStatus = sourceStatus(providerHealth);
   const cryptoContexts = contexts.filter((context) => context.scope === "CRYPTO_MARKET");
   const macroContexts = contexts.filter((context) => context.scope.startsWith("MACRO_"));
   const economicEventContexts = contexts.filter((context) => context.scope === "ECONOMIC_EVENTS");
@@ -544,7 +525,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
   const showNews = (items: NewsItem[], label: string) => <section className="panel news-panel"><div className="panel-label"><span>{label}</span><span>{items.length} ITEM</span></div><h2>Evidence berita terbaru</h2><div className="news-list">{items.length ? items.map((item) => <NewsCard item={item} key={item.id} />) : <EmptyPanelNote label={label.toLowerCase()} />}</div></section>;
 
   return <main className="dashboard-shell">
-    <header className="topbar"><div className="topbar-brand-group"><button className="nav-toggle" type="button" aria-label={navOpen ? "Tutup navigasi" : "Buka navigasi"} aria-expanded={navOpen} aria-controls="dashboard-navigation" onClick={() => setNavOpen((open) => !open)}><span /><span /><span /></button><div className="brand-lockup"><img className="brand-logo" src="/project365-logo.svg" alt="PROJECT365" style={{ width: "clamp(1.05rem, 2.2vw, 1.45rem)", height: "clamp(1.05rem, 2.2vw, 1.45rem)", objectFit: "contain", flexShrink: 0 }} /><p className="eyebrow" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", lineHeight: 1, letterSpacing: "-0.02em", margin: 0 }}>PROJECT365</p></div></div><div className="topbar-actions"><p><span className={`live-dot ${providerStatus === "UNAVAILABLE" ? "warning" : ""}`} /> {providerStatus === "FRESH" ? "DATA SEHAT" : "PERLU PERHATIAN"}</p>{lastRefreshedAt && <p className="muted refresh-note">Refresh manual terakhir: {relativeTimeID(lastRefreshedAt)}</p>}<button className="refresh-btn" type="button" onClick={handleManualRefresh} disabled={isRefreshing} aria-busy={isRefreshing}>{isRefreshing ? "Memuat ulang…" : "Muat ulang manual"}</button><div style={{ position: "relative" }}><button type="button" aria-label="Buka menu akun" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)} style={{ width: 36, height: 36, display: "grid", placeItems: "center", padding: 0, border: "1px solid var(--line)", borderRadius: 4, background: accountOpen ? "#151d19" : "transparent", color: accountOpen ? "var(--lime)" : "var(--text)" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-3.5 3-5.3 6.5-5.3s5.8 1.8 6.5 5.3" /></svg></button>{accountOpen && <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 220, padding: 8, border: "1px solid var(--line)", borderRadius: 5, background: "#101513", boxShadow: "0 12px 30px rgba(0,0,0,.35)", zIndex: 60 }}><div style={{ padding: "8px 10px 10px", borderBottom: "1px solid var(--line)" }}><span style={{ display: "block", color: "var(--muted)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: ".08em" }}>AKUN</span><strong style={{ display: "block", marginTop: 5, fontSize: 12, overflowWrap: "anywhere" }}>{sessionEmail}</strong></div><form action={logout}><button type="submit" style={{ width: "100%", marginTop: 8, padding: "9px 10px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 4, background: "transparent", color: "var(--text)", fontFamily: "'DM Mono', monospace", fontSize: 11 }}>Keluar</button></form></div>}</div></div></header>
+    <header className="topbar"><div className="topbar-brand-group"><button className="nav-toggle" type="button" aria-label={navOpen ? "Tutup navigasi" : "Buka navigasi"} aria-expanded={navOpen} aria-controls="dashboard-navigation" onClick={() => setNavOpen((open) => !open)}><span /><span /><span /></button><div className="brand-lockup"><img className="brand-logo" src="/project365-logo.svg" alt="PROJECT365" style={{ width: "clamp(1.05rem, 2.2vw, 1.45rem)", height: "clamp(1.05rem, 2.2vw, 1.45rem)", objectFit: "contain", flexShrink: 0 }} /><p className="eyebrow" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", lineHeight: 1, letterSpacing: "-0.02em", margin: 0 }}>PROJECT365</p></div></div><div className="topbar-actions">{lastRefreshedAt && <p className="muted refresh-note">Refresh manual terakhir: {relativeTimeID(lastRefreshedAt)}</p>}<button className="refresh-btn" type="button" onClick={handleManualRefresh} disabled={isRefreshing} aria-busy={isRefreshing}>{isRefreshing ? "Memuat ulang…" : "Muat ulang manual"}</button><div style={{ position: "relative" }}><button type="button" aria-label="Buka menu akun" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)} style={{ width: 36, height: 36, display: "grid", placeItems: "center", padding: 0, border: "1px solid var(--line)", borderRadius: 4, background: accountOpen ? "#151d19" : "transparent", color: accountOpen ? "var(--lime)" : "var(--text)" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-3.5 3-5.3 6.5-5.3s5.8 1.8 6.5 5.3" /></svg></button>{accountOpen && <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 220, padding: 8, border: "1px solid var(--line)", borderRadius: 5, background: "#101513", boxShadow: "0 12px 30px rgba(0,0,0,.35)", zIndex: 60 }}><div style={{ padding: "8px 10px 10px", borderBottom: "1px solid var(--line)" }}><span style={{ display: "block", color: "var(--muted)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: ".08em" }}>AKUN</span><strong style={{ display: "block", marginTop: 5, fontSize: 12, overflowWrap: "anywhere" }}>{sessionEmail}</strong></div><form action={logout}><button type="submit" style={{ width: "100%", marginTop: 8, padding: "9px 10px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 4, background: "transparent", color: "var(--text)", fontFamily: "'DM Mono', monospace", fontSize: 11 }}>Keluar</button></form></div>}</div></div></header>
     {navOpen && <button className="nav-backdrop" type="button" aria-label="Tutup navigasi" onClick={() => setNavOpen(false)} />}
     <nav id="dashboard-navigation" className={`filters${navOpen ? " open" : ""}`} aria-label="Bagian dashboard" role="tablist">{menuItems.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeMenu === item.id} className={activeMenu === item.id ? "active" : ""} onClick={() => { setActiveMenu(item.id); setNavOpen(false); }}>{item.label}</button>)}<span>WIB / ASIA-JAKARTA</span></nav>
 
@@ -554,7 +535,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         <OverviewQuickGlance data={data} observations={observations} />
         <div className="intraday-priority-grid">
           <OverviewWhatChanged observations={observations} baselines={baselinePresentations} />
-          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} />
+          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
         </div>
         <IntradayEventResponsePanel result={data.intradayEventMonitor} />
         <details className="advanced-details">

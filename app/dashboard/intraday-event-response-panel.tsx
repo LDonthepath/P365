@@ -72,8 +72,9 @@ export function IntradayEventResponsePanel({ result }: { result: IntradayEventMo
     <p className="muted">P365 akan menampilkan hasil rilis dan pergerakan Bitcoin, dolar, emas, serta Ethereum ketika datanya tersedia.</p>
   </section>;
   if (result.status === "ERROR") return <section className="panel" aria-labelledby="intraday-event-response-title">
-    <div className="panel-label"><span>REAKSI PASAR SETELAH DATA EKONOMI</span><span>GAGAL MEMUAT</span></div>
-    <h2 id="intraday-event-response-title">Data reaksi pasar sementara tidak dapat dimuat.</h2>
+    <div className="panel-label"><span>REAKSI PASAR SETELAH DATA EKONOMI</span><span>BELUM TERSEDIA</span></div>
+    <h2 id="intraday-event-response-title">Reaksi event terbaru belum dapat ditampilkan.</h2>
+    <p className="muted">Panel ini memiliki jalur baca terpisah dari harga Bitcoin, Gold, dan data utama lain. Kegagalan panel ini tidak berarti seluruh dashboard gagal.</p>
   </section>;
 
   return <>{result.data.map((data) => <IntradayEventResponseCard key={data.eventIdentityKey} data={data} />)}</>;
