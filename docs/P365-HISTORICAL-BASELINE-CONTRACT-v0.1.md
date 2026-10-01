@@ -1,7 +1,7 @@
 # P365 Point-in-Time Historical Baseline Contract v0.1
 
 **Checkpoint:** HIST-001A  
-**Status:** CONTRACT FROZEN / RUNTIME IMPLEMENTATION PENDING  
+**Status:** CONTRACT FROZEN / HIST-001B RUNTIME IMPLEMENTED / OWNER MERGE PENDING  
 **Scope:** read-only, single-series historical distribution baseline  
 **MVP scope:** Macro explanatory layer + Crypto + Gold
 
@@ -382,11 +382,11 @@ causality.
 A strong REL-001 correlation does not establish that the current observation is
 historically unusual.
 
-## 16. Future runtime gate
+## 16. HIST-001B runtime implementation
 
-HIST-001B may implement this contract only after owner merge of HIST-001A.
+HIST-001B implements this contract as a read-only application/domain layer over the existing `HistoricalObservationRepository`.
 
-At minimum HIST-001B must prove with focused tests:
+The implementation must prove with focused tests:
 
 1. canonical series/source filtering;
 2. `retrievedAt <= asOf` no-lookahead behavior;
@@ -404,8 +404,7 @@ At minimum HIST-001B must prove with focused tests:
 14. repository failure -> UNKNOWN;
 15. no State/Regime/Risk/Intelligence/trading semantics.
 
-Runtime implementation must reuse `HistoricalObservationRepository`; it must not
-create a second raw-history data source.
+The implementation reuses `HistoricalObservationRepository`; it does not create a second raw-history data source. Historical reads remain bounded to 500 rows per repository call; when that bound is reached and complete window coverage cannot be proven, HIST-001B fails closed with `UNKNOWN` rather than calculating a potentially truncated distribution.
 
 ## 17. Out of scope
 
@@ -430,8 +429,7 @@ HIST-001A does not authorize:
 
 ## 18. Checkpoint verdict
 
-> **HIST-001A: CONTRACT FROZEN / RUNTIME IMPLEMENTATION PENDING**
+> **HIST-001A: CONTRACT FROZEN**  
+> **HIST-001B: RUNTIME IMPLEMENTED / OWNER MERGE PENDING**
 
-This checkpoint converts the historical-baseline gap from an undefined concept into
-an explicit, point-in-time, no-lookahead, lineage-preserving methodology while
-leaving interpretation and trading decisions outside the factual evidence layer.
+The contract and runtime together convert the historical-baseline gap from an undefined concept into an explicit, point-in-time, no-lookahead, lineage-preserving distribution measurement while leaving interpretation and trading decisions outside the factual evidence layer.
