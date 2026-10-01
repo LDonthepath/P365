@@ -4,6 +4,7 @@ import styles from "./dashboard-layout.module.css";
 import overviewStyles from "./overview-layout.module.css";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
 
 export default async function DashboardPage() {
   return (
