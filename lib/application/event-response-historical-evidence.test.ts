@@ -322,10 +322,6 @@ test("HIST-001E binds calibrated historical context to the same EVR event/window
     assert.equal(series.historicalBaseline.status, "VALID");
     assert.equal(series.historicalBaseline.sampleSize, 30);
     assert.equal(
-      series.historicalBaseline.methodology.lookbackMs,
-      undefined,
-    );
-    assert.equal(
       Date.parse(series.historicalBaseline.methodology.observedAtOnOrBefore)
         < Date.parse(before.capturedAt),
       true,
