@@ -120,6 +120,9 @@ async function findMany<T extends CanonicalRecord>(
 ): Promise<T[]> {
   const uniqueIds = [...new Set(ids.filter((id) => id.trim()))];
   if (uniqueIds.length === 0) return [];
+  if (uniqueIds.some((id) => !/^[A-Za-z0-9:._-]+$/.test(id))) {
+    throw new Error("Supabase Market Memory batch read received an unsafe canonical ID.");
+  }
   if (uniqueIds.length > MAX_CANONICAL_BATCH_IDS) {
     throw new Error(
       `Supabase Market Memory batch read is limited to ${MAX_CANONICAL_BATCH_IDS} canonical IDs.`,
