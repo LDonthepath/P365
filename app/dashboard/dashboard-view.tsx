@@ -175,12 +175,6 @@ function observationStatus(qualities: DataQuality[]): "PENDING" | "FRESH" | "PAR
   return qualities.length === 0 ? "PENDING" : qualities.every((item) => item === "FRESH") ? "FRESH" : "PARTIAL";
 }
 
-function sourceStatus(health: ProviderHealth[]): "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE" {
-  if (!health.length) return "PENDING";
-  if (health.some((item) => item.status === "ERROR" || item.status === "UNAVAILABLE")) return "UNAVAILABLE";
-  if (health.some((item) => item.status === "STALE")) return "PARTIAL";
-  return health.some((item) => item.status === "EMPTY") ? "PENDING" : "FRESH";
-}
 
 function numberValue(value: string): number | null {
   const parsed = Number(value);
