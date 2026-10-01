@@ -1,8 +1,13 @@
 import "server-only";
 import { EVENT_WINDOW_POLICY_V1, type EventWindowRole } from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
-import type { Observation } from "../domain/types";
-import type { ObservationRepository } from "../repositories/types";
+import type { EconomicEventResult } from "../domain/event-result";
+import type { Event, Observation } from "../domain/types";
+import type {
+  EventRepository,
+  HistoricalEconomicEventResultRepository,
+  ObservationRepository,
+} from "../repositories/types";
 import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
 import { assessEventSurprise, type EventSurpriseAssessment } from "../domain/event-surprise";
 import { selectExpectationBaseline } from "../domain/expectation-baseline";
@@ -144,6 +149,35 @@ export async function resolveIntradayObservations(
   return new Map(resolved.map((item) => [item.id, item]));
 }
 
+export async function resolveIntradayMonitorDependencies(input: {
+  eventRepository: EventRepository;
+  observationRepository: ObservationRepository;
+  eventResultRepository: HistoricalEconomicEventResultRepository;
+  eventId: string;
+  observationIds: string[];
+  eventIdentityKey: string;
+  latestCapturedAt: string;
+}): Promise<{
+  event: Event | null;
+  observations: Map<string, Observation>;
+  results: EconomicEventResult[];
+}> {
+  const [event, observations, results] = await Promise.all([
+    input.eventRepository.findById(input.eventId),
+    resolveIntradayObservations(input.observationRepository, input.observationIds),
+    input.eventResultRepository.findHistory({
+      eventIdentityKey: input.eventIdentityKey,
+      retrievedAtOnOrBefore: input.latestCapturedAt,
+      order: "DESC",
+      // One bounded superset serves result display plus canonical EXP/SUR selection.
+      // Keep the existing SUR/EXP history bound so pre-release expectations cannot
+      // be hidden by a dense post-release revision history.
+      limit: 500,
+    }),
+  ]);
+  return { event, observations, results };
+}
+
 async function buildMonitorForIdentity(
   latestIdentity: string,
   snapshots: MarketSnapshot[],
@@ -159,15 +193,20 @@ async function buildMonitorForIdentity(
 
   const eventRef = ordered[0].snapshot.eventRefs.find((ref) => ref.key === latestIdentity);
   if (!eventRef) throw new Error("Intraday event snapshot is missing its primary event reference.");
-  const event = await canonicalRepositories.events.findById(eventRef.eventId);
-  if (!event) throw new Error("Intraday event snapshot references an unavailable canonical event.");
 
   const observationIds = [...new Set(ordered.flatMap(({ snapshot }) =>
     snapshot.observationRefs.map((ref) => ref.observationId)))];
-  const observations = await resolveIntradayObservations(
-    canonicalRepositories.observations,
+  const latestCapturedAt = ordered[ordered.length - 1].snapshot.capturedAt;
+  const { event, observations, results } = await resolveIntradayMonitorDependencies({
+    eventRepository: canonicalRepositories.events,
+    observationRepository: canonicalRepositories.observations,
+    eventResultRepository: historicalEconomicEventResultRepository,
+    eventId: eventRef.eventId,
     observationIds,
-  );
+    eventIdentityKey: latestIdentity,
+    latestCapturedAt,
+  });
+  if (!event) throw new Error("Intraday event snapshot references an unavailable canonical event.");
 
   const valuesFor = (snapshot: MarketSnapshot): Partial<Record<IntradaySeriesKey, number>> => {
     const values: Partial<Record<IntradaySeriesKey, number>> = {};
@@ -197,16 +236,6 @@ async function buildMonitorForIdentity(
     return { role, capturedAt: snapshot.capturedAt, quality: snapshot.quality, values, changePct };
   });
 
-  const latestCapturedAt = ordered[ordered.length - 1].snapshot.capturedAt;
-  const results = await historicalEconomicEventResultRepository.findHistory({
-    eventIdentityKey: latestIdentity,
-    retrievedAtOnOrBefore: latestCapturedAt,
-    order: "DESC",
-    // One bounded superset serves result display plus canonical EXP/SUR selection.
-    // Keep the existing SUR/EXP history bound so pre-release expectations cannot
-    // be hidden by a dense post-release revision history.
-    limit: 500,
-  });
   const result = results.find((item) =>
     item.actual !== undefined || item.expected !== undefined || item.previous !== undefined);
   const t0 = String(ordered[0].snapshot.metadata?.t0 ?? event.releasedAt ?? event.scheduledAt ?? "");
