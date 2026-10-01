@@ -2,6 +2,11 @@
 
 import type { IntradayEventMonitor, IntradayEventMonitorResult, IntradaySeriesKey } from "@/lib/application/intraday-event-monitor";
 import type { EventWindowRole } from "@/lib/domain/event-window";
+import {
+  classifyRoundedMove,
+  formatEventResultValue,
+  formatMovePercent,
+} from "@/lib/presentation/intraday-event-response";
 
 const SERIES: Array<{ key: IntradaySeriesKey; label: string }> = [
   { key: "btc.spot.usd", label: "Bitcoin" },
@@ -13,12 +18,10 @@ const ROLES: EventWindowRole[] = ["PRE", "T_PLUS_5", "T_PLUS_15", "T_PLUS_30", "
 const ROLE_LABEL: Record<EventWindowRole, string> = { PRE: "Sebelum rilis", T_PLUS_5: "5 menit", T_PLUS_15: "15 menit", T_PLUS_30: "30 menit", T_PLUS_60: "1 jam" };
 
 function value(v: number | undefined, unit?: string): string {
-  if (v === undefined) return "—";
-  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(v)}${unit ? " " + unit : ""}`;
+  return formatEventResultValue(v, unit);
 }
 function move(v: number | undefined): string {
-  if (v === undefined) return "—";
-  return `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
+  return formatMovePercent(v);
 }
 function time(v: string): string {
   if (!v) return "—";
@@ -45,8 +48,7 @@ function ratesReactionSentence(data: IntradayEventMonitor): string | null {
     const point = rates.points.find((item) => item.role === role);
     if (point?.price === null || point?.price === undefined) continue;
     const change = ((point.price - pre.price) / pre.price) * 100;
-    const verb = change > 0 ? "naik" : change < 0 ? "turun" : "relatif datar";
-    const amount = change === 0 ? "" : ` ${Math.abs(change).toFixed(3)}%`;
+    const { verb, amount } = classifyRoundedMove(change, 3);
     return `Harga futures Treasury AS 2 tahun (ZT) ${verb}${amount} setelah ${ROLE_LABEL[role].toLowerCase()}.`;
   }
   return null;
@@ -58,8 +60,7 @@ function reactionSentence(data: IntradayEventMonitor, key: IntradaySeriesKey, la
     const item = data.moves.find((entry) => entry.role === role);
     const change = item?.changePct[key];
     if (change === undefined) continue;
-    const verb = change > 0 ? "naik" : change < 0 ? "turun" : "relatif datar";
-    const amount = change === 0 ? "" : ` ${Math.abs(change).toFixed(2)}%`;
+    const { verb, amount } = classifyRoundedMove(change, 2);
     return `${label} ${verb}${amount} setelah ${ROLE_LABEL[role].toLowerCase()}.`;
   }
   return null;
@@ -72,8 +73,9 @@ export function IntradayEventResponsePanel({ result }: { result: IntradayEventMo
     <p className="muted">P365 akan menampilkan hasil rilis dan pergerakan Bitcoin, dolar, emas, serta Ethereum ketika datanya tersedia.</p>
   </section>;
   if (result.status === "ERROR") return <section className="panel" aria-labelledby="intraday-event-response-title">
-    <div className="panel-label"><span>REAKSI PASAR SETELAH DATA EKONOMI</span><span>GAGAL MEMUAT</span></div>
-    <h2 id="intraday-event-response-title">Data reaksi pasar sementara tidak dapat dimuat.</h2>
+    <div className="panel-label"><span>REAKSI PASAR SETELAH DATA EKONOMI</span><span>BELUM TERSEDIA</span></div>
+    <h2 id="intraday-event-response-title">Reaksi event terbaru belum dapat ditampilkan.</h2>
+    <p className="muted">Panel ini memiliki jalur baca terpisah dari harga Bitcoin, Gold, dan data utama lain. Kegagalan panel ini tidak berarti seluruh dashboard gagal.</p>
   </section>;
 
   return <>{result.data.map((data) => <IntradayEventResponseCard key={data.eventIdentityKey} data={data} />)}</>;

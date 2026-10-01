@@ -11,6 +11,12 @@ export class InMemoryObservationRepository implements ObservationRepository, His
   async save(item: Observation): Promise<void> { if (!this.items.has(item.id)) this.items.set(item.id, item); }
   async saveMany(items: Observation[]): Promise<void> { items.forEach((item) => { if (!this.items.has(item.id)) this.items.set(item.id, item); }); }
   async findById(id: string): Promise<Observation | null> { return this.items.get(id) ?? null; }
+  async findManyByIds(ids: string[]): Promise<Observation[]> {
+    return [...new Set(ids)].flatMap((id) => {
+      const item = this.items.get(id);
+      return item ? [item] : [];
+    });
+  }
 
   async findHistory(query: ObservationHistoryQuery): Promise<Observation[]> {
     const { from, through, retrievedThrough } = validateObservationHistoryQuery(query);

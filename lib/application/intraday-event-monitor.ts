@@ -1,14 +1,17 @@
 import "server-only";
-import { unstable_cache } from "next/cache";
 import { EVENT_WINDOW_POLICY_V1, type EventWindowRole } from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
+import type { EconomicEventResult } from "../domain/event-result";
+import type { Event, Observation } from "../domain/types";
+import type {
+  EventRepository,
+  HistoricalEconomicEventResultRepository,
+  ObservationRepository,
+} from "../repositories/types";
 import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
 import { assessEventSurprise, type EventSurpriseAssessment } from "../domain/event-surprise";
 import { selectExpectationBaseline } from "../domain/expectation-baseline";
-import {
-  reconstructHistoricalZtEvent,
-  type RatesReconstructionPoint,
-} from "./rates-historical-reconstruction";
+import type { RatesReconstructionPoint } from "./rates-historical-reconstruction";
 import {
   canonicalRepositories,
   historicalEconomicEventResultRepository,
@@ -18,8 +21,6 @@ import {
 const ROLES: EventWindowRole[] = ["PRE", "T_PLUS_5", "T_PLUS_15", "T_PLUS_30", "T_PLUS_60"];
 const SERIES = ["btc.spot.usd", "eth.spot.usd", "dxy.index.usd", "gold.futures.usd"] as const;
 const MONITOR_TIMEOUT_MS = 4_000;
-const MASSIVE_HISTORICAL_DELAY_MS = 8 * 60 * 60 * 1000;
-const RATES_CONTEXT_TIMEOUT_MS = 1_500;
 export type IntradaySeriesKey = typeof SERIES[number];
 
 export type IntradayEventMove = {
@@ -135,6 +136,48 @@ function windowStatus(input: {
   return { status: "INCOMPLETE", missingRole };
 }
 
+export async function resolveIntradayObservations(
+  repository: ObservationRepository,
+  observationIds: string[],
+): Promise<Map<string, Observation>> {
+  const uniqueIds = [...new Set(observationIds)];
+  const resolved = repository.findManyByIds
+    ? await repository.findManyByIds(uniqueIds)
+    : (await Promise.all(
+        uniqueIds.map((id) => repository.findById(id)),
+      )).filter((item): item is Observation => item !== null);
+  return new Map(resolved.map((item) => [item.id, item]));
+}
+
+export async function resolveIntradayMonitorDependencies(input: {
+  eventRepository: EventRepository;
+  observationRepository: ObservationRepository;
+  eventResultRepository: HistoricalEconomicEventResultRepository;
+  eventId: string;
+  observationIds: string[];
+  eventIdentityKey: string;
+  latestCapturedAt: string;
+}): Promise<{
+  event: Event | null;
+  observations: Map<string, Observation>;
+  results: EconomicEventResult[];
+}> {
+  const [event, observations, results] = await Promise.all([
+    input.eventRepository.findById(input.eventId),
+    resolveIntradayObservations(input.observationRepository, input.observationIds),
+    input.eventResultRepository.findHistory({
+      eventIdentityKey: input.eventIdentityKey,
+      retrievedAtOnOrBefore: input.latestCapturedAt,
+      order: "DESC",
+      // One bounded superset serves result display plus canonical EXP/SUR selection.
+      // Keep the existing SUR/EXP history bound so pre-release expectations cannot
+      // be hidden by a dense post-release revision history.
+      limit: 500,
+    }),
+  ]);
+  return { event, observations, results };
+}
+
 async function buildMonitorForIdentity(
   latestIdentity: string,
   snapshots: MarketSnapshot[],
@@ -150,17 +193,20 @@ async function buildMonitorForIdentity(
 
   const eventRef = ordered[0].snapshot.eventRefs.find((ref) => ref.key === latestIdentity);
   if (!eventRef) throw new Error("Intraday event snapshot is missing its primary event reference.");
-  const event = await canonicalRepositories.events.findById(eventRef.eventId);
-  if (!event) throw new Error("Intraday event snapshot references an unavailable canonical event.");
 
   const observationIds = [...new Set(ordered.flatMap(({ snapshot }) =>
     snapshot.observationRefs.map((ref) => ref.observationId)))];
-  const resolved = await Promise.all(
-    observationIds.map((id) => canonicalRepositories.observations.findById(id)),
-  );
-  const observations = new Map(
-    resolved.filter((item) => item !== null).map((item) => [item!.id, item!]),
-  );
+  const latestCapturedAt = ordered[ordered.length - 1].snapshot.capturedAt;
+  const { event, observations, results } = await resolveIntradayMonitorDependencies({
+    eventRepository: canonicalRepositories.events,
+    observationRepository: canonicalRepositories.observations,
+    eventResultRepository: historicalEconomicEventResultRepository,
+    eventId: eventRef.eventId,
+    observationIds,
+    eventIdentityKey: latestIdentity,
+    latestCapturedAt,
+  });
+  if (!event) throw new Error("Intraday event snapshot references an unavailable canonical event.");
 
   const valuesFor = (snapshot: MarketSnapshot): Partial<Record<IntradaySeriesKey, number>> => {
     const values: Partial<Record<IntradaySeriesKey, number>> = {};
@@ -190,16 +236,6 @@ async function buildMonitorForIdentity(
     return { role, capturedAt: snapshot.capturedAt, quality: snapshot.quality, values, changePct };
   });
 
-  const latestCapturedAt = ordered[ordered.length - 1].snapshot.capturedAt;
-  const results = await historicalEconomicEventResultRepository.findHistory({
-    eventIdentityKey: latestIdentity,
-    retrievedAtOnOrBefore: latestCapturedAt,
-    order: "DESC",
-    // One bounded superset serves result display plus canonical EXP/SUR selection.
-    // Keep the existing SUR/EXP history bound so pre-release expectations cannot
-    // be hidden by a dense post-release revision history.
-    limit: 500,
-  });
   const result = results.find((item) =>
     item.actual !== undefined || item.expected !== undefined || item.previous !== undefined);
   const t0 = String(ordered[0].snapshot.metadata?.t0 ?? event.releasedAt ?? event.scheduledAt ?? "");
@@ -241,37 +277,6 @@ async function buildMonitorForIdentity(
   };
 }
 
-const cachedHistoricalRatesReconstruction = unstable_cache(
-  (t0: string) => reconstructHistoricalZtEvent(t0),
-  ["cal-001-historical-zt-reconstruction"],
-  { revalidate: 24 * 60 * 60 },
-);
-
-async function reconstructRatesContext(
-  t0: string,
-): Promise<IntradayRatesReconstruction | null> {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const timeoutResult = new Promise<null>((resolve) => {
-      timeout = setTimeout(() => resolve(null), RATES_CONTEXT_TIMEOUT_MS);
-    });
-    const reconstruction = cachedHistoricalRatesReconstruction(t0)
-      .then((result): IntradayRatesReconstruction | null =>
-        result.status === "OK"
-          ? {
-              instrument: result.instrument,
-              productCode: result.productCode,
-              ticker: result.ticker,
-              points: result.points,
-            }
-          : null)
-      .catch(() => null);
-    return await Promise.race([reconstruction, timeoutResult]);
-  } finally {
-    if (timeout) clearTimeout(timeout);
-  }
-}
-
 async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitorResult> {
   const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const snapshots = await historicalMarketSnapshotRepository.findHistory({
@@ -304,28 +309,10 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
     selectedIdentities.map((identity) => buildMonitorForIdentity(identity, snapshots, now)),
   );
 
-  // Massive free-tier futures data is historical/delayed. Reconstruct once per
-  // release cohort so simultaneous events do not duplicate provider requests.
-  // Failure or unavailability is intentionally fail-soft: canonical event
-  // response evidence remains usable without this research-only context.
-  const historicalT0s = [...new Set(
-    data
-      .map((monitor) => monitor.t0)
-      .filter((t0) => {
-        const t0Ms = Date.parse(t0);
-        return Number.isFinite(t0Ms) && now.getTime() - t0Ms >= MASSIVE_HISTORICAL_DELAY_MS;
-      }),
-  )];
-  const ratesByT0 = new Map<string, IntradayRatesReconstruction>();
-  for (const t0 of historicalT0s) {
-    const rates = await reconstructRatesContext(t0);
-    if (rates) ratesByT0.set(t0, rates);
-  }
-  for (const monitor of data) {
-    const ratesReconstruction = ratesByT0.get(monitor.t0);
-    if (ratesReconstruction) monitor.ratesReconstruction = ratesReconstruction;
-  }
-
+  // Optional historical ZT reconstruction is intentionally excluded from the
+  // critical dashboard path. Canonical event-response evidence must remain
+  // available even when the external research-only futures source is slow or
+  // unavailable. A separate enrichment surface may reintroduce this context.
   data.sort((a, b) => a.subject.localeCompare(b.subject));
   return data.length ? { status: "OK", data } : { status: "EMPTY" };
 }

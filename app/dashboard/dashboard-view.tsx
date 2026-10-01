@@ -9,20 +9,21 @@ import type { DashboardData } from "@/lib/data/dashboard-data";
 import type { CalendarEvent, NewsItem } from "@/lib/data/types";
 import type { Context, DataQuality, Evidence, Observation, ProviderHealth } from "@/lib/domain/types";
 import { buildBaselinePresentations, type BaselinePresentation } from "@/lib/presentation/baseline";
+import { formatMacroDisplayDelta, formatMacroDisplayValue } from "@/lib/presentation/macro-display";
 import { logout, refreshDashboardData } from "./actions";
 import { EventRiskWindowPanel } from "./event-risk-window-panel";
 import { IntradayEventResponsePanel } from "./intraday-event-response-panel";
 import { MvpFactualContextPanel } from "./mvp-factual-context-panel";
 
-type Menu = "overview" | "heatmap" | "macro" | "crypto" | "context" | "intelligence" | "evidence";
+type Menu = "overview" | "heatmap" | "macro" | "crypto" | "gold" | "context" | "evidence";
 const menuItems: { id: Menu; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "heatmap", label: "Heatmap" },
-  { id: "macro", label: "Macro" },
+  { id: "overview", label: "Ringkasan" },
+  { id: "heatmap", label: "Pasar" },
+  { id: "macro", label: "Makro" },
   { id: "crypto", label: "Crypto" },
-  { id: "context", label: "Context" },
-  { id: "intelligence", label: "Intelligence" },
-  { id: "evidence", label: "Evidence" },
+  { id: "gold", label: "Gold" },
+  { id: "context", label: "Konteks" },
+  { id: "evidence", label: "Sumber Data" },
 ];
 
 const MACRO_CONTEXT_LABELS: Record<string, string> = {
@@ -87,27 +88,6 @@ function CalendarRow({ item }: { item: CalendarEvent }) {
   return <article className="calendar-row"><time dateTime={item.dateISO} aria-label={`${item.event}, ${item.status}, ${item.time} WIB`}>{item.time}<small>WIB</small></time><div><h3>{item.event}</h3><p>{item.country} · {item.status}</p></div><span className={`impact ${item.impact.toLowerCase()}`}>{item.impact}</span></article>;
 }
 
-function formatBaselineDelta(value: number | null): string {
-  if (value === null) return "—";
-  return `${value > 0 ? "+" : ""}${value.toFixed(2)}`;
-}
-
-function formatMacroValue(value: string, unit: string): string {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return value;
-  const normalized = unit.trim().toLowerCase();
-  if (normalized.includes("percent") || normalized === "%") return `${numeric.toFixed(2)}%`;
-  if (normalized.includes("dollar") || normalized.includes("usd") || normalized.includes("$") ) {
-    const absolute = Math.abs(numeric);
-    if (absolute >= 1_000_000_000_000) return `$${(numeric / 1_000_000_000_000).toFixed(2)}T`;
-    if (absolute >= 1_000_000_000) return `$${(numeric / 1_000_000_000).toFixed(2)}B`;
-    if (absolute >= 1_000_000) return `$${(numeric / 1_000_000).toFixed(2)}M`;
-    if (absolute >= 1_000) return `$${(numeric / 1_000).toFixed(2)}K`;
-    return `$${numeric.toFixed(2)}`;
-  }
-  return value;
-}
-
 function macroThemeItems(context: Context, observations: Observation[]): Observation[] {
   return context.observationIds.map((id) => observations.find((item) => item.id === id)).filter((item): item is Observation => Boolean(item));
 }
@@ -129,7 +109,7 @@ function MacroThemeCard({ context, observations, baselines, expanded, onToggle }
   return <article className={`macro-theme-card${expanded ? " expanded" : ""}`}>
     <button type="button" className="macro-theme-summary" aria-expanded={expanded} onClick={onToggle}>
       <div className="macro-tile-header"><span className="macro-frequency">{label.toUpperCase()}</span><span className="macro-quality">{headline.quality}</span></div>
-      <div className="macro-tile-main"><div><h3>{MACRO_SERIES_LABELS[headlineSeries] ?? headline.subject}</h3><small>{headlineSeries} · {String(headline.metadata?.frequency ?? "")}</small></div><strong className="macro-value">{formatMacroValue(headline.value, headlineUnit)}</strong></div>
+      <div className="macro-tile-main"><div><h3>{MACRO_SERIES_LABELS[headlineSeries] ?? headline.subject}</h3><small>{headlineSeries} · {String(headline.metadata?.frequency ?? "")}</small></div><strong className="macro-value">{formatMacroDisplayValue(headline.value, headlineUnit)}</strong></div>
       <div className="macro-tile-footer"><span>{items.length} INDIKATOR</span><span>{expanded ? "TUTUP ↑" : "LIHAT DETAIL ↓"}</span></div>
     </button>
     {expanded && <div className="macro-theme-detail">{items.map((item) => {
@@ -137,29 +117,23 @@ function MacroThemeCard({ context, observations, baselines, expanded, onToggle }
       const unit = String(metadata.unit ?? "");
       const seriesId = String(metadata.seriesId ?? "");
       const baseline = baselines.get(seriesId) ?? null;
-      return <div className="macro-detail-row" key={item.id}><div><strong>{MACRO_SERIES_LABELS[seriesId] ?? item.subject}</strong><small>{seriesId} · {String(metadata.frequency ?? "UNKNOWN")} · {item.quality}</small></div><div className="macro-detail-values"><strong>{formatMacroValue(item.value, unit)}</strong><small>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroValue(baseline.baselineValue, unit)} · Δ ${formatBaselineDelta(baseline.changeValue)}` : `Baseline ${baseline?.status ?? "MISSING"}`}</small></div></div>;
-    })}<div className="macro-theme-metadata"><span>Series canonical tetap terpisah; kartu ini hanya mengelompokkan presentasi.</span><span>Sumber · FRED</span></div></div>}
+      return <div className="macro-detail-row" key={item.id}><div><strong>{MACRO_SERIES_LABELS[seriesId] ?? item.subject}</strong><small>{seriesId} · {String(metadata.frequency ?? "UNKNOWN")} · {item.quality}</small></div><div className="macro-detail-values"><strong>{formatMacroDisplayValue(item.value, unit)}</strong><small>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroDisplayValue(baseline.baselineValue, unit)} · ${formatMacroDisplayDelta(baseline.changeValue, unit)}` : `Pembanding ${baseline?.status ?? "MISSING"}`}</small></div></div>;
+    })}<div className="macro-theme-metadata"><span>Setiap indikator tetap dihitung terpisah; kartu ini hanya mengelompokkan tampilan.</span><span>Sumber · FRED</span></div></div>}
   </article>;
 }
 
 function ContextCard({ context, label, selected, onClick }: { context: Context; label: string; selected: boolean; onClick: () => void }) {
-  return <button type="button" className={`context-card context-card-button${selected ? " selected" : ""}`} aria-pressed={selected} onClick={onClick}><div className="context-card-head"><span className="context-scope">{label}</span><span className="context-count">{context.observationIds.length} OBS · {context.eventIds.length} EVENT</span></div><h3>{context.statement}</h3><p>Traceable ke canonical observation/event. Klik untuk membuka detail context.</p></button>;
+  return <button type="button" className={`context-card context-card-button${selected ? " selected" : ""}`} aria-pressed={selected} onClick={onClick}><div className="context-card-head"><span className="context-scope">{label}</span><span className="context-count">{context.observationIds.length} OBS · {context.eventIds.length} EVENT</span></div><h3>{context.statement}</h3><p>Terkait langsung ke data dan event yang membentuk konteks ini. Klik untuk melihat rinciannya.</p></button>;
 }
 
 function ContextDetail({ context, label }: { context: Context; label: string }) {
-  return <section className="panel context-detail"><div className="panel-label"><span>CONTEXT DETAIL</span><span>{label}</span></div><h2>{context.statement}</h2><p className="lead-copy">Context hanya mengelompokkan evidence yang sudah ada. Layer ini tidak menghasilkan arah pasar, regime, sentiment, liquidity, capital flow, atau risk.</p><div className="monitor-list"><div><strong>SCOPE</strong><span>{context.scope}</span></div><div><strong>OBSERVATIONS</strong><span>{context.observationIds.length ? context.observationIds.join(" · ") : "Tidak ada"}</span></div><div><strong>EVENTS</strong><span>{context.eventIds.length ? context.eventIds.join(" · ") : "Tidak ada"}</span></div><div><strong>CREATED</strong><span>{relativeTimeID(context.createdAt)}</span></div></div></section>;
+  return <section className="panel context-detail"><div className="panel-label"><span>RINCIAN KONTEKS</span><span>{label}</span></div><h2>{context.statement}</h2><p className="lead-copy">Konteks hanya mengelompokkan data yang sudah tersedia. Bagian ini tidak memberi sinyal arah pasar.</p><div className="monitor-list"><div><strong>SCOPE</strong><span>{context.scope}</span></div><div><strong>OBSERVATIONS</strong><span>{context.observationIds.length ? context.observationIds.join(" · ") : "Tidak ada"}</span></div><div><strong>EVENTS</strong><span>{context.eventIds.length ? context.eventIds.join(" · ") : "Tidak ada"}</span></div><div><strong>CREATED</strong><span>{relativeTimeID(context.createdAt)}</span></div></div></section>;
 }
 
 function observationStatus(qualities: DataQuality[]): "PENDING" | "FRESH" | "PARTIAL" {
   return qualities.length === 0 ? "PENDING" : qualities.every((item) => item === "FRESH") ? "FRESH" : "PARTIAL";
 }
 
-function sourceStatus(health: ProviderHealth[]): "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE" {
-  if (!health.length) return "PENDING";
-  if (health.some((item) => item.status === "ERROR" || item.status === "UNAVAILABLE")) return "UNAVAILABLE";
-  if (health.some((item) => item.status === "STALE")) return "PARTIAL";
-  return health.some((item) => item.status === "EMPTY") ? "PENDING" : "FRESH";
-}
 
 function numberValue(value: string): number | null {
   const parsed = Number(value);
@@ -175,6 +149,154 @@ function formatMoney(value: number): string {
 
 function formatPercent(value: number): string {
   return `${value.toFixed(2)}%`;
+}
+
+function formatSignedMoney(value: number): string {
+  return `${value > 0 ? "+" : ""}${formatMoney(value)}`;
+}
+
+function formatSignedPercentValue(value: number | null): string {
+  if (value === null) return "—";
+  return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
+function formatContracts(value: number): string {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+}
+
+function recencyLabel(value: "CURRENT" | "STALE" | "UNKNOWN"): string {
+  if (value === "CURRENT") return "TERBARU";
+  if (value === "STALE") return "PERLU DIPERBARUI";
+  return "STATUS WAKTU BELUM PASTI";
+}
+
+function qualityLabel(value: DataQuality): string {
+  if (value === "FRESH") return "TERBARU";
+  if (value === "STALE") return "PERLU DIPERBARUI";
+  return "TERSEDIA";
+}
+
+function findMarketValue(observations: Observation[], seriesKey: string): { value: number; observedAt: string; quality: DataQuality } | null {
+  const item = observations.find((observation) => observation.subject === seriesKey);
+  if (!item) return null;
+  const value = numberValue(item.value);
+  if (value === null) return null;
+  return { value, observedAt: item.observedAt, quality: item.quality };
+}
+
+function OverviewQuickGlance({ data, observations }: { data: DashboardData; observations: Observation[] }) {
+  const bitcoin = findMarketValue(observations, "btc.spot.usd");
+  const gold = findMarketValue(observations, "gold.futures.usd");
+  const stablecoin = data.stablecoinLiquidity.latest;
+  const etfFlow = data.btcEtfFlow.latest;
+
+  return <section className="beginner-section" aria-labelledby="quick-glance-title">
+    <div className="beginner-section-head">
+      <div>
+        <span className="beginner-kicker">RINGKASAN PASAR</span>
+        <h2 id="quick-glance-title">Apa yang perlu dilihat sekarang?</h2>
+        <p>Empat angka utama untuk orientasi awal. Buka halaman Crypto, Gold, atau Makro jika ingin detail.</p>
+      </div>
+    </div>
+    <div className="quick-glance-grid">
+      <article className="quick-glance-card">
+        <span className="quick-glance-label">Bitcoin</span>
+        <strong>{bitcoin ? formatMoney(bitcoin.value) : "—"}</strong>
+        <small>{bitcoin ? `Harga spot · ${relativeTimeID(bitcoin.observedAt)}` : "Harga belum tersedia"}</small>
+      </article>
+      <article className="quick-glance-card">
+        <span className="quick-glance-label">Gold</span>
+        <strong>{gold ? formatMoney(gold.value) : "—"}</strong>
+        <small>{gold ? `COMEX futures · ${relativeTimeID(gold.observedAt)}` : "Harga belum tersedia"}</small>
+      </article>
+      <article className="quick-glance-card">
+        <span className="quick-glance-label">Likuiditas stablecoin</span>
+        <strong>{stablecoin ? formatMoney(stablecoin.value) : "—"}</strong>
+        <small>{stablecoin ? `Supply USD stablecoin · ${stablecoin.observedAt.slice(0, 10)}` : "Data belum tersedia"}</small>
+      </article>
+      <article className="quick-glance-card">
+        <span className="quick-glance-label">Arus ETF Bitcoin AS</span>
+        <strong>{etfFlow ? formatSignedMoney(etfFlow.value) : "—"}</strong>
+        <small>{etfFlow ? `Net flow · ${etfFlow.providerTradingDate}` : "Data terkonfirmasi belum tersedia"}</small>
+      </article>
+    </div>
+  </section>;
+}
+
+function StablecoinLiquidityPanel({ data }: { data: DashboardData["stablecoinLiquidity"] }) {
+  const latest = data.latest;
+  return <section className="panel decision-panel" aria-labelledby="stablecoin-liquidity-title">
+    <div className="panel-label"><span>LIKUIDITAS CRYPTO</span><span>{latest ? recencyLabel(latest.recency) : "BELUM ADA DATA"}</span></div>
+    <h2 id="stablecoin-liquidity-title">Supply stablecoin USD</h2>
+    <p className="lead-copy">Mengukur total nilai stablecoin berpatokan USD yang beredar. Ini bukan arus ETF dan bukan sinyal arah harga.</p>
+    {latest ? <>
+      <strong className="decision-value">{formatMoney(latest.value)}</strong>
+      <p className="decision-meta">Tanggal data {latest.observedAt.slice(0, 10)} · sumber DefiLlama</p>
+      <div className="simple-change-grid">
+        <div><span>1 hari</span><strong>{data.change1d ? formatSignedPercentValue(data.change1d.percentChange) : "—"}</strong></div>
+        <div><span>1 minggu</span><strong>{data.change1w ? formatSignedPercentValue(data.change1w.percentChange) : "—"}</strong></div>
+        <div><span>4 minggu</span><strong>{data.change4w ? formatSignedPercentValue(data.change4w.percentChange) : "—"}</strong></div>
+      </div>
+      <details className="data-detail">
+        <summary>Lihat perubahan nominal</summary>
+        <div className="monitor-list">
+          <div><strong>1 hari</strong><span>{data.change1d ? formatSignedMoney(data.change1d.absoluteChange) : "Belum tersedia"}</span></div>
+          <div><strong>1 minggu</strong><span>{data.change1w ? formatSignedMoney(data.change1w.absoluteChange) : "Belum tersedia"}</span></div>
+          <div><strong>4 minggu</strong><span>{data.change4w ? formatSignedMoney(data.change4w.absoluteChange) : "Belum tersedia"}</span></div>
+        </div>
+      </details>
+    </> : <EmptyPanelNote label="likuiditas stablecoin" />}
+  </section>;
+}
+
+function BtcEtfFlowPanel({ data }: { data: DashboardData["btcEtfFlow"] }) {
+  return <section className="panel decision-panel" aria-labelledby="btc-etf-flow-title">
+    <div className="panel-label"><span>ARUS MODAL BITCOIN</span><span>{data.latest ? "DATA TERKONFIRMASI" : "BELUM ADA DATA"}</span></div>
+    <h2 id="btc-etf-flow-title">ETF Bitcoin spot AS</h2>
+    <p className="lead-copy">Menunjukkan uang bersih yang masuk atau keluar dari ETF Bitcoin spot AS. Positif = net inflow, negatif = net outflow.</p>
+    {data.latest ? <>
+      <strong className="decision-value">{formatSignedMoney(data.latest.value)}</strong>
+      <p className="decision-meta">Trading date {data.latest.providerTradingDate} · sumber SoSoValue</p>
+      <details className="data-detail">
+        <summary>Lihat 5 sesi terakhir</summary>
+        <div className="monitor-list">
+          {data.recent.map((point) => <div key={point.observationId}><strong>{point.providerTradingDate}</strong><span>{formatSignedMoney(point.value)}</span></div>)}
+        </div>
+      </details>
+    </> : <EmptyPanelNote label="arus ETF Bitcoin" />}
+  </section>;
+}
+
+function GoldPricePanel({ observations }: { observations: Observation[] }) {
+  const observation = observations.find((item) => item.subject === "gold.futures.usd");
+  const value = observation ? numberValue(observation.value) : null;
+  return <section className="panel decision-panel" aria-labelledby="gold-market-title">
+    <div className="panel-label"><span>HARGA GOLD</span><span>{observation ? qualityLabel(observation.quality) : "BELUM ADA DATA"}</span></div>
+    <h2 id="gold-market-title">Gold futures</h2>
+    <p className="lead-copy">Harga Gold dan posisi trader ditampilkan terpisah. P365 belum menyimpulkan bahwa satu posisi tertentu harus membuat harga naik atau turun.</p>
+    {observation && value !== null ? <>
+      <strong className="decision-value">{formatMoney(value)}</strong>
+      <p className="decision-meta">COMEX GC=F · {relativeTimeID(observation.observedAt)}</p>
+    </> : <EmptyPanelNote label="harga Gold" />}
+    <div className="plain-notice"><strong>ETF Gold global</strong><span>Belum tersedia karena sumber runtime global yang memenuhi kontrak belum lolos kualifikasi.</span></div>
+  </section>;
+}
+
+function GoldPositioningPanel({ data }: { data: DashboardData["goldPositioning"] }) {
+  return <section className="panel decision-panel" aria-labelledby="gold-positioning-title">
+    <div className="panel-label"><span>POSISI TRADER GOLD</span><span>{data.status === "AVAILABLE" ? "TERSEDIA" : "BELUM ADA DATA"}</span></div>
+    <h2 id="gold-positioning-title">Managed Money di COMEX Gold</h2>
+    <p className="lead-copy">Laporan mingguan CFTC. Angka di bawah adalah jumlah kontrak mentah; belum diubah menjadi net position, percentile, crowding, atau sinyal arah.</p>
+    {data.status === "AVAILABLE" ? <>
+      <p className="decision-meta">Laporan {data.reportDate} · CFTC Disaggregated Futures Only</p>
+      <div className="position-grid">
+        <div><span>Long</span><strong>{formatContracts(data.managedMoney.long.value)}</strong><small>kontrak sisi long</small></div>
+        <div><span>Short</span><strong>{formatContracts(data.managedMoney.short.value)}</strong><small>kontrak sisi short</small></div>
+        <div><span>Spreading</span><strong>{formatContracts(data.managedMoney.spreading.value)}</strong><small>posisi offset / spread</small></div>
+      </div>
+      <div className="plain-notice"><strong>Total open interest</strong><span>{formatContracts(data.openInterest.value)} kontrak terbuka</span></div>
+    </> : <p className="muted">{data.reason}</p>}
+  </section>;
 }
 
 function buildCryptoMetrics(observations: Observation[]): CryptoMetric[] {
@@ -273,7 +395,7 @@ function MarketHeatmap({ observations, baselines }: { observations: Observation[
     if (!observation) return [];
     const seriesId = String(observation.metadata?.seriesId ?? "");
     const baseline = baselineBySeries.get(seriesId);
-    return [{ id: scope, label: MACRO_CONTEXT_LABELS[scope] ?? scope, group: "MACRO" as const, value: formatMacroValue(observation.value, String(observation.metadata?.unit ?? "")), delta: baseline?.status === "VALID" ? baseline.changeValue : null, deltaUnit: "ABSOLUTE" as const, source: `${MACRO_SERIES_LABELS[seriesId] ?? seriesId} · ${seriesId}` }];
+    return [{ id: scope, label: MACRO_CONTEXT_LABELS[scope] ?? scope, group: "MACRO" as const, value: formatMacroDisplayValue(observation.value, String(observation.metadata?.unit ?? "")), delta: baseline?.status === "VALID" ? baseline.changeValue : null, deltaUnit: "ABSOLUTE" as const, source: `${MACRO_SERIES_LABELS[seriesId] ?? seriesId} · ${seriesId}` }];
   });
   const tiles = [...marketTiles, ...macroTiles];
   const groups: Array<HeatmapTile["group"]> = ["CROSS-ASSET", "MACRO", "CRYPTO"];
@@ -298,21 +420,35 @@ function CryptoMetricCard({ metric }: { metric: CryptoMetric }) {
 
 function CryptoMarketPanel({ observations, providerHealth }: { observations: Observation[]; providerHealth: ProviderHealth[] }) {
   const metrics = buildCryptoMetrics(observations);
+  const primaryIds = new Set(["btc.spot.usd", "crypto.total_market_cap.usd", "crypto.btc_dominance.pct"]);
+  const primary = metrics.filter((metric) => primaryIds.has(metric.id));
+  const secondary = metrics.filter((metric) => !primaryIds.has(metric.id));
   const coinGeckoHealth = providerHealth.find((item) => item.sourceId === "coingecko-market");
-  const quality = observationStatus(metrics.map((metric) => metric.quality));
+  const quality = observationStatus(primary.map((metric) => metric.quality));
 
-  return <section className="panel" aria-labelledby="crypto-foundation-title" style={{ marginTop: "1.25rem" }}>
-    <div className="panel-label"><span>CRYPTO MARKET FOUNDATION</span><StatusBadge value={quality} /></div>
-    <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
-      <div><h2 id="crypto-foundation-title" style={{ marginBottom: "0.35rem" }}>Market data from CoinGecko</h2><p className="lead-copy" style={{ marginBottom: 0 }}>Canonical market observations exposed directly in the UI. No regime or trading inference is applied here.</p></div>
-      <span className="muted">Provider: {coinGeckoHealth?.status ?? "UNKNOWN"} · {coinGeckoHealth?.itemCount ?? 0} observations</span>
-    </div>
-    {metrics.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "0.75rem", marginTop: "1rem" }}>{metrics.map((metric) => <CryptoMetricCard key={metric.id} metric={metric} />)}</div> : <EmptyPanelNote label="crypto market" />}
+  return <section className="panel decision-panel" aria-labelledby="crypto-foundation-title">
+    <div className="panel-label"><span>CRYPTO MARKET</span><StatusBadge value={quality} /></div>
+    <h2 id="crypto-foundation-title">Harga dan ukuran pasar</h2>
+    <p className="lead-copy">Tiga metrik utama untuk orientasi cepat. Data market lain tetap tersedia di bagian detail.</p>
+    {primary.length ? <div className="position-grid crypto-primary-grid">{primary.map((metric) => <div key={metric.id}><span>{metric.label.replaceAll("CRYPTO ", "").replaceAll("BTC ", "BTC ")}</span><strong>{metric.unit === "USD" ? formatMoney(metric.value) : formatPercent(metric.value)}</strong><small>{relativeTimeID(metric.observedAt)}</small></div>)}</div> : <EmptyPanelNote label="pasar crypto" />}
+    {secondary.length > 0 && <details className="data-detail">
+      <summary>Lihat metrik market lainnya</summary>
+      <div className="secondary-metric-grid">{secondary.map((metric) => <CryptoMetricCard key={metric.id} metric={metric} />)}</div>
+    </details>}
+    <p className="decision-meta">CoinGecko · status provider {coinGeckoHealth?.status ?? "UNKNOWN"}</p>
   </section>;
 }
 
+const OVERVIEW_CHANGE_PRIORITY = ["DGS2", "DGS10", "DFII10", "T10YIE", "T10Y2Y"];
+
 function OverviewWhatChanged({ observations, baselines }: { observations: Observation[]; baselines: BaselinePresentation[] }) {
-  const validChanges = baselines.filter((item) => item.status === "VALID" && item.changeValue !== null);
+  const validChanges = baselines
+    .filter((item) => item.status === "VALID" && item.changeValue !== null)
+    .sort((a, b) => {
+      const ai = OVERVIEW_CHANGE_PRIORITY.indexOf(a.seriesId);
+      const bi = OVERVIEW_CHANGE_PRIORITY.indexOf(b.seriesId);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
   return <section className="panel overview-change-layer" aria-labelledby="what-changed-title">
     <div className="panel-label"><span>APA YANG BERUBAH</span><span>FAKTUAL</span></div>
     <div className="change-layer-grid">
@@ -325,7 +461,7 @@ function OverviewWhatChanged({ observations, baselines }: { observations: Observ
       const observation = observations.find((candidate) => String(candidate.metadata?.seriesId ?? "") === item.seriesId);
       const unit = String(observation?.metadata?.unit ?? "");
       const label = MACRO_SERIES_LABELS[item.seriesId] ?? observation?.subject ?? item.seriesId;
-      return <div key={item.seriesId}><strong>{label}</strong><span>{formatMacroValue(item.currentValue, unit)} dibanding {formatMacroValue(item.baselineValue ?? "", unit)} · perubahan {item.changeValue !== null && item.changeValue > 0 ? "+" : ""}{formatBaselineDelta(item.changeValue)}{unit ? ` ${unit}` : ""}</span></div>;
+      return <div key={item.seriesId}><strong>{label}</strong><span>Saat ini {formatMacroDisplayValue(item.currentValue, unit)} · sebelumnya {formatMacroDisplayValue(item.baselineValue ?? "", unit)} · {formatMacroDisplayDelta(item.changeValue, unit)}</span></div>;
     })}</div>}
   </section>;
 }
@@ -346,7 +482,7 @@ function OverviewContext({ contextGroups, selectedContextId, selectedContext, on
         </div>
       </section>) : <EmptyPanelNote label="context" />}
     </div>
-    {selectedContext ? <ContextDetail context={selectedContext} label={selectedContext.scope === "CRYPTO_MARKET" ? selectedContext.id.replace("context-crypto-", "").toUpperCase() : selectedContext.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[selectedContext.scope] ?? selectedContext.scope.replaceAll("MACRO_", "").replaceAll("_", " ")} /> : <div className="context-detail-empty"><div className="panel-label"><span>CONTEXT DETAIL</span><span>WAITING</span></div><h3>Select a context</h3><p className="lead-copy">Pilih context untuk melihat hubungan langsungnya ke canonical observation/event.</p></div>}
+    {selectedContext ? <ContextDetail context={selectedContext} label={selectedContext.scope === "CRYPTO_MARKET" ? selectedContext.id.replace("context-crypto-", "").toUpperCase() : selectedContext.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[selectedContext.scope] ?? selectedContext.scope.replaceAll("MACRO_", "").replaceAll("_", " ")} /> : <div className="context-detail-empty"><div className="panel-label"><span>RINCIAN KONTEKS</span><span>PILIH KONTEKS</span></div><h3>Pilih konteks</h3><p className="lead-copy">Pilih konteks untuk melihat data dan event yang terkait.</p></div>}
   </section>;
 }
 
@@ -360,7 +496,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
   const [expandedMacroTheme, setExpandedMacroTheme] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const { macroNews, cryptoNews, calendarEvents, events, calendarProviderMessage, unavailableSources, observations, macroObservations, macroBaselines, contexts, evidence, providerHealth } = data;
+  const { macroNews, cryptoNews, calendarEvents, events, observations, macroObservations, macroBaselines, contexts, evidence, providerHealth } = data;
   const baselinePresentations = buildBaselinePresentations(macroBaselines);
   const baselinesBySeries = new Map(baselinePresentations.map((item) => [item.seriesId, item]));
 
@@ -380,12 +516,6 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
 
   function handleManualRefresh() { startRefresh(async () => { const result = await refreshDashboardData(); setLastRefreshedAt(result.refreshedAt); router.refresh(); }); }
 
-  const marketStatus = observationStatus(observations.map((item) => item.quality));
-  const providerStatus = sourceStatus(providerHealth);
-  const healthyProviderCount = providerHealth.filter((item) => item.status === "HEALTHY").length;
-  const providerRowStatus: "PENDING" | "FRESH" | "PARTIAL" | "UNAVAILABLE" =
-    providerHealth.length === 0 ? "PENDING" : healthyProviderCount === providerHealth.length ? "FRESH" : healthyProviderCount === 0 ? "UNAVAILABLE" : "PARTIAL";
-  const highImpactEvents = calendarEvents.filter((item) => item.impact === "HIGH").length;
   const cryptoContexts = contexts.filter((context) => context.scope === "CRYPTO_MARKET");
   const macroContexts = contexts.filter((context) => context.scope.startsWith("MACRO_"));
   const economicEventContexts = contexts.filter((context) => context.scope === "ECONOMIC_EVENTS");
@@ -395,29 +525,50 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
   const showNews = (items: NewsItem[], label: string) => <section className="panel news-panel"><div className="panel-label"><span>{label}</span><span>{items.length} ITEM</span></div><h2>Evidence berita terbaru</h2><div className="news-list">{items.length ? items.map((item) => <NewsCard item={item} key={item.id} />) : <EmptyPanelNote label={label.toLowerCase()} />}</div></section>;
 
   return <main className="dashboard-shell">
-    <header className="topbar"><div className="topbar-brand-group"><button className="nav-toggle" type="button" aria-label={navOpen ? "Tutup navigasi" : "Buka navigasi"} aria-expanded={navOpen} aria-controls="dashboard-navigation" onClick={() => setNavOpen((open) => !open)}><span /><span /><span /></button><div className="brand-lockup"><img className="brand-logo" src="/project365-logo.svg" alt="PROJECT365" style={{ width: "clamp(1.05rem, 2.2vw, 1.45rem)", height: "clamp(1.05rem, 2.2vw, 1.45rem)", objectFit: "contain", flexShrink: 0 }} /><p className="eyebrow" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", lineHeight: 1, letterSpacing: "-0.02em", margin: 0 }}>PROJECT365</p></div></div><div className="topbar-actions"><p><span className={`live-dot ${providerStatus === "UNAVAILABLE" ? "warning" : ""}`} /> {providerStatus === "FRESH" ? "DATA SEHAT" : "PERLU PERHATIAN"}</p>{lastRefreshedAt && <p className="muted refresh-note">Refresh manual terakhir: {relativeTimeID(lastRefreshedAt)}</p>}<button className="refresh-btn" type="button" onClick={handleManualRefresh} disabled={isRefreshing} aria-busy={isRefreshing}>{isRefreshing ? "Memuat ulang…" : "Muat ulang manual"}</button><div style={{ position: "relative" }}><button type="button" aria-label="Buka menu akun" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)} style={{ width: 36, height: 36, display: "grid", placeItems: "center", padding: 0, border: "1px solid var(--line)", borderRadius: 4, background: accountOpen ? "#151d19" : "transparent", color: accountOpen ? "var(--lime)" : "var(--text)" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-3.5 3-5.3 6.5-5.3s5.8 1.8 6.5 5.3" /></svg></button>{accountOpen && <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 220, padding: 8, border: "1px solid var(--line)", borderRadius: 5, background: "#101513", boxShadow: "0 12px 30px rgba(0,0,0,.35)", zIndex: 60 }}><div style={{ padding: "8px 10px 10px", borderBottom: "1px solid var(--line)" }}><span style={{ display: "block", color: "var(--muted)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: ".08em" }}>AKUN</span><strong style={{ display: "block", marginTop: 5, fontSize: 12, overflowWrap: "anywhere" }}>{sessionEmail}</strong></div><form action={logout}><button type="submit" style={{ width: "100%", marginTop: 8, padding: "9px 10px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 4, background: "transparent", color: "var(--text)", fontFamily: "'DM Mono', monospace", fontSize: 11 }}>Keluar</button></form></div>}</div></div></header>
+    <header className="topbar"><div className="topbar-brand-group"><button className="nav-toggle" type="button" aria-label={navOpen ? "Tutup navigasi" : "Buka navigasi"} aria-expanded={navOpen} aria-controls="dashboard-navigation" onClick={() => setNavOpen((open) => !open)}><span /><span /><span /></button><div className="brand-lockup"><img className="brand-logo" src="/project365-logo.svg" alt="PROJECT365" style={{ width: "clamp(1.05rem, 2.2vw, 1.45rem)", height: "clamp(1.05rem, 2.2vw, 1.45rem)", objectFit: "contain", flexShrink: 0 }} /><p className="eyebrow" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", lineHeight: 1, letterSpacing: "-0.02em", margin: 0 }}>PROJECT365</p></div></div><div className="topbar-actions">{lastRefreshedAt && <p className="muted refresh-note">Refresh manual terakhir: {relativeTimeID(lastRefreshedAt)}</p>}<button className="refresh-btn" type="button" onClick={handleManualRefresh} disabled={isRefreshing} aria-busy={isRefreshing}>{isRefreshing ? "Memuat ulang…" : "Muat ulang manual"}</button><div style={{ position: "relative" }}><button type="button" aria-label="Buka menu akun" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)} style={{ width: 36, height: 36, display: "grid", placeItems: "center", padding: 0, border: "1px solid var(--line)", borderRadius: 4, background: accountOpen ? "#151d19" : "transparent", color: accountOpen ? "var(--lime)" : "var(--text)" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-3.5 3-5.3 6.5-5.3s5.8 1.8 6.5 5.3" /></svg></button>{accountOpen && <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 220, padding: 8, border: "1px solid var(--line)", borderRadius: 5, background: "#101513", boxShadow: "0 12px 30px rgba(0,0,0,.35)", zIndex: 60 }}><div style={{ padding: "8px 10px 10px", borderBottom: "1px solid var(--line)" }}><span style={{ display: "block", color: "var(--muted)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: ".08em" }}>AKUN</span><strong style={{ display: "block", marginTop: 5, fontSize: 12, overflowWrap: "anywhere" }}>{sessionEmail}</strong></div><form action={logout}><button type="submit" style={{ width: "100%", marginTop: 8, padding: "9px 10px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 4, background: "transparent", color: "var(--text)", fontFamily: "'DM Mono', monospace", fontSize: 11 }}>Keluar</button></form></div>}</div></div></header>
     {navOpen && <button className="nav-backdrop" type="button" aria-label="Tutup navigasi" onClick={() => setNavOpen(false)} />}
     <nav id="dashboard-navigation" className={`filters${navOpen ? " open" : ""}`} aria-label="Bagian dashboard" role="tablist">{menuItems.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeMenu === item.id} className={activeMenu === item.id ? "active" : ""} onClick={() => { setActiveMenu(item.id); setNavOpen(false); }}>{item.label}</button>)}<span>WIB / ASIA-JAKARTA</span></nav>
 
     <div className="dashboard-content" role="tabpanel">
       {activeMenu === "overview" && <>
-        <MvpFactualContextPanel data={data.mvpFactualContext} />
+        <div className="page-intro"><span>DASHBOARD UTAMA</span><h1>Pasar sekarang</h1><p>Mulai dari ringkasan, lalu lihat perubahan terbaru dan event yang berpotensi menggerakkan pasar. Detail teknis disimpan di bagian lanjutan.</p></div>
+        <OverviewQuickGlance data={data} observations={observations} />
         <div className="intraday-priority-grid">
           <OverviewWhatChanged observations={observations} baselines={baselinePresentations} />
-          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} />
+          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
         </div>
         <IntradayEventResponsePanel result={data.intradayEventMonitor} />
-        <div className="intraday-secondary-grid">
-          <NetLiquidityPanel data={data.netLiquidity} />
-          <RatesInflationPanel data={data.ratesInflation} />
-        </div>
+        <details className="advanced-details">
+          <summary>Lihat detail makro & likuiditas</summary>
+          <div className="advanced-details-body">
+            <MvpFactualContextPanel data={data.mvpFactualContext} />
+            <div className="intraday-secondary-grid">
+              <NetLiquidityPanel data={data.netLiquidity} />
+              <RatesInflationPanel data={data.ratesInflation} />
+            </div>
+          </div>
+        </details>
       </>}
       {activeMenu === "heatmap" && <MarketHeatmap observations={observations} baselines={baselinePresentations} />}
-      {activeMenu === "macro" && <div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar"><div className="panel-label"><span>OBSERVASI MAKRO</span><span>{macroContexts.length} THEME · {macroObservations.length} METRIC</span></div><h2>Monitor data makro</h2>{macroObservations.length ? macroContexts.map((context) => <MacroThemeCard context={context} observations={macroObservations} baselines={baselinesBySeries} expanded={expandedMacroTheme === context.id} onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)} key={context.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div>}
-      {activeMenu === "crypto" && <div className="menu-grid"><CryptoMarketPanel observations={observations} providerHealth={providerHealth} />{showNews(cryptoNews, "BERITA CRYPTO")}</div>}
-      {activeMenu === "context" && <div className="menu-grid context-menu"><section className="panel intelligence-panel"><div className="panel-label"><span>MARKET CONTEXT</span><span>{contexts.length} CONTEXT</span></div><h2>Context explorer</h2><p className="lead-copy">Context adalah layer pengelompokan evidence. Pilih grup untuk membuka context di dalamnya, lalu klik context untuk melihat traceability.</p><div className="context-groups">{contextGroups.length ? contextGroups.map((group) => { const isExpanded = expandedGroup === group.id; return <section className={`context-group${isExpanded ? " expanded" : ""}`} key={group.id}><button type="button" className="context-group-button" aria-expanded={isExpanded} onClick={() => setExpandedGroup(isExpanded ? null : group.id)}><span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span><span>{group.contexts.length} CONTEXT {isExpanded ? "↑" : "→"}</span></button>{isExpanded && <div className="context-list">{group.contexts.map((context) => { const label = context.scope === "CRYPTO_MARKET" ? context.id.replace("context-crypto-", "").toUpperCase() : context.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " "); return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => setSelectedContextId(selectedContextId === context.id ? null : context.id)} key={context.id} />; })}</div>}</section>; }) : <EmptyPanelNote label="context" />}</div></section>{selectedContext ? <ContextDetail context={selectedContext} label={selectedLabel} /> : <section className="panel context-detail-empty"><div className="panel-label"><span>CONTEXT DETAIL</span><span>WAITING</span></div><h2>Pilih context</h2><p className="lead-copy">Klik salah satu context untuk membuka detail dan melihat hubungan langsungnya ke canonical observation/event.</p></section>}</div>}
-      {activeMenu === "intelligence" && <div className="menu-grid"><section className="panel intelligence-panel"><div className="panel-label"><span>INTELLIGENCE</span><span>SEMANTIC LAYER</span></div><h2>Intelligence yang terverifikasi</h2><p className="lead-copy">Intelligence akan menjelaskan WHAT, WHY, evidence yang mengonfirmasi atau bertentangan, invalidation, monitoring, dan confidence. Context tidak ditampilkan sebagai intelligence.</p><div className="monitor-list"><div><strong>Context</strong><span>Dipisahkan ke menu Context sebagai canonical grouping layer.</span></div><div><strong>Evidence</strong><span>{evidence.length} evidence canonical tersedia sebagai dasar reasoning.</span></div><div><strong>Inference</strong><span>Belum ada kesimpulan regime, sentiment, liquidity, capital flow, atau price prediction.</span></div></div></section><section className="panel"><div className="panel-label"><span>MONITOR</span><span>STATUS OPERASIONAL</span></div><h2>Apa yang perlu dipantau?</h2><div className="monitor-list"><div><strong>Observasi pasar</strong><span>{observations.length} observasi · kualitas {STATUS_LABEL_ID[marketStatus]}.</span></div><div><strong>Event makro</strong><span>{highImpactEvents} event berdampak tinggi terdeteksi.</span></div><div><strong>Provider</strong><span>{healthyProviderCount}/{providerHealth.length} provider sehat · status {STATUS_LABEL_ID[providerRowStatus]}.</span></div><div><strong>Unavailable</strong><span>{unavailableSources.length ? unavailableSources.join(" · ") : "Tidak ada provider yang ditandai unavailable."}</span></div></div></section></div>}
-      {activeMenu === "evidence" && <div className="menu-grid"><section className="panel intelligence-panel"><div className="panel-label"><span>EVIDENCE</span><span>{evidence.length} ITEM</span></div><h2>Canonical evidence</h2><p className="lead-copy">Evidence adalah bahan yang dapat ditelusuri kembali ke source. P365 tidak mengubah evidence menjadi kesimpulan otomatis.</p><div className="monitor-list">{evidence.length ? evidence.slice(0, 24).map((item: Evidence) => <div key={item.id}><strong>{item.kind}</strong><span>{item.subject} · {item.sourceId} · {relativeTimeID(item.capturedAt)}</span></div>) : <EmptyPanelNote label="evidence" />}</div></section></div>}
+      {activeMenu === "macro" && <><div className="page-intro"><span>MAKRO</span><h1>Faktor makro yang perlu dipantau</h1><p>Mulai dari rates, inflasi, likuiditas, tenaga kerja, USD, dan pertumbuhan. Buka kartu hanya jika ingin detail indikator.</p></div><div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar"><div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div><h2>Indikator utama</h2>{macroObservations.length ? macroContexts.map((context) => <MacroThemeCard context={context} observations={macroObservations} baselines={baselinesBySeries} expanded={expandedMacroTheme === context.id} onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)} key={context.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div></>}
+      {activeMenu === "crypto" && <>
+        <div className="page-intro"><span>CRYPTO</span><h1>Harga, likuiditas, dan arus modal</h1><p>Urutannya sederhana: lihat harga pasar, lalu ukuran likuiditas stablecoin, lalu arus ETF Bitcoin. Berita ditempatkan setelah data utama.</p></div>
+        <CryptoMarketPanel observations={observations} providerHealth={providerHealth} />
+        <div className="decision-grid">
+          <StablecoinLiquidityPanel data={data.stablecoinLiquidity} />
+          <BtcEtfFlowPanel data={data.btcEtfFlow} />
+        </div>
+        {showNews(cryptoNews, "BERITA CRYPTO")}
+      </>}
+      {activeMenu === "gold" && <>
+        <div className="page-intro"><span>GOLD</span><h1>Harga dan posisi trader</h1><p>Harga menjawab apa yang diperdagangkan sekarang. CFTC menjawab bagaimana kelompok Managed Money memegang kontrak pada laporan mingguan terakhir.</p></div>
+        <div className="decision-grid">
+          <GoldPricePanel observations={observations} />
+          <GoldPositioningPanel data={data.goldPositioning} />
+        </div>
+      </>}
+      {activeMenu === "context" && <div className="menu-grid context-menu"><section className="panel intelligence-panel"><div className="panel-label"><span>MARKET CONTEXT</span><span>{contexts.length} CONTEXT</span></div><h2>Konteks pasar</h2><p className="lead-copy">Bagian ini mengelompokkan data dan event yang saling terkait. Gunakan jika ingin menelusuri detail di balik ringkasan.</p><div className="context-groups">{contextGroups.length ? contextGroups.map((group) => { const isExpanded = expandedGroup === group.id; return <section className={`context-group${isExpanded ? " expanded" : ""}`} key={group.id}><button type="button" className="context-group-button" aria-expanded={isExpanded} onClick={() => setExpandedGroup(isExpanded ? null : group.id)}><span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span><span>{group.contexts.length} CONTEXT {isExpanded ? "↑" : "→"}</span></button>{isExpanded && <div className="context-list">{group.contexts.map((context) => { const label = context.scope === "CRYPTO_MARKET" ? context.id.replace("context-crypto-", "").toUpperCase() : context.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " "); return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => setSelectedContextId(selectedContextId === context.id ? null : context.id)} key={context.id} />; })}</div>}</section>; }) : <EmptyPanelNote label="context" />}</div></section>{selectedContext ? <ContextDetail context={selectedContext} label={selectedLabel} /> : <section className="panel context-detail-empty"><div className="panel-label"><span>RINCIAN KONTEKS</span><span>PILIH KONTEKS</span></div><h2>Pilih context</h2><p className="lead-copy">Klik salah satu konteks untuk melihat data dan event yang terkait.</p></section>}</div>}
+      {activeMenu === "evidence" && <div className="menu-grid"><section className="panel intelligence-panel"><div className="panel-label"><span>EVIDENCE</span><span>{evidence.length} ITEM</span></div><h2>Jejak sumber data</h2><p className="lead-copy">Daftar sumber data yang dipakai P365. Bagian ini untuk audit dan penelusuran, bukan tampilan utama untuk mengambil keputusan.</p><div className="monitor-list">{evidence.length ? evidence.slice(0, 24).map((item: Evidence) => <div key={item.id}><strong>{item.kind}</strong><span>{item.subject} · {item.sourceId} · {relativeTimeID(item.capturedAt)}</span></div>) : <EmptyPanelNote label="evidence" />}</div></section></div>}
     </div>
   </main>;
 }
