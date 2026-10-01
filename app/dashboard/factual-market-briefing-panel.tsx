@@ -30,13 +30,13 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
 
   return <section className="panel overview-change-layer" aria-labelledby="briefing-what-changed-title">
     <div className="panel-label">
-      <span>MARKET BRIEFING · GATE 1</span>
-      <span>{section.evidenceStatus === "AVAILABLE" ? "EVIDENCE TERSEDIA" : "EVIDENCE BELUM CUKUP"}</span>
+      <span>MARKET BRIEFING</span>
+      <span>{section.evidenceStatus === "AVAILABLE" ? "DATA TERSEDIA" : "DATA BELUM CUKUP"}</span>
     </div>
     <div className="change-layer-grid">
       <div>
         <h2 id="briefing-what-changed-title">Apa yang berubah?</h2>
-        <p className="lead-copy">Ringkasan factual baseline Macro yang sudah tersedia di dashboard. Bagian ini hanya menyatukan evidence yang sudah ada dan tidak menambah kesimpulan baru.</p>
+        <p className="lead-copy">Ringkasan baseline faktual Macro yang sudah tersedia di dashboard. Bagian ini hanya menyatukan data yang sudah ada dan tidak menambah kesimpulan baru.</p>
       </div>
     </div>
 
@@ -52,13 +52,13 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>)}
         </div>
       : <div className="plain-notice" style={{ marginTop: "1rem" }}>
-          <strong>Evidence belum cukup</strong>
+          <strong>Data belum cukup</strong>
           <span>{section.reason}</span>
         </div>}
 
     <div className="plain-notice" style={{ marginTop: "1rem" }}>
-      <strong>Reasoning belum dievaluasi</strong>
-      <span>Materialitas, surprise, repricing, transmission, confirmation, dan arah pasar belum disimpulkan pada checkpoint ini.</span>
+      <strong>Penalaran belum dievaluasi</strong>
+      <span>Bagian ini belum menyimpulkan materialitas, kejutan terhadap ekspektasi, repricing pasar, transmisi lintas aset, konfirmasi, atau arah pasar.</span>
     </div>
     <p className="decision-meta">Cutoff briefing {dateTime(data.asOf)} WIB</p>
   </section>;
