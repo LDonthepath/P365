@@ -21,6 +21,7 @@ type MarketMemoryRow = {
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.P365_MEMORY_WRITE_KEY ?? process.env.SUPABASE_SECRET_KEY;
 const SUPABASE_REQUEST_TIMEOUT_MS = 10_000;
+const MAX_CANONICAL_BATCH_IDS = 100;
 
 function requireConfig(): { url: string; key: string } {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -112,6 +113,49 @@ async function find<T extends CanonicalRecord>(recordType: MarketMemoryRecordTyp
   return rows[0]?.payload ?? null;
 }
 
+
+async function findMany<T extends CanonicalRecord>(
+  recordType: MarketMemoryRecordType,
+  ids: string[],
+): Promise<T[]> {
+  const uniqueIds = [...new Set(ids.filter((id) => id.trim()))];
+  if (uniqueIds.length === 0) return [];
+  if (uniqueIds.length > MAX_CANONICAL_BATCH_IDS) {
+    throw new Error(
+      `Supabase Market Memory batch read is limited to ${MAX_CANONICAL_BATCH_IDS} canonical IDs.`,
+    );
+  }
+
+  const { url, key } = requireConfig();
+  const params = new URLSearchParams({
+    select: "canonical_id,payload",
+    record_type: `eq.${recordType}`,
+    canonical_id: `in.(${uniqueIds.join(",")})`,
+    limit: String(uniqueIds.length),
+  });
+  const response = await fetch(`${url}/rest/v1/market_memory?${params.toString()}`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Supabase Market Memory batch read failed (${response.status}): ${detail}`);
+  }
+
+  const rows = (await response.json()) as Array<{ canonical_id: string; payload: T }>;
+  const byId = new Map<string, T>();
+  for (const row of rows) {
+    if (!uniqueIds.includes(row.canonical_id) || byId.has(row.canonical_id)) continue;
+    byId.set(row.canonical_id, row.payload);
+  }
+  return uniqueIds.flatMap((id) => {
+    const item = byId.get(id);
+    return item ? [item] : [];
+  });
+}
+
 class SupabaseRepository<T extends CanonicalRecord> {
   constructor(private readonly recordType: MarketMemoryRecordType) {}
 
@@ -125,6 +169,10 @@ class SupabaseRepository<T extends CanonicalRecord> {
 
   async findById(id: string): Promise<T | null> {
     return find<T>(this.recordType, id);
+  }
+
+  async findManyByIds(ids: string[]): Promise<T[]> {
+    return findMany<T>(this.recordType, ids);
   }
 }
 
