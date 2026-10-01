@@ -87,25 +87,46 @@ function CalendarRow({ item }: { item: CalendarEvent }) {
   return <article className="calendar-row"><time dateTime={item.dateISO} aria-label={`${item.event}, ${item.status}, ${item.time} WIB`}>{item.time}<small>WIB</small></time><div><h3>{item.event}</h3><p>{item.country} · {item.status}</p></div><span className={`impact ${item.impact.toLowerCase()}`}>{item.impact}</span></article>;
 }
 
-function formatBaselineDelta(value: number | null): string {
-  if (value === null) return "—";
-  return `${value > 0 ? "+" : ""}${value.toFixed(2)}`;
-}
-
 function formatMacroValue(value: string, unit: string): string {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return value;
   const normalized = unit.trim().toLowerCase();
   if (normalized.includes("percent") || normalized === "%") return `${numeric.toFixed(2)}%`;
-  if (normalized.includes("dollar") || normalized.includes("usd") || normalized.includes("$") ) {
-    const absolute = Math.abs(numeric);
-    if (absolute >= 1_000_000_000_000) return `$${(numeric / 1_000_000_000_000).toFixed(2)}T`;
-    if (absolute >= 1_000_000_000) return `$${(numeric / 1_000_000_000).toFixed(2)}B`;
-    if (absolute >= 1_000_000) return `$${(numeric / 1_000_000).toFixed(2)}M`;
-    if (absolute >= 1_000) return `$${(numeric / 1_000).toFixed(2)}K`;
-    return `$${numeric.toFixed(2)}`;
+  if (normalized.includes("million") && (normalized.includes("dollar") || normalized.includes("usd"))) {
+    return formatMoney(numeric * 1_000_000);
+  }
+  if (normalized.includes("billion") && (normalized.includes("dollar") || normalized.includes("usd"))) {
+    return formatMoney(numeric * 1_000_000_000);
+  }
+  if (normalized.includes("thousand") && (normalized.includes("dollar") || normalized.includes("usd"))) {
+    return formatMoney(numeric * 1_000);
+  }
+  if (normalized.includes("dollar") || normalized.includes("usd") || normalized.includes("$")) {
+    return formatMoney(numeric);
   }
   return value;
+}
+
+function formatMacroDelta(value: number | null, unit: string): string {
+  if (value === null) return "—";
+  if (Math.abs(value) < 0.0000001) return "tidak berubah";
+  const normalized = unit.trim().toLowerCase();
+  if (normalized.includes("percent") || normalized === "%") {
+    return `${value > 0 ? "+" : ""}${value.toFixed(2)} poin persentase`;
+  }
+  if (normalized.includes("million") && (normalized.includes("dollar") || normalized.includes("usd"))) {
+    return formatSignedMoney(value * 1_000_000);
+  }
+  if (normalized.includes("billion") && (normalized.includes("dollar") || normalized.includes("usd"))) {
+    return formatSignedMoney(value * 1_000_000_000);
+  }
+  if (normalized.includes("thousand") && (normalized.includes("dollar") || normalized.includes("usd"))) {
+    return formatSignedMoney(value * 1_000);
+  }
+  if (normalized.includes("dollar") || normalized.includes("usd") || normalized.includes("$")) {
+    return formatSignedMoney(value);
+  }
+  return `${value > 0 ? "+" : ""}${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(value)}${unit ? ` ${unit}` : ""}`;
 }
 
 function macroThemeItems(context: Context, observations: Observation[]): Observation[] {
@@ -465,8 +486,16 @@ function CryptoMarketPanel({ observations, providerHealth }: { observations: Obs
   </section>;
 }
 
+const OVERVIEW_CHANGE_PRIORITY = ["DGS2", "DGS10", "DFII10", "T10YIE", "T10Y2Y"];
+
 function OverviewWhatChanged({ observations, baselines }: { observations: Observation[]; baselines: BaselinePresentation[] }) {
-  const validChanges = baselines.filter((item) => item.status === "VALID" && item.changeValue !== null);
+  const validChanges = baselines
+    .filter((item) => item.status === "VALID" && item.changeValue !== null)
+    .sort((a, b) => {
+      const ai = OVERVIEW_CHANGE_PRIORITY.indexOf(a.seriesId);
+      const bi = OVERVIEW_CHANGE_PRIORITY.indexOf(b.seriesId);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
   return <section className="panel overview-change-layer" aria-labelledby="what-changed-title">
     <div className="panel-label"><span>APA YANG BERUBAH</span><span>FAKTUAL</span></div>
     <div className="change-layer-grid">
@@ -479,7 +508,7 @@ function OverviewWhatChanged({ observations, baselines }: { observations: Observ
       const observation = observations.find((candidate) => String(candidate.metadata?.seriesId ?? "") === item.seriesId);
       const unit = String(observation?.metadata?.unit ?? "");
       const label = MACRO_SERIES_LABELS[item.seriesId] ?? observation?.subject ?? item.seriesId;
-      return <div key={item.seriesId}><strong>{label}</strong><span>{formatMacroValue(item.currentValue, unit)} dibanding {formatMacroValue(item.baselineValue ?? "", unit)} · perubahan {item.changeValue !== null && item.changeValue > 0 ? "+" : ""}{formatBaselineDelta(item.changeValue)}{unit ? ` ${unit}` : ""}</span></div>;
+      return <div key={item.seriesId}><strong>{label}</strong><span>Saat ini {formatMacroValue(item.currentValue, unit)} · sebelumnya {formatMacroValue(item.baselineValue ?? "", unit)} · {formatMacroDelta(item.changeValue, unit)}</span></div>;
     })}</div>}
   </section>;
 }
@@ -534,7 +563,6 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
 
   function handleManualRefresh() { startRefresh(async () => { const result = await refreshDashboardData(); setLastRefreshedAt(result.refreshedAt); router.refresh(); }); }
 
-  const providerStatus = sourceStatus(providerHealth);
   const cryptoContexts = contexts.filter((context) => context.scope === "CRYPTO_MARKET");
   const macroContexts = contexts.filter((context) => context.scope.startsWith("MACRO_"));
   const economicEventContexts = contexts.filter((context) => context.scope === "ECONOMIC_EVENTS");
@@ -544,7 +572,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
   const showNews = (items: NewsItem[], label: string) => <section className="panel news-panel"><div className="panel-label"><span>{label}</span><span>{items.length} ITEM</span></div><h2>Evidence berita terbaru</h2><div className="news-list">{items.length ? items.map((item) => <NewsCard item={item} key={item.id} />) : <EmptyPanelNote label={label.toLowerCase()} />}</div></section>;
 
   return <main className="dashboard-shell">
-    <header className="topbar"><div className="topbar-brand-group"><button className="nav-toggle" type="button" aria-label={navOpen ? "Tutup navigasi" : "Buka navigasi"} aria-expanded={navOpen} aria-controls="dashboard-navigation" onClick={() => setNavOpen((open) => !open)}><span /><span /><span /></button><div className="brand-lockup"><img className="brand-logo" src="/project365-logo.svg" alt="PROJECT365" style={{ width: "clamp(1.05rem, 2.2vw, 1.45rem)", height: "clamp(1.05rem, 2.2vw, 1.45rem)", objectFit: "contain", flexShrink: 0 }} /><p className="eyebrow" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", lineHeight: 1, letterSpacing: "-0.02em", margin: 0 }}>PROJECT365</p></div></div><div className="topbar-actions"><p><span className={`live-dot ${providerStatus === "UNAVAILABLE" ? "warning" : ""}`} /> {providerStatus === "FRESH" ? "DATA SEHAT" : "PERLU PERHATIAN"}</p>{lastRefreshedAt && <p className="muted refresh-note">Refresh manual terakhir: {relativeTimeID(lastRefreshedAt)}</p>}<button className="refresh-btn" type="button" onClick={handleManualRefresh} disabled={isRefreshing} aria-busy={isRefreshing}>{isRefreshing ? "Memuat ulang…" : "Muat ulang manual"}</button><div style={{ position: "relative" }}><button type="button" aria-label="Buka menu akun" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)} style={{ width: 36, height: 36, display: "grid", placeItems: "center", padding: 0, border: "1px solid var(--line)", borderRadius: 4, background: accountOpen ? "#151d19" : "transparent", color: accountOpen ? "var(--lime)" : "var(--text)" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-3.5 3-5.3 6.5-5.3s5.8 1.8 6.5 5.3" /></svg></button>{accountOpen && <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 220, padding: 8, border: "1px solid var(--line)", borderRadius: 5, background: "#101513", boxShadow: "0 12px 30px rgba(0,0,0,.35)", zIndex: 60 }}><div style={{ padding: "8px 10px 10px", borderBottom: "1px solid var(--line)" }}><span style={{ display: "block", color: "var(--muted)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: ".08em" }}>AKUN</span><strong style={{ display: "block", marginTop: 5, fontSize: 12, overflowWrap: "anywhere" }}>{sessionEmail}</strong></div><form action={logout}><button type="submit" style={{ width: "100%", marginTop: 8, padding: "9px 10px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 4, background: "transparent", color: "var(--text)", fontFamily: "'DM Mono', monospace", fontSize: 11 }}>Keluar</button></form></div>}</div></div></header>
+    <header className="topbar"><div className="topbar-brand-group"><button className="nav-toggle" type="button" aria-label={navOpen ? "Tutup navigasi" : "Buka navigasi"} aria-expanded={navOpen} aria-controls="dashboard-navigation" onClick={() => setNavOpen((open) => !open)}><span /><span /><span /></button><div className="brand-lockup"><img className="brand-logo" src="/project365-logo.svg" alt="PROJECT365" style={{ width: "clamp(1.05rem, 2.2vw, 1.45rem)", height: "clamp(1.05rem, 2.2vw, 1.45rem)", objectFit: "contain", flexShrink: 0 }} /><p className="eyebrow" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", lineHeight: 1, letterSpacing: "-0.02em", margin: 0 }}>PROJECT365</p></div></div><div className="topbar-actions">{lastRefreshedAt && <p className="muted refresh-note">Refresh manual terakhir: {relativeTimeID(lastRefreshedAt)}</p>}<button className="refresh-btn" type="button" onClick={handleManualRefresh} disabled={isRefreshing} aria-busy={isRefreshing}>{isRefreshing ? "Memuat ulang…" : "Muat ulang manual"}</button><div style={{ position: "relative" }}><button type="button" aria-label="Buka menu akun" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)} style={{ width: 36, height: 36, display: "grid", placeItems: "center", padding: 0, border: "1px solid var(--line)", borderRadius: 4, background: accountOpen ? "#151d19" : "transparent", color: accountOpen ? "var(--lime)" : "var(--text)" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-3.5 3-5.3 6.5-5.3s5.8 1.8 6.5 5.3" /></svg></button>{accountOpen && <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 220, padding: 8, border: "1px solid var(--line)", borderRadius: 5, background: "#101513", boxShadow: "0 12px 30px rgba(0,0,0,.35)", zIndex: 60 }}><div style={{ padding: "8px 10px 10px", borderBottom: "1px solid var(--line)" }}><span style={{ display: "block", color: "var(--muted)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: ".08em" }}>AKUN</span><strong style={{ display: "block", marginTop: 5, fontSize: 12, overflowWrap: "anywhere" }}>{sessionEmail}</strong></div><form action={logout}><button type="submit" style={{ width: "100%", marginTop: 8, padding: "9px 10px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 4, background: "transparent", color: "var(--text)", fontFamily: "'DM Mono', monospace", fontSize: 11 }}>Keluar</button></form></div>}</div></div></header>
     {navOpen && <button className="nav-backdrop" type="button" aria-label="Tutup navigasi" onClick={() => setNavOpen(false)} />}
     <nav id="dashboard-navigation" className={`filters${navOpen ? " open" : ""}`} aria-label="Bagian dashboard" role="tablist">{menuItems.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeMenu === item.id} className={activeMenu === item.id ? "active" : ""} onClick={() => { setActiveMenu(item.id); setNavOpen(false); }}>{item.label}</button>)}<span>WIB / ASIA-JAKARTA</span></nav>
 
@@ -554,7 +582,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         <OverviewQuickGlance data={data} observations={observations} />
         <div className="intraday-priority-grid">
           <OverviewWhatChanged observations={observations} baselines={baselinePresentations} />
-          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} />
+          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
         </div>
         <IntradayEventResponsePanel result={data.intradayEventMonitor} />
         <details className="advanced-details">
