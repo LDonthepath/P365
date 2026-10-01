@@ -16,8 +16,11 @@ const UNIT_LABEL_ID: Record<string, string> = {
 
 function unitLabel(unit?: string, multiplier?: string): string {
   const rawUnit = unit?.trim() ?? "";
+  const normalizedUnit = rawUnit.toLowerCase();
   const rawMultiplier = multiplier?.trim().toLowerCase() ?? "";
-  const localizedUnit = UNIT_LABEL_ID[rawUnit.toLowerCase()] ?? rawUnit;
+  const localizedUnit = ["none", "null", "n/a", "na"].includes(normalizedUnit)
+    ? ""
+    : UNIT_LABEL_ID[normalizedUnit] ?? rawUnit;
   const localizedMultiplier = MULTIPLIER_LABEL_ID[rawMultiplier];
 
   if (!localizedUnit) return localizedMultiplier ?? "";
