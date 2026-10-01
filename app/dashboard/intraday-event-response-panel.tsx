@@ -2,6 +2,7 @@
 
 import type { IntradayEventMonitor, IntradayEventMonitorResult, IntradaySeriesKey } from "@/lib/application/intraday-event-monitor";
 import type { EventWindowRole } from "@/lib/domain/event-window";
+import { formatEventResultValue } from "@/lib/presentation/event-result-display";
 
 const SERIES: Array<{ key: IntradaySeriesKey; label: string }> = [
   { key: "btc.spot.usd", label: "Bitcoin" },
@@ -97,11 +98,11 @@ function IntradayEventResponseCard({ data }: { data: IntradayEventMonitor }) {
       {data.surprise?.status === "VALID"
         ? <>
             <strong style={{ display: "block", fontSize: "1.05rem" }}>Hasil rilis {relationLabel(data.surprise.relation)}.</strong>
-            <p className="muted" style={{ margin: ".45rem 0 0" }}>Hasil aktual {value(data.actual, data.unit)}, dibanding perkiraan {value(data.expected, data.unit)} dan sebelumnya {value(data.previous, data.unit)}.</p>
+            <p className="muted" style={{ margin: ".45rem 0 0" }}>Hasil aktual {formatEventResultValue(data.actual, data.unit, data.unitMultiplier)}, dibanding perkiraan {formatEventResultValue(data.expected, data.unit, data.unitMultiplier)} dan sebelumnya {formatEventResultValue(data.previous, data.unit, data.unitMultiplier)}.</p>
           </>
         : <>
             <strong style={{ display: "block" }}>Hasil rilis tersedia, tetapi perbandingan dengan perkiraan belum dapat diverifikasi.</strong>
-            <p className="muted" style={{ margin: ".45rem 0 0" }}>Aktual {value(data.actual, data.unit)} · perkiraan {value(data.expected, data.unit)} · sebelumnya {value(data.previous, data.unit)}.</p>
+            <p className="muted" style={{ margin: ".45rem 0 0" }}>Aktual {formatEventResultValue(data.actual, data.unit, data.unitMultiplier)} · perkiraan {formatEventResultValue(data.expected, data.unit, data.unitMultiplier)} · sebelumnya {formatEventResultValue(data.previous, data.unit, data.unitMultiplier)}.</p>
           </>}
     </div>
 
