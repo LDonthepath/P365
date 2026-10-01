@@ -48,6 +48,7 @@ export type IntradayEventMonitor = {
   expected?: number;
   previous?: number;
   unit?: string;
+  unitMultiplier?: string;
   resultSource?: string;
   surprise?: EventSurpriseAssessment;
   ratesReconstruction?: IntradayRatesReconstruction;
@@ -209,6 +210,13 @@ async function buildMonitorForIdentity(
   });
   const result = results.find((item) =>
     item.actual !== undefined || item.expected !== undefined || item.previous !== undefined);
+  const resultEvidence = result
+    ? await canonicalRepositories.evidence.findById(result.evidenceId)
+    : null;
+  const unitMultiplier = typeof resultEvidence?.metadata?.multiplier === "string"
+    && resultEvidence.metadata.multiplier.trim()
+    ? resultEvidence.metadata.multiplier.trim()
+    : undefined;
   const t0 = String(ordered[0].snapshot.metadata?.t0 ?? event.releasedAt ?? event.scheduledAt ?? "");
   const surprise = result?.sourceId && t0
     ? (() => {
@@ -240,6 +248,7 @@ async function buildMonitorForIdentity(
     ...(result?.expected !== undefined ? { expected: result.expected } : {}),
     ...(result?.previous !== undefined ? { previous: result.previous } : {}),
     ...(result?.unit ? { unit: result.unit } : {}),
+    ...(unitMultiplier ? { unitMultiplier } : {}),
     ...(result?.sourceId ? { resultSource: result.sourceId } : {}),
     ...(surprise ? { surprise } : {}),
     moves,
