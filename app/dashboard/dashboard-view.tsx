@@ -9,6 +9,7 @@ import type { DashboardData } from "@/lib/data/dashboard-data";
 import type { CalendarEvent, NewsItem } from "@/lib/data/types";
 import type { Context, DataQuality, Evidence, Observation, ProviderHealth } from "@/lib/domain/types";
 import { buildBaselinePresentations, type BaselinePresentation } from "@/lib/presentation/baseline";
+import { formatMacroDisplayDelta, formatMacroDisplayValue } from "@/lib/presentation/macro-display";
 import { logout, refreshDashboardData } from "./actions";
 import { EventRiskWindowPanel } from "./event-risk-window-panel";
 import { IntradayEventResponsePanel } from "./intraday-event-response-panel";
@@ -87,48 +88,6 @@ function CalendarRow({ item }: { item: CalendarEvent }) {
   return <article className="calendar-row"><time dateTime={item.dateISO} aria-label={`${item.event}, ${item.status}, ${item.time} WIB`}>{item.time}<small>WIB</small></time><div><h3>{item.event}</h3><p>{item.country} · {item.status}</p></div><span className={`impact ${item.impact.toLowerCase()}`}>{item.impact}</span></article>;
 }
 
-function formatMacroValue(value: string, unit: string): string {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return value;
-  const normalized = unit.trim().toLowerCase();
-  if (normalized.includes("percent") || normalized === "%") return `${numeric.toFixed(2)}%`;
-  if (normalized.includes("million") && (normalized.includes("dollar") || normalized.includes("usd"))) {
-    return formatMoney(numeric * 1_000_000);
-  }
-  if (normalized.includes("billion") && (normalized.includes("dollar") || normalized.includes("usd"))) {
-    return formatMoney(numeric * 1_000_000_000);
-  }
-  if (normalized.includes("thousand") && (normalized.includes("dollar") || normalized.includes("usd"))) {
-    return formatMoney(numeric * 1_000);
-  }
-  if (normalized.includes("dollar") || normalized.includes("usd") || normalized.includes("$")) {
-    return formatMoney(numeric);
-  }
-  return value;
-}
-
-function formatMacroDelta(value: number | null, unit: string): string {
-  if (value === null) return "—";
-  if (Math.abs(value) < 0.0000001) return "tidak berubah";
-  const normalized = unit.trim().toLowerCase();
-  if (normalized.includes("percent") || normalized === "%") {
-    return `${value > 0 ? "+" : ""}${value.toFixed(2)} poin persentase`;
-  }
-  if (normalized.includes("million") && (normalized.includes("dollar") || normalized.includes("usd"))) {
-    return formatSignedMoney(value * 1_000_000);
-  }
-  if (normalized.includes("billion") && (normalized.includes("dollar") || normalized.includes("usd"))) {
-    return formatSignedMoney(value * 1_000_000_000);
-  }
-  if (normalized.includes("thousand") && (normalized.includes("dollar") || normalized.includes("usd"))) {
-    return formatSignedMoney(value * 1_000);
-  }
-  if (normalized.includes("dollar") || normalized.includes("usd") || normalized.includes("$")) {
-    return formatSignedMoney(value);
-  }
-  return `${value > 0 ? "+" : ""}${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(value)}${unit ? ` ${unit}` : ""}`;
-}
-
 function macroThemeItems(context: Context, observations: Observation[]): Observation[] {
   return context.observationIds.map((id) => observations.find((item) => item.id === id)).filter((item): item is Observation => Boolean(item));
 }
@@ -150,7 +109,7 @@ function MacroThemeCard({ context, observations, baselines, expanded, onToggle }
   return <article className={`macro-theme-card${expanded ? " expanded" : ""}`}>
     <button type="button" className="macro-theme-summary" aria-expanded={expanded} onClick={onToggle}>
       <div className="macro-tile-header"><span className="macro-frequency">{label.toUpperCase()}</span><span className="macro-quality">{headline.quality}</span></div>
-      <div className="macro-tile-main"><div><h3>{MACRO_SERIES_LABELS[headlineSeries] ?? headline.subject}</h3><small>{headlineSeries} · {String(headline.metadata?.frequency ?? "")}</small></div><strong className="macro-value">{formatMacroValue(headline.value, headlineUnit)}</strong></div>
+      <div className="macro-tile-main"><div><h3>{MACRO_SERIES_LABELS[headlineSeries] ?? headline.subject}</h3><small>{headlineSeries} · {String(headline.metadata?.frequency ?? "")}</small></div><strong className="macro-value">{formatMacroDisplayValue(headline.value, headlineUnit)}</strong></div>
       <div className="macro-tile-footer"><span>{items.length} INDIKATOR</span><span>{expanded ? "TUTUP ↑" : "LIHAT DETAIL ↓"}</span></div>
     </button>
     {expanded && <div className="macro-theme-detail">{items.map((item) => {
@@ -158,7 +117,7 @@ function MacroThemeCard({ context, observations, baselines, expanded, onToggle }
       const unit = String(metadata.unit ?? "");
       const seriesId = String(metadata.seriesId ?? "");
       const baseline = baselines.get(seriesId) ?? null;
-      return <div className="macro-detail-row" key={item.id}><div><strong>{MACRO_SERIES_LABELS[seriesId] ?? item.subject}</strong><small>{seriesId} · {String(metadata.frequency ?? "UNKNOWN")} · {item.quality}</small></div><div className="macro-detail-values"><strong>{formatMacroValue(item.value, unit)}</strong><small>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroValue(baseline.baselineValue, unit)} · ${formatMacroDelta(baseline.changeValue, unit)}` : `Pembanding ${baseline?.status ?? "MISSING"}`}</small></div></div>;
+      return <div className="macro-detail-row" key={item.id}><div><strong>{MACRO_SERIES_LABELS[seriesId] ?? item.subject}</strong><small>{seriesId} · {String(metadata.frequency ?? "UNKNOWN")} · {item.quality}</small></div><div className="macro-detail-values"><strong>{formatMacroDisplayValue(item.value, unit)}</strong><small>{baseline?.baselineValue !== null && baseline?.baselineValue !== undefined ? `Ref ${formatMacroDisplayValue(baseline.baselineValue, unit)} · ${formatMacroDisplayDelta(baseline.changeValue, unit)}` : `Pembanding ${baseline?.status ?? "MISSING"}`}</small></div></div>;
     })}<div className="macro-theme-metadata"><span>Setiap indikator tetap dihitung terpisah; kartu ini hanya mengelompokkan tampilan.</span><span>Sumber · FRED</span></div></div>}
   </article>;
 }
@@ -436,7 +395,7 @@ function MarketHeatmap({ observations, baselines }: { observations: Observation[
     if (!observation) return [];
     const seriesId = String(observation.metadata?.seriesId ?? "");
     const baseline = baselineBySeries.get(seriesId);
-    return [{ id: scope, label: MACRO_CONTEXT_LABELS[scope] ?? scope, group: "MACRO" as const, value: formatMacroValue(observation.value, String(observation.metadata?.unit ?? "")), delta: baseline?.status === "VALID" ? baseline.changeValue : null, deltaUnit: "ABSOLUTE" as const, source: `${MACRO_SERIES_LABELS[seriesId] ?? seriesId} · ${seriesId}` }];
+    return [{ id: scope, label: MACRO_CONTEXT_LABELS[scope] ?? scope, group: "MACRO" as const, value: formatMacroDisplayValue(observation.value, String(observation.metadata?.unit ?? "")), delta: baseline?.status === "VALID" ? baseline.changeValue : null, deltaUnit: "ABSOLUTE" as const, source: `${MACRO_SERIES_LABELS[seriesId] ?? seriesId} · ${seriesId}` }];
   });
   const tiles = [...marketTiles, ...macroTiles];
   const groups: Array<HeatmapTile["group"]> = ["CROSS-ASSET", "MACRO", "CRYPTO"];
@@ -502,7 +461,7 @@ function OverviewWhatChanged({ observations, baselines }: { observations: Observ
       const observation = observations.find((candidate) => String(candidate.metadata?.seriesId ?? "") === item.seriesId);
       const unit = String(observation?.metadata?.unit ?? "");
       const label = MACRO_SERIES_LABELS[item.seriesId] ?? observation?.subject ?? item.seriesId;
-      return <div key={item.seriesId}><strong>{label}</strong><span>Saat ini {formatMacroValue(item.currentValue, unit)} · sebelumnya {formatMacroValue(item.baselineValue ?? "", unit)} · {formatMacroDelta(item.changeValue, unit)}</span></div>;
+      return <div key={item.seriesId}><strong>{label}</strong><span>Saat ini {formatMacroDisplayValue(item.currentValue, unit)} · sebelumnya {formatMacroDisplayValue(item.baselineValue ?? "", unit)} · {formatMacroDisplayDelta(item.changeValue, unit)}</span></div>;
     })}</div>}
   </section>;
 }
