@@ -123,7 +123,7 @@ export function buildHistoricalBaselineEvidence(input: {
 }): HistoricalBaselineEvidence {
   validateMethodology(input.methodology);
 
-  const targetObservationIds = [...input.targetObservationIds].sort();
+  const targetObservationIds = [...input.targetObservationIds];
   const targetObservationQualities = [...input.targetObservationQualities];
   const samples = [...input.samples].sort((a, b) =>
     a.observedAt.localeCompare(b.observedAt)
