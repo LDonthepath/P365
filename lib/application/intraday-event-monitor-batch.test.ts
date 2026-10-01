@@ -1,8 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { Observation } from "../domain/types";
-import type { ObservationRepository } from "../repositories/types";
-import { resolveIntradayObservations } from "./intraday-event-monitor";
+import type { EconomicEventResult } from "../domain/event-result";
+import type { Event, Observation } from "../domain/types";
+import type {
+  EventRepository,
+  HistoricalEconomicEventResultRepository,
+  ObservationRepository,
+} from "../repositories/types";
+import {
+  resolveIntradayMonitorDependencies,
+  resolveIntradayObservations,
+} from "./intraday-event-monitor";
 
 function observation(id: string): Observation {
   return {
@@ -72,4 +80,76 @@ test("intraday resolution keeps the compatible findById fallback", async () => {
 
   assert.equal(singleCalls, 3, "duplicate IDs are resolved once even on fallback");
   assert.deepEqual([...result.keys()], ["obs-b", "obs-a"]);
+});
+
+
+test("intraday monitor starts independent canonical reads concurrently", async () => {
+  const started: string[] = [];
+  let resolveEvent!: (value: Event | null) => void;
+  let resolveObservations!: (value: Observation[]) => void;
+  let resolveResults!: (value: EconomicEventResult[]) => void;
+
+  const eventRepository: EventRepository = {
+    async save() {},
+    async saveMany() {},
+    findById() {
+      started.push("event");
+      return new Promise<Event | null>((resolve) => {
+        resolveEvent = resolve;
+      });
+    },
+  };
+  const observationRepository: ObservationRepository = {
+    async save() {},
+    async saveMany() {},
+    async findById() {
+      throw new Error("batch path expected");
+    },
+    findManyByIds(ids) {
+      started.push("observations");
+      assert.deepEqual(ids, ["obs-a", "obs-b"]);
+      return new Promise<Observation[]>((resolve) => {
+        resolveObservations = resolve;
+      });
+    },
+  };
+  const eventResultRepository: HistoricalEconomicEventResultRepository = {
+    findHistory(query) {
+      started.push("results");
+      assert.deepEqual(query, {
+        eventIdentityKey: "event:v1:US:2026-09-30T14:30:00.000Z:test-event",
+        retrievedAtOnOrBefore: "2026-09-30T15:30:00.000Z",
+        order: "DESC",
+        limit: 500,
+      });
+      return new Promise<EconomicEventResult[]>((resolve) => {
+        resolveResults = resolve;
+      });
+    },
+  };
+
+  const pending = resolveIntradayMonitorDependencies({
+    eventRepository,
+    observationRepository,
+    eventResultRepository,
+    eventId: "event-a",
+    observationIds: ["obs-a", "obs-b"],
+    eventIdentityKey: "event:v1:US:2026-09-30T14:30:00.000Z:test-event",
+    latestCapturedAt: "2026-09-30T15:30:00.000Z",
+  });
+
+  assert.deepEqual(
+    started,
+    ["event", "observations", "results"],
+    "all independent reads must start before any one of them resolves",
+  );
+
+  resolveEvent(null);
+  resolveObservations([observation("obs-a"), observation("obs-b")]);
+  resolveResults([]);
+
+  const result = await pending;
+  assert.equal(result.event, null);
+  assert.deepEqual([...result.observations.keys()], ["obs-a", "obs-b"]);
+  assert.deepEqual(result.results, []);
 });
