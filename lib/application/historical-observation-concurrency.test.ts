@@ -56,3 +56,23 @@ test("historical observation concurrency wrapper rejects invalid limits", () => 
     /positive integer/,
   );
 });
+
+
+test("historical observation concurrency wrapper releases a permit after failure", async () => {
+  let calls = 0;
+  const repository: HistoricalObservationRepository = {
+    async findHistory() {
+      calls += 1;
+      if (calls === 1) throw new Error("synthetic history failure");
+      return [];
+    },
+  };
+
+  const limited = withHistoricalObservationConcurrencyLimit(repository, 1);
+  const first = limited.findHistory(QUERY);
+  const second = limited.findHistory(QUERY);
+
+  await assert.rejects(first, /synthetic history failure/);
+  await assert.doesNotReject(second);
+  assert.equal(calls, 2);
+});
