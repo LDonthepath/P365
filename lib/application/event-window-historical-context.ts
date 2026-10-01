@@ -169,7 +169,7 @@ export async function buildRepositoryBackedEventWindowHistoricalContext(input: {
         sourceId: beforeObservation.sourceId,
         transformation: request.transformation,
         observedAtOnOrAfter: new Date(historyStartMs).toISOString(),
-        observedAtOnOrBefore: beforeObservation.observedAt,
+        observedAtOnOrBefore: new Date(beforeObservedAt - 1).toISOString(),
         asOf: input.after.capturedAt,
         minimumSampleSize: request.minimumSampleSize,
         comparisonHorizonMs,
