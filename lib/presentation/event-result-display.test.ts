@@ -15,6 +15,6 @@ test("formats provider multiplier without changing the factual numeric value", (
 
 test("keeps ordinary units unchanged when no multiplier exists", () => {
   assert.equal(formatEventResultValue(4.89, "%"), "4,89 %");
-  assert.equal(formatEventResultValue(56, "none"), "56 none");
+  assert.equal(formatEventResultValue(56, "none"), "56");
   assert.equal(formatEventResultValue(undefined, "barrel", "millions"), "—");
 });
