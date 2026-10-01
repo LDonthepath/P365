@@ -1,7 +1,7 @@
 # P365 Point-in-Time Historical Baseline Contract v0.1
 
 **Checkpoint:** HIST-001A  
-**Status:** CONTRACT FROZEN / HIST-001B MERGED / HIST-001C EVENT-WINDOW INTEGRATION IMPLEMENTED / OWNER MERGE PENDING  
+**Status:** CONTRACT FROZEN / HIST-001B + HIST-001C MERGED / HIST-001D INTRADAY CALIBRATION IMPLEMENTED / OWNER MERGE PENDING  
 **Scope:** read-only, single-series historical distribution baseline  
 **MVP scope:** Macro explanatory layer + Crypto + Gold
 
@@ -435,6 +435,64 @@ as a 5-minute market move merely because the Snapshot role is `T_PLUS_5`.
 HIST-001C does not assign percentile thresholds or words such as normal, unusual,
 extreme, bullish or bearish.
 
+## 18. HIST-001D intraday calibration
+
+HIST-001D freezes one explicit first-use calibration for BTC, DXY and Gold event-window
+historical magnitude context.
+
+The calibrated policy is:
+
+- transformation: `ABSOLUTE_PERCENT_CHANGE`;
+- historical lookback: 36 hours;
+- minimum eligible exact-horizon sample size: 30;
+- BTC: `ASSET:btc.spot.usd:coingecko-market`;
+- DXY: `ASSET:dxy.index.usd:yahoo-finance`;
+- Gold: `ASSET:gold.futures.usd:yahoo-finance`;
+- methodology ID: `intraday-event-magnitude-historical-context-v1`;
+- methodology version: `v1`.
+
+This policy answers only:
+
+> How large was the observed PRE-to-post percentage move relative to same-series,
+> same-horizon historical move magnitudes inside the calibrated lookback?
+
+It deliberately removes move direction. It does not classify a percentile as normal,
+unusual, extreme, bullish or bearish.
+
+### Calibration evidence
+
+A production durable-history audit on 1 Oct 2026 tested the actual PRE-to-post
+horizons implied by EVW-001 when PRE is near T-5:
+
+- 10 minutes;
+- 20 minutes;
+- 35 minutes;
+- 65 minutes.
+
+At a 36-hour lookback, distinct end-point counts remained below the repository
+500-row bound for all three calibrated series:
+
+- BTC: 432;
+- DXY: 412;
+- Gold: 419.
+
+Exact same-series pairs at the four tested horizons were:
+
+- BTC: 125-144;
+- DXY: 113-154;
+- Gold: 34-36.
+
+Therefore a minimum sample size of 30 has current production support across all three
+MVP target series while retaining bounded-history headroom.
+
+A 42-hour candidate was rejected for v1 because DXY and Gold were already near the
+repository cap at 466 and 480 distinct endpoints before accounting for the extra
+start-horizon range or factual revisions.
+
+These counts are calibration evidence, not a permanent market law. Any future change
+to lookback, sample threshold, transformation, series, source, or methodology version
+requires an explicit recalibration checkpoint.
+
 ## 18. Out of scope
 
 HIST-001A does not authorize:
@@ -456,10 +514,11 @@ HIST-001A does not authorize:
 - position sizing or execution;
 - UI changes.
 
-## 19. Checkpoint verdict
+## 20. Checkpoint verdict
 
 > **HIST-001A: CONTRACT FROZEN / PR #130 MERGED**  
 > **HIST-001B: RUNTIME MERGED / PR #131**  
-> **HIST-001C: EVENT-WINDOW INTEGRATION IMPLEMENTED / OWNER MERGE PENDING**
+> **HIST-001C: EVENT-WINDOW INTEGRATION MERGED / PR #132**  
+> **HIST-001D: INTRADAY CALIBRATION IMPLEMENTED / OWNER MERGE PENDING**
 
 The contract and runtime together convert the historical-baseline gap from an undefined concept into an explicit, point-in-time, no-lookahead, lineage-preserving distribution measurement while leaving interpretation and trading decisions outside the factual evidence layer.
