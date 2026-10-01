@@ -1,7 +1,7 @@
 # P365 Point-in-Time Historical Baseline Contract v0.1
 
 **Checkpoint:** HIST-001A  
-**Status:** CONTRACT FROZEN / HIST-001B + HIST-001C MERGED / HIST-001D INTRADAY CALIBRATION IMPLEMENTED / OWNER MERGE PENDING  
+**Status:** CONTRACT FROZEN / HIST-001A-D MERGED / HIST-001E EVENT-RESPONSE INTEGRATION IMPLEMENTED / OWNER MERGE PENDING  
 **Scope:** read-only, single-series historical distribution baseline  
 **MVP scope:** Macro explanatory layer + Crypto + Gold
 
@@ -493,7 +493,35 @@ These counts are calibration evidence, not a permanent market law. Any future ch
 to lookback, sample threshold, transformation, series, source, or methodology version
 requires an explicit recalibration checkpoint.
 
-## 18. Out of scope
+## 19. HIST-001E event-response evidence integration
+
+HIST-001E is the terminal HIST checkpoint for the current MVP sequence.
+
+It binds the existing EVR-001 factual event-response chain to HIST-001C historical
+context under one shared event/window/post-event knowledge lineage.
+
+The integration requires:
+
+- the same provider-independent Event identity;
+- the same qualified Event Window;
+- the same post-event role;
+- the same CMP-001 comparison ID;
+- the same post-event Snapshot `capturedAt` / knowledge cutoff;
+- `causalAttribution = NOT_EVALUATED` on both EVR and historical context.
+
+The generic HIST-001E builder still requires explicit historical-series methodology.
+A separate calibrated intraday wrapper applies the frozen HIST-001D policy for
+BTC, DXY and Gold.
+
+HIST-001E does not add a dashboard query, UI surface, persistence owner, provider,
+scheduler, percentile interpretation, State/Regime/Risk/Intelligence, or trading
+logic. It closes the factual evidence-chain capability only.
+
+After HIST-001E, HIST is frozen for the current MVP sequence. A further HIST
+checkpoint requires a reproduced correctness/reliability defect or a concrete
+downstream contract that cannot be satisfied by HIST-001A-E.
+
+## 20. Out of scope
 
 HIST-001A does not authorize:
 
@@ -514,11 +542,12 @@ HIST-001A does not authorize:
 - position sizing or execution;
 - UI changes.
 
-## 20. Checkpoint verdict
+## 21. Checkpoint verdict
 
 > **HIST-001A: CONTRACT FROZEN / PR #130 MERGED**  
 > **HIST-001B: RUNTIME MERGED / PR #131**  
 > **HIST-001C: EVENT-WINDOW INTEGRATION MERGED / PR #132**  
-> **HIST-001D: INTRADAY CALIBRATION IMPLEMENTED / OWNER MERGE PENDING**
+> **HIST-001D: INTRADAY CALIBRATION MERGED / PR #133**  
+> **HIST-001E: EVENT-RESPONSE INTEGRATION IMPLEMENTED / OWNER MERGE PENDING**
 
-The contract and runtime together convert the historical-baseline gap from an undefined concept into an explicit, point-in-time, no-lookahead, lineage-preserving distribution measurement while leaving interpretation and trading decisions outside the factual evidence layer.
+The HIST-001A-E chain converts the historical-baseline gap into an explicit, point-in-time, no-lookahead, lineage-preserving historical-comparable capability integrated with factual event-response evidence. Interpretation and trading decisions remain outside the factual evidence layer.
