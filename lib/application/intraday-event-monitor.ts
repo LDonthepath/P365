@@ -1,5 +1,4 @@
 import "server-only";
-import { unstable_cache } from "next/cache";
 import { EVENT_WINDOW_POLICY_V1, type EventWindowRole } from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Observation } from "../domain/types";
@@ -7,10 +6,7 @@ import type { ObservationRepository } from "../repositories/types";
 import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
 import { assessEventSurprise, type EventSurpriseAssessment } from "../domain/event-surprise";
 import { selectExpectationBaseline } from "../domain/expectation-baseline";
-import {
-  reconstructHistoricalZtEvent,
-  type RatesReconstructionPoint,
-} from "./rates-historical-reconstruction";
+import type { RatesReconstructionPoint } from "./rates-historical-reconstruction";
 import {
   canonicalRepositories,
   historicalEconomicEventResultRepository,
@@ -20,8 +16,6 @@ import {
 const ROLES: EventWindowRole[] = ["PRE", "T_PLUS_5", "T_PLUS_15", "T_PLUS_30", "T_PLUS_60"];
 const SERIES = ["btc.spot.usd", "eth.spot.usd", "dxy.index.usd", "gold.futures.usd"] as const;
 const MONITOR_TIMEOUT_MS = 4_000;
-const MASSIVE_HISTORICAL_DELAY_MS = 8 * 60 * 60 * 1000;
-const RATES_CONTEXT_TIMEOUT_MS = 1_500;
 export type IntradaySeriesKey = typeof SERIES[number];
 
 export type IntradayEventMove = {
@@ -254,37 +248,6 @@ async function buildMonitorForIdentity(
   };
 }
 
-const cachedHistoricalRatesReconstruction = unstable_cache(
-  (t0: string) => reconstructHistoricalZtEvent(t0),
-  ["cal-001-historical-zt-reconstruction"],
-  { revalidate: 24 * 60 * 60 },
-);
-
-async function reconstructRatesContext(
-  t0: string,
-): Promise<IntradayRatesReconstruction | null> {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const timeoutResult = new Promise<null>((resolve) => {
-      timeout = setTimeout(() => resolve(null), RATES_CONTEXT_TIMEOUT_MS);
-    });
-    const reconstruction = cachedHistoricalRatesReconstruction(t0)
-      .then((result): IntradayRatesReconstruction | null =>
-        result.status === "OK"
-          ? {
-              instrument: result.instrument,
-              productCode: result.productCode,
-              ticker: result.ticker,
-              points: result.points,
-            }
-          : null)
-      .catch(() => null);
-    return await Promise.race([reconstruction, timeoutResult]);
-  } finally {
-    if (timeout) clearTimeout(timeout);
-  }
-}
-
 async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitorResult> {
   const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const snapshots = await historicalMarketSnapshotRepository.findHistory({
@@ -317,28 +280,10 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
     selectedIdentities.map((identity) => buildMonitorForIdentity(identity, snapshots, now)),
   );
 
-  // Massive free-tier futures data is historical/delayed. Reconstruct once per
-  // release cohort so simultaneous events do not duplicate provider requests.
-  // Failure or unavailability is intentionally fail-soft: canonical event
-  // response evidence remains usable without this research-only context.
-  const historicalT0s = [...new Set(
-    data
-      .map((monitor) => monitor.t0)
-      .filter((t0) => {
-        const t0Ms = Date.parse(t0);
-        return Number.isFinite(t0Ms) && now.getTime() - t0Ms >= MASSIVE_HISTORICAL_DELAY_MS;
-      }),
-  )];
-  const ratesByT0 = new Map<string, IntradayRatesReconstruction>();
-  for (const t0 of historicalT0s) {
-    const rates = await reconstructRatesContext(t0);
-    if (rates) ratesByT0.set(t0, rates);
-  }
-  for (const monitor of data) {
-    const ratesReconstruction = ratesByT0.get(monitor.t0);
-    if (ratesReconstruction) monitor.ratesReconstruction = ratesReconstruction;
-  }
-
+  // Optional historical ZT reconstruction is intentionally excluded from the
+  // critical dashboard path. Canonical event-response evidence must remain
+  // available even when the external research-only futures source is slow or
+  // unavailable. A separate enrichment surface may reintroduce this context.
   data.sort((a, b) => a.subject.localeCompare(b.subject));
   return data.length ? { status: "OK", data } : { status: "EMPTY" };
 }
