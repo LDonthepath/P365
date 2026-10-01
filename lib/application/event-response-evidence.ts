@@ -7,9 +7,11 @@ import {
 } from "../domain/event-response-evidence";
 import type { QualifiedEventWindow } from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
+import type { EventWindowHistoricalContext } from "../domain/event-window-historical-context";
 import type { Event } from "../domain/types";
 import type {
   HistoricalEconomicEventResultRepository,
+  HistoricalObservationRepository,
   ObservationRepository,
 } from "../repositories/types";
 import {
@@ -17,6 +19,11 @@ import {
   type RepositoryBackedCrossAssetTransmission,
 } from "./cross-asset-transmission";
 import { assessRepositoryBackedEventSurprise } from "./event-surprise";
+import {
+  buildRepositoryBackedEventWindowHistoricalContext,
+  type EventWindowHistoricalSeriesRequest,
+} from "./event-window-historical-context";
+import { buildIntradayHistoricalSeriesRequests } from "./intraday-historical-calibration";
 
 export type RepositoryBackedEventResponseEvidence = {
   surprise: EventResponseEvidenceBundle["surprise"];
@@ -25,14 +32,12 @@ export type RepositoryBackedEventResponseEvidence = {
   bundle: EventResponseEvidenceBundle;
 };
 
-/**
- * Reuses SUR-001 and the complete CMP-001 -> RPR-001 -> TRN-001 chain and binds
- * them to one post-event Snapshot knowledge cutoff.
- *
- * The caller still owns RPR thresholds, TRN relationship methodology, and the
- * expectation provider/type. EVR-001 introduces no defaults or interpretation.
- */
-export async function buildRepositoryBackedEventResponseEvidence(input: {
+export type RepositoryBackedEventResponseHistoricalEvidence =
+  RepositoryBackedEventResponseEvidence & {
+    historicalContext: EventWindowHistoricalContext;
+  };
+
+export type RepositoryBackedEventResponseInput = {
   window: QualifiedEventWindow;
   before: MarketSnapshot;
   after: MarketSnapshot;
@@ -43,7 +48,96 @@ export async function buildRepositoryBackedEventResponseEvidence(input: {
   surpriseExpectedType?: EventExpectedType;
   thresholds: EventRepricingThreshold[];
   rules: CrossAssetTransmissionRuleInput[];
-}): Promise<RepositoryBackedEventResponseEvidence> {
+};
+
+function assertHistoricalContextMatchesEventResponse(input: {
+  response: RepositoryBackedEventResponseEvidence;
+  historicalContext: EventWindowHistoricalContext;
+}): void {
+  const { bundle } = input.response;
+  const historical = input.historicalContext;
+
+  if (
+    historical.eventIdentityKey !== bundle.eventIdentityKey
+    || historical.windowId !== bundle.windowId
+    || historical.afterRole !== bundle.afterRole
+    || historical.knowledgeAt !== bundle.knowledgeAt
+  ) {
+    throw new Error(
+      "HIST-001E requires historical context to share Event/window/role/knowledge lineage with EVR-001.",
+    );
+  }
+  if (
+    historical.comparisonId !== bundle.repricing.comparisonId
+    || historical.causalAttribution !== "NOT_EVALUATED"
+    || bundle.causalAttribution !== "NOT_EVALUATED"
+  ) {
+    throw new Error(
+      "HIST-001E historical context must share CMP lineage and remain non-causal.",
+    );
+  }
+}
+
+export async function buildRepositoryBackedEventResponseHistoricalEvidence(
+  input: RepositoryBackedEventResponseInput & {
+    historicalObservationRepository: HistoricalObservationRepository;
+    historicalSeries: EventWindowHistoricalSeriesRequest[];
+  },
+): Promise<RepositoryBackedEventResponseHistoricalEvidence> {
+  if (!input.historicalSeries.length) {
+    throw new Error("HIST-001E requires explicit historical series requests.");
+  }
+
+  const [response, historicalContext] = await Promise.all([
+    buildRepositoryBackedEventResponseEvidence(input),
+    buildRepositoryBackedEventWindowHistoricalContext({
+      window: input.window,
+      before: input.before,
+      after: input.after,
+      events: input.events,
+      observationRepository: input.observationRepository,
+      historicalObservationRepository: input.historicalObservationRepository,
+      series: input.historicalSeries,
+    }),
+  ]);
+
+  assertHistoricalContextMatchesEventResponse({ response, historicalContext });
+
+  return {
+    ...response,
+    historicalContext,
+  };
+}
+
+/**
+ * Uses the frozen HIST-001D intraday magnitude calibration.
+ *
+ * This wrapper is the only calibrated convenience surface. The generic HIST-001C
+ * and HIST-001E builders continue to require explicit caller-owned methodology.
+ */
+export async function buildCalibratedIntradayEventResponseEvidence(
+  input: RepositoryBackedEventResponseInput & {
+    historicalObservationRepository: HistoricalObservationRepository;
+  },
+): Promise<RepositoryBackedEventResponseHistoricalEvidence> {
+  return buildRepositoryBackedEventResponseHistoricalEvidence({
+    ...input,
+    historicalObservationRepository: input.historicalObservationRepository,
+    historicalSeries: buildIntradayHistoricalSeriesRequests(),
+  });
+}
+
+
+/**
+ * Reuses SUR-001 and the complete CMP-001 -> RPR-001 -> TRN-001 chain and binds
+ * them to one post-event Snapshot knowledge cutoff.
+ *
+ * The caller still owns RPR thresholds, TRN relationship methodology, and the
+ * expectation provider/type. EVR-001 introduces no defaults or interpretation.
+ */
+export async function buildRepositoryBackedEventResponseEvidence(
+  input: RepositoryBackedEventResponseInput,
+): Promise<RepositoryBackedEventResponseEvidence> {
   if (!input.surpriseSourceId.trim()) {
     throw new Error(
       "Event Response Evidence requires an explicit surprise expectation source.",
