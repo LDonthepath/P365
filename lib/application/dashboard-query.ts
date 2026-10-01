@@ -15,6 +15,7 @@ import {
 import { buildStablecoinLiquidityReadModel, type StablecoinLiquidityReadModel } from "./stablecoin-liquidity";
 import { buildBtcEtfFlowReadModel, type BtcEtfFlowReadModel } from "./btc-etf-flow";
 import { buildGoldPositioningReadModel, type GoldPositioningReadModel } from "./gold-positioning";
+import { withHistoricalObservationConcurrencyLimit } from "./historical-observation-concurrency";
 
 export type DashboardData = NormalizedDashboardData & {
   macroBaselines: Record<string, FactualBaseline>;
@@ -46,25 +47,30 @@ async function getDurableHighImpactEvents(now = new Date()): Promise<Event[]> {
   }
 }
 
+const dashboardHistoricalObservationRepository = withHistoricalObservationConcurrencyLimit(
+  historicalObservationRepository,
+  4,
+);
+
 export async function getDashboardData(): Promise<DashboardData> {
   const asOf = new Date();
   // Start the independent durable event-response read immediately so it runs
   // alongside provider ingestion/normalization and baseline work.
   const intradayEventMonitorPromise = getIntradayEventMonitor();
   const durableHighImpactEventsPromise = getDurableHighImpactEvents();
-  const netLiquidityPromise = buildNetLiquidityReadModel(historicalObservationRepository, asOf);
-  const ratesInflationPromise = buildRatesInflationReadModel(historicalObservationRepository, asOf);
+  const netLiquidityPromise = buildNetLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
+  const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf);
   const mvpFactualContextPromise = buildMacroCryptoGoldFactualContext(
-    historicalObservationRepository,
+    dashboardHistoricalObservationRepository,
     asOf,
     {
       netLiquidity: netLiquidityPromise,
       ratesInflation: ratesInflationPromise,
     },
   );
-  const stablecoinLiquidityPromise = buildStablecoinLiquidityReadModel(historicalObservationRepository, asOf);
-  const btcEtfFlowPromise = buildBtcEtfFlowReadModel(historicalObservationRepository, asOf);
-  const goldPositioningPromise = buildGoldPositioningReadModel(historicalObservationRepository, asOf);
+  const stablecoinLiquidityPromise = buildStablecoinLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
+  const btcEtfFlowPromise = buildBtcEtfFlowReadModel(dashboardHistoricalObservationRepository, asOf);
+  const goldPositioningPromise = buildGoldPositioningReadModel(dashboardHistoricalObservationRepository, asOf);
   const ingestion = await ingestDashboardData();
   const normalized = normalizeDashboardData(ingestion);
 
@@ -81,7 +87,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   ] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
-      historicalObservationRepository,
+      dashboardHistoricalObservationRepository,
     ),
     intradayEventMonitorPromise,
     durableHighImpactEventsPromise,
