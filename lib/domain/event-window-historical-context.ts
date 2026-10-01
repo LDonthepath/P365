@@ -26,6 +26,8 @@ export type EventWindowHistoricalContext = {
   knowledgeAt: string;
   contaminationStatus: "CLEAN" | "CONTAMINATED";
   contaminantEventIdentityKeys: string[];
+  requestedObservationKeys: string[];
+  missingObservationKeys: string[];
   series: EventWindowHistoricalSeriesContext[];
   causalAttribution: "NOT_EVALUATED";
 };
@@ -52,6 +54,8 @@ export function buildEventWindowHistoricalContext(input: {
   knowledgeAt: string;
   contaminationStatus: "CLEAN" | "CONTAMINATED";
   contaminantEventIdentityKeys: string[];
+  requestedObservationKeys: string[];
+  missingObservationKeys: string[];
   series: EventWindowHistoricalSeriesContext[];
 }): EventWindowHistoricalContext {
   if (!input.eventIdentityKey.trim() || !input.windowId.trim() || !input.comparisonId.trim()) {
@@ -60,6 +64,11 @@ export function buildEventWindowHistoricalContext(input: {
   timestamp(input.knowledgeAt, "knowledgeAt");
 
   const contaminantEventIdentityKeys = [...new Set(input.contaminantEventIdentityKeys)].sort();
+  const requestedObservationKeys = [...new Set(input.requestedObservationKeys)].sort();
+  const missingObservationKeys = [...new Set(input.missingObservationKeys)].sort();
+  if (missingObservationKeys.some((key) => !requestedObservationKeys.includes(key))) {
+    throw new Error("HIST-001C missing keys must belong to the requested observation set.");
+  }
   const series = [...input.series].sort((a, b) =>
     a.observationKey.localeCompare(b.observationKey));
 
@@ -104,6 +113,8 @@ export function buildEventWindowHistoricalContext(input: {
     knowledgeAt: input.knowledgeAt,
     contaminationStatus: input.contaminationStatus,
     contaminantEventIdentityKeys,
+    requestedObservationKeys,
+    missingObservationKeys,
     series,
     causalAttribution: "NOT_EVALUATED",
   };
