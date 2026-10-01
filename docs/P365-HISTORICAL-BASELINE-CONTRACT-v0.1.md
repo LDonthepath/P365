@@ -1,7 +1,7 @@
 # P365 Point-in-Time Historical Baseline Contract v0.1
 
 **Checkpoint:** HIST-001A  
-**Status:** CONTRACT FROZEN / HIST-001B RUNTIME IMPLEMENTED / OWNER MERGE PENDING  
+**Status:** CONTRACT FROZEN / HIST-001B MERGED / HIST-001C EVENT-WINDOW INTEGRATION IMPLEMENTED / OWNER MERGE PENDING  
 **Scope:** read-only, single-series historical distribution baseline  
 **MVP scope:** Macro explanatory layer + Crypto + Gold
 
@@ -406,7 +406,36 @@ The implementation must prove with focused tests:
 
 The implementation reuses `HistoricalObservationRepository`; it does not create a second raw-history data source. Historical reads remain bounded to 500 rows per repository call; when that bound is reached and complete window coverage cannot be proven, HIST-001B fails closed with `UNKNOWN` rather than calculating a potentially truncated distribution.
 
-## 17. Out of scope
+## 17. HIST-001C event-window integration
+
+HIST-001C binds a qualified PRE -> post-event Snapshot comparison to one or more
+HIST-001B historical baselines.
+
+The integration is factual context only.
+
+For each explicitly requested Observation slot it:
+
+- reuses CMP-001/EVW-001 qualification for the PRE and post-event Snapshot pair;
+- resolves the exact canonical before/after Observation IDs referenced by those Snapshots;
+- derives the comparison horizon from the actual Observation timestamps rather than
+  assuming that an event-window role label equals the market-move horizon;
+- sets the historical reference window to end strictly before the PRE Observation
+  measurement;
+- uses the post-event Snapshot `capturedAt` as the shared `asOf` knowledge cutoff;
+- applies an explicit caller-owned HIST transformation, lookback, minimum sample size,
+  methodology ID and methodology version;
+- retains CMP contamination status and contaminating Event identities;
+- retains every requested Observation key, including explicit missing coverage;
+- embeds the exact HIST-001B evidence and lineage for each resolved series.
+
+For example, a PRE Observation at 12:24:50 and a T+5 Observation at 12:34:50
+produce a 10-minute historical comparison horizon. HIST-001C must not relabel that
+as a 5-minute market move merely because the Snapshot role is `T_PLUS_5`.
+
+HIST-001C does not assign percentile thresholds or words such as normal, unusual,
+extreme, bullish or bearish.
+
+## 18. Out of scope
 
 HIST-001A does not authorize:
 
@@ -427,9 +456,10 @@ HIST-001A does not authorize:
 - position sizing or execution;
 - UI changes.
 
-## 18. Checkpoint verdict
+## 19. Checkpoint verdict
 
-> **HIST-001A: CONTRACT FROZEN**  
-> **HIST-001B: RUNTIME IMPLEMENTED / OWNER MERGE PENDING**
+> **HIST-001A: CONTRACT FROZEN / PR #130 MERGED**  
+> **HIST-001B: RUNTIME MERGED / PR #131**  
+> **HIST-001C: EVENT-WINDOW INTEGRATION IMPLEMENTED / OWNER MERGE PENDING**
 
 The contract and runtime together convert the historical-baseline gap from an undefined concept into an explicit, point-in-time, no-lookahead, lineage-preserving distribution measurement while leaving interpretation and trading decisions outside the factual evidence layer.
