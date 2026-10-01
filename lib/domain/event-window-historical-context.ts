@@ -71,6 +71,16 @@ export function buildEventWindowHistoricalContext(input: {
   }
   const series = [...input.series].sort((a, b) =>
     a.observationKey.localeCompare(b.observationKey));
+  const seriesKeys = series.map((item) => item.observationKey);
+  if (seriesKeys.some((key) => !requestedObservationKeys.includes(key))) {
+    throw new Error("HIST-001C series contexts must belong to the requested observation set.");
+  }
+  if (seriesKeys.some((key) => missingObservationKeys.includes(key))) {
+    throw new Error("HIST-001C a requested observation cannot be both resolved and missing.");
+  }
+  if ([...seriesKeys, ...missingObservationKeys].sort().join("\\n") !== requestedObservationKeys.join("\\n")) {
+    throw new Error("HIST-001C must account for every requested observation key.");
+  }
 
   const keys = new Set<string>();
   for (const item of series) {
@@ -84,6 +94,12 @@ export function buildEventWindowHistoricalContext(input: {
 
     if (!Number.isInteger(item.comparisonHorizonMs) || item.comparisonHorizonMs <= 0) {
       throw new Error("HIST-001C comparison horizon must be a positive integer.");
+    }
+    if (
+      item.historicalBaseline.methodology.identity.seriesKey !== item.seriesKey
+      || item.historicalBaseline.methodology.sourceId !== item.sourceId
+    ) {
+      throw new Error("HIST-001C historical baseline identity/source does not match the event move.");
     }
     if (item.historicalBaseline.methodology.transformation === "LEVEL") {
       throw new Error("HIST-001C requires a change-based historical baseline.");
