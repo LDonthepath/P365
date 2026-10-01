@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["icn1"],
   "functions": {
-    "app/dashboard/page.tsx": {
-      "regions": ["icn1"]
+    "app/api/**/route.ts": {
+      "regions": ["iad1"]
     }
   }
 }
