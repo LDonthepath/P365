@@ -2,6 +2,8 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { EVENT_WINDOW_POLICY_V1, type EventWindowRole } from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
+import type { Observation } from "../domain/types";
+import type { ObservationRepository } from "../repositories/types";
 import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
 import { assessEventSurprise, type EventSurpriseAssessment } from "../domain/event-surprise";
 import { selectExpectationBaseline } from "../domain/expectation-baseline";
@@ -135,6 +137,19 @@ function windowStatus(input: {
   return { status: "INCOMPLETE", missingRole };
 }
 
+export async function resolveIntradayObservations(
+  repository: ObservationRepository,
+  observationIds: string[],
+): Promise<Map<string, Observation>> {
+  const uniqueIds = [...new Set(observationIds)];
+  const resolved = repository.findManyByIds
+    ? await repository.findManyByIds(uniqueIds)
+    : (await Promise.all(
+        uniqueIds.map((id) => repository.findById(id)),
+      )).filter((item): item is Observation => item !== null);
+  return new Map(resolved.map((item) => [item.id, item]));
+}
+
 async function buildMonitorForIdentity(
   latestIdentity: string,
   snapshots: MarketSnapshot[],
@@ -155,12 +170,10 @@ async function buildMonitorForIdentity(
 
   const observationIds = [...new Set(ordered.flatMap(({ snapshot }) =>
     snapshot.observationRefs.map((ref) => ref.observationId)))];
-  const resolved = canonicalRepositories.observations.findManyByIds
-    ? await canonicalRepositories.observations.findManyByIds(observationIds)
-    : (await Promise.all(
-        observationIds.map((id) => canonicalRepositories.observations.findById(id)),
-      )).filter((item): item is NonNullable<typeof item> => item !== null);
-  const observations = new Map(resolved.map((item) => [item.id, item]));
+  const observations = await resolveIntradayObservations(
+    canonicalRepositories.observations,
+    observationIds,
+  );
 
   const valuesFor = (snapshot: MarketSnapshot): Partial<Record<IntradaySeriesKey, number>> => {
     const values: Partial<Record<IntradaySeriesKey, number>> = {};
