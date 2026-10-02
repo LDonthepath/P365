@@ -45,40 +45,6 @@ function surpriseRelation(value: string): string {
   return "sesuai perkiraan";
 }
 
-function repricingRole(value: string): string {
-  if (value === "T_PLUS_5") return "5 menit";
-  if (value === "T_PLUS_15") return "15 menit";
-  if (value === "T_PLUS_30") return "30 menit";
-  return "60 menit";
-}
-
-function repricingStatus(value: string): string {
-  if (value === "REPRICING_OBSERVED") return "Move melewati threshold historis P90.";
-  if (value === "NO_REPRICING_OBSERVED") return "Move belum melewati threshold historis P90.";
-  if (value === "CONTAMINATED") return "Window tercampur event HIGH lain; hasil tidak dianggap clean.";
-  return "Repricing belum dapat dinilai secara lengkap.";
-}
-
-function repricingResponseStatus(value: string): string {
-  if (value === "REPRICED") return "melewati threshold";
-  if (value === "BELOW_THRESHOLD") return "di bawah threshold";
-  return "belum dapat dievaluasi";
-}
-
-function repricingDirection(value: string): string {
-  if (value === "UP") return "naik";
-  if (value === "DOWN") return "turun";
-  if (value === "FLAT") return "datar";
-  return "arah belum tersedia";
-}
-
-function percentMagnitude(value: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 4,
-  }).format(value) + "%";
-}
-
 function pricingValue(value: number, unit: string | null): string {
   const normalized = unit?.trim().toLowerCase() ?? "";
   if (normalized === "usd" || normalized.includes("dollar")) {
@@ -96,7 +62,6 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
   const changed = data.whatChanged;
   const baselines = data.eventBaselines;
   const surprises = data.eventSurprises;
-  const repricing = data.eventRepricing;
 
   return <section className="panel overview-change-layer" aria-labelledby="briefing-what-changed-title">
     <div className="panel-label">
@@ -132,7 +97,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         <span>{baselines.evidenceStatus === "AVAILABLE" ? "BASELINE TERSEDIA" : "BASELINE BELUM CUKUP"}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apa yang sudah diketahui sebelum rilis?</h3>
-      <p className="lead-copy">Ekspektasi dan harga baseline diambil dari snapshot PRE yang sudah tersimpan. Section baseline ini sendiri tidak menyimpulkan repricing atau materialitas.</p>
+      <p className="lead-copy">Ekspektasi dan harga baseline diambil dari snapshot PRE yang sudah tersimpan. Angka ini belum digunakan untuk menyimpulkan repricing atau materialitas.</p>
 
       {baselines.evidenceStatus === "AVAILABLE"
         ? <div style={{ display: "grid", gap: ".85rem", marginTop: "1rem" }}>
@@ -186,46 +151,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
-      <div className="panel-label">
-        <span>REPRICING PASCA-RILIS</span>
-        <span>{repricing.evidenceStatus === "AVAILABLE" ? "EVIDENCE TERSEDIA" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apakah move pasar cukup besar dibanding riwayat?</h3>
-      <p className="lead-copy">RPR-001 membandingkan move PRE ke post-event dengan threshold P90 RPR-002B. Threshold production saat ini hanya tersedia untuk Bitcoin dan DXY pada horizon Observation yang cocok persis; hasil ini tidak membuktikan event menyebabkan move.</p>
-
-      {repricing.evidenceStatus === "AVAILABLE"
-        ? <div style={{ display: "grid", gap: ".85rem", marginTop: "1rem" }}>
-            {repricing.events.map((event) => <div className="plain-notice" key={event.eventIdentityKey}>
-              <strong>{event.subject}</strong>
-              <span>
-                {event.jurisdiction} · window {repricingRole(event.role)}
-                {" · "}snapshot {dateTime(event.capturedAt)} WIB
-              </span>
-              <span>{repricingStatus(event.status)}</span>
-              {event.responses.map((response) => <span key={response.observationKey}>
-                {PRICING_LABELS[response.seriesKey] ?? response.seriesKey}:{" "}
-                {response.measuredMagnitude === null
-                  ? "magnitude belum tersedia"
-                  : repricingDirection(response.direction) + " " + percentMagnitude(response.measuredMagnitude)}
-                {" · "}threshold {percentMagnitude(response.minimumMagnitude)}
-                {" · "}{repricingResponseStatus(response.status)}
-              </span>)}
-              {event.contaminationStatus === "CONTAMINATED"
-                ? <span>Ada event HIGH lain di dalam window ini; evidence tidak diperlakukan sebagai clean attribution.</span>
-                : null}
-              <span>Hubungan sebab-akibat belum dievaluasi.</span>
-            </div>)}
-          </div>
-        : <div className="plain-notice" style={{ marginTop: "1rem" }}>
-            <strong>Repricing belum cukup</strong>
-            <span>{repricing.reason}</span>
-          </div>}
-    </div>
-
     <div className="plain-notice" style={{ marginTop: "1rem" }}>
-      <strong>Penalaran lanjutan belum dievaluasi</strong>
-      <span>Briefing hanya menilai factual change, baseline, surprise faktual, dan crossing threshold repricing historis. Penyebab, makna surprise, transmisi lintas aset, konfirmasi, regime, dan arah pasar belum disimpulkan.</span>
+      <strong>Penalaran belum dievaluasi</strong>
+      <span>Bagian ini belum menyimpulkan materialitas, makna surprise, repricing pasar, transmisi lintas aset, konfirmasi, atau arah pasar.</span>
     </div>
     <p className="decision-meta">Cutoff briefing {dateTime(data.asOf)} WIB</p>
   </section>;

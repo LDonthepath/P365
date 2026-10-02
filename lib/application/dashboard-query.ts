@@ -6,7 +6,6 @@ import { historicalEventRepository, historicalObservationRepository } from "../r
 import type { Event } from "../domain/types";
 import { buildRepositoryBackedMacroFactualBaselines } from "./factual-baseline";
 import { getIntradayEventMonitor, type IntradayEventMonitorResult } from "./intraday-event-monitor";
-import { getBriefingEventRepricing } from "./briefing-event-repricing";
 import { buildNetLiquidityReadModel, type NetLiquidityReadModel } from "./net-liquidity";
 import { buildRatesInflationReadModel, type RatesInflationReadModel } from "./rates-inflation";
 import {
@@ -62,11 +61,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   const asOf = new Date();
   // Start the independent durable event-response read immediately so it runs
   // alongside provider ingestion/normalization and baseline work.
-  const intradayEventMonitorPromise = getIntradayEventMonitor(asOf);
-  const briefingEventRepricingPromise = intradayEventMonitorPromise.then(
-    (monitor) => getBriefingEventRepricing(monitor, asOf),
-  );
-  const durableHighImpactEventsPromise = getDurableHighImpactEvents(asOf);
+  const intradayEventMonitorPromise = getIntradayEventMonitor();
+  const durableHighImpactEventsPromise = getDurableHighImpactEvents();
   const netLiquidityPromise = buildNetLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
   const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf);
   const mvpFactualContextPromise = buildMacroCryptoGoldFactualContext(
@@ -86,7 +82,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const [
     macroBaselines,
     intradayEventMonitor,
-    briefingEventRepricing,
     durableHighImpactEvents,
     netLiquidity,
     ratesInflation,
@@ -100,7 +95,6 @@ export async function getDashboardData(): Promise<DashboardData> {
       dashboardHistoricalObservationRepository,
     ),
     intradayEventMonitorPromise,
-    briefingEventRepricingPromise,
     durableHighImpactEventsPromise,
     netLiquidityPromise,
     ratesInflationPromise,
@@ -115,7 +109,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     observations: normalized.macroObservations,
     asOf: mvpFactualContext.asOf,
     intradayEventMonitor,
-    eventRepricing: briefingEventRepricing,
   });
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes

@@ -3,18 +3,11 @@ import {
   type FactualBaseline,
 } from "../domain/baseline";
 import type { EventSurpriseRelation } from "../domain/event-surprise";
-import type {
-  EventRepricingAssessmentStatus,
-  EventRepricingDirection,
-  EventRepricingResponseStatus,
-} from "../domain/event-repricing";
-import type { SnapshotComparisonQuality } from "../domain/snapshot-comparison";
 import type { Observation } from "../domain/types";
 import type {
   IntradayEventMonitorResult,
   IntradayPricingBaselineEvidence,
 } from "./intraday-event-monitor";
-import type { BriefingEventRepricingResult } from "./briefing-event-repricing";
 
 const CHANGE_PRIORITY = ["DGS2", "DGS10", "DFII10", "T10YIE", "T10Y2Y"] as const;
 const MAX_VISIBLE_CHANGES = 4;
@@ -82,30 +75,6 @@ export type BriefingEventSurprise = {
   causalAttribution: "NOT_EVALUATED";
 };
 
-export type BriefingRepricingResponse = {
-  observationKey: string;
-  seriesKey: string;
-  status: EventRepricingResponseStatus;
-  direction: EventRepricingDirection;
-  measuredMagnitude: number | null;
-  minimumMagnitude: number;
-};
-
-export type BriefingEventRepricing = {
-  eventIdentityKey: string;
-  subject: string;
-  jurisdiction: string;
-  releaseAt: string;
-  role: "T_PLUS_5" | "T_PLUS_15" | "T_PLUS_30" | "T_PLUS_60";
-  capturedAt: string;
-  status: EventRepricingAssessmentStatus;
-  quality: SnapshotComparisonQuality;
-  contaminationStatus: "CLEAN" | "CONTAMINATED";
-  responses: BriefingRepricingResponse[];
-  policy: string;
-  causalAttribution: "NOT_EVALUATED";
-};
-
 export type FactualMarketBriefing = {
   asOf: string;
   whatChanged: {
@@ -126,12 +95,6 @@ export type FactualMarketBriefing = {
     events: BriefingEventSurprise[];
     reason: string | null;
   };
-  eventRepricing: {
-    evidenceStatus: BriefingEvidenceStatus;
-    reasoningStatus: BriefingReasoningStatus;
-    events: BriefingEventRepricing[];
-    reason: string | null;
-  };
 };
 
 type ComposeFactualMarketBriefingInput = {
@@ -139,7 +102,6 @@ type ComposeFactualMarketBriefingInput = {
   observations: Observation[];
   asOf: string;
   intradayEventMonitor?: IntradayEventMonitorResult;
-  eventRepricing?: BriefingEventRepricingResult;
 };
 
 function observationSeriesId(observation: Observation): string | null {
@@ -293,85 +255,14 @@ function composeEventSurprises(
   };
 }
 
-
-const REPRICING_ROLE_ORDER = ["T_PLUS_5", "T_PLUS_15", "T_PLUS_30", "T_PLUS_60"] as const;
-
-function repricingRoleIndex(role: string): number {
-  const index = REPRICING_ROLE_ORDER.indexOf(
-    role as (typeof REPRICING_ROLE_ORDER)[number],
-  );
-  return index === -1 ? -1 : index;
-}
-
-function seriesKeyFromObservationKey(key: string): string {
-  const parts = key.split(":");
-  return parts.length >= 3 ? parts.slice(1, -1).join(":") : key;
-}
-
-function composeEventRepricing(
-  result: BriefingEventRepricingResult | undefined,
-): FactualMarketBriefing["eventRepricing"] {
-  if (!result || result.status !== "OK") {
-    return {
-      evidenceStatus: "INSUFFICIENT",
-      reasoningStatus: "NOT_EVALUATED",
-      events: [],
-      reason: result?.status === "ERROR"
-        ? "Evidence repricing event terbaru sedang tidak dapat dibaca."
-        : "Belum ada event terbaru dengan evidence repricing yang dapat ditampilkan.",
-    };
-  }
-
-  const events = result.data.flatMap((item): BriefingEventRepricing[] => {
-    const assessed = item.windows
-      .filter((window) => window.status === "ASSESSED")
-      .sort((a, b) => repricingRoleIndex(a.role) - repricingRoleIndex(b.role));
-    const latest = assessed.at(-1);
-    if (!latest || latest.status !== "ASSESSED") return [];
-
-    const assessment = latest.assessment;
-    return [{
-      eventIdentityKey: item.eventIdentityKey,
-      subject: item.subject,
-      jurisdiction: item.jurisdiction,
-      releaseAt: item.t0,
-      role: latest.role,
-      capturedAt: latest.capturedAt,
-      status: assessment.status,
-      quality: assessment.quality,
-      contaminationStatus: assessment.contaminationStatus,
-      responses: assessment.responses.map((response) => ({
-        observationKey: response.observationKey,
-        seriesKey: seriesKeyFromObservationKey(response.observationKey),
-        status: response.status,
-        direction: response.direction,
-        measuredMagnitude: response.measuredMagnitude,
-        minimumMagnitude: response.minimumMagnitude,
-      })),
-      policy: assessment.policy,
-      causalAttribution: assessment.causalAttribution,
-    }];
-  });
-
-  return {
-    evidenceStatus: events.length > 0 ? "AVAILABLE" : "INSUFFICIENT",
-    reasoningStatus: "NOT_EVALUATED",
-    events,
-    reason: events.length > 0
-      ? null
-      : "Belum ada horizon Observation aktual yang cocok persis dengan threshold RPR-002B untuk event terbaru.",
-  };
-}
-
 /**
  * BRF-001A composes already-qualified evidence into briefing sections.
  *
  * Gate 1: factual Macro changes.
  * Gate 2: point-in-time expectation + PRE pricing baseline evidence.
  * Gate 3a: existing SUR-001 factual actual-vs-expectation evidence.
- * Gate 3b: RPR-001 threshold-governed repricing using frozen RPR-002B policy.
  *
- * It does not infer causality, decide surprise meaning, transmission,
+ * It does not decide materiality, surprise meaning, repricing, transmission,
  * confirmation, regime, invalidation, or trading action.
  */
 export function composeFactualMarketBriefing({
@@ -379,7 +270,6 @@ export function composeFactualMarketBriefing({
   observations,
   asOf,
   intradayEventMonitor,
-  eventRepricing,
 }: ComposeFactualMarketBriefingInput): FactualMarketBriefing {
   const changes = Object.entries(baselines)
     .flatMap(([seriesId, baseline]) => {
@@ -423,6 +313,5 @@ export function composeFactualMarketBriefing({
     },
     eventBaselines: composeEventBaselines(intradayEventMonitor),
     eventSurprises: composeEventSurprises(intradayEventMonitor),
-    eventRepricing: composeEventRepricing(eventRepricing),
   };
 }
