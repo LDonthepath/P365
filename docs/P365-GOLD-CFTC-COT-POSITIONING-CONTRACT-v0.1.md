@@ -670,3 +670,71 @@ It adds:
 
 Historical percentile/z-score remains blocked until sufficient CFTC history is
 explicitly backfilled and a separate distribution methodology is approved.
+
+
+## 21. GOLD-POS-001E/F one-year backfill and historical-fitness gate
+
+### Production backfill evidence
+
+On 2 October 2026, the existing authenticated production historical-ingestion
+owner was used for one bounded CFTC BACKFILL:
+
+```
+from = 2025-09-28
+to   = 2026-10-02
+provider = cftc
+```
+
+The request stayed inside the existing 370-calendar-day limit and returned:
+
+- status: SUCCESS;
+- 728 acquired rows;
+- 728 normalized Observations;
+- 728 persistence attempts;
+- 728 Evidence persistence attempts.
+
+Durable verification after the run showed:
+
+- 14 canonical CFTC series;
+- 52 distinct weekly report dates per series;
+- first report date: 2025-09-30;
+- latest report date: 2026-09-22;
+- 728 durable series/report pairs total;
+- zero extra factual revision rows.
+
+An identical authenticated rerun also returned SUCCESS while durable counts
+remained exactly 728 unique series/report pairs, proving production idempotency.
+
+No scheduler was added or changed. The existing daily FORWARD acquisition job
+remains the only recurring CFTC scheduler.
+
+### Historical-fitness blocker
+
+The one-year backfill exposed a contract mismatch: all current canonical CFTC
+rows intentionally retain `quality=UNKNOWN`, while default HIST-001 historical
+fitness rejects UNKNOWN rows.
+
+Re-ingesting with a future normalization quality change would not repair those
+immutable rows because Market Memory ignores duplicate factual dedupe keys.
+Destructive rewriting was rejected.
+
+### GOLD-POS-001F resolution
+
+GOLD-POS-001F therefore adds the explicit policy:
+
+`cftc-gold-cot-source-qualified-historical-fitness-v1`.
+
+The policy does not mutate raw quality. It permits an UNKNOWN CFTC row to be
+historically fit only when the exact CFTC source/dataset/resource/contract/report
+family/provenance/semantics invariants pass.
+
+PARTIAL remains rejected.
+
+The policy is opt-in and cannot be attached to a non-CFTC methodology.
+
+This closes the factual-fitness prerequisite for a later Managed Money net
+historical-distribution checkpoint without weakening HIST defaults globally.
+
+No percentile/z-score threshold, crowding label, bullish/bearish interpretation,
+confirmation mapping, State, Regime, Risk, Intelligence, or trading logic is
+activated by GOLD-POS-001F.

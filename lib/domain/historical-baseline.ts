@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
 import type { DataQuality } from "./types";
+import {
+  HISTORICAL_FITNESS_POLICY_CFTC_GOLD_COT_V1,
+  type HistoricalObservationFitnessPolicy,
+} from "./historical-observation-fitness";
+import { CFTC_GOLD_COT_SERIES_KEYS } from "./observation-semantics";
 import type { ObservationHistoryIdentity } from "../repositories/types";
 
 export const HISTORICAL_BASELINE_POLICY_V1 = "point-in-time-historical-baseline-v1" as const;
@@ -27,6 +32,7 @@ export type HistoricalBaselineMethodology = {
   asOf: string;
   minimumSampleSize: number;
   comparisonHorizonMs?: number;
+  historicalFitnessPolicy?: HistoricalObservationFitnessPolicy;
 };
 
 export type HistoricalBaselineSample = {
@@ -82,6 +88,24 @@ function validateMethodology(methodology: HistoricalBaselineMethodology): void {
   }
   if (!Number.isInteger(methodology.minimumSampleSize) || methodology.minimumSampleSize < 1) {
     throw new Error("HIST-001B minimumSampleSize must be an integer >= 1.");
+  }
+
+  if (
+    methodology.historicalFitnessPolicy
+      === HISTORICAL_FITNESS_POLICY_CFTC_GOLD_COT_V1
+  ) {
+    const cftcSeriesKeys = new Set<string>(
+      Object.values(CFTC_GOLD_COT_SERIES_KEYS),
+    );
+    if (
+      methodology.identity.domain !== "MARKET"
+      || methodology.sourceId !== "cftc-gold-cot"
+      || !cftcSeriesKeys.has(methodology.identity.seriesKey)
+    ) {
+      throw new Error(
+        "CFTC Gold COT historical fitness requires MARKET identity, canonical CFTC sourceId, and an approved CFTC Gold COT seriesKey.",
+      );
+    }
   }
 
   const needsHorizon = methodology.transformation !== "LEVEL";
