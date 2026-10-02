@@ -43,6 +43,40 @@ export type IntradayRatesReconstruction = {
   points: RatesReconstructionPoint[];
 };
 
+export type IntradayExpectationBaselineEvidence = {
+  status: string;
+  policy: string;
+  eventResultId: string | null;
+  sourceId: string | null;
+  expected: number | null;
+  expectedType: EconomicEventResult["expectedType"] | null;
+  unit: string | null;
+  period: string | null;
+  retrievedAt: string | null;
+  evidenceId: string | null;
+};
+
+export type IntradayPricingBaselineEvidence = {
+  status: string;
+  policy: string;
+  observationId: string | null;
+  seriesKey: string | null;
+  sourceId: string | null;
+  value: number | null;
+  unit: string | null;
+  observedAt: string | null;
+  retrievedAt: string | null;
+  evidenceId: string | null;
+  quality: Observation["quality"] | null;
+};
+
+export type IntradayBaselineEvidence = {
+  snapshotId: string;
+  capturedAt: string;
+  expectation: IntradayExpectationBaselineEvidence | null;
+  pricing: IntradayPricingBaselineEvidence[];
+};
+
 export type IntradayEventMonitor = {
   eventIdentityKey: string;
   eventId: string;
@@ -55,6 +89,7 @@ export type IntradayEventMonitor = {
   unit?: string;
   resultSource?: string;
   surprise?: EventSurpriseAssessment;
+  baselineEvidence?: IntradayBaselineEvidence;
   ratesReconstruction?: IntradayRatesReconstruction;
   moves: IntradayEventMove[];
   missingRequirements: number;
@@ -147,6 +182,79 @@ export async function resolveIntradayObservations(
         uniqueIds.map((id) => repository.findById(id)),
       )).filter((item): item is Observation => item !== null);
   return new Map(resolved.map((item) => [item.id, item]));
+}
+
+function seriesKeyOf(observation: Observation | undefined): string | null {
+  const key = observation?.identity?.seriesKey
+    ?? observation?.metadata?.seriesId
+    ?? observation?.metadata?.metricId;
+  return typeof key === "string" && key.trim() ? key.trim() : null;
+}
+
+function numericObservationValue(observation: Observation | undefined): number | null {
+  if (!observation) return null;
+  const value = Number(observation.value);
+  return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Resolves only the baseline lineage already frozen into the PRE Snapshot.
+ * No new baseline selection, repricing threshold, or interpretation is added.
+ */
+export function resolveIntradayBaselineEvidence(
+  pre: MarketSnapshot,
+  observations: Map<string, Observation>,
+  results: EconomicEventResult[],
+): IntradayBaselineEvidence {
+  const expectationRef = pre.baselineRefs.find((ref) => ref.kind === "EXPECTATION") ?? null;
+  const expectationResultId = expectationRef?.eventResultIds[0] ?? null;
+  const expectationResult = expectationResultId
+    ? results.find((item) => item.id === expectationResultId) ?? null
+    : null;
+
+  const expectation = expectationRef
+    ? {
+        status: expectationRef.status,
+        policy: expectationRef.policy,
+        eventResultId: expectationResultId,
+        sourceId: expectationResult?.sourceId ?? null,
+        expected: expectationResult?.expected ?? null,
+        expectedType: expectationResult?.expectedType ?? null,
+        unit: expectationResult?.unit ?? null,
+        period: expectationResult?.period ?? null,
+        retrievedAt: expectationResult?.retrievedAt ?? null,
+        evidenceId: expectationResult?.evidenceId ?? expectationRef.evidenceIds[0] ?? null,
+      }
+    : null;
+
+  const pricing = pre.baselineRefs
+    .filter((ref) => ref.kind === "PRICING")
+    .map((ref): IntradayPricingBaselineEvidence => {
+      const observationId = ref.observationIds[0] ?? null;
+      const observation = observationId ? observations.get(observationId) : undefined;
+      const unit = observation?.metadata?.unit;
+      return {
+        status: ref.status,
+        policy: ref.policy,
+        observationId,
+        seriesKey: seriesKeyOf(observation),
+        sourceId: observation?.sourceId ?? null,
+        value: numericObservationValue(observation),
+        unit: typeof unit === "string" && unit.trim() ? unit.trim() : null,
+        observedAt: observation?.observedAt ?? null,
+        retrievedAt: observation?.retrievedAt ?? null,
+        evidenceId: observation?.evidenceId ?? ref.evidenceIds[0] ?? null,
+        quality: observation?.quality ?? null,
+      };
+    })
+    .sort((a, b) => (a.seriesKey ?? "").localeCompare(b.seriesKey ?? ""));
+
+  return {
+    snapshotId: pre.id,
+    capturedAt: pre.capturedAt,
+    expectation,
+    pricing,
+  };
 }
 
 export async function resolveIntradayMonitorDependencies(input: {
@@ -271,6 +379,7 @@ async function buildMonitorForIdentity(
     ...(result?.unit ? { unit: result.unit } : {}),
     ...(result?.sourceId ? { resultSource: result.sourceId } : {}),
     ...(surprise ? { surprise } : {}),
+    ...(pre ? { baselineEvidence: resolveIntradayBaselineEvidence(pre, observations, results) } : {}),
     moves,
     missingRequirements,
     windowStatus: windowStatus({ t0, byRole, missingRequirements, now }),
