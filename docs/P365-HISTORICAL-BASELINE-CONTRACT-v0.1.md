@@ -208,6 +208,32 @@ For historical distribution membership:
 
 Stored canonical quality is not rewritten or recomputed at read time.
 
+A source-qualified historical-fitness policy may be approved only as an explicit,
+versioned methodology exception when immutable canonical rows predate a qualified
+freshness policy and cannot be safely rewritten.
+
+Such an exception must:
+
+- be opt-in per Historical Baseline methodology;
+- identify one canonical source and one bounded series family;
+- validate source-native provenance and approved semantics exactly;
+- leave the stored Observation `quality` unchanged;
+- never admit `PARTIAL`;
+- fail closed when provenance, semantics, dataset, or instrument identity drifts;
+- not alter the default HIST behavior for any other source.
+
+The first approved exception is
+`cftc-gold-cot-source-qualified-historical-fitness-v1`, limited to canonical
+CFTC Gold Disaggregated Futures Only rows for contract code `088691`.
+
+Under that policy, an immutable CFTC row stored as `UNKNOWN` may be historically
+fit only when its canonical source, dataset `72hh-3qpy`, Futures Only report
+family, contract code, provider resource, report date, native field lineage, and
+approved Gold positioning semantics all match exactly.
+
+This exception is historical factual fitness only. It does not relabel the raw
+Observation as FRESH or STALE and does not claim an exact public release time.
+
 Missing samples remain missing.
 
 ## 9. Compatibility rules
@@ -551,3 +577,41 @@ HIST-001A does not authorize:
 > **HIST-001E: EVENT-RESPONSE INTEGRATION IMPLEMENTED / OWNER MERGE PENDING**
 
 The HIST-001A-E chain converts the historical-baseline gap into an explicit, point-in-time, no-lookahead, lineage-preserving historical-comparable capability integrated with factual event-response evidence. Interpretation and trading decisions remain outside the factual evidence layer.
+
+
+## 20. GOLD-POS-001F CFTC source-qualified historical fitness
+
+GOLD-POS-001F implements the first explicit source-qualified historical-fitness
+policy permitted by Section 8:
+
+`cftc-gold-cot-source-qualified-historical-fitness-v1`.
+
+Default HIST behavior is unchanged:
+
+- FRESH / STALE remain eligible;
+- UNKNOWN / PARTIAL remain ineligible.
+
+When and only when a caller opts into the CFTC policy, an UNKNOWN row may be
+eligible if all CFTC Gold invariants pass exactly:
+
+- domain = MARKET;
+- sourceId = `cftc-gold-cot`;
+- approved CFTC Gold COT series key;
+- dataset = `72hh-3qpy`;
+- provider resource = `/resource/72hh-3qpy.json`;
+- contract market code = `088691`;
+- report family = Disaggregated Futures Only;
+- unit = CONTRACTS;
+- frequency = WEEKLY;
+- provenance observation date matches effective report date;
+- native provider field matches compatibility metadata;
+- approved COMMODITY / POSITIONING / US / FUTURE / GOLD semantics match exactly.
+
+PARTIAL remains ineligible.
+
+The policy is a compatibility bridge for immutable historical rows and is not a
+freshness reclassification. Historical Baseline output retains the original
+Observation quality, including UNKNOWN, for auditability.
+
+A CFTC fitness policy attached to another source or non-CFTC series fails
+validation before a historical distribution can be produced.

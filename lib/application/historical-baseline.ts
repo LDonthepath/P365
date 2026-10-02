@@ -7,6 +7,7 @@ import {
   type HistoricalBaselineTransformation,
 } from "../domain/historical-baseline";
 import { observationSemanticSeriesKey } from "../repositories/observation-history";
+import { historicalObservationFitnessEligible } from "../domain/historical-observation-fitness";
 import type { HistoricalObservationRepository } from "../repositories/types";
 
 const HISTORICAL_BASELINE_HISTORY_LIMIT = 500;
@@ -52,8 +53,14 @@ function knownBy(observation: Observation, asOf: number): boolean {
   return retrievedAt !== undefined && retrievedAt <= asOf;
 }
 
-function historicalQualityEligible(observation: Observation): boolean {
-  return observation.quality === "FRESH" || observation.quality === "STALE";
+function historicalQualityEligible(
+  observation: Observation,
+  methodology: HistoricalBaselineMethodology,
+): boolean {
+  return historicalObservationFitnessEligible(
+    observation,
+    methodology.historicalFitnessPolicy,
+  );
 }
 
 function latestByObservedTime(observations: Observation[]): Map<number, Observation> {
@@ -144,8 +151,8 @@ function prepareTarget(input: {
     };
   }
 
-  if (targetEnd.quality === "UNKNOWN" || targetEnd.quality === "PARTIAL"
-    || (targetStart && (targetStart.quality === "UNKNOWN" || targetStart.quality === "PARTIAL"))) {
+  if (!historicalQualityEligible(targetEnd, methodology)
+    || (targetStart && !historicalQualityEligible(targetStart, methodology))) {
     return {
       ok: false,
       evidence: failureEvidence({
@@ -334,7 +341,7 @@ export async function measureRepositoryBackedHistoricalBaseline(input: {
   const eligible = history.filter((observation) =>
     targetMatchesMethodology(observation, input.methodology)
     && knownBy(observation, asOf)
-    && historicalQualityEligible(observation)
+    && historicalQualityEligible(observation, input.methodology)
     && sameMeasurementMeaning(observation, targetEnd)
     && !prepared.targetObservations.some((target) => target.id === observation.id));
 
