@@ -551,3 +551,22 @@ HIST-001A does not authorize:
 > **HIST-001E: EVENT-RESPONSE INTEGRATION IMPLEMENTED / OWNER MERGE PENDING**
 
 The HIST-001A-E chain converts the historical-baseline gap into an explicit, point-in-time, no-lookahead, lineage-preserving historical-comparable capability integrated with factual event-response evidence. Interpretation and trading decisions remain outside the factual evidence layer.
+
+
+## CFTC Gold derived-positioning compatibility note
+
+GOLD-POS-001F does not modify HIST-001A/B historical-quality eligibility.
+
+The generic repository-backed historical baseline continues to reject
+`quality=UNKNOWN`.
+
+For CFTC Gold Managed Money positioning only, GOLD-POS-001F defines an
+independent source-specific pre-qualification step before constructing the
+derived `long - short` weekly series. That step validates exact CFTC dataset,
+contract, report-family, provenance, semantic, report-date, value and
+point-in-time availability invariants.
+
+The resulting derived weekly samples may be consumed by a later explicit Gold
+positioning historical-context methodology. They must not be represented as
+generic HIST-001B samples of the raw UNKNOWN CFTC Observation series, and the
+stored raw Observation quality remains unchanged.

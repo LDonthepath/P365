@@ -670,3 +670,105 @@ It adds:
 
 Historical percentile/z-score remains blocked until sufficient CFTC history is
 explicitly backfilled and a separate distribution methodology is approved.
+
+
+## 21. GOLD-POS-001F CFTC historical-fitness qualification
+
+GOLD-POS-001F closes a specific compatibility gap between the CFTC positioning
+runtime and later historical distribution work.
+
+Current canonical CFTC Gold COT Observations intentionally retain:
+
+```
+quality = UNKNOWN
+```
+
+because P365 has not assigned a release-calendar-aware freshness policy to the
+weekly CFTC series.
+
+That stored quality remains immutable. GOLD-POS-001F does **not** rewrite it to
+FRESH or STALE.
+
+### Source-specific derived-history fitness
+
+For the Gold Managed Money derived-positioning path only, an UNKNOWN long/short
+Observation may be treated as historically fit when every source-specific
+invariant is proven.
+
+Required invariants include:
+
+- source ID = `cftc-gold-cot`;
+- dataset = `72hh-3qpy`;
+- contract market code = `088691`;
+- market = `GOLD - COMMODITY EXCHANGE INC.`;
+- report family = `DISAGGREGATED_FUTURES_ONLY`;
+- canonical series is exactly Managed Money long or short;
+- provider field matches the qualified long/short source field;
+- semantics are exactly
+  `COMMODITY / POSITIONING / US / FUTURE / GOLD / MANAGED_MONEY`;
+- unit = `CONTRACTS`;
+- frequency = `WEEKLY`;
+- report/effective date, provenance observation date and canonical date anchor
+  agree;
+- contract counts are non-negative safe integers;
+- `retrievedAt <= asOf`;
+- long and short belong to the same report date.
+
+`PARTIAL` remains ineligible without exception.
+
+The qualification policy is:
+
+```
+cftc-gold-positioning-historical-fitness-v1
+```
+
+### Relationship to generic HIST
+
+This source-specific rule does not alter HIST-001B.
+
+Generic HIST remains unchanged:
+
+- FRESH is eligible;
+- STALE may be eligible;
+- UNKNOWN is ineligible;
+- PARTIAL is ineligible.
+
+GOLD-POS-001F is a pre-qualification rule for constructing the already-approved
+derived Managed Money net series from exact CFTC source facts. A later Gold
+positioning historical-context checkpoint may consume those qualified derived
+weekly samples without pretending that the underlying stored raw Observations
+were reclassified.
+
+### Production evidence prerequisite
+
+Before this methodology was frozen, the existing authenticated production
+BACKFILL path was run over the bounded range 2025-09-28 through 2026-10-02.
+
+The durable result contains:
+
+- 52 distinct weekly report dates;
+- 14 source-reported series per report;
+- 728 unique series × report-date pairs;
+- first report date 2025-09-30;
+- latest report date 2026-09-22;
+- zero duplicate factual rows after an unchanged rerun.
+
+This production depth is evidence that later one-year Managed Money historical
+context is feasible. It is not itself a percentile/crowding conclusion.
+
+### Non-scope
+
+GOLD-POS-001F adds no:
+
+- Observation rewrite;
+- generic HIST policy mutation;
+- provider/network call;
+- persistence owner;
+- scheduler;
+- dashboard query;
+- percentile or z-score;
+- crowded/extreme label;
+- bullish/bearish interpretation;
+- confirmation/contradiction;
+- State / Regime / Risk / Intelligence;
+- trading logic.
