@@ -7,6 +7,7 @@ import type { Event } from "../domain/types";
 import { buildRepositoryBackedMacroFactualBaselines } from "./factual-baseline";
 import { getIntradayEventMonitor, type IntradayEventMonitorResult } from "./intraday-event-monitor";
 import { buildBriefingEventRepricing } from "./briefing-event-repricing";
+import { buildBriefingConfirmation } from "./briefing-confirmation";
 import { buildNetLiquidityReadModel, type NetLiquidityReadModel } from "./net-liquidity";
 import { buildRatesInflationReadModel, type RatesInflationReadModel } from "./rates-inflation";
 import {
@@ -170,12 +171,18 @@ export async function getDashboardData(): Promise<DashboardData> {
     eventHistoryComplete: durableHighImpactEventBundle.contextComplete,
   });
 
+  const confirmation = buildBriefingConfirmation({
+    eventRepricing,
+    btcEtfFlow,
+  });
+
   const factualMarketBriefing = composeFactualMarketBriefing({
     baselines: macroBaselines,
     observations: normalized.macroObservations,
     asOf: mvpFactualContext.asOf,
     intradayEventMonitor,
     eventRepricing,
+    confirmation,
   });
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes
