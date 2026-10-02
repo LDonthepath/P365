@@ -126,6 +126,55 @@ The natural Durable Goods Orders production proof on 25 Sep 2026 produced compat
 
 RPR-001 does **not** invent production thresholds for those markets in this checkpoint. Threshold calibration is an explicit policy/research decision and must be approved before any runtime owner persists or presents a production repricing conclusion.
 
+## RPR-002A calibration-only methodology
+
+RPR-002A is a calibration checkpoint only. It does not activate RPR-001 in the
+dashboard or Market Briefing and it does not freeze a production threshold.
+
+The approved v1 candidate methodology is:
+
+- source distribution: existing HIST-001 same-series, same-source, exact-horizon
+  historical evidence;
+- transformation: `ABSOLUTE_PERCENT_CHANGE`;
+- candidate estimator: empirical continuous P90, using the same linear
+  interpolation semantics as PostgreSQL `percentile_cont`;
+- diagnostics: P50, P75, P90, and P95;
+- calibration eligibility: at least **100 qualified exact-horizon samples**;
+- candidate basis: `ABSOLUTE_PERCENT_CHANGE`;
+- causality: always `NOT_EVALUATED`.
+
+The 100-sample rule is a calibration-adequacy guard, not a market-move threshold.
+If the sample set is smaller, RPR-002A returns `INSUFFICIENT_DATA` and must not
+produce a threshold candidate.
+
+RPR-002A candidates are review evidence only. A later owner-approved checkpoint
+is required before any candidate can populate RPR-001 `EventRepricingThreshold[]`.
+
+### Production data audit — 2 Oct 2026
+
+A read-only production Market Memory audit used qualified BTC, DXY, and Gold
+Observations and exact 10/20/35/65-minute pairs inside the current 36-hour HIST
+calibration window.
+
+| Series | Horizon | Samples | P75 | P90 | P95 | RPR-002A eligibility |
+|---|---:|---:|---:|---:|---:|---|
+| BTC spot | 10m | 111 | 0.111509% | 0.226434% | 0.335414% | candidate eligible |
+| BTC spot | 20m | 121 | 0.172532% | 0.277038% | 0.366257% | candidate eligible |
+| BTC spot | 35m | 110 | 0.267583% | 0.436381% | 0.783994% | candidate eligible |
+| BTC spot | 65m | 122 | 0.460908% | 0.860764% | 1.193834% | candidate eligible |
+| DXY | 10m | 133 | 0.038325% | 0.071222% | 0.094254% | candidate eligible |
+| DXY | 20m | 101 | 0.063814% | 0.096451% | 0.120679% | candidate eligible |
+| DXY | 35m | 106 | 0.081783% | 0.137335% | 0.159588% | candidate eligible |
+| DXY | 65m | 128 | 0.087196% | 0.134415% | 0.156342% | candidate eligible |
+| Gold futures | 10m | 35 | 0.089300% | 0.109212% | 0.151626% | insufficient |
+| Gold futures | 20m | 31 | 0.160750% | 0.274966% | 0.300520% | insufficient |
+| Gold futures | 35m | 33 | 0.248032% | 0.339629% | 0.408740% | insufficient |
+| Gold futures | 65m | 43 | 0.262854% | 0.450422% | 0.563886% | insufficient |
+
+These values are a dated calibration audit, not production thresholds. BTC and DXY
+currently satisfy the v1 sample-adequacy gate at the tested horizons; Gold does not.
+No threshold may be inferred for Gold from this audit.
+
 ## Acceptance criteria
 
 RPR-001 v0.1 passes when:
