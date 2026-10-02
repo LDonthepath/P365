@@ -583,3 +583,90 @@ Production activation was verified on 30 September 2026.
 No production backfill beyond the bounded FORWARD window, derived net
 positioning, percentile/z-score/crowding, UI, confirmation/contradiction,
 State, Regime, Risk, Intelligence, or trading recommendation is activated.
+
+
+## 20. GOLD-POS-001D Managed Money net derived read model
+
+GOLD-POS-001D authorizes one bounded deterministic derived metric:
+
+`gold.cftc.managed_money.net.contracts`
+
+Formula:
+
+```
+Managed Money net = Managed Money long - Managed Money short
+```
+
+The metric is not source-reported and therefore remains:
+
+- `marketDomain = COMMODITY`;
+- `informationClass = DERIVED_METRIC`;
+- `jurisdiction = US`;
+- `instrument = FUTURE`;
+- `asset = GOLD`;
+- `participant = MANAGED_MONEY`;
+- unit = `CONTRACTS`;
+- methodology = `cftc-gold-managed-money-net-long-minus-short-v1`.
+
+### Lineage and availability
+
+The derived result must retain:
+
+- exact long Observation ID;
+- exact short Observation ID;
+- exact input series keys;
+- shared report/effective date;
+- `knownAt` equal to the later of the two input `retrievedAt` timestamps.
+
+Long and short from different CFTC report dates must fail closed.
+
+### Spreading boundary
+
+Managed Money spreading remains a separate source-reported positioning series.
+
+It is **not**:
+
+- added to long;
+- subtracted from short;
+- included in the net formula;
+- reclassified as directional exposure.
+
+The derived result records `spreadingIncluded = false`.
+
+### Interpretation boundary
+
+Positive net means only:
+
+> source-reported Managed Money long contracts exceed source-reported Managed
+> Money short contracts for the same report date.
+
+Negative net means only the inverse arithmetic relationship.
+
+GOLD-POS-001D does not label either sign:
+
+- bullish / bearish;
+- crowded / under-owned;
+- extreme / normal;
+- confirming / contradicting;
+- predictive of future Gold returns.
+
+Those interpretations require separate historical/methodology checkpoints.
+
+### Runtime boundary
+
+GOLD-POS-001D is computed read-only from the already-loaded canonical CFTC raw
+positions.
+
+It adds:
+
+- no provider call;
+- no scheduler;
+- no persistence owner;
+- no synthetic Observation write;
+- no Supabase query beyond the existing Gold positioning read;
+- no percentile/z-score;
+- no State / Regime / Risk / Intelligence;
+- no trading logic.
+
+Historical percentile/z-score remains blocked until sufficient CFTC history is
+explicitly backfilled and a separate distribution methodology is approved.
