@@ -130,3 +130,59 @@ It does not:
 
 A later checkpoint must qualify evidence-specific SUPPORTING / CONTRADICTING
 methodology before raw evidence can enter this contract.
+
+
+## CONF-001B — BTC ETF daily net-flow adapter
+
+CONF-001B qualifies the first evidence-specific adapter into the CONF-001A
+composition contract.
+
+The adapter consumes only the existing bounded `BtcEtfFlowReadModel`; it
+performs no repository/provider/network I/O.
+
+### Directional semantics
+
+The canonical BTC ETF flow contract already freezes:
+
+- positive value = net inflow;
+- negative value = net outflow;
+- provider-explicit numeric zero = factual zero.
+
+CONF-001B maps that source-reported flow direction against an **already-observed**
+BTC response:
+
+- BTC UP + net inflow → SUPPORTING;
+- BTC UP + net outflow → CONTRADICTING;
+- BTC DOWN + net outflow → SUPPORTING;
+- BTC DOWN + net inflow → CONTRADICTING;
+- zero → NEUTRAL.
+
+This is directional alignment of a qualified background capital-flow fact. It is
+not a claim that ETF flow caused the BTC move, is contemporaneous with the
+intraday event window, or predicts the next BTC return.
+
+### Point-in-time rule
+
+The adapter may use only a matured canonical flow point with
+`retrievedAt <= target.knowledgeAt`.
+
+Because the current read model collapses factual revisions for display, a later
+revision can hide an earlier version that was historically knowable. In that
+case CONF-001B fails closed to `UNRESOLVED`; it must not reconstruct or guess a
+prior revision from the current value.
+
+The adapter selects the latest point inside the bounded read model that can be
+proven knowable by the target cutoff.
+
+### Independence boundary
+
+BTC ETF flow contributes only the `FLOW` evidence class.
+
+Therefore CONF-001B by itself can never produce `CONFIRMING` or
+`CONTRADICTING` under CONF-001A, which requires at least two independent
+directional evidence classes.
+
+Stablecoin liquidity is not part of CONF-001B. Stablecoin supply does not have
+the same direct inflow/outflow semantics as BTC ETF daily net flow and requires
+a separately approved relationship/qualification methodology before it may
+produce a directional CONF contribution.
