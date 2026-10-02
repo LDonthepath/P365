@@ -17,7 +17,7 @@ This is the **single operational SSOT for foundation development**. It owns:
 - foundation completion gates;
 - checkpoint history.
 
-Normative contracts remain separate only where they define stable rules rather than project status: `P365-ARCHITECTURE.md`, `P365-USER-DECISION-SUPPORT-CONTRACT.md`, `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`, `P365-CANONICAL-SEMANTIC-DIMENSIONS-COMPATIBILITY-v0.1.md`, `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`, `P365-DATA-REQUIREMENTS-MATRIX-v0.1.md`, `P365-MARKET-SNAPSHOT-CONTRACT-v0.1.md`, `P365-EVENT-REPRICING-CONTRACT-v0.1.md`, `P365-CROSS-ASSET-TRANSMISSION-CONTRACT-v0.1.md`, `P365-HISTORICAL-BASELINE-CONTRACT-v0.1.md`, and Market Memory governance/implementation contracts. `AGENTS.md` remains repository governance.
+Normative contracts remain separate only where they define stable rules rather than project status: `P365-ARCHITECTURE.md`, `P365-USER-DECISION-SUPPORT-CONTRACT.md`, `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`, `P365-CANONICAL-SEMANTIC-DIMENSIONS-COMPATIBILITY-v0.1.md`, `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`, `P365-DATA-REQUIREMENTS-MATRIX-v0.1.md`, `P365-MARKET-SNAPSHOT-CONTRACT-v0.1.md`, `P365-EVENT-REPRICING-CONTRACT-v0.1.md`, `P365-CROSS-ASSET-TRANSMISSION-CONTRACT-v0.1.md`, `P365-HISTORICAL-BASELINE-CONTRACT-v0.1.md`, `P365-CONTINUOUS-MARKET-MOVE-DETECTION-CONTRACT-v0.1.md`, and Market Memory governance/implementation contracts. `AGENTS.md` remains repository governance.
 
 Older status, roadmap, gap-analysis, and audit documents are removed rather than kept as competing sources of current truth. Historical decisions are summarized in the checkpoint history at the end of this document.
 
@@ -28,6 +28,39 @@ Older status, roadmap, gap-analysis, and audit documents are removed rather than
 P365 has a credible canonical-data architecture and the active code generally respects the decision-support boundary. Durable historical continuity is operational. The generic foundation-hardening phase is complete enough to exit: Expectation Baseline, Pricing Baseline, immutable Market Snapshot, governed capture, comparison, and RPR-001 repricing are now implemented at their approved boundaries; TRN-001 cross-asset response coherence is merged; SUR-001 factual event surprise is merged; the remaining product-layer work centers on EVR-001 integrated event-response evidence, demand-driven relationship evidence, and later Intelligence rather than open-ended foundation hardening. The coarse legacy `MARKET / MACRO / ASSET / OTHER` classification is now preserved only as a compatibility field while approved current Observations receive additive market-domain/information-class semantics. The **MVP implementation boundary remains Macro + Crypto + Gold**; the broader ontology exists to avoid future semantic dead ends, not to expand MVP indiscriminately.
 
 The current system independently ingests and normalizes selected factual Observations and Events, persists canonical records to durable Market Memory, queries point-in-time Observation/Event/EventResult/Snapshot history, and computes factual, expectation, and pricing baselines at approved boundaries. SNP-001, EVW-001, CMP-001 and CAP-001 are merged and production-active. Natural Durable Goods Orders production evidence on 25 Sep 2026 proves the complete governed capture chain: PRE/T+5/T+15/T+30/T+60 were materialized as COMPLETE immutable Snapshots with four BTC/ETH/DXY/Gold Observation refs, VALID pre-release Biquote FORECAST expectation lineage, VALID Pricing baselines, and zero missing requirements. CAP-001A/B corrected history-filter defects discovered by Initial Jobless Claims; CAP-001C adds append-only Snapshot supersession; CAP-001D adds explicit authenticated repair for historical slots that have aged out of the recurring 90-minute discovery window. RPR-001 is merged and production-ready as threshold-governed market-response classification without production threshold defaults or causal attribution. TRN-001 is merged at PR #75 and adds explicit-methodology cross-asset response-coherence testing while preserving `causalAttribution=NOT_EVALUATED`. SUR-001 is merged at PR #76 / `9613893e697552cdcaa7015a551ed0867e1f1ef1` and closes the factual actual-vs-pre-release-expectation gap with explicit point-in-time availability. EVR-001 and REL-001 are merged. HIST-001A now defines the next bounded evidence gap: point-in-time historical distribution context for determining where a current level or change sits relative to its own prior history, without causal or directional interpretation.
+
+### Product-direction finding — 2 Oct 2026: event-centric trigger gap
+
+**Finding:** the current product composition is too dependent on scheduled Event identity as the trigger for higher-value intraday analysis. The Event pipeline remains valid, but it is insufficient as the sole analysis entry point for the P365 intraday objective.
+
+A reproduced production case on 2 Oct 2026 exposed the gap:
+
+- durable Market Memory already contained roughly five-minute BTC spot observations throughout the move;
+- BTC was `85,239` at `2026-10-02T03:30:30Z` (`10:30:30 WIB`) and `86,752` at `2026-10-02T04:30:30Z` (`11:30:30 WIB`);
+- that is a factual change of approximately `+1.775%` over 60 minutes;
+- versus `84,912` at `2026-10-02T02:30:20Z` (`09:30:20 WIB`), the same `86,752` observation was approximately `+2.167%` over about 120 minutes;
+- the canonical data therefore observed the move, but no continuous market-move detector promoted it into an analysis target;
+- because the active Briefing / confirmation chain is predominantly Event -> Surprise -> Repricing -> Confirmation, a meaningful move without a qualifying scheduled-event trigger can pass through Market Memory without being investigated as a first-class market development.
+
+This is a **product-layer trigger gap**, not evidence that canonical ingestion failed.
+
+Effective product correction:
+
+```text
+MARKET DATA
+   |
+   +--> scheduled Event trigger --------+
+   |                                    |
+   +--> material market Move trigger ---+
+                                        v
+                              evidence investigation
+                                        |
+                         support / contradiction / unknown
+```
+
+The system must become market-first rather than calendar-first: a material BTC or Gold move must be able to initiate investigation even when no qualifying scheduled Event exists. Event evidence remains one possible explanatory evidence class, not a mandatory parent identity for every market analysis.
+
+**Sequencing correction:** pause additional event-centric enrichment as the default next step. `MOVE-001A` freezes the continuous market-move detection contract first. Runtime detection, historical materiality calibration, and later move-driven evidence investigation remain separate checkpoints. This correction does not activate State / Regime / Risk / Intelligence and does not authorize causal claims or trading signals.
 
 ### Foundation readiness by layer
 
