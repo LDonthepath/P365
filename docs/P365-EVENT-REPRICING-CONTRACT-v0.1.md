@@ -175,6 +175,43 @@ These values are a dated calibration audit, not production thresholds. BTC and D
 currently satisfy the v1 sample-adequacy gate at the tested horizons; Gold does not.
 No threshold may be inferred for Gold from this audit.
 
+## RPR-002B frozen production threshold policy
+
+RPR-002B freezes only calibration-backed RPR-002A candidates that satisfied the
+100 exact-horizon sample adequacy gate. This checkpoint is policy-only: it does
+not wire thresholds into RPR-001, EVR, dashboard, or Market Briefing.
+
+The frozen v1 policy uses the dated 2 Oct 2026 RPR-002A audit and the existing
+36-hour HIST calibration window.
+
+| Series | Post role | Exact horizon | Samples | Frozen P90 minimum magnitude |
+|---|---|---:|---:|---:|
+| BTC spot | T_PLUS_5 | 10m | 111 | 0.226434% |
+| BTC spot | T_PLUS_15 | 20m | 121 | 0.277038% |
+| BTC spot | T_PLUS_30 | 35m | 110 | 0.436381% |
+| BTC spot | T_PLUS_60 | 65m | 122 | 0.860764% |
+| DXY | T_PLUS_5 | 10m | 133 | 0.071222% |
+| DXY | T_PLUS_15 | 20m | 101 | 0.096451% |
+| DXY | T_PLUS_30 | 35m | 106 | 0.137335% |
+| DXY | T_PLUS_60 | 65m | 128 | 0.134415% |
+
+Gold remains explicitly unavailable because the RPR-002A sample counts were
+35/31/33/43, below the required 100 at all four tested horizons. ETH remains
+unconfigured because RPR-002A did not calibrate ETH.
+
+The threshold resolver requires exact observation key, post-event role, and
+comparison horizon. It has no nearest-horizon fallback and no universal default.
+A mismatch therefore returns no threshold rather than silently borrowing another
+horizon's calibration.
+
+These numbers are calibrated production policy values, not causal conclusions.
+Every downstream RPR assessment must still preserve
+`causalAttribution = NOT_EVALUATED`.
+
+RPR-002B does not itself activate a runtime consumer. A separate owner-reviewed
+checkpoint is required to wire these frozen thresholds into RPR-001 and surface
+qualified repricing evidence.
+
 ## Acceptance criteria
 
 RPR-001 v0.1 passes when:
