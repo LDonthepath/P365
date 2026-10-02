@@ -183,6 +183,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     intradayEventMonitor,
     eventRepricing,
     confirmation,
+    upcomingHighImpactEvents: durableHighImpactEventBundle.display,
   });
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes

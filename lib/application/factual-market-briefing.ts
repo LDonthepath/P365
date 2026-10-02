@@ -13,7 +13,7 @@ import type {
   EventRepricingResponseStatus,
 } from "../domain/event-repricing";
 import type { SnapshotComparisonQuality } from "../domain/snapshot-comparison";
-import type { Observation } from "../domain/types";
+import type { Event, Observation } from "../domain/types";
 import type {
   IntradayEventMonitorResult,
   IntradayPricingBaselineEvidence,
@@ -139,6 +139,20 @@ export type BriefingConfirmation = {
   causalAttribution: "NOT_EVALUATED";
 };
 
+export type BriefingNextCatalystEvent = {
+  eventIdentityKey: string;
+  eventId: string;
+  subject: string;
+  jurisdiction: string | null;
+  sourceId: string;
+};
+
+export type BriefingNextCatalystSlot = {
+  scheduledAt: string;
+  precision: "TIME" | "DATE_ONLY";
+  events: BriefingNextCatalystEvent[];
+};
+
 export type FactualMarketBriefing = {
   asOf: string;
   whatChanged: {
@@ -171,6 +185,12 @@ export type FactualMarketBriefing = {
     item: BriefingConfirmation | null;
     reason: string | null;
   };
+  nextCatalyst: {
+    evidenceStatus: BriefingEvidenceStatus;
+    reasoningStatus: BriefingReasoningStatus;
+    slot: BriefingNextCatalystSlot | null;
+    reason: string | null;
+  };
 };
 
 type ComposeFactualMarketBriefingInput = {
@@ -180,6 +200,7 @@ type ComposeFactualMarketBriefingInput = {
   intradayEventMonitor?: IntradayEventMonitorResult;
   eventRepricing?: BriefingEventRepricingResult;
   confirmation?: BriefingConfirmationResult;
+  upcomingHighImpactEvents?: Event[];
 };
 
 function observationSeriesId(observation: Observation): string | null {
@@ -467,6 +488,130 @@ function composeConfirmation(
   };
 }
 
+
+const DATE_ONLY_EVENT_SOURCE_IDS = new Set(["federal-reserve"]);
+const MAX_NEXT_CATALYST_EVENTS = 4;
+
+function utcDateKey(value: string): string | null {
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : null;
+}
+
+function composeNextCatalyst(input: {
+  events: Event[] | undefined;
+  asOf: string;
+}): FactualMarketBriefing["nextCatalyst"] {
+  const asOfMs = Date.parse(input.asOf);
+  if (!Number.isFinite(asOfMs)) {
+    return {
+      evidenceStatus: "INSUFFICIENT",
+      reasoningStatus: "NOT_EVALUATED",
+      slot: null,
+      reason: "Cutoff briefing tidak valid untuk memilih event berikutnya.",
+    };
+  }
+
+  const asOfDate = new Date(asOfMs).toISOString().slice(0, 10);
+  const slots = new Map<string, {
+    sortMs: number;
+    scheduledAt: string;
+    precision: "TIME" | "DATE_ONLY";
+    events: BriefingNextCatalystEvent[];
+    subjects: Set<string>;
+  }>();
+
+  for (const event of input.events ?? []) {
+    if (event.importance !== "HIGH" || !event.scheduledAt) continue;
+
+    const scheduledMs = Date.parse(event.scheduledAt);
+    const retrievedMs = Date.parse(event.retrievedAt);
+    if (
+      !Number.isFinite(scheduledMs)
+      || !Number.isFinite(retrievedMs)
+      || retrievedMs > asOfMs
+    ) {
+      continue;
+    }
+
+    const dateOnly = DATE_ONLY_EVENT_SOURCE_IDS.has(event.sourceId);
+    const eventDate = utcDateKey(event.scheduledAt);
+    if (!eventDate) continue;
+
+    if (dateOnly) {
+      if (eventDate < asOfDate) continue;
+    } else if (scheduledMs < asOfMs) {
+      continue;
+    }
+
+    const minuteMs = scheduledMs - (scheduledMs % 60_000);
+    const scheduledAt = dateOnly
+      ? eventDate + "T00:00:00.000Z"
+      : new Date(minuteMs).toISOString();
+    const key = dateOnly
+      ? "date:" + eventDate
+      : "time:" + scheduledAt;
+    const sortMs = Date.parse(scheduledAt);
+
+    let slot = slots.get(key);
+    if (!slot) {
+      slot = {
+        sortMs,
+        scheduledAt,
+        precision: dateOnly ? "DATE_ONLY" : "TIME",
+        events: [],
+        subjects: new Set<string>(),
+      };
+      slots.set(key, slot);
+    }
+
+    const normalizedSubject = event.subject.trim().toLowerCase();
+    if (!normalizedSubject || slot.subjects.has(normalizedSubject)) continue;
+    slot.subjects.add(normalizedSubject);
+    slot.events.push({
+      eventIdentityKey: event.identity?.key ?? event.id,
+      eventId: event.id,
+      subject: event.subject,
+      jurisdiction: event.jurisdiction ?? null,
+      sourceId: event.sourceId,
+    });
+  }
+
+  const first = [...slots.values()]
+    .sort((a, b) =>
+      a.sortMs - b.sortMs
+      || a.scheduledAt.localeCompare(b.scheduledAt)
+    )[0];
+
+  if (!first) {
+    return {
+      evidenceStatus: "INSUFFICIENT",
+      reasoningStatus: "NOT_EVALUATED",
+      slot: null,
+      reason:
+        "Belum ada event HIGH mendatang dalam daftar durable yang sudah dimuat.",
+    };
+  }
+
+  const events = first.events
+    .sort((a, b) =>
+      (a.jurisdiction ?? "").localeCompare(b.jurisdiction ?? "")
+      || a.subject.localeCompare(b.subject)
+      || a.eventId.localeCompare(b.eventId)
+    )
+    .slice(0, MAX_NEXT_CATALYST_EVENTS);
+
+  return {
+    evidenceStatus: "AVAILABLE",
+    reasoningStatus: "NOT_EVALUATED",
+    slot: {
+      scheduledAt: first.scheduledAt,
+      precision: first.precision,
+      events,
+    },
+    reason: null,
+  };
+}
+
 /**
  * BRF-001A composes already-qualified evidence into briefing sections.
  *
@@ -475,6 +620,7 @@ function composeConfirmation(
  * Gate 3a: existing SUR-001 factual actual-vs-expectation evidence.
  * Gate 3b: RPR-001 threshold-governed repricing using frozen RPR-002B policy.
  * Gate 6: CONF-001A composition using only already-qualified evidence adapters.
+ * Briefing completion: next HIGH-impact catalyst from already-loaded durable events.
  *
  * It does not infer causality, decide surprise meaning, transmission,
  * regime, invalidation, or trading action.
@@ -486,6 +632,7 @@ export function composeFactualMarketBriefing({
   intradayEventMonitor,
   eventRepricing,
   confirmation,
+  upcomingHighImpactEvents,
 }: ComposeFactualMarketBriefingInput): FactualMarketBriefing {
   const changes = Object.entries(baselines)
     .flatMap(([seriesId, baseline]) => {
@@ -531,5 +678,9 @@ export function composeFactualMarketBriefing({
     eventSurprises: composeEventSurprises(intradayEventMonitor),
     eventRepricing: composeEventRepricing(eventRepricing),
     confirmation: composeConfirmation(confirmation),
+    nextCatalyst: composeNextCatalyst({
+      events: upcomingHighImpactEvents,
+      asOf,
+    }),
   };
 }

@@ -33,6 +33,27 @@ function dateTime(value: string): string {
   }).format(new Date(value));
 }
 
+function dateOnly(value: string): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function jurisdictionLabel(value: string | null): string {
+  if (value === "US") return "AS";
+  if (value === "CHINA") return "China";
+  if (value === "JAPAN") return "Jepang";
+  if (value === "EURO_AREA") return "Zona Euro";
+  if (value === "UK") return "Inggris";
+  if (value === "CANADA") return "Kanada";
+  if (value === "AUSTRALIA") return "Australia";
+  if (value === "GLOBAL") return "Global";
+  return "Wilayah belum ditetapkan";
+}
+
 function expectationType(value: string): string {
   if (value === "CONSENSUS") return "konsensus";
   if (value === "OFFICIAL_PROJECTION") return "proyeksi resmi";
@@ -124,6 +145,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
   const surprises = data.eventSurprises;
   const repricing = data.eventRepricing;
   const confirmation = data.confirmation;
+  const nextCatalyst = data.nextCatalyst;
 
   return <section className="panel overview-change-layer" aria-labelledby="briefing-what-changed-title">
     <div className="panel-label">
@@ -292,9 +314,37 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
+    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
+      <div className="panel-label">
+        <span>BERIKUTNYA DIPANTAU</span>
+        <span>{nextCatalyst.evidenceStatus === "AVAILABLE" ? "EVENT BERIKUTNYA" : "BELUM ADA EVENT"}</span>
+      </div>
+      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang perlu dipantau berikutnya?</h3>
+      <p className="lead-copy">Bagian ini hanya menunjukkan jadwal event HIGH berikutnya dari data durable yang sudah dimuat. P365 belum menyimpulkan arah dampak pasar atau tindakan trading dari jadwal ini.</p>
+
+      {nextCatalyst.evidenceStatus === "AVAILABLE" && nextCatalyst.slot
+        ? <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>
+              {nextCatalyst.slot.precision === "DATE_ONLY"
+                ? dateOnly(nextCatalyst.slot.scheduledAt)
+                : dateTime(nextCatalyst.slot.scheduledAt) + " WIB"}
+            </strong>
+            {nextCatalyst.slot.precision === "DATE_ONLY"
+              ? <span>Jam belum ditetapkan oleh sumber ini.</span>
+              : null}
+            {nextCatalyst.slot.events.map((event) => <span key={event.eventIdentityKey}>
+              {event.subject} · {jurisdictionLabel(event.jurisdiction)}
+            </span>)}
+          </div>
+        : <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>Belum ada event berikutnya</strong>
+            <span>{nextCatalyst.reason}</span>
+          </div>}
+    </div>
+
     <div className="plain-notice" style={{ marginTop: "1rem" }}>
       <strong>Penalaran lanjutan masih dibatasi</strong>
-      <span>Briefing sekarang menilai factual change, baseline, surprise faktual, repricing historis, dan confirmation evidence yang sudah qualified. Transmisi lintas aset, regime, invalidation, prediksi, dan arah trading belum disimpulkan.</span>
+      <span>Briefing sekarang menilai factual change, baseline, surprise faktual, repricing historis, confirmation evidence yang sudah qualified, dan event berikutnya yang perlu dipantau. Transmisi lintas aset, regime, invalidation, prediksi, dan arah trading belum disimpulkan.</span>
     </div>
     <p className="decision-meta">Cutoff briefing {dateTime(data.asOf)} WIB</p>
   </section>;
