@@ -108,6 +108,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     baselines: macroBaselines,
     observations: normalized.macroObservations,
     asOf: mvpFactualContext.asOf,
+    intradayEventMonitor,
   });
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes

@@ -102,3 +102,73 @@ test("Gate 1 composer remains factual and does not emit higher-order conclusions
   }
   assert.equal(result.whatChanged.reasoningStatus, "NOT_EVALUATED");
 });
+
+
+test("Gate 2 surfaces qualified PRE expectation and pricing baselines without repricing logic", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    intradayEventMonitor: {
+      status: "OK",
+      data: [{
+        eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:test",
+        eventId: "event-a",
+        subject: "Test Economic Release",
+        jurisdiction: "US",
+        t0: "2026-10-02T12:30:00.000Z",
+        moves: [],
+        missingRequirements: 0,
+        windowStatus: { status: "RUNNING", nextRole: "T_PLUS_5" },
+        baselineEvidence: {
+          snapshotId: "snapshot-pre",
+          capturedAt: "2026-10-02T12:25:00.000Z",
+          expectation: {
+            status: "VALID",
+            policy: "latest-qualified-pre-release-v1",
+            eventResultId: "result-forecast",
+            sourceId: "biquote-economic-event",
+            expected: 220,
+            expectedType: "FORECAST",
+            unit: "K",
+            period: "2026-W40",
+            retrievedAt: "2026-10-02T11:00:00.000Z",
+            evidenceId: "evidence-forecast",
+          },
+          pricing: [{
+            status: "VALID",
+            policy: "latest-qualified-pricing-as-of-v1",
+            observationId: "btc-pre",
+            seriesKey: "btc.spot.usd",
+            sourceId: "coingecko-market",
+            value: 85000,
+            unit: "USD",
+            observedAt: "2026-10-02T12:24:00.000Z",
+            retrievedAt: "2026-10-02T12:24:30.000Z",
+            evidenceId: "evidence-btc-pre",
+            quality: "FRESH",
+          }],
+        },
+      }],
+    },
+  });
+
+  assert.equal(result.eventBaselines.evidenceStatus, "AVAILABLE");
+  assert.equal(result.eventBaselines.reasoningStatus, "NOT_EVALUATED");
+  assert.equal(result.eventBaselines.events[0]?.expectation?.expected, 220);
+  assert.equal(result.eventBaselines.events[0]?.pricing[0]?.value, 85000);
+  assert.equal(JSON.stringify(result.eventBaselines).includes("threshold"), false);
+});
+
+test("Gate 2 reports insufficient evidence when latest event has no qualified PRE baselines", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    intradayEventMonitor: { status: "EMPTY" },
+  });
+
+  assert.equal(result.eventBaselines.evidenceStatus, "INSUFFICIENT");
+  assert.equal(result.eventBaselines.reasoningStatus, "NOT_EVALUATED");
+  assert.deepEqual(result.eventBaselines.events, []);
+});
