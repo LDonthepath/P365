@@ -457,3 +457,164 @@ test("Gate 6 stays insufficient when no clean qualified BTC repricing target exi
   assert.equal(result.confirmation.item, null);
   assert.match(result.confirmation.reason ?? "", /clean BTC repricing response/);
 });
+
+
+test("BRF-001D selects the nearest point-in-time-known future HIGH event", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: "2026-10-02T12:00:00.000Z",
+    upcomingHighImpactEvents: [
+      {
+        id: "past-high",
+        subject: "Past high event",
+        description: "past",
+        jurisdiction: "US",
+        scheduledAt: "2026-10-02T11:00:00.000Z",
+        retrievedAt: "2026-10-02T10:00:00.000Z",
+        status: "PAST",
+        importance: "HIGH",
+        sourceId: "biquote",
+        evidenceId: "e-past",
+      },
+      {
+        id: "medium-sooner",
+        subject: "Medium event",
+        description: "medium",
+        jurisdiction: "US",
+        scheduledAt: "2026-10-02T12:15:00.000Z",
+        retrievedAt: "2026-10-02T10:00:00.000Z",
+        status: "UPCOMING",
+        importance: "MEDIUM",
+        sourceId: "biquote",
+        evidenceId: "e-medium",
+      },
+      {
+        id: "future-known-later",
+        subject: "Future-known event",
+        description: "lookahead",
+        jurisdiction: "US",
+        scheduledAt: "2026-10-02T12:20:00.000Z",
+        retrievedAt: "2026-10-02T12:05:00.000Z",
+        status: "UPCOMING",
+        importance: "HIGH",
+        sourceId: "biquote",
+        evidenceId: "e-lookahead",
+      },
+      {
+        id: "nearest-high",
+        subject: "Initial Jobless Claims",
+        description: "claims",
+        jurisdiction: "US",
+        scheduledAt: "2026-10-02T12:30:23.000Z",
+        retrievedAt: "2026-10-02T09:00:00.000Z",
+        status: "UPCOMING",
+        importance: "HIGH",
+        sourceId: "biquote",
+        evidenceId: "e-claims",
+        identity: {
+          version: "v1",
+          key: "event:v1:US:2026-10-02T12:30:23.000Z:initial-jobless-claims",
+          semanticKey: "initial-jobless-claims",
+          scheduledAt: "2026-10-02T12:30:23.000Z",
+          jurisdiction: "US",
+        },
+      },
+      {
+        id: "later-high",
+        subject: "Later high event",
+        description: "later",
+        jurisdiction: "US",
+        scheduledAt: "2026-10-02T14:00:00.000Z",
+        retrievedAt: "2026-10-02T09:00:00.000Z",
+        status: "UPCOMING",
+        importance: "HIGH",
+        sourceId: "biquote",
+        evidenceId: "e-later",
+      },
+    ],
+  });
+
+  assert.equal(result.nextCatalyst.evidenceStatus, "AVAILABLE");
+  assert.equal(result.nextCatalyst.reasoningStatus, "NOT_EVALUATED");
+  assert.equal(result.nextCatalyst.slot?.precision, "TIME");
+  assert.equal(result.nextCatalyst.slot?.scheduledAt, "2026-10-02T12:30:00.000Z");
+  assert.equal(result.nextCatalyst.slot?.events[0]?.subject, "Initial Jobless Claims");
+});
+
+test("BRF-001D groups simultaneous HIGH events into one next-catalyst slot", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: "2026-10-02T12:00:00.000Z",
+    upcomingHighImpactEvents: [
+      {
+        id: "cpi",
+        subject: "CPI m/m",
+        description: "headline",
+        jurisdiction: "US",
+        scheduledAt: "2026-10-02T12:30:10.000Z",
+        retrievedAt: "2026-10-02T09:00:00.000Z",
+        status: "UPCOMING",
+        importance: "HIGH",
+        sourceId: "biquote",
+        evidenceId: "e-cpi",
+      },
+      {
+        id: "core-cpi",
+        subject: "Core CPI m/m",
+        description: "core",
+        jurisdiction: "US",
+        scheduledAt: "2026-10-02T12:30:45.000Z",
+        retrievedAt: "2026-10-02T09:00:00.000Z",
+        status: "UPCOMING",
+        importance: "HIGH",
+        sourceId: "biquote",
+        evidenceId: "e-core-cpi",
+      },
+    ],
+  });
+
+  assert.equal(result.nextCatalyst.evidenceStatus, "AVAILABLE");
+  assert.deepEqual(
+    result.nextCatalyst.slot?.events.map((event) => event.subject),
+    ["CPI m/m", "Core CPI m/m"],
+  );
+});
+
+test("BRF-001D keeps a current-day Federal Reserve date anchor visible without inventing a clock time", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: "2026-10-02T18:00:00.000Z",
+    upcomingHighImpactEvents: [{
+      id: "fed-date-anchor",
+      subject: "FOMC Minutes",
+      description: "official date anchor",
+      jurisdiction: "US",
+      scheduledAt: "2026-10-02T00:00:00.000Z",
+      retrievedAt: "2026-10-01T12:00:00.000Z",
+      status: "UPCOMING",
+      importance: "HIGH",
+      sourceId: "federal-reserve",
+      evidenceId: "e-fed",
+    }],
+  });
+
+  assert.equal(result.nextCatalyst.evidenceStatus, "AVAILABLE");
+  assert.equal(result.nextCatalyst.slot?.precision, "DATE_ONLY");
+  assert.equal(result.nextCatalyst.slot?.scheduledAt, "2026-10-02T00:00:00.000Z");
+});
+
+test("BRF-001D stays insufficient when no future HIGH event is qualified", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: "2026-10-02T12:00:00.000Z",
+    upcomingHighImpactEvents: [],
+  });
+
+  assert.equal(result.nextCatalyst.evidenceStatus, "INSUFFICIENT");
+  assert.equal(result.nextCatalyst.slot, null);
+  assert.match(result.nextCatalyst.reason ?? "", /Belum ada event HIGH mendatang/);
+});
