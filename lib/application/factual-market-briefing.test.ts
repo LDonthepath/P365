@@ -172,3 +172,70 @@ test("Gate 2 reports insufficient evidence when latest event has no qualified PR
   assert.equal(result.eventBaselines.reasoningStatus, "NOT_EVALUATED");
   assert.deepEqual(result.eventBaselines.events, []);
 });
+
+
+test("Gate 3a surfaces existing VALID SUR-001 evidence without repricing logic", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    intradayEventMonitor: {
+      status: "OK",
+      data: [{
+        eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:test",
+        eventId: "event-a",
+        subject: "Test Economic Release",
+        jurisdiction: "US",
+        t0: "2026-10-02T12:30:00.000Z",
+        moves: [],
+        missingRequirements: 0,
+        windowStatus: { status: "RUNNING", nextRole: "T_PLUS_5" },
+        surprise: {
+          id: "event-surprise-v1-test",
+          version: "v1",
+          policy: "point-in-time-factual-event-surprise-v1",
+          status: "VALID",
+          eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:test",
+          sourceId: "biquote-economic-event",
+          releaseAt: "2026-10-02T12:30:00.000Z",
+          asOf: "2026-10-02T12:35:00.000Z",
+          expectedType: "FORECAST",
+          baselineEventResultId: "result-forecast",
+          actualEventResultId: "result-actual",
+          expected: 220,
+          actual: 235,
+          unit: "K",
+          period: "2026-W40",
+          absoluteSurprise: 15,
+          percentSurprise: 6.8181818181818175,
+          relation: "ABOVE_EXPECTATION",
+          expectationRetrievedAt: "2026-10-02T11:00:00.000Z",
+          actualRetrievedAt: "2026-10-02T12:31:00.000Z",
+          evidenceIds: ["evidence-forecast", "evidence-actual"],
+          causalAttribution: "NOT_EVALUATED",
+        },
+      }],
+    },
+  });
+
+  assert.equal(result.eventSurprises.evidenceStatus, "AVAILABLE");
+  assert.equal(result.eventSurprises.reasoningStatus, "NOT_EVALUATED");
+  assert.equal(result.eventSurprises.events[0]?.actual, 235);
+  assert.equal(result.eventSurprises.events[0]?.expected, 220);
+  assert.equal(result.eventSurprises.events[0]?.relation, "ABOVE_EXPECTATION");
+  assert.equal(result.eventSurprises.events[0]?.causalAttribution, "NOT_EVALUATED");
+  assert.equal(JSON.stringify(result.eventSurprises).includes("threshold"), false);
+});
+
+test("Gate 3a reports insufficient evidence instead of promoting non-VALID surprise", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    intradayEventMonitor: { status: "EMPTY" },
+  });
+
+  assert.equal(result.eventSurprises.evidenceStatus, "INSUFFICIENT");
+  assert.equal(result.eventSurprises.reasoningStatus, "NOT_EVALUATED");
+  assert.deepEqual(result.eventSurprises.events, []);
+});
