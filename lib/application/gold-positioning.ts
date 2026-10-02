@@ -1,8 +1,13 @@
 import { CFTC_GOLD_COT_SERIES_KEYS } from "../domain/observation-semantics";
+import {
+  deriveGoldManagedMoneyNet,
+  type GoldManagedMoneyNet,
+} from "../domain/gold-positioning-derived";
 import type { DataQuality, Observation } from "../domain/types";
 import type { HistoricalObservationRepository } from "../repositories/types";
 
 export type GoldPositioningPoint = {
+  observationId: string;
   seriesKey: string;
   value: number;
   observedAt: string;
@@ -20,6 +25,7 @@ export type GoldPositioningReadModel =
         long: GoldPositioningPoint;
         short: GoldPositioningPoint;
         spreading: GoldPositioningPoint;
+        net: GoldManagedMoneyNet;
       };
     }
   | {
@@ -46,6 +52,7 @@ async function latestPoint(
   const value = Number(observation.value);
   if (!Number.isFinite(value)) return null;
   return {
+    observationId: observation.id,
     seriesKey,
     value,
     observedAt: observation.observedAt,
@@ -56,8 +63,10 @@ async function latestPoint(
 
 /**
  * Builds a compact Gold positioning view from the latest internally coherent
- * CFTC report. It exposes source-reported raw positions only; no net,
- * percentile, z-score, crowding, or directional interpretation is derived.
+ * CFTC report. Raw source positions remain intact. GOLD-POS-001D adds one
+ * deterministic derived metric: Managed Money net = long - short, with exact
+ * input Observation lineage. No percentile, z-score, crowding, or directional
+ * interpretation is derived.
  */
 export async function buildGoldPositioningReadModel(
   repository: HistoricalObservationRepository,
@@ -92,6 +101,11 @@ export async function buildGoldPositioningReadModel(
       };
     }
 
+    const net = deriveGoldManagedMoneyNet({
+      long: managedLong,
+      short: managedShort,
+    });
+
     return {
       status: "AVAILABLE",
       asOf: cutoff,
@@ -101,6 +115,7 @@ export async function buildGoldPositioningReadModel(
         long: managedLong,
         short: managedShort,
         spreading: managedSpreading,
+        net,
       },
     };
   } catch (error) {
