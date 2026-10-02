@@ -426,3 +426,26 @@ This checkpoint does not implement or authorize:
 - website scraping or undocumented endpoint use.
 
 The result is one implemented factual flow runtime with a provisional owner-approved provider, an explicit sequence-based maturity policy, and a bounded internal/non-commercial runtime boundary. Live entitlement, production activation, commercial/public permission, and effective-dated universe methodology remain open.
+
+
+## CONF-001B downstream reasoning boundary
+
+CONF-001B may consume a matured canonical BTC ETF daily net-flow fact as one
+`FLOW` contribution to the separate confirmation/contradiction contract.
+
+The allowed mapping is limited to directional alignment with an already-observed
+BTC response:
+
+- positive net inflow aligns with BTC UP;
+- negative net outflow aligns with BTC DOWN;
+- the opposite pairings contradict;
+- provider-explicit numeric zero is neutral.
+
+This downstream mapping does not change the factual meaning of the ETF-flow
+series and does not authorize claims that flow caused, predicts, or temporally
+explains an intraday BTC move. The matured daily flow may be background evidence
+only.
+
+Point-in-time use must respect the canonical `retrievedAt` availability
+boundary. A value that became knowable after the assessed target cutoff is
+ineligible.
