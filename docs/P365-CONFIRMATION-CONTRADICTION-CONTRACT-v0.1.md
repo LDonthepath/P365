@@ -186,3 +186,69 @@ Stablecoin liquidity is not part of CONF-001B. Stablecoin supply does not have
 the same direct inflow/outflow semantics as BTC ETF daily net flow and requires
 a separately approved relationship/qualification methodology before it may
 produce a directional CONF contribution.
+
+
+## CONF-001C — Gate 6 Briefing composition
+
+CONF-001C surfaces the first runtime confirmation/contradiction assessment in
+Market Briefing without adding any durable/provider/network read.
+
+The composer reuses:
+
+- the already-built Gate 3b RPR result;
+- the already-built BTC ETF flow read model;
+- the CONF-001B ETF-flow adapter;
+- the CONF-001A independent-class composition policy.
+
+### Confirmation target qualification
+
+A BTC response is eligible only when:
+
+- the event-window RPR assessment is `REPRICING_OBSERVED`;
+- the window is `CLEAN`;
+- the BTC response is `REPRICED`;
+- BTC direction is UP or DOWN.
+
+The evidence knowledge cutoff is the selected response window
+`capturedAt`. Later ETF-flow retrievals or revisions cannot enter that earlier
+assessment.
+
+If no such target exists, Gate 6 is `INSUFFICIENT`.
+
+### Current evidence state
+
+CONF-001C currently has only one qualified evidence-specific adapter:
+
+- `FLOW` — US spot BTC ETF daily net flow.
+
+Therefore a qualified ETF-flow contribution may be shown as SUPPORTING,
+CONTRADICTING, or NEUTRAL, but the overall CONF-001A assessment remains
+`INSUFFICIENT_EVIDENCE` until a second independent directional evidence class
+is separately qualified.
+
+This is an intended product state, not an error. The Briefing must explicitly
+show "belum cukup evidence" rather than manufacture confirmation from one class.
+
+### Stablecoin boundary
+
+A 2 Oct 2026 production audit found 38 distinct stablecoin effective-date
+measurements but only 10 daily cohorts overlapping the currently retained BTC
+spot history. Eight of those ten moved in the same direction, which is
+descriptive only and insufficient for a production directional relationship.
+
+Stablecoin liquidity therefore remains excluded from CONF runtime until its own
+relationship calibration satisfies an approved methodology.
+
+### Runtime boundary
+
+CONF-001C introduces no new repository query, provider call, persistence owner,
+scheduler, or ingestion path. It composes only data that the production
+dashboard already reads.
+
+The output remains:
+
+- non-causal;
+- non-predictive;
+- non-prescriptive;
+- independent of State / Regime / Risk / Intelligence;
+- independent of trading recommendation, sizing, and execution.

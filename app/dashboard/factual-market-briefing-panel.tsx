@@ -79,6 +79,32 @@ function percentMagnitude(value: number): string {
   }).format(value) + "%";
 }
 
+function confirmationResolution(value: string): string {
+  if (value === "CONFIRMING") return "Evidence independen mengonfirmasi.";
+  if (value === "CONTRADICTING") return "Evidence independen bertentangan.";
+  if (value === "MIXED") return "Evidence independen masih campuran.";
+  return "Belum cukup evidence independen.";
+}
+
+function confirmationStatus(value: string): string {
+  if (value === "CONFIRMING") return "MENGONFIRMASI";
+  if (value === "CONTRADICTING") return "BERTENTANGAN";
+  if (value === "MIXED") return "CAMPURAN";
+  return "BELUM CUKUP EVIDENCE";
+}
+
+function confirmationJudgement(value: string | null): string {
+  if (value === "SUPPORTING") return "mendukung";
+  if (value === "CONTRADICTING") return "bertentangan";
+  if (value === "NEUTRAL") return "netral";
+  return "belum dapat dipakai";
+}
+
+function confirmationSource(value: string): string {
+  if (value === "BTC_ETF_FLOW") return "Arus ETF Bitcoin AS";
+  return value;
+}
+
 function pricingValue(value: number, unit: string | null): string {
   const normalized = unit?.trim().toLowerCase() ?? "";
   if (normalized === "usd" || normalized.includes("dollar")) {
@@ -97,6 +123,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
   const baselines = data.eventBaselines;
   const surprises = data.eventSurprises;
   const repricing = data.eventRepricing;
+  const confirmation = data.confirmation;
 
   return <section className="panel overview-change-layer" aria-labelledby="briefing-what-changed-title">
     <div className="panel-label">
@@ -223,9 +250,51 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
+    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
+      <div className="panel-label">
+        <span>KONFIRMASI / KONTRADIKSI</span>
+        <span>
+          {confirmation.item
+            ? confirmationStatus(confirmation.item.resolution)
+            : "DATA BELUM CUKUP"}
+        </span>
+      </div>
+      <h3 style={{ margin: ".45rem 0 0" }}>Apakah evidence independen mendukung respons BTC ini?</h3>
+      <p className="lead-copy">CONF-001A hanya menggabungkan evidence yang sudah memiliki methodology sendiri. Untuk saat ini baru arus ETF Bitcoin yang qualified; minimal dua kelas evidence independen dibutuhkan sebelum sistem boleh menyebut respons terkonfirmasi atau terkontradiksi.</p>
+
+      {confirmation.evidenceStatus === "AVAILABLE" && confirmation.item
+        ? <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>{confirmation.item.subject}</strong>
+            <span>
+              BTC {confirmation.item.targetDirection === "UP" ? "naik" : "turun"}
+              {" · "}window {repricingRole(confirmation.item.role)}
+              {" · "}cutoff evidence {dateTime(confirmation.item.capturedAt)} WIB
+            </span>
+            <span>{confirmationResolution(confirmation.item.resolution)}</span>
+            {confirmation.item.evidence.map((item) => <span key={item.source}>
+              {confirmationSource(item.source)}:{" "}
+              {item.status === "QUALIFIED"
+                ? confirmationJudgement(item.judgement)
+                : "belum dapat dipakai"}
+              {item.observedAt
+                ? " · fakta " + dateTime(item.observedAt) + " WIB"
+                : ""}
+            </span>)}
+            <span>
+              Kelas directional yang tersedia {confirmation.item.directionalClassCount}
+              {" / "}minimal {confirmation.item.minimumDirectionalClasses}.
+            </span>
+            <span>Hubungan sebab-akibat belum dievaluasi.</span>
+          </div>
+        : <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>Belum cukup evidence</strong>
+            <span>{confirmation.reason}</span>
+          </div>}
+    </div>
+
     <div className="plain-notice" style={{ marginTop: "1rem" }}>
-      <strong>Penalaran lanjutan belum dievaluasi</strong>
-      <span>Briefing hanya menilai factual change, baseline, surprise faktual, dan crossing threshold repricing historis. Penyebab, makna surprise, transmisi lintas aset, konfirmasi, regime, dan arah pasar belum disimpulkan.</span>
+      <strong>Penalaran lanjutan masih dibatasi</strong>
+      <span>Briefing sekarang menilai factual change, baseline, surprise faktual, repricing historis, dan confirmation evidence yang sudah qualified. Transmisi lintas aset, regime, invalidation, prediksi, dan arah trading belum disimpulkan.</span>
     </div>
     <p className="decision-meta">Cutoff briefing {dateTime(data.asOf)} WIB</p>
   </section>;

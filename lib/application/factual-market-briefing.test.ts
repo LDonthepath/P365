@@ -366,3 +366,94 @@ test("Gate 3b keeps exact-horizon threshold gaps insufficient", () => {
   assert.deepEqual(result.eventRepricing.events, []);
   assert.match(result.eventRepricing.reason ?? "", /cocok persis/);
 });
+
+
+test("Gate 6 surfaces qualified confirmation evidence while preserving insufficient-evidence state", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    confirmation: {
+      status: "OK",
+      eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:test",
+      eventId: "event-a",
+      subject: "Test Economic Release",
+      jurisdiction: "US",
+      releaseAt: "2026-10-02T12:30:00.000Z",
+      role: "T_PLUS_5",
+      capturedAt: "2026-10-02T12:35:00.000Z",
+      targetDirection: "UP",
+      assessment: {
+        id: "confirmation-evidence-v1-test",
+        version: "v1",
+        policy: "independent-evidence-class-confirmation-v1",
+        target: {
+          targetId: "btc-repricing-confirmation:test:T_PLUS_5",
+          asset: "BTC",
+          responseObservationKey: "ASSET:btc.spot.usd:coingecko-market",
+          direction: "UP",
+          knowledgeAt: "2026-10-02T12:35:00.000Z",
+          eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:test",
+        },
+        resolution: "INSUFFICIENT_EVIDENCE",
+        minimumDirectionalClasses: 2,
+        supportingClassCount: 1,
+        contradictingClassCount: 0,
+        directionalClassCount: 1,
+        classes: [{
+          evidenceClass: "FLOW",
+          resolution: "SUPPORTING",
+          contributionIds: ["flow-confirmation"],
+          methodologyIds: ["btc-etf-matured-flow-directional-alignment-v1@v1"],
+        }],
+        contributions: [{
+          id: "flow-confirmation",
+          evidenceClass: "FLOW",
+          judgement: "SUPPORTING",
+          observedAt: "2026-10-01T00:00:00.000Z",
+          knownAt: "2026-10-02T10:00:00.000Z",
+          methodologyId: "btc-etf-matured-flow-directional-alignment-v1",
+          methodologyVersion: "v1",
+          sourceSeriesKeys: ["crypto.us_spot_btc_etf_net_flow.usd"],
+          reason: "Flow aligns with BTC response.",
+        }],
+        causalAttribution: "NOT_EVALUATED",
+        reason: "CONF-001A requires at least two independent directional evidence classes.",
+      },
+      evidence: [{
+        status: "QUALIFIED",
+        evidenceClass: "FLOW",
+        source: "BTC_ETF_FLOW",
+        judgement: "SUPPORTING",
+        observedAt: "2026-10-01T00:00:00.000Z",
+        knownAt: "2026-10-02T10:00:00.000Z",
+        reason: "Flow aligns with BTC response.",
+      }],
+    },
+  });
+
+  assert.equal(result.confirmation.evidenceStatus, "AVAILABLE");
+  assert.equal(result.confirmation.reasoningStatus, "NOT_EVALUATED");
+  assert.equal(result.confirmation.item?.resolution, "INSUFFICIENT_EVIDENCE");
+  assert.equal(result.confirmation.item?.directionalClassCount, 1);
+  assert.equal(result.confirmation.item?.minimumDirectionalClasses, 2);
+  assert.equal(result.confirmation.item?.evidence[0]?.judgement, "SUPPORTING");
+  assert.equal(result.confirmation.item?.causalAttribution, "NOT_EVALUATED");
+  assert.match(result.confirmation.reason ?? "", /two independent directional evidence classes/);
+});
+
+test("Gate 6 stays insufficient when no clean qualified BTC repricing target exists", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    confirmation: {
+      status: "INSUFFICIENT",
+      reason: "Belum ada clean BTC repricing response yang qualified untuk menjadi target confirmation.",
+    },
+  });
+
+  assert.equal(result.confirmation.evidenceStatus, "INSUFFICIENT");
+  assert.equal(result.confirmation.item, null);
+  assert.match(result.confirmation.reason ?? "", /clean BTC repricing response/);
+});

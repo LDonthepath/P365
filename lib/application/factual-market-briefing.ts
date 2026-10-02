@@ -4,6 +4,10 @@ import {
 } from "../domain/baseline";
 import type { EventSurpriseRelation } from "../domain/event-surprise";
 import type {
+  ConfirmationContributionJudgement,
+  ConfirmationResolution,
+} from "../domain/confirmation-evidence";
+import type {
   EventRepricingAssessmentStatus,
   EventRepricingDirection,
   EventRepricingResponseStatus,
@@ -15,6 +19,7 @@ import type {
   IntradayPricingBaselineEvidence,
 } from "./intraday-event-monitor";
 import type { BriefingEventRepricingResult } from "./briefing-event-repricing";
+import type { BriefingConfirmationResult } from "./briefing-confirmation";
 
 const CHANGE_PRIORITY = ["DGS2", "DGS10", "DFII10", "T10YIE", "T10Y2Y"] as const;
 const MAX_VISIBLE_CHANGES = 4;
@@ -106,6 +111,34 @@ export type BriefingEventRepricing = {
   causalAttribution: "NOT_EVALUATED";
 };
 
+export type BriefingConfirmationEvidence = {
+  evidenceClass: "FLOW";
+  source: "BTC_ETF_FLOW";
+  status: "QUALIFIED" | "UNRESOLVED";
+  judgement: ConfirmationContributionJudgement | null;
+  observedAt: string | null;
+  knownAt: string | null;
+  reason: string;
+};
+
+export type BriefingConfirmation = {
+  eventIdentityKey: string;
+  subject: string;
+  jurisdiction: string;
+  releaseAt: string;
+  role: "T_PLUS_5" | "T_PLUS_15" | "T_PLUS_30" | "T_PLUS_60";
+  capturedAt: string;
+  targetAsset: "BTC";
+  targetDirection: "UP" | "DOWN";
+  resolution: ConfirmationResolution;
+  supportingClassCount: number;
+  contradictingClassCount: number;
+  directionalClassCount: number;
+  minimumDirectionalClasses: number;
+  evidence: BriefingConfirmationEvidence[];
+  causalAttribution: "NOT_EVALUATED";
+};
+
 export type FactualMarketBriefing = {
   asOf: string;
   whatChanged: {
@@ -132,6 +165,12 @@ export type FactualMarketBriefing = {
     events: BriefingEventRepricing[];
     reason: string | null;
   };
+  confirmation: {
+    evidenceStatus: BriefingEvidenceStatus;
+    reasoningStatus: BriefingReasoningStatus;
+    item: BriefingConfirmation | null;
+    reason: string | null;
+  };
 };
 
 type ComposeFactualMarketBriefingInput = {
@@ -140,6 +179,7 @@ type ComposeFactualMarketBriefingInput = {
   asOf: string;
   intradayEventMonitor?: IntradayEventMonitorResult;
   eventRepricing?: BriefingEventRepricingResult;
+  confirmation?: BriefingConfirmationResult;
 };
 
 function observationSeriesId(observation: Observation): string | null {
@@ -365,6 +405,68 @@ function composeEventRepricing(
   };
 }
 
+
+function composeConfirmation(
+  result: BriefingConfirmationResult | undefined,
+): FactualMarketBriefing["confirmation"] {
+  if (!result || result.status !== "OK") {
+    return {
+      evidenceStatus: "INSUFFICIENT",
+      reasoningStatus: "NOT_EVALUATED",
+      item: null,
+      reason: result?.status === "INSUFFICIENT"
+        ? result.reason
+        : "Belum ada target BTC repricing yang qualified untuk confirmation evidence.",
+    };
+  }
+
+  return {
+    evidenceStatus: "AVAILABLE",
+    reasoningStatus: "NOT_EVALUATED",
+    item: {
+      eventIdentityKey: result.eventIdentityKey,
+      subject: result.subject,
+      jurisdiction: result.jurisdiction,
+      releaseAt: result.releaseAt,
+      role: result.role,
+      capturedAt: result.capturedAt,
+      targetAsset: "BTC",
+      targetDirection: result.targetDirection,
+      resolution: result.assessment.resolution,
+      supportingClassCount: result.assessment.supportingClassCount,
+      contradictingClassCount: result.assessment.contradictingClassCount,
+      directionalClassCount: result.assessment.directionalClassCount,
+      minimumDirectionalClasses: result.assessment.minimumDirectionalClasses,
+      evidence: result.evidence.map((item) =>
+        item.status === "QUALIFIED"
+          ? {
+              evidenceClass: item.evidenceClass,
+              source: item.source,
+              status: item.status,
+              judgement: item.judgement,
+              observedAt: item.observedAt,
+              knownAt: item.knownAt,
+              reason: item.reason,
+            }
+          : {
+              evidenceClass: item.evidenceClass,
+              source: item.source,
+              status: item.status,
+              judgement: null,
+              observedAt: null,
+              knownAt: null,
+              reason: item.reason,
+            },
+      ),
+      causalAttribution: result.assessment.causalAttribution,
+    },
+    reason: result.assessment.resolution === "INSUFFICIENT_EVIDENCE"
+      ? result.assessment.reason
+        ?? "Belum ada dua independent directional evidence classes."
+      : null,
+  };
+}
+
 /**
  * BRF-001A composes already-qualified evidence into briefing sections.
  *
@@ -372,9 +474,10 @@ function composeEventRepricing(
  * Gate 2: point-in-time expectation + PRE pricing baseline evidence.
  * Gate 3a: existing SUR-001 factual actual-vs-expectation evidence.
  * Gate 3b: RPR-001 threshold-governed repricing using frozen RPR-002B policy.
+ * Gate 6: CONF-001A composition using only already-qualified evidence adapters.
  *
  * It does not infer causality, decide surprise meaning, transmission,
- * confirmation, regime, invalidation, or trading action.
+ * regime, invalidation, or trading action.
  */
 export function composeFactualMarketBriefing({
   baselines,
@@ -382,6 +485,7 @@ export function composeFactualMarketBriefing({
   asOf,
   intradayEventMonitor,
   eventRepricing,
+  confirmation,
 }: ComposeFactualMarketBriefingInput): FactualMarketBriefing {
   const changes = Object.entries(baselines)
     .flatMap(([seriesId, baseline]) => {
@@ -426,5 +530,6 @@ export function composeFactualMarketBriefing({
     eventBaselines: composeEventBaselines(intradayEventMonitor),
     eventSurprises: composeEventSurprises(intradayEventMonitor),
     eventRepricing: composeEventRepricing(eventRepricing),
+    confirmation: composeConfirmation(confirmation),
   };
 }
