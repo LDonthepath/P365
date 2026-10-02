@@ -6,6 +6,7 @@ import { historicalEventRepository, historicalObservationRepository } from "../r
 import type { Event } from "../domain/types";
 import { buildRepositoryBackedMacroFactualBaselines } from "./factual-baseline";
 import { getIntradayEventMonitor, type IntradayEventMonitorResult } from "./intraday-event-monitor";
+import { buildBriefingEventRepricing } from "./briefing-event-repricing";
 import { buildNetLiquidityReadModel, type NetLiquidityReadModel } from "./net-liquidity";
 import { buildRatesInflationReadModel, type RatesInflationReadModel } from "./rates-inflation";
 import {
@@ -34,22 +35,81 @@ export type DashboardData = NormalizedDashboardData & {
   factualMarketBriefing: FactualMarketBriefing;
 };
 
-async function getDurableHighImpactEvents(now = new Date()): Promise<Event[]> {
-  const from = new Date(now.getTime() - 30 * 60_000).toISOString();
-  const through = new Date(now.getTime() + 24 * 60 * 60_000).toISOString();
+type DurableHighImpactEventBundle = {
+  display: Event[];
+  contextHistory: Event[];
+  contextComplete: boolean;
+};
+
+async function getDurableHighImpactEventBundle(
+  now = new Date(),
+): Promise<DurableHighImpactEventBundle> {
+  const contextFromMs = now.getTime() - 7 * 24 * 60 * 60_000;
+  const displayFromMs = now.getTime() - 30 * 60_000;
+  const throughMs = now.getTime() + 24 * 60 * 60_000;
+  const from = new Date(contextFromMs).toISOString();
+  const through = new Date(throughMs).toISOString();
+
   try {
-    const history = await historicalEventRepository.findHistory({ scheduledAtOnOrAfter: from, scheduledAtOnOrBefore: through, retrievedAtOnOrBefore: now.toISOString(), importance: "HIGH", order: "ASC", limit: 100 });
+    const history = await historicalEventRepository.findHistory({
+      scheduledAtOnOrAfter: from,
+      scheduledAtOnOrBefore: through,
+      retrievedAtOnOrBefore: now.toISOString(),
+      importance: "HIGH",
+      order: "ASC",
+      limit: 500,
+    });
+
     const latest = new Map<string, Event>();
     for (const event of history) {
       const key = event.identity?.key ?? event.id;
       const current = latest.get(key);
-      if (!current || Date.parse(event.retrievedAt) >= Date.parse(current.retrievedAt)) latest.set(key, event);
+      if (
+        !current
+        || Date.parse(event.retrievedAt) >= Date.parse(current.retrievedAt)
+      ) {
+        latest.set(key, event);
+      }
     }
-    return [...latest.values()].sort((a, b) => Date.parse(a.scheduledAt ?? "") - Date.parse(b.scheduledAt ?? ""));
+
+    const display = [...latest.values()]
+      .filter((event) => {
+        const scheduledAt = Date.parse(event.scheduledAt ?? "");
+        return Number.isFinite(scheduledAt)
+          && scheduledAt >= displayFromMs
+          && scheduledAt <= throughMs;
+      })
+      .sort(
+        (a, b) =>
+          Date.parse(a.scheduledAt ?? "") - Date.parse(b.scheduledAt ?? ""),
+      );
+
+    return {
+      display,
+      contextHistory: history,
+      contextComplete: history.length < 500,
+    };
   } catch (error) {
-    console.error("Durable high-impact event read failed:", error instanceof Error ? error.message : "unknown error");
-    return [];
+    console.error(
+      "Durable high-impact event read failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    return {
+      display: [],
+      contextHistory: [],
+      contextComplete: false,
+    };
   }
+}
+
+function stripIntradayRepricingSource(
+  result: IntradayEventMonitorResult,
+): IntradayEventMonitorResult {
+  if (result.status !== "OK") return result;
+  return {
+    status: "OK",
+    data: result.data.map(({ repricingSource: _repricingSource, ...item }) => item),
+  };
 }
 
 const dashboardHistoricalObservationRepository = withHistoricalObservationConcurrencyLimit(
@@ -62,7 +122,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   // Start the independent durable event-response read immediately so it runs
   // alongside provider ingestion/normalization and baseline work.
   const intradayEventMonitorPromise = getIntradayEventMonitor();
-  const durableHighImpactEventsPromise = getDurableHighImpactEvents();
+  const durableHighImpactEventBundlePromise = getDurableHighImpactEventBundle(asOf);
   const netLiquidityPromise = buildNetLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
   const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf);
   const mvpFactualContextPromise = buildMacroCryptoGoldFactualContext(
@@ -82,7 +142,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const [
     macroBaselines,
     intradayEventMonitor,
-    durableHighImpactEvents,
+    durableHighImpactEventBundle,
     netLiquidity,
     ratesInflation,
     mvpFactualContext,
@@ -95,7 +155,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       dashboardHistoricalObservationRepository,
     ),
     intradayEventMonitorPromise,
-    durableHighImpactEventsPromise,
+    durableHighImpactEventBundlePromise,
     netLiquidityPromise,
     ratesInflationPromise,
     mvpFactualContextPromise,
@@ -104,11 +164,18 @@ export async function getDashboardData(): Promise<DashboardData> {
     goldPositioningPromise,
   ]);
 
+  const eventRepricing = buildBriefingEventRepricing({
+    monitor: intradayEventMonitor,
+    eventHistory: durableHighImpactEventBundle.contextHistory,
+    eventHistoryComplete: durableHighImpactEventBundle.contextComplete,
+  });
+
   const factualMarketBriefing = composeFactualMarketBriefing({
     baselines: macroBaselines,
     observations: normalized.macroObservations,
     asOf: mvpFactualContext.asOf,
     intradayEventMonitor,
+    eventRepricing,
   });
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes
@@ -117,8 +184,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   return {
     ...normalized,
     macroBaselines,
-    intradayEventMonitor,
-    durableHighImpactEvents,
+    intradayEventMonitor: stripIntradayRepricingSource(intradayEventMonitor),
+    durableHighImpactEvents: durableHighImpactEventBundle.display,
     netLiquidity,
     ratesInflation,
     mvpFactualContext,

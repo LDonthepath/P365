@@ -239,3 +239,130 @@ test("Gate 3a reports insufficient evidence instead of promoting non-VALID surpr
   assert.equal(result.eventSurprises.reasoningStatus, "NOT_EVALUATED");
   assert.deepEqual(result.eventSurprises.events, []);
 });
+
+
+test("Gate 3b surfaces the latest qualified RPR-001 assessment", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    eventRepricing: {
+      status: "OK",
+      data: [{
+        eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:test",
+        eventId: "event-a",
+        subject: "Test Economic Release",
+        jurisdiction: "US",
+        t0: "2026-10-02T12:30:00.000Z",
+        windows: [{
+          status: "ASSESSED",
+          role: "T_PLUS_5",
+          capturedAt: "2026-10-02T12:35:00.000Z",
+          assessment: {
+            id: "event-repricing-v1-test",
+            version: "v1",
+            policy: "threshold-governed-event-window-repricing-v1",
+            windowId: "window-test",
+            eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:test",
+            beforeRole: "PRE",
+            afterRole: "T_PLUS_5",
+            comparisonId: "comparison-test",
+            beforeSnapshotId: "snapshot-pre",
+            afterSnapshotId: "snapshot-post",
+            beforeCapturedAt: "2026-10-02T12:25:00.000Z",
+            afterCapturedAt: "2026-10-02T12:35:00.000Z",
+            quality: "COMPLETE",
+            contaminationStatus: "CLEAN",
+            contaminants: [],
+            causalAttribution: "NOT_EVALUATED",
+            status: "REPRICING_OBSERVED",
+            thresholds: [{
+              observationKey: "ASSET:btc.spot.usd:coingecko-market",
+              basis: "ABSOLUTE_PERCENT_CHANGE",
+              minimumMagnitude: 0.226434,
+            }],
+            responses: [{
+              observationKey: "ASSET:btc.spot.usd:coingecko-market",
+              status: "REPRICED",
+              direction: "UP",
+              basis: "ABSOLUTE_PERCENT_CHANGE",
+              minimumMagnitude: 0.226434,
+              measuredMagnitude: 0.3,
+              beforeValue: 100,
+              afterValue: 100.3,
+              absoluteDelta: 0.3,
+              percentDelta: 0.3,
+              unit: "USD",
+              frequency: "INTRADAY",
+            }],
+            repricedObservationKeys: [
+              "ASSET:btc.spot.usd:coingecko-market",
+            ],
+            unresolvedObservationKeys: [],
+            unconfiguredObservationKeys: [],
+          },
+        }],
+      }],
+    },
+  });
+
+  assert.equal(result.eventRepricing.evidenceStatus, "AVAILABLE");
+  assert.equal(result.eventRepricing.reasoningStatus, "NOT_EVALUATED");
+  assert.equal(result.eventRepricing.events[0]?.status, "REPRICING_OBSERVED");
+  assert.equal(
+    result.eventRepricing.events[0]?.responses[0]?.seriesKey,
+    "btc.spot.usd",
+  );
+  assert.equal(
+    result.eventRepricing.events[0]?.responses[0]?.minimumMagnitude,
+    0.226434,
+  );
+  assert.equal(
+    result.eventRepricing.events[0]?.causalAttribution,
+    "NOT_EVALUATED",
+  );
+});
+
+test("Gate 3b keeps incomplete contamination history insufficient", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    eventRepricing: {
+      status: "INSUFFICIENT",
+      reason: "Riwayat event HIGH belum lengkap.",
+    },
+  });
+
+  assert.equal(result.eventRepricing.evidenceStatus, "INSUFFICIENT");
+  assert.deepEqual(result.eventRepricing.events, []);
+  assert.match(result.eventRepricing.reason ?? "", /belum lengkap/);
+});
+
+test("Gate 3b keeps exact-horizon threshold gaps insufficient", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    eventRepricing: {
+      status: "OK",
+      data: [{
+        eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:test",
+        eventId: "event-a",
+        subject: "Test Economic Release",
+        jurisdiction: "US",
+        t0: "2026-10-02T12:30:00.000Z",
+        windows: [{
+          status: "INSUFFICIENT_THRESHOLDS",
+          role: "T_PLUS_5",
+          capturedAt: "2026-10-02T12:35:00.000Z",
+          reason: "No exact threshold.",
+        }],
+      }],
+    },
+  });
+
+  assert.equal(result.eventRepricing.evidenceStatus, "INSUFFICIENT");
+  assert.deepEqual(result.eventRepricing.events, []);
+  assert.match(result.eventRepricing.reason ?? "", /cocok persis/);
+});

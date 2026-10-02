@@ -1,6 +1,16 @@
 import "server-only";
-import { EVENT_WINDOW_POLICY_V1, type EventWindowRole } from "../domain/event-window";
+import {
+  EVENT_WINDOW_POLICY_V1,
+  matchSnapshotToEventWindow,
+  qualifyEventWindow,
+  type EventWindowRole,
+  type QualifiedEventWindow,
+} from "../domain/event-window";
 import type { MarketSnapshot } from "../domain/market-snapshot";
+import {
+  compareMarketSnapshots,
+  type SnapshotComparison,
+} from "../domain/snapshot-comparison";
 import type { EconomicEventResult } from "../domain/event-result";
 import type { Event, Observation } from "../domain/types";
 import type {
@@ -77,6 +87,16 @@ export type IntradayBaselineEvidence = {
   pricing: IntradayPricingBaselineEvidence[];
 };
 
+export type IntradayRepricingComparisonSource = {
+  role: Exclude<EventWindowRole, "PRE">;
+  comparison: SnapshotComparison;
+};
+
+export type IntradayRepricingSource = {
+  window: QualifiedEventWindow;
+  comparisons: IntradayRepricingComparisonSource[];
+};
+
 export type IntradayEventMonitor = {
   eventIdentityKey: string;
   eventId: string;
@@ -90,6 +110,7 @@ export type IntradayEventMonitor = {
   resultSource?: string;
   surprise?: EventSurpriseAssessment;
   baselineEvidence?: IntradayBaselineEvidence;
+  repricingSource?: IntradayRepricingSource;
   ratesReconstruction?: IntradayRatesReconstruction;
   moves: IntradayEventMove[];
   missingRequirements: number;
@@ -148,6 +169,57 @@ function selectActiveSnapshotsByRole(
     byRole.set(role, active);
   }
   return byRole;
+}
+
+export function buildIntradayRepricingSource(input: {
+  event: Event;
+  byRole: Map<EventWindowRole, MarketSnapshot>;
+  observations: Map<string, Observation>;
+}): IntradayRepricingSource | undefined {
+  const qualification = qualifyEventWindow(input.event);
+  if (!qualification.eligible) return undefined;
+
+  const pre = input.byRole.get("PRE");
+  if (!pre) return undefined;
+
+  const beforeMatch = matchSnapshotToEventWindow(
+    qualification.window,
+    pre,
+  );
+  if (beforeMatch.status !== "QUALIFIED" && beforeMatch.status !== "DEGRADED") {
+    return undefined;
+  }
+
+  const canonical = [...input.observations.values()];
+  const comparisons: IntradayRepricingComparisonSource[] = [];
+
+  for (const role of ROLES) {
+    if (role === "PRE") continue;
+    const after = input.byRole.get(role);
+    if (!after) continue;
+
+    const afterMatch = matchSnapshotToEventWindow(
+      qualification.window,
+      after,
+    );
+    if (afterMatch.status !== "QUALIFIED" && afterMatch.status !== "DEGRADED") {
+      continue;
+    }
+
+    comparisons.push({
+      role,
+      comparison: compareMarketSnapshots({
+        before: pre,
+        after,
+        observations: canonical,
+      }),
+    });
+  }
+
+  return {
+    window: qualification.window,
+    comparisons,
+  };
 }
 
 function windowStatus(input: {
@@ -367,6 +439,12 @@ async function buildMonitorForIdentity(
   const missingRequirements = ordered.reduce(
     (sum, item) => sum + item.snapshot.missingRequirements.length, 0);
 
+  const repricingSource = buildIntradayRepricingSource({
+    event,
+    byRole,
+    observations,
+  });
+
   return {
     eventIdentityKey: latestIdentity,
     eventId: event.id,
@@ -380,6 +458,7 @@ async function buildMonitorForIdentity(
     ...(result?.sourceId ? { resultSource: result.sourceId } : {}),
     ...(surprise ? { surprise } : {}),
     ...(pre ? { baselineEvidence: resolveIntradayBaselineEvidence(pre, observations, results) } : {}),
+    ...(repricingSource ? { repricingSource } : {}),
     moves,
     missingRequirements,
     windowStatus: windowStatus({ t0, byRole, missingRequirements, now }),
