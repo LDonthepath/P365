@@ -185,7 +185,9 @@ export async function resolveIntradayObservations(
 }
 
 function seriesKeyOf(observation: Observation | undefined): string | null {
-  const key = observation?.identity?.seriesKey ?? observation?.metadata?.metricId;
+  const key = observation?.identity?.seriesKey
+    ?? observation?.metadata?.seriesId
+    ?? observation?.metadata?.metricId;
   return typeof key === "string" && key.trim() ? key.trim() : null;
 }
 
