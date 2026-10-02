@@ -56,6 +56,39 @@ What catalyst / invalidation should be monitored next?
 
 P365 does not convert this chain into a BUY/SELL/LONG/SHORT instruction.
 
+### 2.1 Trigger model: market-first, not calendar-first
+
+P365 must support two independent entry points into intraday analysis:
+
+1. **Event-driven:** a qualified scheduled or occurred catalyst creates a bounded event-response analysis target.
+2. **Move-driven:** a materially unusual BTC or Gold move creates an analysis target even when no qualifying scheduled Event exists.
+
+The second path is required because price discovery can be driven by unscheduled information, changing policy expectations, cross-asset repricing, positioning/liquidation mechanics, flows, or a combination of factors that does not begin with an economic-calendar Event.
+
+Therefore an Event identity must not be a mandatory parent for every market analysis.
+
+For a move-driven target, P365 should eventually answer:
+
+```text
+What moved?
+  ↓
+How large was the move versus an explicit historical baseline?
+  ↓
+What else changed during the same point-in-time window?
+  ↓
+Which qualified evidence supports each plausible driver?
+  ↓
+Which evidence contradicts it?
+  ↓
+What remains unknown?
+  ↓
+What should be monitored next?
+```
+
+A move may remain `UNEXPLAINED` when qualified evidence is insufficient. P365 must prefer explicit uncertainty over manufacturing a causal narrative.
+
+Scheduled Events remain important evidence and catalysts, but they are one evidence path inside the broader market-awareness workflow rather than the mandatory root of the workflow.
+
 ## 3. Product boundary
 
 P365 must not collapse intelligence into prescriptive outputs such as:
