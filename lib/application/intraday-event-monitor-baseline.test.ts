@@ -16,7 +16,6 @@ function observation(id: string, seriesKey: string, value: string, unit: string)
     sourceId: seriesKey.startsWith("btc") ? "coingecko-market" : "yahoo-finance",
     quality: "FRESH",
     evidenceId: `evidence-${id}`,
-    identity: { seriesKey, measurementId: `measurement-${id}`, revisionId: `revision-${id}` },
     metadata: { metricId: seriesKey, unit },
   };
 }
