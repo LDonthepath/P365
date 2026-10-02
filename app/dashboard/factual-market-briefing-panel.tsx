@@ -90,7 +90,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         <span>{baselines.evidenceStatus === "AVAILABLE" ? "BASELINE TERSEDIA" : "BASELINE BELUM CUKUP"}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apa yang sudah diketahui sebelum rilis?</h3>
-      <p className="lead-copy">Expectation dan harga baseline diambil dari snapshot PRE yang sudah tersimpan. Angka ini belum digunakan untuk menyimpulkan repricing atau materialitas.</p>
+      <p className="lead-copy">Ekspektasi dan harga baseline diambil dari snapshot PRE yang sudah tersimpan. Angka ini belum digunakan untuk menyimpulkan repricing atau materialitas.</p>
 
       {baselines.evidenceStatus === "AVAILABLE"
         ? <div style={{ display: "grid", gap: ".85rem", marginTop: "1rem" }}>
@@ -102,14 +102,14 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
                     Baseline {expectationType(event.expectation.expectedType)}: {formatEventResultValue(event.expectation.expected, event.expectation.unit)}
                     {" · "}periode {event.expectation.period}
                   </span>
-                : <span>Expectation baseline qualified belum tersedia.</span>}
+                : <span>Baseline ekspektasi yang memenuhi syarat belum tersedia.</span>}
               {event.pricing.length > 0
                 ? <span>
                     Harga baseline: {event.pricing.map((item) =>
                       `${PRICING_LABELS[item.seriesKey] ?? item.seriesKey} ${pricingValue(item.value, item.unit)}`
                     ).join(" · ")}
                   </span>
-                : <span>Pricing baseline qualified belum tersedia.</span>}
+                : <span>Baseline harga yang memenuhi syarat belum tersedia.</span>}
             </div>)}
           </div>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
