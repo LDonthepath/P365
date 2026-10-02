@@ -16,6 +16,10 @@ import { buildStablecoinLiquidityReadModel, type StablecoinLiquidityReadModel } 
 import { buildBtcEtfFlowReadModel, type BtcEtfFlowReadModel } from "./btc-etf-flow";
 import { buildGoldPositioningReadModel, type GoldPositioningReadModel } from "./gold-positioning";
 import { withHistoricalObservationConcurrencyLimit } from "./historical-observation-concurrency";
+import {
+  composeFactualMarketBriefing,
+  type FactualMarketBriefing,
+} from "./factual-market-briefing";
 
 export type DashboardData = NormalizedDashboardData & {
   macroBaselines: Record<string, FactualBaseline>;
@@ -27,6 +31,7 @@ export type DashboardData = NormalizedDashboardData & {
   stablecoinLiquidity: StablecoinLiquidityReadModel;
   btcEtfFlow: BtcEtfFlowReadModel;
   goldPositioning: GoldPositioningReadModel;
+  factualMarketBriefing: FactualMarketBriefing;
 };
 
 async function getDurableHighImpactEvents(now = new Date()): Promise<Event[]> {
@@ -99,6 +104,12 @@ export async function getDashboardData(): Promise<DashboardData> {
     goldPositioningPromise,
   ]);
 
+  const factualMarketBriefing = composeFactualMarketBriefing({
+    baselines: macroBaselines,
+    observations: normalized.macroObservations,
+    asOf: mvpFactualContext.asOf,
+  });
+
   // Dashboard rendering is a read/presentation path. Durable canonical writes
   // are owned by the authenticated cron ingestion workers so a page visit
   // cannot become a second ingestion/persistence clock.
@@ -113,5 +124,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     stablecoinLiquidity,
     btcEtfFlow,
     goldPositioning,
+    factualMarketBriefing,
   };
 }

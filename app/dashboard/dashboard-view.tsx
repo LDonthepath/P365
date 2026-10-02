@@ -14,6 +14,7 @@ import { logout, refreshDashboardData } from "./actions";
 import { EventRiskWindowPanel } from "./event-risk-window-panel";
 import { IntradayEventResponsePanel } from "./intraday-event-response-panel";
 import { MvpFactualContextPanel } from "./mvp-factual-context-panel";
+import { FactualMarketBriefingPanel } from "./factual-market-briefing-panel";
 
 type Menu = "overview" | "heatmap" | "macro" | "crypto" | "gold" | "context" | "evidence";
 const menuItems: { id: Menu; label: string }[] = [
@@ -439,33 +440,6 @@ function CryptoMarketPanel({ observations, providerHealth }: { observations: Obs
   </section>;
 }
 
-const OVERVIEW_CHANGE_PRIORITY = ["DGS2", "DGS10", "DFII10", "T10YIE", "T10Y2Y"];
-
-function OverviewWhatChanged({ observations, baselines }: { observations: Observation[]; baselines: BaselinePresentation[] }) {
-  const validChanges = baselines
-    .filter((item) => item.status === "VALID" && item.changeValue !== null)
-    .sort((a, b) => {
-      const ai = OVERVIEW_CHANGE_PRIORITY.indexOf(a.seriesId);
-      const bi = OVERVIEW_CHANGE_PRIORITY.indexOf(b.seriesId);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
-  return <section className="panel overview-change-layer" aria-labelledby="what-changed-title">
-    <div className="panel-label"><span>APA YANG BERUBAH</span><span>FAKTUAL</span></div>
-    <div className="change-layer-grid">
-      <div>
-        <h2 id="what-changed-title">Perubahan penting terbaru</h2>
-        <p className="lead-copy">Perbandingan observasi terbaru dengan data pembanding yang valid. Ditampilkan sebagai fakta, tanpa kesimpulan arah pasar.</p>
-      </div>
-    </div>
-    {validChanges.length > 0 && <div className="monitor-list" style={{ marginTop: "1rem" }}>{validChanges.slice(0, 4).map((item) => {
-      const observation = observations.find((candidate) => String(candidate.metadata?.seriesId ?? "") === item.seriesId);
-      const unit = String(observation?.metadata?.unit ?? "");
-      const label = MACRO_SERIES_LABELS[item.seriesId] ?? observation?.subject ?? item.seriesId;
-      return <div key={item.seriesId}><strong>{label}</strong><span>Saat ini {formatMacroDisplayValue(item.currentValue, unit)} · sebelumnya {formatMacroDisplayValue(item.baselineValue ?? "", unit)} · {formatMacroDisplayDelta(item.changeValue, unit)}</span></div>;
-    })}</div>}
-  </section>;
-}
-
 function OverviewContext({ contextGroups, selectedContextId, selectedContext, onSelect }: { contextGroups: ContextGroup[]; selectedContextId: string | null; selectedContext: Context | null; onSelect: (id: string) => void }) {
   return <section className="panel intelligence-panel" aria-labelledby="overview-context-title" style={{ marginTop: "20px" }}>
     <div className="panel-label"><span>03 / CONTEXT</span><span>{contextGroups.reduce((total, group) => total + group.contexts.length, 0)} CONTEXT</span></div>
@@ -534,7 +508,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         <div className="page-intro"><span>DASHBOARD UTAMA</span><h1>Pasar sekarang</h1><p>Mulai dari ringkasan, lalu lihat perubahan terbaru dan event yang berpotensi menggerakkan pasar. Detail teknis disimpan di bagian lanjutan.</p></div>
         <OverviewQuickGlance data={data} observations={observations} />
         <div className="intraday-priority-grid">
-          <OverviewWhatChanged observations={observations} baselines={baselinePresentations} />
+          <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
           <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
         </div>
         <IntradayEventResponsePanel result={data.intradayEventMonitor} />
