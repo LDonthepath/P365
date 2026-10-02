@@ -176,3 +176,57 @@ TRN-001 v0.1 passes when:
 9. deterministic identity and fail-closed invariants are regression-covered;
 10. no Surprise, State, Risk, Regime, Intelligence, provider expansion, persistence owner, or trading logic is activated;
 11. build/type checks pass before owner merge.
+
+
+## TRN-002A — historical directional calibration evidence
+
+TRN-002A is the calibration gate that must pass before a caller-owned directional
+relationship can be frozen for production TRN-001 use.
+
+It does **not** hardcode relationships such as DXY down → BTC up. Instead it
+measures whether one horizon-specific driver/response relation is historically
+more often SAME_DIRECTION or OPPOSITE_DIRECTION across qualified PRE→post
+market cohorts.
+
+### Frozen v1 methodology
+
+- transformation: signed percentage change from PRE to one post-event horizon;
+- horizons are calibrated independently: T+5, T+15, T+30, T+60;
+- only COMPLETE CMP-001 comparison quality enters a directional cohort;
+- both driver and response must provide finite, non-zero percentage changes;
+- simultaneous event identities sharing the same driver/response PRE/post
+  Observation lineage count as **one market cohort**, not multiple samples;
+- minimum sample size: **30 unique directional cohorts**;
+- statistical null: SAME_DIRECTION and OPPOSITE_DIRECTION are equally likely;
+- test: **two-sided exact binomial test**;
+- significance level: **p <= 0.05**;
+- a production relationship candidate exists only when both the minimum sample
+  size and significance requirements pass;
+- a sufficiently large but statistically balanced sample resolves to
+  `NO_STABLE_RELATIONSHIP`, not a forced relationship;
+- samples below the minimum resolve to `INSUFFICIENT_DATA`;
+- every output retains `causalAttribution = NOT_EVALUATED`.
+
+TRN-002A produces calibration evidence only. It does not create or wire a
+production `CrossAssetTransmissionRuleInput`. Production relationship freeze
+remains a separate owner-reviewed checkpoint.
+
+### Current production-data audit at methodology freeze
+
+The 2 Oct 2026 production audit found only **8 unique COMPLETE market cohorts**
+per currently captured event-window horizon for BTC/DXY/Gold. Therefore no
+directional production relationship is eligible to freeze under TRN-002A v1.
+
+Observed descriptive counts are retained as audit context only and are **not**
+production rules:
+
+| Horizon | BTC vs DXY opposite | Gold vs DXY opposite | Unique COMPLETE cohorts |
+| --- | ---: | ---: | ---: |
+| T+5 | 5/8 (62.5%) | 5/8 (62.5%) | 8 |
+| T+15 | 8/8 (100%) | 3/8 (37.5%) | 8 |
+| T+30 | 7/8 (87.5%) | 3/8 (37.5%) | 8 |
+| T+60 | 6/8 (75%) | 4/8 (50%) | 8 |
+
+These observations are deliberately insufficient to justify a production rule.
+Gold also remains unavailable for production TRN-001 because the current
+RPR-002B policy has no qualified Gold repricing threshold.
