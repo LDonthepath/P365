@@ -39,6 +39,12 @@ function expectationType(value: string): string {
   return "perkiraan provider";
 }
 
+function surpriseRelation(value: string): string {
+  if (value === "ABOVE_EXPECTATION") return "di atas perkiraan";
+  if (value === "BELOW_EXPECTATION") return "di bawah perkiraan";
+  return "sesuai perkiraan";
+}
+
 function pricingValue(value: number, unit: string | null): string {
   const normalized = unit?.trim().toLowerCase() ?? "";
   if (normalized === "usd" || normalized.includes("dollar")) {
@@ -55,6 +61,7 @@ function pricingValue(value: number, unit: string | null): string {
 export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefing }) {
   const changed = data.whatChanged;
   const baselines = data.eventBaselines;
+  const surprises = data.eventSurprises;
 
   return <section className="panel overview-change-layer" aria-labelledby="briefing-what-changed-title">
     <div className="panel-label">
@@ -115,6 +122,32 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
             <strong>Baseline belum cukup</strong>
             <span>{baselines.reason}</span>
+          </div>}
+    </div>
+
+    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
+      <div className="panel-label">
+        <span>HASIL VS EKSPEKTASI</span>
+        <span>{surprises.evidenceStatus === "AVAILABLE" ? "PERBANDINGAN TERSEDIA" : "DATA BELUM CUKUP"}</span>
+      </div>
+      <h3 style={{ margin: ".45rem 0 0" }}>Bagaimana hasil rilis dibanding perkiraan?</h3>
+      <p className="lead-copy">Perbandingan faktual ini memakai SUR-001 yang sudah ada. Bagian ini belum menilai materialitas atau repricing pasar.</p>
+
+      {surprises.evidenceStatus === "AVAILABLE"
+        ? <div style={{ display: "grid", gap: ".85rem", marginTop: "1rem" }}>
+            {surprises.events.map((event) => <div className="plain-notice" key={event.eventIdentityKey}>
+              <strong>{event.subject}</strong>
+              <span>{event.jurisdiction} · rilis {dateTime(event.releaseAt)} WIB</span>
+              <span>
+                Aktual {formatEventResultValue(event.actual, event.unit)}
+                {" · "}perkiraan {formatEventResultValue(event.expected, event.unit)}
+                {" · "}{surpriseRelation(event.relation)}
+              </span>
+            </div>)}
+          </div>
+        : <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>Perbandingan belum cukup</strong>
+            <span>{surprises.reason}</span>
           </div>}
     </div>
 

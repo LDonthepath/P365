@@ -2,6 +2,7 @@ import {
   factualBaselineChange,
   type FactualBaseline,
 } from "../domain/baseline";
+import type { EventSurpriseRelation } from "../domain/event-surprise";
 import type { Observation } from "../domain/types";
 import type {
   IntradayEventMonitorResult,
@@ -58,6 +59,22 @@ export type BriefingEventBaseline = {
   pricing: BriefingPricingBaseline[];
 };
 
+export type BriefingEventSurprise = {
+  eventIdentityKey: string;
+  subject: string;
+  jurisdiction: string;
+  releaseAt: string;
+  actual: number;
+  expected: number;
+  expectedType: string;
+  unit: string;
+  period: string;
+  relation: Exclude<EventSurpriseRelation, "UNKNOWN">;
+  sourceId: string;
+  policy: string;
+  causalAttribution: "NOT_EVALUATED";
+};
+
 export type FactualMarketBriefing = {
   asOf: string;
   whatChanged: {
@@ -70,6 +87,12 @@ export type FactualMarketBriefing = {
     evidenceStatus: BriefingEvidenceStatus;
     reasoningStatus: BriefingReasoningStatus;
     events: BriefingEventBaseline[];
+    reason: string | null;
+  };
+  eventSurprises: {
+    evidenceStatus: BriefingEvidenceStatus;
+    reasoningStatus: BriefingReasoningStatus;
+    events: BriefingEventSurprise[];
     reason: string | null;
   };
 };
@@ -177,11 +200,67 @@ function composeEventBaselines(
   };
 }
 
+function composeEventSurprises(
+  result: IntradayEventMonitorResult | undefined,
+): FactualMarketBriefing["eventSurprises"] {
+  if (!result || result.status !== "OK") {
+    return {
+      evidenceStatus: "INSUFFICIENT",
+      reasoningStatus: "NOT_EVALUATED",
+      events: [],
+      reason: result?.status === "ERROR"
+        ? "Perbandingan hasil dengan ekspektasi terbaru sedang tidak dapat dibaca."
+        : "Belum ada event terbaru dengan surprise faktual yang dapat ditampilkan.",
+    };
+  }
+
+  const events = result.data.flatMap((item): BriefingEventSurprise[] => {
+    const surprise = item.surprise;
+    if (
+      surprise?.status !== "VALID"
+      || surprise.actual === null
+      || surprise.expected === null
+      || surprise.expectedType === null
+      || surprise.unit === null
+      || surprise.period === null
+      || surprise.relation === "UNKNOWN"
+    ) {
+      return [];
+    }
+
+    return [{
+      eventIdentityKey: item.eventIdentityKey,
+      subject: item.subject,
+      jurisdiction: item.jurisdiction,
+      releaseAt: item.t0,
+      actual: surprise.actual,
+      expected: surprise.expected,
+      expectedType: surprise.expectedType,
+      unit: surprise.unit,
+      period: surprise.period,
+      relation: surprise.relation,
+      sourceId: surprise.sourceId,
+      policy: surprise.policy,
+      causalAttribution: surprise.causalAttribution,
+    }];
+  });
+
+  return {
+    evidenceStatus: events.length > 0 ? "AVAILABLE" : "INSUFFICIENT",
+    reasoningStatus: "NOT_EVALUATED",
+    events,
+    reason: events.length > 0
+      ? null
+      : "Event terbaru belum memiliki surprise faktual berstatus VALID yang cukup untuk ditampilkan.",
+  };
+}
+
 /**
  * BRF-001A composes already-qualified evidence into briefing sections.
  *
  * Gate 1: factual Macro changes.
  * Gate 2: point-in-time expectation + PRE pricing baseline evidence.
+ * Gate 3a: existing SUR-001 factual actual-vs-expectation evidence.
  *
  * It does not decide materiality, surprise meaning, repricing, transmission,
  * confirmation, regime, invalidation, or trading action.
@@ -233,5 +312,6 @@ export function composeFactualMarketBriefing({
         : "Belum ada factual baseline Macro berstatus VALID yang cukup untuk diringkas pada cutoff ini.",
     },
     eventBaselines: composeEventBaselines(intradayEventMonitor),
+    eventSurprises: composeEventSurprises(intradayEventMonitor),
   };
 }
