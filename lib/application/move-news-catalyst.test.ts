@@ -3,46 +3,36 @@ import test from "node:test";
 import { providerResult } from "../data/types";
 import { buildMoveNewsCatalystEvidence } from "./move-news-catalyst";
 
-test("move-news evidence preserves candidates as non-causal and marks replay unsupported", () => {
+test("move-news evidence keeps GDELT GAL candidates non-causal and current-only", () => {
   const result = providerResult("gdelt", "SUCCESS", [{
     asset: "BTC" as const,
-    url: "https://example.com/story",
-    title: "Unexpected announcement",
-    domain: "example.com",
-    language: "English",
-    sourceCountry: "United States",
-    providerDate: "2026-10-04T10:15:00.000Z",
-    providerDateSemantics: "PUBLICATION_OR_FIRST_SEEN" as const,
-    query: '("bitcoin" OR "BTC")',
-  }], undefined, undefined, "2026-10-04T10:20:00.000Z");
+    feedLastBuildAt: "2026-10-04T11:59:00.000Z",
+    feedWindowStartAt: "2026-10-04T11:44:00.000Z",
+    coverage: "ROLLING_15_MINUTES" as const,
+    totalFeedItems: 100,
+    candidates: [{
+      asset: "BTC" as const,
+      url: "https://example.com/story",
+      title: "Bitcoin moves after announcement",
+      domain: "example.com",
+      providerDate: "2026-10-04T11:58:00.000Z",
+      providerDateSemantics: "PUBLICATION_OR_FIRST_SEEN" as const,
+    }],
+  }], undefined, undefined, "2026-10-04T12:00:00.000Z");
 
-  const evidence = buildMoveNewsCatalystEvidence({
-    asset: "BTC",
-    windowStart: "2026-10-04T10:00:00.000Z",
-    windowEnd: "2026-10-04T10:30:00.000Z",
-    result,
-  });
-
+  const evidence = buildMoveNewsCatalystEvidence({ asset: "BTC", result });
   assert.equal(evidence.state, "CANDIDATES_AVAILABLE");
+  assert.equal(evidence.coverage, "ROLLING_15_MINUTES");
   assert.equal(evidence.causalAttribution, "NOT_EVALUATED");
   assert.equal(evidence.historicalPointInTimeReplay, "NOT_SUPPORTED_WITHOUT_DURABLE_ACQUISITION");
   assert.equal(evidence.candidates.length, 1);
 });
 
-test("move-news evidence distinguishes no candidates from provider failure", () => {
-  const empty = buildMoveNewsCatalystEvidence({
+test("move-news evidence distinguishes provider failure", () => {
+  const evidence = buildMoveNewsCatalystEvidence({
     asset: "GOLD",
-    windowStart: "2026-10-04T10:00:00Z",
-    windowEnd: "2026-10-04T10:30:00Z",
-    result: providerResult("gdelt", "EMPTY", [], undefined, undefined, "2026-10-04T10:31:00Z"),
+    result: providerResult("gdelt", "ERROR", [], "GDELT GAL HTTP 503", undefined, "2026-10-04T12:00:00Z"),
   });
-  assert.equal(empty.state, "NO_CANDIDATES");
-
-  const failed = buildMoveNewsCatalystEvidence({
-    asset: "GOLD",
-    windowStart: "2026-10-04T10:00:00Z",
-    windowEnd: "2026-10-04T10:30:00Z",
-    result: providerResult("gdelt", "ERROR", [], "GDELT HTTP 429", undefined, "2026-10-04T10:31:00Z"),
-  });
-  assert.equal(failed.state, "PROVIDER_UNAVAILABLE");
+  assert.equal(evidence.state, "PROVIDER_UNAVAILABLE");
+  assert.equal(evidence.coverage, "UNAVAILABLE");
 });
