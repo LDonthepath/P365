@@ -63,6 +63,8 @@ const SEMANTICS_BY_KEY: Readonly<Record<string, ObservationSemantics>> = {
   "gold.futures.usd": { ontologyVersion: V, marketDomain: "COMMODITY", informationClass: "PRICING", jurisdiction: "GLOBAL", instrument: "FUTURE", asset: "GOLD" },
   "russell2000.index.usd": { ontologyVersion: V, marketDomain: "EQUITY", informationClass: "PRICING", jurisdiction: "US", instrument: "INDEX", asset: "RUSSELL_2000" },
   "dxy.index.usd": { ontologyVersion: V, marketDomain: "FX", informationClass: "PRICING", jurisdiction: "US", instrument: "FX_INDEX", asset: "USD" },
+  "fx.usdjpy.jpy_per_usd": { ontologyVersion: V, marketDomain: "FX", informationClass: "PRICING", jurisdiction: "JAPAN", instrument: "FX_PAIR", asset: "USDJPY" },
+  "fx.usdcnh.cnh_per_usd": { ontologyVersion: V, marketDomain: "FX", informationClass: "PRICING", jurisdiction: "CHINA", instrument: "FX_PAIR", asset: "USDCNH" },
 
   "btc.spot.usd": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "PRICING", jurisdiction: "GLOBAL", instrument: "CRYPTO_SPOT", asset: "BTC" },
   "eth.spot.usd": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "PRICING", jurisdiction: "GLOBAL", instrument: "CRYPTO_SPOT", asset: "ETH" },

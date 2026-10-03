@@ -567,6 +567,8 @@ The current repository remains valid as an implementation subset. The target ont
 | `gold.futures.usd` | COMMODITY | PRICING |
 | `russell2000.index.usd` | EQUITY | PRICING |
 | `dxy.index.usd` | FX | PRICING |
+| `fx.usdjpy.jpy_per_usd` | FX | PRICING |
+| `fx.usdcnh.cnh_per_usd` | FX | PRICING |
 
 ### 6.3 CoinGecko current data
 

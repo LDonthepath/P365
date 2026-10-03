@@ -26,6 +26,7 @@ export type MarketFreshnessCalendar =
   | "CONTINUOUS_24_7"
   | "CME_GLOBEX_GOLD"
   | "ICE_USDX"
+  | "GLOBAL_FX_24_5"
   | "RUSSELL_2000_CASH_INDEX";
 
 export type MarketFreshnessInput = {
@@ -138,6 +139,16 @@ function marketFreshnessWindowOpenAt(timestampMs: number, calendar: MarketFreshn
     if (weekday === "Sun") return atOrAfter(18);
     if (weekday === "Fri") return before(17);
     return before(17) || atOrAfter(20);
+  }
+
+  if (calendar === "GLOBAL_FX_24_5") {
+    // Regular interbank spot-FX week: Sunday 17:00 ET through Friday 17:00 ET.
+    // This is a bounded weekly freshness window, not an exchange calendar and
+    // does not model holidays or provider-specific maintenance intervals.
+    if (weekday === "Sat") return false;
+    if (weekday === "Sun") return atOrAfter(17);
+    if (weekday === "Fri") return before(17);
+    return true;
   }
 
   // Yahoo ^RUT is the cash Russell 2000 index, not the nearly-24h RUT

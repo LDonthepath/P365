@@ -134,15 +134,17 @@ async function main(): Promise<void> {
     ["gold.futures.usd", "GC=F"],
     ["russell2000.index.usd", "^RUT"],
     ["dxy.index.usd", "DX-Y.NYB"],
+    ["fx.usdjpy.jpy_per_usd", "USDJPY=X"],
+    ["fx.usdcnh.cnh_per_usd", "USDCNH=X"],
   ].map(([metricId, symbol]) => marketInput(metricId, symbol, {
     version: "v1",
     providerResource: "/v8/finance/chart",
     nativeSymbol: symbol,
   }));
   const yahoo = cryptoMarketToObservations(yahooInputs, "yahoo-finance").observations;
-  assert.deepEqual(yahoo.map((item) => item.provenance?.nativeSymbol), ["GC=F", "^RUT", "DX-Y.NYB"]);
+  assert.deepEqual(yahoo.map((item) => item.provenance?.nativeSymbol), ["GC=F", "^RUT", "DX-Y.NYB", "USDJPY=X", "USDCNH=X"]);
   assert.ok(yahoo.every((item) => item.provenance?.providerResource === "/v8/finance/chart"));
-  assert.deepEqual(yahoo.map((item) => item.metadata?.symbol), ["GC=F", "^RUT", "DX-Y.NYB"]);
+  assert.deepEqual(yahoo.map((item) => item.metadata?.symbol), ["GC=F", "^RUT", "DX-Y.NYB", "USDJPY=X", "USDCNH=X"]);
   assert.deepEqual(yahoo.map((item) => item.metadata?.metricId), yahooInputs.map((item) => item.metricId));
   assert.doesNotMatch(
     JSON.stringify([fred, ...coin, ...yahoo]),

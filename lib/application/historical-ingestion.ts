@@ -13,7 +13,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS = 35;
 
-export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "fred", "defillama", "sosovalue", "cftc"] as const;
+export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "defillama", "sosovalue", "cftc"] as const;
 export type HistoricalIngestionProvider = typeof HISTORICAL_INGESTION_PROVIDERS[number];
 export type HistoricalIngestionMode = "FORWARD" | "BACKFILL";
 
@@ -32,6 +32,8 @@ export type HistoricalIngestionAcquisition = {
   gold: () => Promise<MarketResult>;
   russell: () => Promise<MarketResult>;
   dxy: () => Promise<MarketResult>;
+  usdjpy: () => Promise<MarketResult>;
+  usdcnh: () => Promise<MarketResult>;
   defillama: () => Promise<ProviderResult<DefiLlamaStablecoinObservationInput>>;
   sosovalue: () => Promise<ProviderResult<SoSoValueBtcEtfFlowObservationInput>>;
   cftc: () => Promise<ProviderResult<CftcGoldCotObservationInput>>;
@@ -99,6 +101,8 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
       gold: () => yahoo.fetchGoldFuturesSpot("FRESH"),
       russell: () => yahoo.fetchRussell2000Index("FRESH"),
       dxy: () => yahoo.fetchDxyIndex("FRESH"),
+      usdjpy: () => yahoo.fetchUsdJpySpot("FRESH"),
+      usdcnh: () => yahoo.fetchUsdCnhSpot("FRESH"),
       defillama: () => defillama.fetchDefiLlamaStablecoinObservations({
         mode: options.mode,
         acquisitionMode: "FRESH",

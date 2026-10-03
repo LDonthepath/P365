@@ -96,6 +96,7 @@ function persistedCalendar(observation: Observation): MarketFreshnessCalendar | 
   return value === "CONTINUOUS_24_7"
     || value === "CME_GLOBEX_GOLD"
     || value === "ICE_USDX"
+    || value === "GLOBAL_FX_24_5"
     || value === "RUSSELL_2000_CASH_INDEX"
     ? value
     : null;

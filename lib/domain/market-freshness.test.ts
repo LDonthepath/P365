@@ -24,6 +24,22 @@ function main(): void {
   );
 
   assert.equal(
+    quality("2026-09-18T20:50:00.000Z", "2026-09-20T20:50:00.000Z", "GLOBAL_FX_24_5"),
+    "FRESH",
+    "FX weekend closure must not age a Friday quote while the regular market is closed",
+  );
+  assert.equal(
+    quality("2026-09-20T21:00:00.000Z", "2026-09-20T21:10:00.000Z", "GLOBAL_FX_24_5"),
+    "FRESH",
+    "FX quote shortly after the regular Sunday reopen is fresh",
+  );
+  assert.equal(
+    quality("2026-09-20T20:59:00.000Z", "2026-09-20T21:01:00.000Z", "GLOBAL_FX_24_5"),
+    "UNKNOWN",
+    "FX quote timestamp before the regular Sunday reopen is not qualified",
+  );
+
+  assert.equal(
     quality("2026-09-18T20:59:59.000Z", "2026-09-20T13:14:58.000Z", "CME_GLOBEX_GOLD"),
     "FRESH",
     "Friday GC close does not age through the weekend closure",
