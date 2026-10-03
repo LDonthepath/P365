@@ -1,7 +1,7 @@
 # P365 Asia FX Transmission Evidence Contract v0.1
 
 **Checkpoint:** ASIA-MACRO-001A  
-**Status:** RUNTIME IMPLEMENTED / LIVE VERCEL PROOF PENDING / PRODUCTION SCHEDULER NOT ACTIVATED  
+**Status:** TECHNICAL LIVE PASS / WEEKEND TEMPORAL FITNESS FAIL-CLOSED / PRODUCTION SCHEDULER NOT ACTIVATED  
 **Scope:** China/Japan synchronous FX transmission evidence for BTC + Gold MOVE investigation  
 **Provider:** existing Yahoo Finance trial market-data path  
 **New external dependency/provider:** none
@@ -224,3 +224,46 @@ This checkpoint is merge-ready only when:
 11. writes performed during qualification remain zero.
 
 Production scheduling is a separate owner-reviewed activation step after merge.
+
+
+## 12. Vercel live proof — 4 Oct 2026
+
+A preview-only read executed from the P365 Vercel environment with zero durable writes.
+
+Proof retrieval around `2026-10-03T23:38:47Z` returned:
+
+### USD/JPY
+
+- provider status: `SUCCESS`;
+- Yahoo native symbol: `USDJPY=X`;
+- value: `157.83 JPY per USD`;
+- provider `observedAt`: `2026-10-03T21:07:47.000Z`;
+- canonical quality: `UNKNOWN`;
+- reason: the provider timestamp falls on Saturday, outside the frozen regular
+  `GLOBAL_FX_24_5` market window.
+
+P365 therefore proves provider access/schema but deliberately refuses to promote that
+weekend timestamp as qualified synchronous pricing.
+
+### USD/CNH
+
+- provider status: `SUCCESS`;
+- Yahoo native symbol: `USDCNH=X`;
+- value: `6.7044 CNH per USD`;
+- provider `observedAt`: `2026-10-02T20:59:45.000Z`;
+- canonical quality: `FRESH` under the closed-weekend freshness policy;
+- provider timestamp is inside the qualified Friday FX window.
+
+### Proof verdict
+
+- Vercel provider access: **PASS**;
+- finite quote values: **PASS**;
+- source-native pair identity/provenance: **PASS**;
+- quote timestamp retained separately from retrieval: **PASS**;
+- closed-market temporal fitness fails closed: **PASS**;
+- writes performed: **0**;
+- production scheduler/backfill: **NOT ACTIVATED**.
+
+This proof does not claim that the Saturday USDJPY value is a live tradable market quote.
+A later production acquisition during an open FX window must satisfy the same freshness
+policy before the observation can participate as synchronous MOVE evidence.
