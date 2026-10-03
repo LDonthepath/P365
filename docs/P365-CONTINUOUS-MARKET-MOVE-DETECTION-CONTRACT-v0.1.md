@@ -1,7 +1,7 @@
 # P365 Continuous Market Move Detection Contract v0.1
 
 **Checkpoint:** MOVE-001A / MOVE-001B / MOVE-001C
-**Status:** MOVE-001A MERGED / PR #151 — MOVE-001B MERGED / PR #153 — MOVE-001C RUNTIME PROPOSED / OWNER MERGE PENDING
+**Status:** MOVE-001A MERGED / PR #151 — MOVE-001B MERGED / PR #153 — MOVE-001C MERGED / PR #154
 **Scope:** Continuous factual move detection for the MVP traded markets
 **Primary MVP targets:** Bitcoin + Gold
 **Supporting context:** Macro, DXY, ETH and other already-qualified evidence
@@ -495,5 +495,4 @@ MOVE-001C is a read-only evaluator only. It does not add:
 - State / Regime / Risk / Intelligence;
 - prediction or trading semantics.
 
-After owner merge, MOVE-002 may consume a material MOVE assessment as an independent
-evidence-investigation target.
+MOVE-002A may consume a material MOVE assessment as an independent evidence-investigation target. Its evidence-role and coverage contract is defined separately in `P365-MOVE-EVIDENCE-INVESTIGATION-CONTRACT-v0.1.md`.
