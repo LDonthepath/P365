@@ -145,3 +145,34 @@ test("live qualification fails closed when any sampled evidence family fails", a
   assert.match(report.message ?? "", /funding=ERROR/);
   assert.equal(report.sampleAggregates, null);
 });
+
+
+test("live qualification excludes the provider's in-progress current 5m bucket from aggregates", async () => {
+  const intervalStart = Math.floor(NOW.getTime() / 1000 / 300) * 300;
+  const completedStart = intervalStart - 300;
+  const sampleMarkets = markets();
+  const makeOhlc = (symbols: string[]) => symbols.map((symbol) => ({
+    symbol,
+    history: [
+      { providerTimestamp: completedStart, open: 100, high: 100, low: 100, close: 100 },
+      { providerTimestamp: intervalStart, open: 999, high: 999, low: 999, close: 999 },
+    ],
+  }));
+  const report = await runCoinalyzeLiveQualification({
+    now: () => NOW,
+    provider: {
+      futureMarkets: async () => providerResult("coinalyze", "SUCCESS", sampleMarkets),
+      openInterest: async (query) => providerResult("coinalyze", "SUCCESS", makeOhlc(query.symbols)),
+      funding: async (query) => providerResult("coinalyze", "SUCCESS", makeOhlc(query.symbols)),
+      liquidation: async () => providerResult("coinalyze", "EMPTY"),
+      ohlcv: async (query) => providerResult("coinalyze", "SUCCESS", query.symbols.map((symbol) => ({
+        symbol,
+        history: [],
+      }))),
+    },
+  });
+  assert.equal(report.status, "READY_FOR_SEMANTIC_REVIEW");
+  assert.equal(report.sampleAggregates?.providerIntervalStartTimestamp, completedStart);
+  assert.equal(report.sampleAggregates?.openInterestUsd, 200);
+  assert.equal(report.timestamps[0].includesIncompleteCurrentBucket, true);
+});

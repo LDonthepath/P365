@@ -8,7 +8,10 @@ import type {
 export type CoinalyzeAggregateCoverage = "COMPLETE" | "PARTIAL" | "EMPTY";
 
 export type CoinalyzeAggregateLineage = {
+  /** Beginning of the Coinalyze interval. */
   providerTimestamp: number;
+  /** End of the 5m interval; earliest safe canonical observedAt for interval-close/flow facts. */
+  intervalEndTimestamp: number;
   universeSymbols: string[];
   includedSymbols: string[];
   missingSymbols: string[];
@@ -21,7 +24,7 @@ export type CoinalyzeOpenInterestAggregate = CoinalyzeAggregateLineage & {
 };
 
 export type CoinalyzeFundingAggregate = CoinalyzeAggregateLineage & {
-  oiWeightedFundingRate: number | null;
+  oiWeightedFundingRatePercent: number | null;
   totalWeightOpenInterestUsd: number;
 };
 
@@ -74,6 +77,7 @@ function lineage(
   const missing = universeSymbols.filter((symbol) => !includedSet.has(symbol));
   return {
     providerTimestamp,
+    intervalEndTimestamp: providerTimestamp + 300,
     universeSymbols,
     includedSymbols: included,
     missingSymbols: missing,
@@ -136,7 +140,7 @@ export function aggregateCoinalyzeOiWeightedFunding(input: {
   }
   return {
     ...lineage(input.providerTimestamp, universe, included),
-    oiWeightedFundingRate: totalWeight > 0 ? weighted / totalWeight : null,
+    oiWeightedFundingRatePercent: totalWeight > 0 ? weighted / totalWeight : null,
     totalWeightOpenInterestUsd: totalWeight,
   };
 }

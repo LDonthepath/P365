@@ -5,6 +5,9 @@ import {
   fetchCoinalyzeLiquidationHistory,
   fetchCoinalyzeOhlcvHistory,
   fetchCoinalyzeOpenInterestHistory,
+  COINALYZE_INTERVAL_SECONDS,
+  coinalyzeCompletedIntervalEndTimestamp,
+  isCoinalyzeIntervalComplete,
   type CoinalyzeFutureMarket,
   type CoinalyzeHistoryQuery,
   type CoinalyzeHistorySeries,
@@ -38,7 +41,11 @@ export type CoinalyzeTimestampEvidence = {
   distinctTimestamps: number;
   firstProviderTimestamp: number | null;
   latestProviderTimestamp: number | null;
-  latestLagSeconds: number | null;
+  latestReturnedProviderTimestamp: number | null;
+  latestCompletedProviderTimestamp: number | null;
+  latestCompletedObservedAt: string | null;
+  latestCompletedLagSeconds: number | null;
+  includesIncompleteCurrentBucket: boolean;
   allAlignedToFiveMinuteBoundary: boolean;
 };
 
@@ -66,10 +73,11 @@ export type CoinalyzeLiveQualificationReport = {
   };
   timestamps: CoinalyzeTimestampEvidence[];
   sampleAggregates: {
-    providerTimestamp: number;
+    providerIntervalStartTimestamp: number;
+    observedAt: string;
     openInterestUsd: number | null;
     openInterestCoverage: "COMPLETE" | "PARTIAL" | "EMPTY";
-    oiWeightedFundingRate: number | null;
+    oiWeightedFundingRatePercent: number | null;
     fundingCoverage: "COMPLETE" | "PARTIAL" | "EMPTY";
   } | null;
   semantics: {
@@ -144,7 +152,9 @@ function timestampEvidence<T extends { providerTimestamp: number }>(
   const timestamps = allTimestamps(series);
   const distinct = [...new Set(timestamps)].sort((left, right) => left - right);
   const first = distinct[0] ?? null;
-  const latest = distinct.at(-1) ?? null;
+  const latestReturned = distinct.at(-1) ?? null;
+  const completed = distinct.filter((timestamp) => isCoinalyzeIntervalComplete(timestamp, nowSeconds));
+  const latestCompleted = completed.at(-1) ?? null;
   const returned = new Set(series.map((item) => item.symbol));
   return {
     family,
@@ -154,20 +164,29 @@ function timestampEvidence<T extends { providerTimestamp: number }>(
     pointCount: timestamps.length,
     distinctTimestamps: distinct.length,
     firstProviderTimestamp: first,
-    latestProviderTimestamp: latest,
-    latestLagSeconds: latest === null ? null : Math.max(0, nowSeconds - latest),
+    latestReturnedProviderTimestamp: latestReturned,
+    latestCompletedProviderTimestamp: latestCompleted,
+    latestCompletedObservedAt: latestCompleted === null
+      ? null
+      : new Date(coinalyzeCompletedIntervalEndTimestamp(latestCompleted) * 1000).toISOString(),
+    latestCompletedLagSeconds: latestCompleted === null
+      ? null
+      : Math.max(0, nowSeconds - coinalyzeCompletedIntervalEndTimestamp(latestCompleted)),
+    includesIncompleteCurrentBucket: latestReturned !== null
+      && !isCoinalyzeIntervalComplete(latestReturned, nowSeconds),
     allAlignedToFiveMinuteBoundary: timestamps.length > 0
       && timestamps.every((timestamp) => timestamp % FIVE_MINUTES_SECONDS === 0),
   };
 }
 
-function latestSharedTimestamp(
+function latestSharedCompletedTimestamp(
   openInterest: CoinalyzeHistorySeries<CoinalyzeOhlcPoint>[],
   funding: CoinalyzeHistorySeries<CoinalyzeOhlcPoint>[],
+  nowSeconds: number,
 ): number | null {
   const oi = new Set(allTimestamps(openInterest));
   const shared = [...new Set(allTimestamps(funding))]
-    .filter((timestamp) => oi.has(timestamp))
+    .filter((timestamp) => oi.has(timestamp) && isCoinalyzeIntervalComplete(timestamp, nowSeconds))
     .sort((left, right) => left - right);
   return shared.at(-1) ?? null;
 }
@@ -351,7 +370,7 @@ export async function runCoinalyzeLiveQualification(
     timestampEvidence("OHLCV", sampleSymbols, ohlcv.data, nowSeconds),
   ];
 
-  const sharedTimestamp = latestSharedTimestamp(openInterest.data, funding.data);
+  const sharedTimestamp = latestSharedCompletedTimestamp(openInterest.data, funding.data, nowSeconds);
   const sampleAggregates = sharedTimestamp === null
     ? null
     : (() => {
@@ -367,10 +386,11 @@ export async function runCoinalyzeLiveQualification(
         funding: funding.data,
       });
       return {
-        providerTimestamp: sharedTimestamp,
+        providerIntervalStartTimestamp: sharedTimestamp,
+        observedAt: new Date(coinalyzeCompletedIntervalEndTimestamp(sharedTimestamp) * 1000).toISOString(),
         openInterestUsd: oi.totalOpenInterestUsd,
         openInterestCoverage: oi.coverage,
-        oiWeightedFundingRate: weightedFunding.oiWeightedFundingRate,
+        oiWeightedFundingRatePercent: weightedFunding.oiWeightedFundingRatePercent,
         fundingCoverage: weightedFunding.coverage,
       };
     })();

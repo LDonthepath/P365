@@ -36,9 +36,9 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC / ETH / Gold / DXY price | What moved and what confirmed/diverged? | P0 | SYNC | **ACTIVE** | Existing qualified sources |
 | Continuous move materiality | Is the move historically unusual? | P0 | SYNC | **ACTIVE / MOVE-001C** | Existing Market Memory |
 | Scheduled macro events | Was there a qualified scheduled catalyst? | P0 | EVENT | **ACTIVE** | Existing event pipeline |
-| BTC derivatives OI | Is leverage exposure expanding/contracting? | P0 | SYNC | **SOURCE QUALIFICATION** | Coinalyze free-first |
-| BTC funding | Is perpetual positioning becoming expensive/crowded? | P0 | SYNC/NEAR | **SOURCE QUALIFICATION** | Coinalyze free-first |
-| BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **SOURCE QUALIFICATION** | Coinalyze free-first; ChainVector validation |
+| BTC derivatives OI | Is leverage exposure expanding/contracting? | P0 | SYNC | **LIVE-QUALIFIED / DURABLE-USE GATE** | Coinalyze free-first |
+| BTC funding | Is perpetual positioning becoming expensive/crowded? | P0 | SYNC/NEAR | **LIVE-QUALIFIED / DURABLE-USE GATE** | Coinalyze free-first |
+| BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **LIVE-QUALIFIED SPARSE WINDOW / DURABLE-USE GATE** | Coinalyze free-first; ChainVector validation |
 | BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **MISSING** | Official exchange public APIs; source qualification required |
 | BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **MISSING** | Official exchange public APIs; methodology required |
 | Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **MISSING** | GDELT free candidate + official-source verification |

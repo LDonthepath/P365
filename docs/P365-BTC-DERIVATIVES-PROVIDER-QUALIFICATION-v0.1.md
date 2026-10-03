@@ -1288,3 +1288,36 @@ The API documentation explicitly states that the API is free and asks for attrib
 when data are used publicly, but the audited public terms do not explicitly address
 building a private durable historical database. No CoinGlass-like storage prohibition was
 found, but absence of prohibition is not equivalent to explicit storage permission.
+
+
+### Point-in-time completion rule
+
+The live 5m API returns the currently forming interval before that interval is complete.
+
+Observed example:
+
+- qualification retrieved at approximately 19:41 UTC;
+- provider already returned a bucket with `t = 19:40 UTC`.
+
+Because the official OpenAPI defines `t` as interval **beginning** and OHLC `c` as
+the interval **end** value, P365 must not canonicalize the currently forming bucket.
+
+Frozen rule:
+
+`canonical observedAt = provider t + 5 minutes`
+
+and a bucket is eligible only when:
+
+`provider t + 5 minutes <= retrievedAt`
+
+This applies to:
+
+- OI close;
+- funding close;
+- liquidation interval totals;
+- OHLCV interval totals / buy volume.
+
+Provider `t` remains lineage as the interval-start timestamp.
+
+The current in-progress bucket may be used only as explicitly provisional diagnostics,
+never as a final point-in-time Observation.

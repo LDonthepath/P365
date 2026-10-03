@@ -19,6 +19,7 @@ test("Coinalyze OI aggregate sums exact same-bucket USD closes and exposes cover
     ],
   });
   assert.equal(result.totalOpenInterestUsd, 300);
+  assert.equal(result.intervalEndTimestamp, T + 300);
   assert.equal(result.coverage, "COMPLETE");
   assert.deepEqual(result.missingSymbols, []);
   assert.equal(result.universeHash.length, 64);
@@ -50,7 +51,7 @@ test("Coinalyze funding aggregate is OI-weighted on exact provider bucket timest
       { symbol: "BTC-B", history: [{ providerTimestamp: T, open: 0.03, high: 0.03, low: 0.03, close: 0.03 }] },
     ],
   });
-  assert.equal(result.oiWeightedFundingRate, 0.025);
+  assert.equal(result.oiWeightedFundingRatePercent, 0.025);
   assert.equal(result.totalWeightOpenInterestUsd, 400);
   assert.equal(result.coverage, "COMPLETE");
 });

@@ -6,6 +6,7 @@ import { providerResult, type ProviderResult } from "./types";
 export const COINALYZE_BASE_URL = "https://api.coinalyze.net/v1" as const;
 export const COINALYZE_SOURCE_ID = "coinalyze" as const;
 export const COINALYZE_INTERVAL = "5min" as const;
+export const COINALYZE_INTERVAL_SECONDS = 5 * 60;
 export const COINALYZE_MAX_SYMBOLS_PER_REQUEST = 20;
 export const COINALYZE_MAX_SYMBOLS_PER_OPERATION = 50;
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -453,4 +454,20 @@ export function fetchCoinalyzeOhlcvHistory(
     false,
     dependencies,
   );
+}
+
+
+/** Coinalyze history `t` is the beginning of the interval. */
+export function coinalyzeCompletedIntervalEndTimestamp(providerTimestamp: number): number {
+  if (!Number.isInteger(providerTimestamp) || providerTimestamp < 0) {
+    throw new Error("Coinalyze providerTimestamp must be a non-negative integer");
+  }
+  return providerTimestamp + COINALYZE_INTERVAL_SECONDS;
+}
+
+export function isCoinalyzeIntervalComplete(providerTimestamp: number, retrievedAtSeconds: number): boolean {
+  if (!Number.isFinite(retrievedAtSeconds) || retrievedAtSeconds < 0) {
+    throw new Error("Coinalyze retrievedAtSeconds must be non-negative");
+  }
+  return coinalyzeCompletedIntervalEndTimestamp(providerTimestamp) <= retrievedAtSeconds;
 }
