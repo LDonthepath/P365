@@ -125,7 +125,7 @@ export async function fetchDxyIndex(acquisitionMode: ProviderAcquisitionMode = "
 
 /** USD/JPY spot-FX quote. Value is Japanese yen per one U.S. dollar. */
 export async function fetchUsdJpySpot(acquisitionMode: ProviderAcquisitionMode = "CACHED"): Promise<ProviderResult<CryptoMarketObservationInput>> {
-  return fetchYahooObservation("JPY=X", "fx.usdjpy.jpy_per_usd", "GLOBAL_FX_24_5", {
+  return fetchYahooObservation("USDJPY=X", "fx.usdjpy.jpy_per_usd", "GLOBAL_FX_24_5", {
     metric: "spot_fx_rate",
     unit: "JPY_PER_USD",
     baseCurrency: "USD",
@@ -136,7 +136,7 @@ export async function fetchUsdJpySpot(acquisitionMode: ProviderAcquisitionMode =
 
 /** USD/CNH offshore spot-FX quote. Value is offshore yuan per one U.S. dollar. */
 export async function fetchUsdCnhSpot(acquisitionMode: ProviderAcquisitionMode = "CACHED"): Promise<ProviderResult<CryptoMarketObservationInput>> {
-  return fetchYahooObservation("CNH=X", "fx.usdcnh.cnh_per_usd", "GLOBAL_FX_24_5", {
+  return fetchYahooObservation("USDCNH=X", "fx.usdcnh.cnh_per_usd", "GLOBAL_FX_24_5", {
     metric: "spot_fx_rate",
     unit: "CNH_PER_USD",
     baseCurrency: "USD",
