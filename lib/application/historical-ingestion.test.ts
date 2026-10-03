@@ -203,6 +203,8 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
     gold: record("gold", marketResult("yahoo-finance", [])),
     dxy: record("dxy", marketResult("yahoo-finance", [])),
     russell: record("russell", marketResult("yahoo-finance", [])),
+    usdjpy: record("usdjpy", marketResult("yahoo-finance", [])),
+    usdcnh: record("usdcnh", marketResult("yahoo-finance", [])),
     fred: record("fred", providerResult("fred", "EMPTY", [])),
     defillama: record("defillama", providerResult("defillama", "EMPTY", [])),
     sosovalue: record("sosovalue", providerResult("sosovalue", "EMPTY", [])),
@@ -221,6 +223,47 @@ async function main(): Promise<void> {
   assert.equal(selectedReport.status, "SUCCESS");
   assert.equal(selectedReport.providers[0].normalized, 1);
   assert.equal(selectedReport.persistedObservations, 1);
+
+  const asiaFxStore = repositories();
+  const asiaFxAcquisition = acquisition([]);
+  asiaFxAcquisition.usdjpy = async () => marketResult("yahoo-finance", [{
+    ...observationInput("fx.usdjpy.jpy_per_usd"),
+    symbol: "JPY=X",
+    value: 150.25,
+    source: "Yahoo Finance",
+    freshnessCalendar: "GLOBAL_FX_24_5",
+    provenance: { version: "v1", providerResource: "/v8/finance/chart", nativeSymbol: "JPY=X" },
+    metadata: { unit: "JPY_PER_USD", baseCurrency: "USD", quoteCurrency: "JPY", endpoint: "v8/finance/chart" },
+  }]);
+  asiaFxAcquisition.usdcnh = async () => marketResult("yahoo-finance", [{
+    ...observationInput("fx.usdcnh.cnh_per_usd"),
+    symbol: "CNH=X",
+    value: 7.12,
+    source: "Yahoo Finance",
+    freshnessCalendar: "GLOBAL_FX_24_5",
+    provenance: { version: "v1", providerResource: "/v8/finance/chart", nativeSymbol: "CNH=X" },
+    metadata: { unit: "CNH_PER_USD", baseCurrency: "USD", quoteCurrency: "CNH", endpoint: "v8/finance/chart" },
+  }]);
+  const asiaFxReport = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["usdjpy", "usdcnh"] },
+    { acquisition: asiaFxAcquisition, repositories: asiaFxStore.repositories },
+  );
+  assert.equal(asiaFxReport.status, "SUCCESS");
+  assert.equal(asiaFxReport.persistedObservations, 2);
+  const jpyHistory = await asiaFxStore.observations.findHistory({
+    identity: { domain: "ASSET", seriesKey: "fx.usdjpy.jpy_per_usd" },
+    order: "ASC",
+    limit: 10,
+  });
+  const cnhHistory = await asiaFxStore.observations.findHistory({
+    identity: { domain: "ASSET", seriesKey: "fx.usdcnh.cnh_per_usd" },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(jpyHistory[0]?.semantics?.jurisdiction, "JAPAN");
+  assert.equal(jpyHistory[0]?.semantics?.instrument, "FX_PAIR");
+  assert.equal(cnhHistory[0]?.semantics?.jurisdiction, "CHINA");
+  assert.equal(cnhHistory[0]?.semantics?.instrument, "FX_PAIR");
 
   await runHistoricalIngestion(
     { mode: "FORWARD", providers: ["coingecko"] },
@@ -404,8 +447,8 @@ async function main(): Promise<void> {
   });
 
   assert.deepEqual(
-    parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=coingecko,gold,dxy")),
-    { ok: true, options: { mode: "FORWARD", providers: ["coingecko", "gold", "dxy"] } },
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=coingecko,gold,dxy,usdjpy,usdcnh")),
+    { ok: true, options: { mode: "FORWARD", providers: ["coingecko", "gold", "dxy", "usdjpy", "usdcnh"] } },
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=coingecko,unknown")),
