@@ -10,6 +10,8 @@ export const BYBIT_SPOT_MAX_RECENT_TRADES = 60;
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
+class BybitRegionUnavailableError extends Error {}
+
 export type BybitSpotTrade = {
   execId: string;
   symbol: typeof BYBIT_BTC_SPOT_SYMBOL;
@@ -92,6 +94,14 @@ function parseTrade(candidate: unknown, index: number): BybitSpotTrade {
 async function responseJson(response: Response): Promise<unknown> {
   if (!response.ok) {
     const detail = (await response.text()).replace(/\s+/g, " ").trim().slice(0, 240);
+    if (
+      response.status === 403
+      && /blocked access from your country|service restricted|unavailable for your region/i.test(detail)
+    ) {
+      throw new BybitRegionUnavailableError(
+        `Bybit Spot unavailable from deployment region: HTTP 403${detail ? `: ${detail}` : ""}`,
+      );
+    }
     throw new Error(`Bybit Spot HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
   }
   try {
@@ -166,12 +176,13 @@ export async function fetchBybitRecentBtcSpotTrades(
     );
   } catch (error) {
     const retrievedAt = now().toISOString();
+    const regionUnavailable = error instanceof BybitRegionUnavailableError;
     return providerResult(
       BYBIT_SPOT_FLOW_SOURCE_ID,
-      "ERROR",
+      regionUnavailable ? "UNAVAILABLE" : "ERROR",
       [],
       error instanceof Error ? error.message : "Bybit Spot request failed",
-      undefined,
+      regionUnavailable ? "UPSTREAM_UNAVAILABLE" : undefined,
       retrievedAt,
     );
   }

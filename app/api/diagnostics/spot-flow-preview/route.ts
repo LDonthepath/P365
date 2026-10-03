@@ -39,7 +39,7 @@ export async function GET(): Promise<Response> {
       },
     },
     {
-      status: binance.status === "ERROR" || bybit.status === "ERROR" ? 502 : 200,
+      status: binance.status === "ERROR" ? 502 : 200,
       headers: {
         "cache-control": "no-store",
         "x-robots-tag": "noindex",

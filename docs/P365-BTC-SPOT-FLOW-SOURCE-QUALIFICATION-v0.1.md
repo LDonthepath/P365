@@ -1,7 +1,7 @@
 # P365 BTC Spot Flow Source Qualification v0.1
 
 **Checkpoint:** SPOT-FLOW-001A  
-**Status:** READ-ONLY IMPLEMENTATION / LIVE PROOF PENDING  
+**Status:** BINANCE LIVE-QUALIFIED READ-ONLY / BYBIT VERCEL-EGRESS UNAVAILABLE  
 **Scope:** BTC spot taker-flow evidence only  
 **Owner approval:** Binance Spot + Bybit Spot provider expansion approved 4 Oct 2026
 
@@ -203,16 +203,57 @@ It does not authorize:
 
 ## 8. Acceptance gate
 
-SPOT-FLOW-001A is technically qualified when live proof establishes:
+SPOT-FLOW-001A primary runtime is technically qualified when live proof establishes:
 
 1. Binance public market-data-only access works without credential;
 2. live 5m row matches documented kline shape;
 3. taker-buy base volume is bounded by total BTC volume;
 4. incomplete current kline is excluded;
-5. Bybit public Spot recent-trade envelope succeeds;
-6. live `side` maps cleanly to BUY/SELL taker side;
-7. actual Bybit sampled span is reported, not assumed;
-8. build passes;
-9. writes performed = 0.
+5. build passes;
+6. writes performed = 0.
+
+Secondary validation is independently qualified only when a second venue is operationally
+reachable. A blocked secondary source must remain explicit `UNAVAILABLE`; it must not
+invalidate a technically sound primary source and must not be silently replaced by fake
+coverage.
 
 Durable persistence remains a later, separately governed checkpoint.
+
+## 9. Live proof — 4 Oct 2026
+
+Preview execution from the P365 Vercel environment produced:
+
+### Binance Spot — PASS
+
+- public market-data-only endpoint reachable with no API key;
+- completed 5m BTCUSDT bars parsed successfully;
+- current incomplete bar excluded;
+- proof window observedAt: `2026-10-03T20:00:00.000Z`;
+- total base volume: `9.25842 BTC`;
+- taker-buy base volume: `1.24717 BTC`;
+- derived taker-sell base volume: approximately `8.01125 BTC`;
+- derived net taker flow: approximately `-6.76408 BTC`;
+- taker-buy share: approximately `13.47%`;
+- trade count: `1,179`;
+- writes performed: false.
+
+These values are a live proof sample only, not a persistent market conclusion.
+
+### Bybit Spot — ENVIRONMENT UNAVAILABLE
+
+The same Vercel preview request reached Bybit's edge and received:
+
+`HTTP 403: CloudFront distribution is configured to block access from your country`
+
+This is an operational/geographic provider restriction on the deployment egress, not an
+API-key authentication failure and not a schema failure.
+
+Runtime therefore maps this condition to:
+
+- provider status = `UNAVAILABLE`;
+- error code = `UPSTREAM_UNAVAILABLE`.
+
+Bybit remains semantically qualified as a taker-side recent-trade source, but it is not an
+active P365 validation source from the current Vercel environment.
+
+No alternate venue is added in this checkpoint without a new owner provider approval.

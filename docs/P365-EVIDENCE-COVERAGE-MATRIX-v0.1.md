@@ -39,7 +39,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC derivatives OI | Is leverage exposure expanding/contracting? | P0 | SYNC | **TECHNICAL LIVE PASS / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC funding | Is perpetual positioning becoming expensive/crowded? | P0 | SYNC/NEAR | **LIVE-QUALIFIED / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **TECHNICAL LIVE PASS — SPARSE WINDOW / DURABLE-USE GATE** | Coinalyze free-first; ChainVector validation |
-| BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **SPOT-FLOW-001A READ-ONLY IMPLEMENTED / LIVE PROOF PENDING** | Binance Spot 5m primary + Bybit recent-trade validation |
+| BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **BINANCE LIVE-QUALIFIED READ-ONLY / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot 5m primary; second-venue validation still open |
 | BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **MISSING** | Official exchange public APIs; methodology required |
 | Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **MISSING** | GDELT free candidate + official-source verification |
 | Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MISSING** | Free/source search still required |

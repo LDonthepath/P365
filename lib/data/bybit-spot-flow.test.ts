@@ -84,3 +84,20 @@ test("Bybit Spot enforces documented 60-trade spot REST ceiling", async () => {
   assert.equal(result.status, "ERROR");
   assert.match(result.message ?? "", /between 1 and 60/);
 });
+
+
+test("Bybit Spot maps deployment-region geoblock to UNAVAILABLE instead of authentication failure", async () => {
+  const result = await fetchBybitRecentBtcSpotTrades(
+    {},
+    {
+      now: () => new Date(NOW),
+      fetch: async () => new Response(
+        "{ error:The Amazon CloudFront distribution is configured to block access from your country }",
+        { status: 403 },
+      ),
+    },
+  );
+  assert.equal(result.status, "UNAVAILABLE");
+  assert.equal(result.errorCode, "UPSTREAM_UNAVAILABLE");
+  assert.match(result.message ?? "", /unavailable from deployment region/);
+});
