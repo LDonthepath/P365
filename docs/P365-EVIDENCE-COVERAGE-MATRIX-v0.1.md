@@ -40,7 +40,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC funding | Is perpetual positioning becoming expensive/crowded? | P0 | SYNC/NEAR | **LIVE-QUALIFIED / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **TECHNICAL LIVE PASS — SPARSE WINDOW / DURABLE-USE GATE** | Coinalyze free-first; ChainVector validation |
 | BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **BINANCE LIVE-QUALIFIED READ-ONLY / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot 5m primary; second-venue validation still open |
-| BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **ORDER-BOOK-001A CURRENT SNAPSHOT IMPLEMENTED / LIVE PROOF PENDING** | Binance Spot current-depth snapshot; historical move-window coverage still missing |
+| BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **ORDER-BOOK-001A BINANCE CURRENT SNAPSHOT LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | Binance Spot current-depth snapshot; historical move-window coverage still missing |
 | Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **MISSING** | GDELT free candidate + official-source verification |
 | Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MISSING** | Free/source search still required |
 | BTC basis | Is futures pricing rich/cheap vs spot/index? | P1 | SYNC | **MISSING / VENUE FALLBACK AVAILABLE** | Official exchange basis where qualified |
