@@ -49,7 +49,7 @@ export async function GET(): Promise<Response> {
       },
     },
     {
-      status: hyperliquid.status === "ERROR" || binance.status === "ERROR" ? 502 : 200,
+      status: hyperliquid.status === "ERROR" ? 502 : 200,
       headers: {
         "cache-control": "no-store",
         "x-robots-tag": "noindex",

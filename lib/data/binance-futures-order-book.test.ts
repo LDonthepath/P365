@@ -53,3 +53,23 @@ test("Binance USD-M Futures rejects crossed books", async () => {
   assert.equal(result.status, "ERROR");
   assert.equal(result.errorCode, "MALFORMED_PAYLOAD");
 });
+
+
+test("Binance USD-M Futures maps restricted-location 451 to UNAVAILABLE", async () => {
+  const result = await fetchBinanceBtcUsdtPerpOrderBook(
+    {},
+    {
+      now: () => new Date(NOW),
+      fetch: async () => new Response(
+        JSON.stringify({
+          code: 0,
+          msg: "Service unavailable from a restricted location according to 'b. Eligibility'.",
+        }),
+        { status: 451 },
+      ),
+    },
+  );
+  assert.equal(result.status, "UNAVAILABLE");
+  assert.equal(result.errorCode, "UPSTREAM_UNAVAILABLE");
+  assert.match(result.message ?? "", /unavailable from deployment region/);
+});

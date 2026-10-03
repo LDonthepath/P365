@@ -9,6 +9,8 @@ export const BINANCE_FUTURES_BTC_SYMBOL = "BTCUSDT" as const;
 export const BINANCE_FUTURES_DEFAULT_DEPTH_LIMIT = 500;
 
 const REQUEST_TIMEOUT_MS = 10_000;
+
+class BinanceFuturesRegionUnavailableError extends Error {}
 const ALLOWED_LIMITS = new Set([5, 10, 20, 50, 100, 500, 1000]);
 
 export type BinanceFuturesOrderBookLevel = {
@@ -105,6 +107,14 @@ function parseSnapshot(payload: unknown): BinanceFuturesOrderBookSnapshot {
 async function responseJson(response: Response): Promise<unknown> {
   if (!response.ok) {
     const detail = (await response.text()).replace(/\s+/g, " ").trim().slice(0, 240);
+    if (
+      response.status === 451
+      || /restricted location|service unavailable from a restricted location|eligibility/i.test(detail)
+    ) {
+      throw new BinanceFuturesRegionUnavailableError(
+        `Binance Futures unavailable from deployment region: HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+      );
+    }
     throw new Error(`Binance Futures order book HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
   }
   try {
@@ -146,12 +156,13 @@ export async function fetchBinanceBtcUsdtPerpOrderBook(
     );
   } catch (error) {
     const retrievedAt = now().toISOString();
+    const regionUnavailable = error instanceof BinanceFuturesRegionUnavailableError;
     return providerResult(
       BINANCE_FUTURES_ORDER_BOOK_SOURCE_ID,
-      "ERROR",
+      regionUnavailable ? "UNAVAILABLE" : "ERROR",
       [],
       error instanceof Error ? error.message : "Binance Futures order book request failed",
-      undefined,
+      regionUnavailable ? "UPSTREAM_UNAVAILABLE" : undefined,
       retrievedAt,
     );
   }
