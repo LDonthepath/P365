@@ -5,7 +5,6 @@ import {
   fetchCoinalyzeLiquidationHistory,
   fetchCoinalyzeOhlcvHistory,
   fetchCoinalyzeOpenInterestHistory,
-  COINALYZE_INTERVAL_SECONDS,
   coinalyzeCompletedIntervalEndTimestamp,
   isCoinalyzeIntervalComplete,
   type CoinalyzeFutureMarket,
