@@ -10,6 +10,7 @@ export const COINALYZE_INTERVAL_SECONDS = 5 * 60;
 export const COINALYZE_MAX_SYMBOLS_PER_REQUEST = 20;
 export const COINALYZE_MAX_SYMBOLS_PER_OPERATION = 50;
 const REQUEST_TIMEOUT_MS = 10_000;
+const MAX_RATE_LIMIT_RETRY_AFTER_SECONDS = 10;
 
 export type CoinalyzeFutureMarket = {
   symbol: string;
@@ -66,6 +67,7 @@ type Dependencies = {
   fetch?: typeof fetch;
   now?: () => Date;
   apiKey?: () => string | undefined;
+  sleep?: (milliseconds: number) => Promise<void>;
 };
 
 type HistoryKind = "open-interest" | "funding-rate" | "liquidation" | "ohlcv";
@@ -289,6 +291,35 @@ async function responseJson(response: Response, providerLabel: string): Promise<
   }
 }
 
+
+function retryAfterSeconds(response: Response): number | null {
+  const raw = response.headers.get("retry-after");
+  if (!raw) return null;
+  const seconds = Number.parseFloat(raw);
+  if (!Number.isFinite(seconds) || seconds <= 0 || seconds > MAX_RATE_LIMIT_RETRY_AFTER_SECONDS) {
+    return null;
+  }
+  return seconds;
+}
+
+async function fetchJsonWithRateLimitRetry(
+  fetcher: typeof fetch,
+  input: string,
+  init: () => RequestInit,
+  providerLabel: string,
+  sleep: (milliseconds: number) => Promise<void>,
+): Promise<unknown> {
+  let response = await fetcher(input, init());
+  if (response.status === 429) {
+    const retryAfter = retryAfterSeconds(response);
+    if (retryAfter !== null) {
+      await sleep(Math.ceil(retryAfter * 1000));
+      response = await fetcher(input, init());
+    }
+  }
+  return responseJson(response, providerLabel);
+}
+
 function apiKey(dependencies: Dependencies): string | undefined {
   return (dependencies.apiKey ?? (() => process.env.COINALYZE_API_KEY))();
 }
@@ -311,13 +342,20 @@ export async function fetchCoinalyzeFutureMarkets(
     return providerResult(COINALYZE_SOURCE_ID, "UNAVAILABLE", [], "COINALYZE_API_KEY is not configured", undefined, now().toISOString());
   }
   const fetcher = dependencies.fetch ?? fetch;
+  const sleep = dependencies.sleep ?? ((milliseconds: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   try {
-    const response = await fetcher(`${COINALYZE_BASE_URL}/future-markets`, {
-      headers: { accept: "application/json", api_key: key },
-      ...providerFetchPolicy("FRESH", 300),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-    const payload = await responseJson(response, "Coinalyze future-markets");
+    const payload = await fetchJsonWithRateLimitRetry(
+      fetcher,
+      `${COINALYZE_BASE_URL}/future-markets`,
+      () => ({
+        headers: { accept: "application/json", api_key: key },
+        ...providerFetchPolicy("FRESH", 300),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      }),
+      "Coinalyze future-markets",
+      sleep,
+    );
     const data = parseFutureMarkets(payload);
     const retrievedAt = now().toISOString();
     return providerResult(
@@ -361,6 +399,8 @@ async function fetchHistory<T>(
     return providerResult(COINALYZE_SOURCE_ID, "UNAVAILABLE", [], "COINALYZE_API_KEY is not configured", undefined, now().toISOString());
   }
   const fetcher = dependencies.fetch ?? fetch;
+  const sleep = dependencies.sleep ?? ((milliseconds: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   const output: CoinalyzeHistorySeries<T>[] = [];
   try {
     for (const symbolChunk of chunks(symbols, COINALYZE_MAX_SYMBOLS_PER_REQUEST)) {
@@ -370,12 +410,17 @@ async function fetchHistory<T>(
       url.searchParams.set("from", String(query.from));
       url.searchParams.set("to", String(query.to));
       if (convertToUsd) url.searchParams.set("convert_to_usd", "true");
-      const response = await fetcher(url.toString(), {
-        headers: { accept: "application/json", api_key: key },
-        ...providerFetchPolicy(query.acquisitionMode ?? "FRESH", 300),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
-      const payload = await responseJson(response, `Coinalyze ${kind}`);
+      const payload = await fetchJsonWithRateLimitRetry(
+        fetcher,
+        url.toString(),
+        () => ({
+          headers: { accept: "application/json", api_key: key },
+          ...providerFetchPolicy(query.acquisitionMode ?? "FRESH", 300),
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        }),
+        `Coinalyze ${kind}`,
+        sleep,
+      );
       output.push(...parseHistoryPayload(payload, symbolChunk, kind, parsePoint));
     }
     const retrievedAt = now().toISOString();

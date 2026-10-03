@@ -237,3 +237,48 @@ test("Coinalyze accepts live null expire_at for perpetual markets and rejects in
   });
   assert.equal(invalidPerpetual.status, "ERROR");
 });
+
+
+test("Coinalyze retries one bounded 429 using Retry-After and then succeeds", async () => {
+  let calls = 0;
+  const sleeps: number[] = [];
+  const result = await fetchCoinalyzeOpenInterestHistory(
+    { symbols: ["BTC-A"], from: 1_000, to: 2_000 },
+    {
+      apiKey: () => KEY,
+      now: () => new Date(NOW),
+      sleep: async (milliseconds) => { sleeps.push(milliseconds); },
+      fetch: async () => {
+        calls += 1;
+        if (calls === 1) {
+          return new Response("slow down", { status: 429, headers: { "Retry-After": "2.241" } });
+        }
+        return json([{ symbol: "BTC-A", history: [
+          { t: 1_000, o: 100, h: 110, l: 90, c: 105 },
+        ] }]);
+      },
+    },
+  );
+  assert.equal(result.status, "SUCCESS");
+  assert.equal(calls, 2);
+  assert.deepEqual(sleeps, [2241]);
+});
+
+test("Coinalyze does not retry unsafe or excessive Retry-After values", async () => {
+  let calls = 0;
+  const result = await fetchCoinalyzeOpenInterestHistory(
+    { symbols: ["BTC-A"], from: 1_000, to: 2_000 },
+    {
+      apiKey: () => KEY,
+      now: () => new Date(NOW),
+      sleep: async () => { throw new Error("sleep should not be called"); },
+      fetch: async () => {
+        calls += 1;
+        return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
+      },
+    },
+  );
+  assert.equal(result.status, "ERROR");
+  assert.equal(result.errorCode, "RATE_LIMIT");
+  assert.equal(calls, 1);
+});
