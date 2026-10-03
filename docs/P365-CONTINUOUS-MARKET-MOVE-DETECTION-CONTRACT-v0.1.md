@@ -1,7 +1,7 @@
 # P365 Continuous Market Move Detection Contract v0.1
 
-**Checkpoint:** MOVE-001A
-**Status:** PROPOSED NORMATIVE CONTRACT — OWNER MERGE PENDING
+**Checkpoint:** MOVE-001A / MOVE-001B
+**Status:** MOVE-001A MERGED / PR #151 — MOVE-001B CALIBRATION PROPOSED / OWNER MERGE PENDING
 **Scope:** Continuous factual move detection for the MVP traded markets
 **Primary MVP targets:** Bitcoin + Gold
 **Supporting context:** Macro, DXY, ETH and other already-qualified evidence
@@ -247,3 +247,141 @@ Briefing integration
 Each remains an isolated checkpoint and PR.
 
 The Event pipeline remains active throughout; this sequence adds the missing market-driven trigger path rather than replacing existing event-response work.
+## 15. MOVE-001B continuous-horizon and materiality calibration
+
+MOVE-001B freezes the first production-supported continuous-move calibration without
+activating the detector runtime.
+
+### 15.1 Production cadence evidence
+
+A read-only production Market Memory audit on 2 Oct 2026 covered the interval from
+30 Sep through 2 Oct and found:
+
+| Series | Observations | Median gap | P90 gap | Largest observed gap |
+|---|---:|---:|---:|---:|
+| BTC spot | 711 | 300s | 320s | 470s |
+| Gold futures | 708 | 300s | 310s | 3709s |
+
+The normal cadence is therefore close to five minutes, but observation-count offsets
+must not be used as horizon identity because gaps and timestamp jitter exist.
+
+### 15.2 Frozen continuous horizons
+
+The first MOVE calibration supports:
+
+- 15 minutes;
+- 30 minutes;
+- 60 minutes;
+- 120 minutes.
+
+These are elapsed-time horizons, independent from Event Window roles.
+
+### 15.3 Pairing and alignment
+
+For each end Observation and requested horizon, the start Observation is the same-series,
+same-source candidate whose actual elapsed time is nearest the requested horizon while
+remaining within an explicit **±60 second** tolerance.
+
+If no candidate exists inside that tolerance, that endpoint/horizon is unavailable.
+There is no interpolation, forward-fill, backward-fill, or observation-count fallback.
+
+The production audit found the following pair coverage inside ±60 seconds:
+
+| Series | 15m | 30m | 60m | 120m |
+|---|---:|---:|---:|---:|
+| BTC | 98.2% | 97.5% | 95.5% | 93.7% |
+| Gold | 98.4% | 97.2% | 94.6% | 92.9% |
+
+This is sufficient for the first detector policy while still failing closed on actual gaps.
+
+### 15.4 Historical reference window
+
+The first continuous materiality policy uses:
+
+- transformation: `ABSOLUTE_PERCENT_CHANGE`;
+- rolling historical lookback: **36 hours**;
+- minimum eligible samples per series/horizon: **120**;
+- materiality threshold: empirical **P97.5** of the eligible same-series,
+  same-horizon historical magnitude distribution;
+- methodology: `continuous-market-move-materiality-v1`;
+- version: `v1`.
+
+The historical window for a target must end strictly before the target start Observation.
+The target move must never contribute to its own threshold distribution.
+
+The minimum sample size is intentionally higher than HIST-001D's 30-sample context
+minimum because a P97.5 tail threshold is not sufficiently stable with only 30 samples.
+
+### 15.5 Threshold calibration evidence
+
+At the 2 Oct 2026 13:00 UTC calibration cutoff, the 36-hour production sample produced:
+
+| Series | Horizon | Samples | P97.5 magnitude |
+|---|---:|---:|---:|
+| BTC | 15m | 423 | 0.4143% |
+| BTC | 30m | 420 | 0.7168% |
+| BTC | 60m | 413 | 1.0966% |
+| BTC | 120m | 412 | 1.3626% |
+| Gold | 15m | 417 | 0.3256% |
+| Gold | 30m | 414 | 0.4606% |
+| Gold | 60m | 408 | 0.6567% |
+| Gold | 120m | 408 | 0.8006% |
+
+These percentages are **calibration evidence, not hardcoded production thresholds**.
+MOVE-001C must calculate the P97.5 threshold from the eligible rolling distribution at
+the applicable point-in-time cutoff.
+
+### 15.6 Sensitivity / noise trade-off
+
+Evaluating all four horizons together over the audited 36-hour window showed:
+
+| Series | Any-horizon P90 endpoints | Any-horizon P95 endpoints | P97.5 endpoints | P99 endpoints |
+|---|---:|---:|---:|---:|
+| BTC | 105 / 430 | 54 / 430 | 23 / 430 | 9 / 430 |
+| Gold | 109 / 419 | 54 / 419 | 24 / 419 | 8 / 419 |
+
+Using a simple 20-minute separation only as a calibration diagnostic, P97.5 produced
+about eight distinct clusters per market over 36 hours, while P99 produced only three.
+
+P90/P95 were rejected for v1 because the union across four horizons was too broad for
+a material-move trigger. P99 was rejected because it materially reduces sensitivity.
+P97.5 is the first bounded compromise for the intraday objective.
+
+Episode/de-duplication behavior is **not** frozen here; MOVE-001C owns runtime emission
+semantics.
+
+### 15.7 Reproduced 2 Oct BTC acceptance case
+
+For the BTC Observation at 04:30:30 UTC / 11:30:30 WIB, using only historical samples
+that ended before the applicable target start:
+
+| Horizon | Target magnitude | Historical samples | P90 | P95 | Empirical percentile |
+|---|---:|---:|---:|---:|---:|
+| 15m | 1.4988% | 424 | 0.2383% | 0.2996% | 100.00 |
+| 30m | 1.4691% | 422 | 0.3214% | 0.4203% | 100.00 |
+| 60m | 1.7750% | 414 | 0.4964% | 0.6361% | 100.00 |
+| 120m | 2.1669% | 415 | 0.8217% | 1.0037% | 100.00 |
+
+The reproduced move would therefore qualify comfortably under the P97.5 policy without
+special-casing the 2 Oct observation.
+
+### 15.8 MOVE-001B boundary
+
+MOVE-001B adds only the versioned calibration policy and its production evidence.
+
+It does not add:
+
+- a scheduled detector;
+- persistence of MOVE assessments;
+- dashboard/UI output;
+- alert/notification behavior;
+- episode de-duplication;
+- provider expansion;
+- Binance or another derivatives provider;
+- driver investigation;
+- causal attribution;
+- State / Regime / Risk / Intelligence;
+- prediction or trading semantics.
+
+After owner merge, the next checkpoint is **MOVE-001C — Read-Only Continuous Move
+Detector Runtime**.

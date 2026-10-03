@@ -60,7 +60,7 @@ MARKET DATA
 
 The system must become market-first rather than calendar-first: a material BTC or Gold move must be able to initiate investigation even when no qualifying scheduled Event exists. Event evidence remains one possible explanatory evidence class, not a mandatory parent identity for every market analysis.
 
-**Sequencing correction:** pause additional event-centric enrichment as the default next step. `MOVE-001A` freezes the continuous market-move detection contract first. Runtime detection, historical materiality calibration, and later move-driven evidence investigation remain separate checkpoints. This correction does not activate State / Regime / Risk / Intelligence and does not authorize causal claims or trading signals.
+**Sequencing correction:** pause additional event-centric enrichment as the default next step. `MOVE-001A` is merged in PR #151 and freezes the continuous market-move detection contract. `MOVE-001B` now freezes the first production-supported continuous horizons, pairing tolerance, rolling historical sample requirement, and P97.5 materiality policy before any detector runtime is activated. MOVE-001C runtime and later move-driven evidence investigation remain separate checkpoints. This correction does not activate State / Regime / Risk / Intelligence and does not authorize causal claims or trading signals.
 
 ### Foundation readiness by layer
 
@@ -84,6 +84,7 @@ The system must become market-first rather than calendar-first: a material BTC o
 | Event surprise | **SUR-001 MERGED / PR #76 / `9613893e697552cdcaa7015a551ed0867e1f1ef1`** | Reuses EXP-001 strict pre-release expectation ownership and durable EventResult history. Actual selection is constrained to the same Event identity/source and `releaseAt <= retrievedAt <= asOf`; VALID output is raw actual-minus-expectation arithmetic only, with no materiality, causality, State/Regime/Intelligence, or trading semantics. |
 | Pricing baseline | **PRC-001 FULL PASS AT CURRENT MVP CAPTURE BOUNDARY / PRODUCTION E2E VERIFIED** | CAP-001 actively consumes provider-scoped point-in-time Pricing baselines. Durable Goods Orders natural production evidence shows BTC, ETH, DXY and Gold Pricing baselines `VALID` across PRE/T+5/T+15/T+30/T+60 with `observedAt` + `retrievedAt` cutoffs preserved. OIS/Fed-funds/SOFR-futures policy-path pricing remains a separate coverage gap. |
 | Historical baseline | **HIST-001A-D MERGED / HIST-001E EVENT-RESPONSE INTEGRATION IMPLEMENTED / OWNER MERGE PENDING** | Historical distribution runtime, event-window integration and calibrated v1 magnitude policy are merged. HIST-001E binds HIST-001C context to EVR-001 only when Event identity, Event Window, post role, CMP comparison ID and post-event knowledge cutoff match. The calibrated wrapper applies the frozen 36-hour / minimum-30 / `ABSOLUTE_PERCENT_CHANGE` BTC-DXY-Gold policy. No dashboard query, percentile label, causality, abnormality conclusion or higher-order interpretation is introduced. |
+| Continuous market move detection | **MOVE-001A MERGED / PR #151 — MOVE-001B CALIBRATION PROPOSED** | Continuous BTC/Gold detection is now an approved first-class analysis entry path. Production cadence supports 15/30/60/120-minute horizons with explicit ±60s pairing tolerance. MOVE-001B freezes 36h rolling ABSOLUTE_PERCENT_CHANGE history, minimum 120 samples and empirical P97.5 materiality. The 2 Oct BTC move ranks above the pre-move historical distribution at all four horizons. No detector runtime, causality, State/Regime/Risk/Intelligence or trading semantics are activated. |
 | Cross-asset baseline | **CAPTURE CHAIN FULL PASS / CMP-001 CONSUMED BY RPR/TRN** | Immutable Snapshot persistence/query and qualified event windows are production-active. Durable Goods Orders naturally materialized COMPLETE PRE/T+5/T+15/T+30/T+60 BTC/ETH/DXY/Gold reference sets with expectation/pricing lineage. CMP-001 is deployed and is consumed by the merged RPR-001 → TRN-001 read-only chain. |
 | Market Snapshot | **SNP-001 + CAP-001 FULL PASS / NATURAL PRODUCTION E2E VERIFIED** | Supabase `pg_cron` drives the authenticated CAP runtime owner. Durable Goods Orders produced all five governed event-window Snapshot roles as COMPLETE with valid point-in-time lineage and no missing requirements. Append-only correction/supersession and targeted historical repair are available through CAP-001C/D. |
 | Cross-asset factual coverage | PARTIAL | Useful universe exists; MOVE remains absent and docs disagree on credit coverage. |
@@ -763,6 +764,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 1 Oct 2026 | HIST-001D Intraday Historical Baseline Calibration | Freezes the first explicit event-window magnitude calibration for `btc.spot.usd`, `dxy.index.usd` and `gold.futures.usd`: `ABSOLUTE_PERCENT_CHANGE`, 36-hour lookback, minimum 30 exact-horizon samples, methodology `intraday-event-magnitude-historical-context-v1`. Production audit of actual PRE→post horizons 10/20/35/65 minutes found 36-hour distinct endpoints below 500 for BTC/DXY/Gold (432/412/419) and exact pairs of 125–144 / 113–154 / 34–36 respectively. A 42-hour candidate was rejected because DXY/Gold were already near the 500-row bound. Status is **CALIBRATION MERGED / PR #133**; no UI, provider, persistence, scheduler, percentile label, State/Regime/Risk/Intelligence, causality or trading logic is added. |
 | 2 Oct 2026 | HIST-001E Event-Response Historical Evidence Integration | Binds the existing EVR-001 SUR/RPR/TRN evidence chain to HIST-001C historical context while requiring identical provider-independent Event identity, Event Window, post-event role, CMP comparison ID and post-event knowledge cutoff; both chains retain `causalAttribution=NOT_EVALUATED`. A calibrated intraday wrapper applies the frozen HIST-001D BTC/DXY/Gold magnitude policy, while the generic builder retains explicit caller-owned series methodology. Status is **INTEGRATION IMPLEMENTED / OWNER MERGE PENDING / TERMINAL HIST CHECKPOINT FOR CURRENT MVP**. No dashboard critical-path query, persistence, provider, scheduler, UI, percentile label, State/Regime/Risk/Intelligence or trading logic is added. |
 
+| 2 Oct 2026 | MOVE-001B Continuous-Horizon & Materiality Calibration | Production read-only calibration confirms roughly five-minute BTC/Gold cadence while rejecting observation-count horizon shortcuts. Freezes 15/30/60/120-minute elapsed horizons, explicit ±60s nearest-time pairing, 36-hour rolling ABSOLUTE_PERCENT_CHANGE history, minimum 120 eligible samples and empirical P97.5 materiality under `continuous-market-move-materiality-v1`. Current 36-hour samples remain above 400 for every target/horizon; P90/P95 were too broad across four horizons and P99 was less sensitive. The reproduced 2 Oct BTC move is above the complete pre-move sample at all four horizons. Status is **CALIBRATION PROPOSED / OWNER MERGE PENDING**; no detector runtime, persistence, provider, scheduler, UI, causality, State/Regime/Risk/Intelligence or trading logic is added. |
+
 ## Foundation Exit Gate — 24 Sep 2026
 
 **Verdict: PASS for foundation hardening.**
@@ -871,10 +874,14 @@ Intelligence / Briefing
 22H. HIST-001B Repository-Backed Historical Baseline Runtime     ← CLOSED / PR #131
 22I. HIST-001C Event-Window Historical Move Context               ← CLOSED / PR #132
 22J. HIST-001D Intraday Historical Baseline Calibration          ← CLOSED / PR #133
-22K. HIST-001E Event-Response Historical Evidence Integration    ← ACTIVE / owner merge pending / terminal HIST checkpoint
-23. Demand-driven Macro + Crypto + Gold evidence completion    ← next after HIST-001E; only when downstream contract requires it
-24. Secondary positioning / flows enrichment                   ← after repricing/transmission needs are explicit
-25. Derived State → Risk/Regime → Intelligence → Briefing      ← remains deferred
+22K. HIST-001E Event-Response Historical Evidence Integration    ← terminal HIST checkpoint
+23. MOVE-001A Continuous Market Move Detection Contract          ← CLOSED / PR #151
+24. MOVE-001B Continuous-Horizon & Materiality Calibration       ← ACTIVE / owner merge pending
+25. MOVE-001C Read-Only Continuous Move Detector Runtime         ← next after MOVE-001B
+26. MOVE-002 Move-Centered Evidence Investigation                ← after detector runtime
+27. Demand-driven Macro + Crypto + Gold evidence completion      ← only when MOVE/other downstream contract proves a concrete missing input
+28. Secondary positioning / flows enrichment                     ← after downstream evidence need is explicit
+29. Derived State → Risk/Regime → Intelligence → Briefing        ← remains deferred
 ```
 
 One logical remediation = one PR = one verification checkpoint. This sequence may only change when a verified dependency requires it; changes must be recorded here.
