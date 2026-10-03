@@ -692,3 +692,257 @@ Before runtime code:
 9. no public/commercial redistribution is assumed.
 
 Binance remains fallback evidence rather than primary data ownership.
+
+
+## 15. Coinalyze free aggregation methodology candidate
+
+This section freezes the **methodological shape** that a later live-key checkpoint must
+validate. It does not freeze a production venue list before the live `future-markets`
+response is available.
+
+### 15.1 Raw-first durability
+
+P365 should persist **raw per-contract/per-venue factual observations first** and keep
+market-wide aggregates as deterministic read-only `DERIVED_METRIC` outputs.
+
+Reason:
+
+- exchange coverage can change;
+- one venue may expose multiple BTC perpetual contracts;
+- contract denomination differs;
+- methodology may evolve without rewriting raw history;
+- a later provider can replace/validate Coinalyze without destroying source facts.
+
+The aggregate must never be ingested as if Coinalyze itself reported a single all-exchange
+fact.
+
+### 15.2 Eligible BTC perpetual universe
+
+At each universe refresh, candidate markets come from:
+
+`GET /v1/future-markets`
+
+A market is eligible for the base BTC perpetual universe when:
+
+- `base_asset = BTC`;
+- `is_perpetual = true`;
+- `expire_at = 0` or provider semantics prove the market has no expiry;
+- the market has not been explicitly rejected for malformed or incompatible metadata.
+
+Both stablecoin-margined and coin-margined perpetuals may be included because OI and
+liquidation endpoints support `convert_to_usd=true`.
+
+Distinct provider market symbols are distinct contracts. They are not deduplicated merely
+because they share the same venue or base asset.
+
+Every aggregate must retain:
+
+- exact eligible market symbols;
+- exact exchange codes;
+- margin-type mix;
+- universe count;
+- deterministic sorted-universe hash;
+- retrieval time of the universe metadata.
+
+No newly appearing venue/contract may silently enter an already-versioned historical
+aggregate. A universe change creates a new effective universe revision / methodology
+context from that point forward.
+
+### 15.3 Open-interest aggregate candidate
+
+Source:
+
+`GET /v1/open-interest-history?interval=5min&convert_to_usd=true`
+
+The endpoint returns OHLC values per contract bucket.
+
+Candidate market-wide point value:
+
+`OI_TOTAL_USD(t) = Σ OI_CLOSE_USD_i(t)`
+
+for all eligible markets with a valid same-bucket OI close value.
+
+Rules:
+
+- use provider USD conversion;
+- no coin/contract multiplication is reimplemented by P365;
+- missing contract data remains missing, never zero;
+- retain included-market count and excluded/missing-market list;
+- do not label the result exhaustive global OI;
+- label it as the P365 aggregate over the explicit Coinalyze-covered eligible universe.
+
+The exact `t` bucket-anchor meaning is **not documented clearly enough** in the current
+API contract and must be verified from live responses before `observedAt` is frozen.
+
+### 15.4 Funding aggregate candidate
+
+Source:
+
+`GET /v1/funding-rate-history?interval=5min`
+
+Funding is a dimensionless rate and must not be summed.
+
+Candidate market-wide funding:
+
+`FUNDING_OI_WEIGHTED(t) = Σ(rate_i(t) × OI_USD_i(t)) / Σ OI_USD_i(t)`
+
+where:
+
+- funding and OI belong to the same eligible contract;
+- both values are valid for the aligned 5m bucket;
+- OI uses the provider USD-converted value;
+- denominator must be positive;
+- contracts missing either OI or funding are excluded from both numerator and denominator;
+- included/excluded contracts are retained in lineage.
+
+The funding result is:
+
+- `marketDomain = CRYPTO`;
+- `informationClass = DERIVED_METRIC`;
+- methodology = `coinalyze-btc-perpetual-oi-weighted-funding-v1`.
+
+It must not be presented as a provider-native funding rate.
+
+### 15.5 Liquidation aggregate candidate
+
+Source:
+
+`GET /v1/liquidation-history?interval=5min&convert_to_usd=true`
+
+The API returns per-market long and short liquidation values.
+
+Candidate outputs:
+
+`LONG_LIQ_USD(t) = Σ long_liquidation_usd_i(t)`
+
+`SHORT_LIQ_USD(t) = Σ short_liquidation_usd_i(t)`
+
+`TOTAL_LIQ_USD(t) = LONG_LIQ_USD(t) + SHORT_LIQ_USD(t)`
+
+Rules:
+
+- values are summed only across valid aligned eligible markets;
+- missing venues are not zero;
+- the aggregate must retain venue/contract coverage metadata;
+- source limitations from constituent exchanges remain explicit;
+- output wording is **provider-covered multi-venue liquidations**, not exhaustive global
+  liquidation volume.
+
+The exact mapping of response fields `l` and `s` to long/short sides must be confirmed
+against a live response before canonical runtime is authorized, even though Coinalyze's
+public metric documentation distinguishes long- and short-liquidation series.
+
+### 15.6 Buy/sell volume boundary
+
+Coinalyze OHLCV history returns:
+
+- `v` total futures volume;
+- `bv` buy volume;
+- `tx` transaction count;
+- `btx` buy transaction count.
+
+Coinalyze's custom-metric documentation also distinguishes futures buy volume and sell
+volume and uses them for CVD.
+
+However, the API contract does **not** explicitly define `bv` as the same economic
+concept as exchange-native **taker buy volume**.
+
+Therefore P365 must not silently rename Coinalyze `bv` to `TAKER_BUY_VOLUME`.
+
+The qualified derived candidate is instead:
+
+`BUY_VOLUME_SHARE(t) = Σ buy_volume_i(t) / Σ total_volume_i(t)`
+
+subject to:
+
+- `has_buy_sell_data = true`;
+- valid `v > 0`;
+- valid `0 <= bv <= v`;
+- common bucket alignment;
+- retained contract coverage.
+
+This is a factual directional-volume proxy, not proof of aggressor/taker semantics.
+
+Exact market-wide taker CVD remains a separate evidence question. ChainVector documents
+cross-venue taker CVD from its own tick capture, but its free tier is explicitly positioned
+for evaluation/prototypes. Venue-native official APIs may also remain validation inputs.
+
+### 15.7 Timestamp alignment gate
+
+The current Coinalyze API contract documents:
+
+- UNIX-second `from` / `to`;
+- ascending historical responses;
+- 1m / 5m / higher interval choices;
+- numeric `t` per history bucket.
+
+It does **not** explicitly define whether `t` is:
+
+- bucket open;
+- bucket close;
+- another provider anchor.
+
+Therefore CRYPTO-STRUCT-001B must empirically verify the timestamp against current wall
+clock / adjacent buckets before any canonical `observedAt` rule is frozen.
+
+No timestamp shift may be invented merely to align Coinalyze to P365's five-minute spot
+observations.
+
+### 15.8 Missing-market and coverage semantics
+
+Until historical coverage statistics exist, CRYPTO-STRUCT-001A does **not** invent a
+minimum percentage coverage threshold.
+
+Every derived aggregate must expose:
+
+- eligibleUniverseCount;
+- includedMarketCount;
+- missingMarketCount;
+- includedMarkets;
+- missingMarkets;
+- universeHash;
+- methodologyVersion.
+
+If coverage is incomplete, the value may be computed only when the later runtime contract
+explicitly permits it and labels the coverage state. Otherwise fail closed.
+
+A future threshold such as "require 90% of OI coverage" must be calibrated from live
+history rather than guessed.
+
+### 15.9 Candidate raw and derived semantic classes
+
+Raw Coinalyze facts:
+
+| Fact | Market domain | Information class |
+|---|---|---|
+| Per-contract OI USD | CRYPTO | POSITIONING |
+| Per-contract funding | CRYPTO | PRICING |
+| Per-contract long/short liquidations USD | CRYPTO | FLOW |
+| Per-contract futures volume / buy volume | CRYPTO | FLOW |
+
+Derived P365 outputs:
+
+| Derived output | Information class |
+|---|---|
+| Multi-venue total OI USD | DERIVED_METRIC |
+| OI-weighted funding | DERIVED_METRIC |
+| Multi-venue long/short liquidation totals | DERIVED_METRIC |
+| Multi-venue buy-volume share | DERIVED_METRIC |
+
+No derived output is State, Regime, Risk, Intelligence, or a trading signal.
+
+### 15.10 What remains blocked on the API key
+
+After this documentation pass, only live-provider facts remain unresolved:
+
+1. current BTC perpetual market universe;
+2. actual Coinalyze market symbols/exchange codes;
+3. whether every target market returns 5m OI/funding/liquidation/OHLCV;
+4. exact response timestamp anchor;
+5. real `convert_to_usd` behavior;
+6. live `l` / `s` liquidation-side mapping;
+7. observed 5m update latency/gaps;
+8. practical API-call budget for the live BTC universe;
+9. durable private-use/storage clarification if needed from Coinalyze.
+
+No runtime code should precede those checks.
