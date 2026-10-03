@@ -1,7 +1,7 @@
 # P365 Continuous Market Move Detection Contract v0.1
 
-**Checkpoint:** MOVE-001A / MOVE-001B
-**Status:** MOVE-001A MERGED / PR #151 — MOVE-001B CALIBRATION PROPOSED / OWNER MERGE PENDING
+**Checkpoint:** MOVE-001A / MOVE-001B / MOVE-001C
+**Status:** MOVE-001A MERGED / PR #151 — MOVE-001B MERGED / PR #153 — MOVE-001C RUNTIME PROPOSED / OWNER MERGE PENDING
 **Scope:** Continuous factual move detection for the MVP traded markets
 **Primary MVP targets:** Bitcoin + Gold
 **Supporting context:** Macro, DXY, ETH and other already-qualified evidence
@@ -385,3 +385,115 @@ It does not add:
 
 After owner merge, the next checkpoint is **MOVE-001C — Read-Only Continuous Move
 Detector Runtime**.
+
+
+## 16. MOVE-001C read-only continuous detector runtime
+
+MOVE-001C implements the first repository-backed runtime consumer of the frozen
+MOVE-001B calibration.
+
+### 16.1 Runtime input and ownership
+
+The detector accepts:
+
+- one explicit canonical target end Observation;
+- its calibrated BTC or Gold series identity;
+- one point-in-time `asOf` knowledge cutoff;
+- the existing `HistoricalObservationRepository`.
+
+It performs no provider fetch and no persistence.
+
+The target end Observation must:
+
+- match the calibrated domain / series / source;
+- be finite numeric data;
+- be knowable by `asOf`;
+- satisfy canonical historical-fitness rules;
+- be the latest knowable revision for its `observedAt`.
+
+### 16.2 Target pairing
+
+For each frozen 15m / 30m / 60m / 120m horizon, the detector selects the same-series,
+same-source target start whose actual elapsed time is nearest the requested horizon
+inside the frozen ±60 second tolerance.
+
+No match inside tolerance produces `INSUFFICIENT_DATA` for that horizon.
+
+No interpolation, forward-fill, backward-fill, or observation-count fallback is
+permitted.
+
+### 16.3 Rolling historical distribution
+
+For each qualified target pair:
+
+- the historical distribution ends strictly before the selected target start;
+- the rolling lookback is 36 hours;
+- historical pairs use the same horizon and ±60 second nearest-time policy;
+- later-known revisions are excluded by `retrievedAt <= asOf`;
+- FRESH / STALE historical fitness is preserved;
+- a repository query reaching the 500-row bound fails closed with `UNKNOWN`;
+- fewer than 120 eligible pairs produces `INSUFFICIENT_DATA`.
+
+MOVE-001C does not weaken HIST-001B exact-horizon behavior. Continuous MOVE owns its
+bounded tolerant-pairing methodology independently.
+
+### 16.4 P97.5 runtime threshold
+
+The P97.5 threshold is recalculated from the eligible rolling distribution at the
+requested point-in-time cutoff. Calibration-table percentages are not hardcoded.
+
+To preserve the MOVE-001B SQL calibration semantics, runtime P97.5 uses the same
+linear interpolation as PostgreSQL `percentile_cont`:
+
+`index = (percentile / 100) * (n - 1)`
+
+with interpolation between the surrounding ordered sample values when the index is
+fractional.
+
+A horizon is `MATERIAL_MOVE` when:
+
+`abs(percent_change) >= rolling_P97_5_threshold`
+
+Otherwise it is `BELOW_MATERIALITY_THRESHOLD`.
+
+The output also retains mechanical direction, signed change, magnitude, alignment
+error, threshold, empirical mid-rank percentile, sample size, and exact target plus
+historical Observation lineage.
+
+### 16.5 Assessment semantics
+
+Per-horizon outcomes are explicit:
+
+- `MATERIAL_MOVE`;
+- `BELOW_MATERIALITY_THRESHOLD`;
+- `INSUFFICIENT_DATA`;
+- `INCOMPATIBLE`;
+- `UNKNOWN`.
+
+The aggregate detector result becomes `MATERIAL_MOVE` when any qualified horizon is
+material. A non-material aggregate fails closed to `INCOMPATIBLE`, `UNKNOWN`, or
+`INSUFFICIENT_DATA` when an unresolved horizon prevents a truthful all-horizon
+non-material conclusion.
+
+Every output retains:
+
+`causalAttribution = NOT_EVALUATED`.
+
+### 16.6 Runtime boundary
+
+MOVE-001C is a read-only evaluator only. It does not add:
+
+- a cron/scheduler owner;
+- persistence of MOVE assessments;
+- automatic alerts;
+- episode/de-duplication semantics;
+- dashboard/UI wiring;
+- provider expansion;
+- Binance derivatives evidence;
+- driver investigation;
+- causal attribution;
+- State / Regime / Risk / Intelligence;
+- prediction or trading semantics.
+
+After owner merge, MOVE-002 may consume a material MOVE assessment as an independent
+evidence-investigation target.
