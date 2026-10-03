@@ -1,3 +1,6 @@
+import { buildMoveNewsCatalystEvidence } from "../../../../lib/application/move-news-catalyst";
+import { fetchGdeltGalCandidateSnapshot } from "../../../../lib/data/gdelt-gal";
+
 export const runtime = "nodejs";
 export const maxDuration = 25;
 export const dynamic = "force-dynamic";
@@ -7,39 +10,30 @@ export async function GET(): Promise<Response> {
     return Response.json({ error: "Not Found" }, { status: 404 });
   }
 
-  try {
-    const response = await fetch("https://data.gdeltproject.org/gdeltv3/gal/feed.rss", {
-      headers: { accept: "application/rss+xml, application/xml, text/xml" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
-    });
+  const result = await fetchGdeltGalCandidateSnapshot({
+    asset: "BTC",
+    maxCandidates: 25,
+    acquisitionMode: "FRESH",
+  });
+  const evidence = buildMoveNewsCatalystEvidence({ asset: "BTC", result });
 
-    const text = await response.text();
-    return Response.json(
-      {
-        writesPerformed: false,
-        status: response.status,
-        contentType: response.headers.get("content-type"),
-        contentLengthHeader: response.headers.get("content-length"),
-        bodyBytes: new TextEncoder().encode(text).byteLength,
-        sample: text.slice(0, 1200),
+  return Response.json(
+    {
+      writesPerformed: false,
+      provider: {
+        status: result.status,
+        retrievedAt: result.retrievedAt,
+        message: result.message ?? null,
       },
-      {
-        status: response.ok ? 200 : 502,
-        headers: {
-          "cache-control": "no-store",
-          "x-robots-tag": "noindex",
-        },
+      evidence,
+      totalFeedItems: result.data[0]?.totalFeedItems ?? null,
+    },
+    {
+      status: result.status === "ERROR" ? 502 : 200,
+      headers: {
+        "cache-control": "no-store",
+        "x-robots-tag": "noindex",
       },
-    );
-  } catch (error) {
-    return Response.json(
-      {
-        writesPerformed: false,
-        errorName: error instanceof Error ? error.name : typeof error,
-        errorMessage: error instanceof Error ? error.message : String(error),
-      },
-      { status: 502, headers: { "cache-control": "no-store", "x-robots-tag": "noindex" } },
-    );
-  }
+    },
+  );
 }
