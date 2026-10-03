@@ -29,6 +29,8 @@ export type ProviderId =
   | "forex-factory"
   | "coingecko"
   | "coinalyze"
+  | "binance-spot"
+  | "bybit-spot"
   | "defillama"
   | "sosovalue"
   | "cftc"
