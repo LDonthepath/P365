@@ -41,7 +41,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **TECHNICAL LIVE PASS — SPARSE WINDOW / DURABLE-USE GATE** | Coinalyze free-first; ChainVector validation |
 | BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **BINANCE LIVE-QUALIFIED READ-ONLY / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot 5m primary; second-venue validation still open |
 | BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **SPOT BINANCE + PERP HYPERLIQUID CURRENT SNAPSHOTS LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | Binance Spot current depth + Hyperliquid BTC perp current depth; Binance Futures Vercel-egress unavailable |
-| Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **MISSING** | GDELT free candidate + official-source verification |
+| Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **NEWS-001B GDELT GAL CURRENT-15M IMPLEMENTED / LIVE FILTER PROOF PENDING** | GDELT GAL rolling 15m current feed; historical move-window coverage still missing |
 | Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MISSING** | Free/source search still required |
 | BTC basis | Is futures pricing rich/cheap vs spot/index? | P1 | SYNC | **MISSING / VENUE FALLBACK AVAILABLE** | Official exchange basis where qualified |
 | BTC options IV / DVOL / skew | Did expected volatility/hedging reprice? | P1 | SYNC/NEAR | **MISSING** | Deribit public API candidate |
@@ -163,19 +163,23 @@ Boundary:
 - snapshots must not be presented as complete order-flow history;
 - exact book reconstruction requires transport/sequence semantics.
 
-### 3.5 Unscheduled news / catalyst — MISSING P0
+### 3.5 Unscheduled news / catalyst — CURRENT 15M IMPLEMENTED / HISTORICAL WINDOW MISSING
 
 Scheduled economic events are already covered, but a material move may have no Event parent.
 
-Free candidate:
+Current approved source:
 
-- GDELT DOC/event/news surfaces.
+- GDELT Article List (GAL) rolling RSS feed as the live hot path;
+- GDELT DOC 2.0 remains semantically useful but is not a hot-path dependency because
+  current Vercel shared-egress rate limiting is unreliable.
 
-Relevant GDELT properties:
+Current GAL coverage:
 
-- short-window timelines can operate at 15-minute resolution;
-- article-volume timeline can expose attention spikes;
-- article lists can identify candidate contemporaneous headlines.
+- updated every minute;
+- rolling 15-minute monitored-article window;
+- title + URL + item/feed timestamps;
+- local BTC/Gold candidate filtering;
+- no historical replay without durable acquisition.
 
 Primary question:
 
