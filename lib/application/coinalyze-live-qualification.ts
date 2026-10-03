@@ -40,7 +40,6 @@ export type CoinalyzeTimestampEvidence = {
   pointCount: number;
   distinctTimestamps: number;
   firstProviderTimestamp: number | null;
-  latestProviderTimestamp: number | null;
   latestReturnedProviderTimestamp: number | null;
   latestCompletedProviderTimestamp: number | null;
   latestCompletedObservedAt: string | null;
