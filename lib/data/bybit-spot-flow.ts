@@ -96,7 +96,7 @@ async function responseJson(response: Response): Promise<unknown> {
     const detail = (await response.text()).replace(/\s+/g, " ").trim().slice(0, 240);
     if (
       response.status === 403
-      && /blocked access from your country|service restricted|unavailable for your region/i.test(detail)
+      && /block(?:ed)? access from your country|service restricted|unavailable for your region/i.test(detail)
     ) {
       throw new BybitRegionUnavailableError(
         `Bybit Spot unavailable from deployment region: HTTP 403${detail ? `: ${detail}` : ""}`,
