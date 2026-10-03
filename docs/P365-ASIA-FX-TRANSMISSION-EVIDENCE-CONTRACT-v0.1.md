@@ -1,7 +1,7 @@
 # P365 Asia FX Transmission Evidence Contract v0.1
 
-**Checkpoint:** ASIA-MACRO-001A  
-**Status:** TECHNICAL LIVE PASS / WEEKEND TEMPORAL FITNESS FAIL-CLOSED / PRODUCTION SCHEDULER NOT ACTIVATED  
+**Checkpoint:** ASIA-MACRO-001A + ASIA-MACRO-001B  
+**Status:** PRODUCTION ACTIVE / DURABLE FORWARD INGESTION / WEEKEND TEMPORAL FITNESS FAIL-CLOSED  
 **Scope:** China/Japan synchronous FX transmission evidence for BTC + Gold MOVE investigation  
 **Provider:** existing Yahoo Finance trial market-data path  
 **New external dependency/provider:** none
@@ -188,13 +188,11 @@ Always retain:
 
 until a separately approved methodology permits a stronger conclusion.
 
-## 10. Explicit non-goals
+## 10. ASIA-MACRO-001A explicit non-goals
 
-ASIA-MACRO-001A does not add:
+ASIA-MACRO-001A did not add:
 
 - new provider/dependency;
-- Supabase scheduler mutation;
-- production durable activation;
 - historical Yahoo backfill;
 - onshore USD/CNY;
 - JGB yields;
@@ -262,8 +260,107 @@ weekend timestamp as qualified synchronous pricing.
 - quote timestamp retained separately from retrieval: **PASS**;
 - closed-market temporal fitness fails closed: **PASS**;
 - writes performed: **0**;
-- production scheduler/backfill: **NOT ACTIVATED**.
+- production scheduler/backfill at ASIA-MACRO-001A proof time: **NOT ACTIVATED**.
 
 This proof does not claim that the Saturday USDJPY value is a live tradable market quote.
 A later production acquisition during an open FX window must satisfy the same freshness
 policy before the observation can participate as synchronous MOVE evidence.
+
+
+## 13. ASIA-MACRO-001B production activation — 4 Oct 2026
+
+Owner-approved production activation reuses the existing Supabase-owned fast market scheduler.
+No second scheduler was created.
+
+### Scheduler
+
+Existing job:
+
+- job name: `p365-market-fast`;
+- job id: `2`;
+- schedule: `2-57/5 * * * *` (every five minutes);
+- active jobs with this name after activation: `1`.
+
+The existing provider list changed from:
+
+`coingecko,gold,dxy`
+
+to:
+
+`coingecko,gold,dxy,usdjpy,usdcnh`
+
+using `cron.alter_job(... command := ...)`, rather than directly updating `cron.job`.
+This preserves Supabase Cron ownership and avoids duplicate scheduling.
+
+### Controlled production proof
+
+A one-off authenticated invocation through the same production historical-ingestion route
+returned HTTP `200` with overall `SUCCESS`.
+
+Both new lanes returned:
+
+- provider status: `SUCCESS`;
+- acquired: `1`;
+- normalized: `1`;
+- persisted Observation: `1`;
+- persisted Evidence: `1`.
+
+Durable Market Memory proof:
+
+#### USD/JPY
+
+- series: `fx.usdjpy.jpy_per_usd`;
+- jurisdiction: `JAPAN`;
+- instrument: `FX_PAIR`;
+- native symbol: `USDJPY=X`;
+- observedAt: `2026-10-03T21:07:47.000Z`;
+- quality: `UNKNOWN`;
+- reason: provider timestamp falls outside the qualified regular FX week.
+
+#### USD/CNH
+
+- series: `fx.usdcnh.cnh_per_usd`;
+- jurisdiction: `CHINA`;
+- instrument: `FX_PAIR`;
+- native symbol: `USDCNH=X`;
+- observedAt: `2026-10-02T20:59:45.000Z`;
+- quality: `FRESH` under the closed-weekend freshness policy.
+
+The quality difference is intentional. Production activation does not override
+`GLOBAL_FX_24_5` temporal qualification.
+
+### Recurring scheduler proof
+
+The next natural `p365-market-fast` pg_cron run at
+`2026-10-03T23:47:00Z` succeeded.
+
+The resulting HTTP response was `200` / `SUCCESS` and included both:
+
+- `usdjpy`;
+- `usdcnh`.
+
+Repeated acquisition of the same provider observation did not create duplicate durable
+Observation rows: each new Asia FX series remained at one canonical row / one distinct
+`observedAt` after the immediate recurring run.
+
+### Activation boundary
+
+ASIA-MACRO-001B activates only:
+
+- recurring FORWARD acquisition;
+- canonical durable Observation/Evidence persistence for USDJPY/USDCNH.
+
+It still does not authorize:
+
+- Yahoo FX BACKFILL;
+- MOVE evidence-bundle wiring;
+- dashboard presentation;
+- JGB rates;
+- onshore USD/CNY;
+- China TSF/M2/PMI/CPI/PPI;
+- Japan CPI/wages/Tankan;
+- causality;
+- State/Regime/Risk/Intelligence;
+- trading signals.
+
+`causalAttribution = NOT_EVALUATED` remains unchanged.
