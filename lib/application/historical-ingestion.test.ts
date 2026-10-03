@@ -228,20 +228,20 @@ async function main(): Promise<void> {
   const asiaFxAcquisition = acquisition([]);
   asiaFxAcquisition.usdjpy = async () => marketResult("yahoo-finance", [{
     ...observationInput("fx.usdjpy.jpy_per_usd"),
-    symbol: "JPY=X",
+    symbol: "USDJPY=X",
     value: 150.25,
     source: "Yahoo Finance",
     freshnessCalendar: "GLOBAL_FX_24_5",
-    provenance: { version: "v1", providerResource: "/v8/finance/chart", nativeSymbol: "JPY=X" },
+    provenance: { version: "v1", providerResource: "/v8/finance/chart", nativeSymbol: "USDJPY=X" },
     metadata: { unit: "JPY_PER_USD", baseCurrency: "USD", quoteCurrency: "JPY", endpoint: "v8/finance/chart" },
   }]);
   asiaFxAcquisition.usdcnh = async () => marketResult("yahoo-finance", [{
     ...observationInput("fx.usdcnh.cnh_per_usd"),
-    symbol: "CNH=X",
+    symbol: "USDCNH=X",
     value: 7.12,
     source: "Yahoo Finance",
     freshnessCalendar: "GLOBAL_FX_24_5",
-    provenance: { version: "v1", providerResource: "/v8/finance/chart", nativeSymbol: "CNH=X" },
+    provenance: { version: "v1", providerResource: "/v8/finance/chart", nativeSymbol: "USDCNH=X" },
     metadata: { unit: "CNH_PER_USD", baseCurrency: "USD", quoteCurrency: "CNH", endpoint: "v8/finance/chart" },
   }]);
   const asiaFxReport = await runHistoricalIngestion(
