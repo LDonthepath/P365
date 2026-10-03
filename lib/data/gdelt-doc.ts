@@ -37,6 +37,7 @@ export type GdeltMoveWindowQuery = {
 type Dependencies = {
   fetch?: typeof fetch;
   now?: () => Date;
+  sleep?: (ms: number) => Promise<void>;
 };
 
 const QUERY_BY_ASSET: Record<GdeltMoveAsset, string> = {
@@ -150,6 +151,34 @@ async function responseJson(response: Response): Promise<unknown> {
   }
 }
 
+function retryDelayMs(response: Response, body: string): number | null {
+  if (response.status !== 429) return null;
+  const retryAfter = response.headers.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0 && seconds <= 6) return Math.ceil(seconds * 1000);
+  }
+  if (/one request every 5 seconds|one every 5 seconds/i.test(body)) return 5_200;
+  return null;
+}
+
+async function fetchWithBoundedRateLimitRetry(
+  fetcher: typeof fetch,
+  url: string,
+  init: RequestInit,
+  sleep: (ms: number) => Promise<void>,
+): Promise<Response> {
+  const first = await fetcher(url, init);
+  if (first.status !== 429) return first;
+
+  const detail = await first.clone().text();
+  const delay = retryDelayMs(first, detail);
+  if (delay === null) return first;
+
+  await sleep(delay);
+  return fetcher(url, init);
+}
+
 export function gdeltQueryForAsset(asset: GdeltMoveAsset): string {
   return QUERY_BY_ASSET[asset];
 }
@@ -173,11 +202,16 @@ export async function fetchGdeltMoveWindowArticles(
     url.searchParams.set("startdatetime", gdeltDate(startMs));
     url.searchParams.set("enddatetime", gdeltDate(endMs));
 
-    const response = await (dependencies.fetch ?? fetch)(url.toString(), {
-      headers: { accept: "application/json" },
-      ...providerFetchPolicy(input.acquisitionMode ?? "FRESH", 300),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    const response = await fetchWithBoundedRateLimitRetry(
+      dependencies.fetch ?? fetch,
+      url.toString(),
+      {
+        headers: { accept: "application/json" },
+        ...providerFetchPolicy(input.acquisitionMode ?? "FRESH", 300),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      },
+      dependencies.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+    );
     const payload = await responseJson(response);
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
       throw new Error("GDELT malformed payload: response must be an object");

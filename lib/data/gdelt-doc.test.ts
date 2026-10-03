@@ -116,3 +116,26 @@ test("GDELT maps HTTP 429 through existing ProviderResult rate-limit semantics",
   assert.equal(result.status, "ERROR");
   assert.equal(result.errorCode, "RATE_LIMIT");
 });
+
+
+test("GDELT retries one documented 5-second rate-limit window", async () => {
+  let calls = 0;
+  const sleeps: number[] = [];
+  const result = await fetchGdeltMoveWindowArticles(
+    { asset: "BTC", startAt: "2026-10-04T10:00:00Z", endAt: "2026-10-04T11:00:00Z" },
+    {
+      now: () => NOW,
+      sleep: async (ms) => { sleeps.push(ms); },
+      fetch: async () => {
+        calls += 1;
+        if (calls === 1) {
+          return new Response("Please limit requests to one every 5 seconds", { status: 429 });
+        }
+        return json({ articles: [] });
+      },
+    },
+  );
+  assert.equal(calls, 2);
+  assert.deepEqual(sleeps, [5200]);
+  assert.equal(result.status, "EMPTY");
+});
