@@ -39,7 +39,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC derivatives OI | Is leverage exposure expanding/contracting? | P0 | SYNC | **TECHNICAL LIVE PASS / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC funding | Is perpetual positioning becoming expensive/crowded? | P0 | SYNC/NEAR | **LIVE-QUALIFIED / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **TECHNICAL LIVE PASS — SPARSE WINDOW / DURABLE-USE GATE** | Coinalyze free-first; ChainVector validation |
-| BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **MISSING** | Official exchange public APIs; source qualification required |
+| BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **SPOT-FLOW-001A READ-ONLY IMPLEMENTED / LIVE PROOF PENDING** | Binance Spot 5m primary + Bybit recent-trade validation |
 | BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **MISSING** | Official exchange public APIs; methodology required |
 | Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **MISSING** | GDELT free candidate + official-source verification |
 | Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MISSING** | Free/source search still required |
@@ -127,10 +127,10 @@ Primary question:
 
 Free-first direction:
 
-- official exchange public trade APIs / streams;
-- start venue-specific and retain venue identity;
-- do not fabricate a market-wide spot-flow aggregate until a venue universe and
-  normalization methodology are frozen.
+- Binance Spot public 5m klines are the approved primary venue source because they expose total BTC volume + taker-buy BTC volume for a completed provider-native window;
+- Bybit Spot public recent trades are approved as a secondary taker-side sample, not full 5m coverage because Spot REST is capped at 60 trades;
+- start venue-specific and retain venue/pair identity;
+- do not fabricate a market-wide spot-flow aggregate until a venue universe and normalization methodology are frozen.
 
 This is higher priority than broad sentiment.
 
