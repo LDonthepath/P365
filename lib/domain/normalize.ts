@@ -16,7 +16,7 @@ import type { MarketFreshnessCalendar } from "./freshness";
 
 export const P365_SOURCES = {
   alphaVantage: { id: "alpha-vantage", name: "Alpha Vantage", type: "NEWS" },
-  yahooFinance: { id: "yahoo-finance", name: "Yahoo Finance (Gold, Russell 2000 & DXY)", type: "MARKET" },
+  yahooFinance: { id: "yahoo-finance", name: "Yahoo Finance (Gold, Russell 2000, DXY & Asia FX)", type: "MARKET" },
   coinGeckoMarket: { id: "coingecko-market", name: "CoinGecko Market", type: "MARKET" },
   defiLlamaStablecoins: { id: "defillama-stablecoins", name: "DefiLlama Stablecoins", type: "MARKET" },
   soSoValueEtfFlow: { id: "sosovalue-etf-flow", name: "SoSoValue ETF Flow", type: "MARKET" },
