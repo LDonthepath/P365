@@ -81,7 +81,7 @@ function normalizedSearchText(title: string, url: string): string {
 function isAssetCandidate(asset: GdeltMoveAsset, title: string, url: string): boolean {
   const text = normalizedSearchText(title, url);
   if (asset === "BTC") {
-    return /\bbitcoin\b|\bbtc\b|\bcrypto(?:currency)?\b/.test(text);
+    return /\bbitcoin\b|\bbtc\b/.test(text);
   }
 
   const assetMention = /\bgold\b|\bxau\b|\bbullion\b/.test(text);
