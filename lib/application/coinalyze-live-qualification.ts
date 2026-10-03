@@ -31,6 +31,9 @@ export type CoinalyzeQualificationStatus =
 
 export type CoinalyzeTimestampEvidence = {
   family: "OPEN_INTEREST" | "FUNDING" | "LIQUIDATION" | "OHLCV";
+  requestedSymbols: number;
+  returnedSymbols: number;
+  missingSymbols: string[];
   pointCount: number;
   distinctTimestamps: number;
   firstProviderTimestamp: number | null;
@@ -69,11 +72,12 @@ export type CoinalyzeLiveQualificationReport = {
     oiWeightedFundingRate: number | null;
     fundingCoverage: "COMPLETE" | "PARTIAL" | "EMPTY";
   } | null;
-  unresolved: Array<
-    | "PROVIDER_TIMESTAMP_BUCKET_ANCHOR"
-    | "LIQUIDATION_L_S_CANONICAL_MAPPING"
-    | "DURABLE_PRIVATE_STORAGE_USE"
-  >;
+  semantics: {
+    providerTimestamp: "INTERVAL_START";
+    liquidationL: "LONGS_LIQUIDATION_VOLUME";
+    liquidationS: "SHORTS_LIQUIDATION_VOLUME";
+  };
+  unresolved: Array<"DURABLE_PRIVATE_STORAGE_USE">;
   message?: string;
 };
 
@@ -133,6 +137,7 @@ function allTimestamps<T extends { providerTimestamp: number }>(
 
 function timestampEvidence<T extends { providerTimestamp: number }>(
   family: CoinalyzeTimestampEvidence["family"],
+  requestedSymbols: string[],
   series: CoinalyzeHistorySeries<T>[],
   nowSeconds: number,
 ): CoinalyzeTimestampEvidence {
@@ -140,8 +145,12 @@ function timestampEvidence<T extends { providerTimestamp: number }>(
   const distinct = [...new Set(timestamps)].sort((left, right) => left - right);
   const first = distinct[0] ?? null;
   const latest = distinct.at(-1) ?? null;
+  const returned = new Set(series.map((item) => item.symbol));
   return {
     family,
+    requestedSymbols: requestedSymbols.length,
+    returnedSymbols: returned.size,
+    missingSymbols: requestedSymbols.filter((symbol) => !returned.has(symbol)),
     pointCount: timestamps.length,
     distinctTimestamps: distinct.length,
     firstProviderTimestamp: first,
@@ -163,9 +172,16 @@ function latestSharedTimestamp(
   return shared.at(-1) ?? null;
 }
 
-function providerFailureMessage(results: Array<{ name: string; result: ProviderResult<unknown> }>): string | undefined {
+function providerFailureMessage(results: Array<{
+  name: string;
+  result: ProviderResult<unknown>;
+  emptyAllowed?: boolean;
+}>): string | undefined {
   const failures = results
-    .filter(({ result }) => result.status !== "SUCCESS")
+    .filter(({ result, emptyAllowed }) =>
+      result.status === "ERROR"
+      || result.status === "UNAVAILABLE"
+      || (result.status === "EMPTY" && !emptyAllowed))
     .map(({ name, result }) => `${name}=${result.status}${result.message ? `(${result.message})` : ""}`);
   return failures.length > 0 ? failures.join("; ") : undefined;
 }
@@ -196,11 +212,12 @@ export async function runCoinalyzeLiveQualification(
       },
       timestamps: [],
       sampleAggregates: null,
-      unresolved: [
-        "PROVIDER_TIMESTAMP_BUCKET_ANCHOR",
-        "LIQUIDATION_L_S_CANONICAL_MAPPING",
-        "DURABLE_PRIVATE_STORAGE_USE",
-      ],
+      semantics: {
+        providerTimestamp: "INTERVAL_START",
+        liquidationL: "LONGS_LIQUIDATION_VOLUME",
+        liquidationS: "SHORTS_LIQUIDATION_VOLUME",
+      },
+      unresolved: ["DURABLE_PRIVATE_STORAGE_USE"],
       message: futureMarkets.message,
     };
   }
@@ -221,11 +238,12 @@ export async function runCoinalyzeLiveQualification(
       },
       timestamps: [],
       sampleAggregates: null,
-      unresolved: [
-        "PROVIDER_TIMESTAMP_BUCKET_ANCHOR",
-        "LIQUIDATION_L_S_CANONICAL_MAPPING",
-        "DURABLE_PRIVATE_STORAGE_USE",
-      ],
+      semantics: {
+        providerTimestamp: "INTERVAL_START",
+        liquidationL: "LONGS_LIQUIDATION_VOLUME",
+        liquidationS: "SHORTS_LIQUIDATION_VOLUME",
+      },
+      unresolved: ["DURABLE_PRIVATE_STORAGE_USE"],
       message: futureMarkets.message ?? "Coinalyze future-markets qualification failed",
     };
   }
@@ -256,11 +274,12 @@ export async function runCoinalyzeLiveQualification(
       },
       timestamps: [],
       sampleAggregates: null,
-      unresolved: [
-        "PROVIDER_TIMESTAMP_BUCKET_ANCHOR",
-        "LIQUIDATION_L_S_CANONICAL_MAPPING",
-        "DURABLE_PRIVATE_STORAGE_USE",
-      ],
+      semantics: {
+        providerTimestamp: "INTERVAL_START",
+        liquidationL: "LONGS_LIQUIDATION_VOLUME",
+        liquidationS: "SHORTS_LIQUIDATION_VOLUME",
+      },
+      unresolved: ["DURABLE_PRIVATE_STORAGE_USE"],
       message: "Coinalyze returned no eligible BTC perpetual markets",
     };
   }
@@ -295,7 +314,7 @@ export async function runCoinalyzeLiveQualification(
   const failure = providerFailureMessage([
     { name: "openInterest", result: openInterest as ProviderResult<unknown> },
     { name: "funding", result: funding as ProviderResult<unknown> },
-    { name: "liquidation", result: liquidation as ProviderResult<unknown> },
+    { name: "liquidation", result: liquidation as ProviderResult<unknown>, emptyAllowed: true },
     { name: "ohlcv", result: ohlcv as ProviderResult<unknown> },
   ]);
 
@@ -315,20 +334,21 @@ export async function runCoinalyzeLiveQualification(
       },
       timestamps: [],
       sampleAggregates: null,
-      unresolved: [
-        "PROVIDER_TIMESTAMP_BUCKET_ANCHOR",
-        "LIQUIDATION_L_S_CANONICAL_MAPPING",
-        "DURABLE_PRIVATE_STORAGE_USE",
-      ],
+      semantics: {
+        providerTimestamp: "INTERVAL_START",
+        liquidationL: "LONGS_LIQUIDATION_VOLUME",
+        liquidationS: "SHORTS_LIQUIDATION_VOLUME",
+      },
+      unresolved: ["DURABLE_PRIVATE_STORAGE_USE"],
       message: failure,
     };
   }
 
   const timestamps = [
-    timestampEvidence("OPEN_INTEREST", openInterest.data, nowSeconds),
-    timestampEvidence("FUNDING", funding.data, nowSeconds),
-    timestampEvidence("LIQUIDATION", liquidation.data, nowSeconds),
-    timestampEvidence("OHLCV", ohlcv.data, nowSeconds),
+    timestampEvidence("OPEN_INTEREST", sampleSymbols, openInterest.data, nowSeconds),
+    timestampEvidence("FUNDING", sampleSymbols, funding.data, nowSeconds),
+    timestampEvidence("LIQUIDATION", sampleSymbols, liquidation.data, nowSeconds),
+    timestampEvidence("OHLCV", sampleSymbols, ohlcv.data, nowSeconds),
   ];
 
   const sharedTimestamp = latestSharedTimestamp(openInterest.data, funding.data);
@@ -370,10 +390,11 @@ export async function runCoinalyzeLiveQualification(
     },
     timestamps,
     sampleAggregates,
-    unresolved: [
-      "PROVIDER_TIMESTAMP_BUCKET_ANCHOR",
-      "LIQUIDATION_L_S_CANONICAL_MAPPING",
-      "DURABLE_PRIVATE_STORAGE_USE",
-    ],
+    semantics: {
+      providerTimestamp: "INTERVAL_START",
+      liquidationL: "LONGS_LIQUIDATION_VOLUME",
+      liquidationS: "SHORTS_LIQUIDATION_VOLUME",
+    },
+    unresolved: ["DURABLE_PRIVATE_STORAGE_USE"],
   };
 }

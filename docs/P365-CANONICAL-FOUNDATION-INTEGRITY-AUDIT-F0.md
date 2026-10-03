@@ -891,7 +891,7 @@ Intelligence / Briefing
 25. MOVE-001C Read-Only Continuous Move Detector Runtime         ← CLOSED / PR #154
 26. MOVE-002A Move-Centered Evidence Investigation Contract       ← CLOSED / PR #155
 27. CRYPTO-STRUCT-001A BTC Derivatives Provider Qualification    ← CLOSED / PR #156
-28. CRYPTO-STRUCT-001B Coinalyze Free Live Qualification          ← ACTIVE / read-only diagnostics; API-key execution pending
+28. CRYPTO-STRUCT-001B Coinalyze Free Live Qualification          ← LIVE PROOF ACTIVE / semantics verified; durable-use gate remains
 29. CRYPTO-STRUCT-001C Bounded Factual Runtime                     ← only after 001B proves selected source
 30. MOVE-002B Read-Only Move Evidence Bundle Runtime              ← after market-structure runtime; unresolved evidence stays explicit
 31. Intraday Rates/Pricing Source Qualification                   ← demand-driven gap for BTC + Gold

@@ -111,7 +111,7 @@ test("Coinalyze OI history batches 20 symbols, requests USD conversion and valid
   assert.equal(malformed.errorCode, "MALFORMED_PAYLOAD");
 });
 
-test("Coinalyze funding accepts negative rates but fails closed on missing requested symbols", async () => {
+test("Coinalyze funding accepts negative rates and reports sparse requested-symbol coverage", async () => {
   const result = await fetchCoinalyzeFundingRateHistory(
     { symbols: ["BTC-A"], from: 1_000, to: 2_000 },
     {
@@ -129,8 +129,9 @@ test("Coinalyze funding accepts negative rates but fails closed on missing reque
     { symbols: ["BTC-A", "BTC-B"], from: 1_000, to: 2_000 },
     { apiKey: () => KEY, now: () => new Date(NOW), fetch: async () => json([{ symbol: "BTC-A", history: [] }]) },
   );
-  assert.equal(missing.status, "ERROR");
-  assert.match(missing.message ?? "", /missing funding-rate symbols/);
+  assert.equal(missing.status, "SUCCESS");
+  assert.equal(missing.data.length, 1);
+  assert.match(missing.message ?? "", /omitted 1\/2 requested funding-rate symbols/);
 });
 
 test("Coinalyze liquidation retains provider L/S fields and requests USD conversion", async () => {
@@ -150,8 +151,8 @@ test("Coinalyze liquidation retains provider L/S fields and requests USD convers
   assert.equal(new URL(requestedUrl).searchParams.get("convert_to_usd"), "true");
   assert.deepEqual(result.data[0].history[0], {
     providerTimestamp: 1_000,
-    providerFieldL: 25,
-    providerFieldS: 75,
+    longLiquidationUsd: 25,
+    shortLiquidationUsd: 75,
   });
 });
 

@@ -1217,3 +1217,74 @@ Explicit unresolved gates remain:
 The diagnostic is considered executable only after a real free `COINALYZE_API_KEY` is
 configured. Until then it returns a blocked status rather than weakening canonical
 semantics.
+
+
+## 20. CRYPTO-STRUCT-001B.1 live proof findings — 4 Oct 2026
+
+Live preview qualification using the owner-provided free API key established:
+
+- credential is valid and reaches the official API;
+- `future-markets` returned 5,469 total futures-market records at the observed run;
+- 26 records qualified as BTC perpetuals across 16 provider exchange codes;
+- a complete four-family 5m cycle implies 104 symbol-calls;
+- 104 is below the documented theoretical 200 symbol-call capacity across five minutes,
+  but above the 40-call single-minute limit;
+- acquisition therefore must be spread across the five-minute bucket rather than burst
+  concurrently.
+
+### Live schema discrepancy
+
+Coinalyze's public OpenAPI still declares `future_market_info.expire_at` as integer
+milliseconds, and the HTML example shows `0`.
+
+The live perpetual-market payload instead returns:
+
+`expire_at: null`
+
+P365 therefore accepts only:
+
+- perpetual market: `expire_at = null | 0`;
+- dated future: positive integer expiry.
+
+Any other combination fails closed.
+
+### Official OpenAPI semantic resolution
+
+The official OpenAPI specification explicitly defines:
+
+- history `t` = **the beginning of the interval**, UNIX seconds;
+- liquidation `l` = **Longs liquidation volume**;
+- liquidation `s` = **Shorts liquidation volume**.
+
+These two gates are therefore closed by normative provider documentation, not inferred
+from price behavior.
+
+### Sparse history behavior
+
+Live qualification also proved that Coinalyze may omit requested symbols from a history
+response in a bounded window:
+
+- sampled OI omitted 1 of 5 symbols;
+- sampled funding returned data;
+- sampled liquidation returned no series in the 45-minute window;
+- sampled OHLCV returned data.
+
+Missing history series are therefore coverage evidence, not malformed JSON.
+
+P365 keeps unexpected symbols, duplicate symbols, malformed rows and non-ascending
+timestamps fail-closed, while requested-but-omitted symbols are exposed as missing
+coverage.
+
+An empty liquidation window is permitted as absence of reported liquidation evidence; it
+must not be converted into fabricated per-market zero observations.
+
+### Remaining governance gate
+
+The only unresolved CRYPTO-STRUCT-001B source gate is:
+
+`DURABLE_PRIVATE_STORAGE_USE`
+
+The API documentation explicitly states that the API is free and asks for attribution
+when data are used publicly, but the audited public terms do not explicitly address
+building a private durable historical database. No CoinGlass-like storage prohibition was
+found, but absence of prohibition is not equivalent to explicit storage permission.

@@ -34,9 +34,12 @@ export type CoinalyzeOhlcPoint = {
 };
 
 export type CoinalyzeLiquidationPoint = {
+  /** Beginning of the provider interval, UNIX seconds. */
   providerTimestamp: number;
-  providerFieldL: number;
-  providerFieldS: number;
+  /** Coinalyze OpenAPI field `l`: longs liquidation volume; USD because the fetcher requests convert_to_usd=true. */
+  longLiquidationUsd: number;
+  /** Coinalyze OpenAPI field `s`: shorts liquidation volume; USD because the fetcher requests convert_to_usd=true. */
+  shortLiquidationUsd: number;
 };
 
 export type CoinalyzeOhlcvPoint = CoinalyzeOhlcPoint & {
@@ -173,8 +176,8 @@ function parseLiquidationRow(candidate: unknown, label: string): CoinalyzeLiquid
   const row = candidate as Record<string, unknown>;
   return {
     providerTimestamp: providerTimestamp(row.t, `${label}.t`),
-    providerFieldL: nonNegativeNumber(row.l, `${label}.l`),
-    providerFieldS: nonNegativeNumber(row.s, `${label}.s`),
+    longLiquidationUsd: nonNegativeNumber(row.l, `${label}.l`),
+    shortLiquidationUsd: nonNegativeNumber(row.s, `${label}.s`),
   };
 }
 
@@ -237,10 +240,6 @@ function parseHistoryPayload<T>(
     );
     return { symbol, history: history as T[] };
   });
-  const missing = requestedSymbols.filter((symbol) => !seen.has(symbol));
-  if (missing.length > 0) {
-    throw new Error(`Coinalyze malformed payload: missing ${kind} symbols: ${missing.join(",")}`);
-  }
   return parsed;
 }
 
@@ -379,11 +378,18 @@ async function fetchHistory<T>(
       output.push(...parseHistoryPayload(payload, symbolChunk, kind, parsePoint));
     }
     const retrievedAt = now().toISOString();
+    const returnedSymbols = new Set(output.map((series) => series.symbol));
+    const missingSymbols = symbols.filter((symbol) => !returnedSymbols.has(symbol));
+    const message = output.length === 0
+      ? `Coinalyze returned no ${kind} history for the requested window`
+      : missingSymbols.length > 0
+        ? `Coinalyze omitted ${missingSymbols.length}/${symbols.length} requested ${kind} symbols: ${missingSymbols.join(",")}`
+        : undefined;
     return providerResult(
       COINALYZE_SOURCE_ID,
       output.length > 0 ? "SUCCESS" : "EMPTY",
       output,
-      output.length > 0 ? undefined : `Coinalyze returned no ${kind} history`,
+      message,
       undefined,
       retrievedAt,
     );

@@ -55,16 +55,16 @@ test("Coinalyze funding aggregate is OI-weighted on exact provider bucket timest
   assert.equal(result.coverage, "COMPLETE");
 });
 
-test("Coinalyze liquidation aggregation keeps provider L/S semantics unresolved", () => {
+test("Coinalyze liquidation aggregation uses documented long/short semantics", () => {
   const result = aggregateCoinalyzeLiquidationProviderFields({
     universeSymbols: universe,
     providerTimestamp: T,
     liquidation: [
-      { symbol: "BTC-A", history: [{ providerTimestamp: T, providerFieldL: 10, providerFieldS: 20 }] },
-      { symbol: "BTC-B", history: [{ providerTimestamp: T, providerFieldL: 30, providerFieldS: 40 }] },
+      { symbol: "BTC-A", history: [{ providerTimestamp: T, longLiquidationUsd: 10, shortLiquidationUsd: 20 }] },
+      { symbol: "BTC-B", history: [{ providerTimestamp: T, longLiquidationUsd: 30, shortLiquidationUsd: 40 }] },
     ],
   });
-  assert.equal(result.providerFieldLSumUsd, 40);
-  assert.equal(result.providerFieldSSumUsd, 60);
+  assert.equal(result.longLiquidationUsd, 40);
+  assert.equal(result.shortLiquidationUsd, 60);
   assert.equal(result.coverage, "COMPLETE");
 });

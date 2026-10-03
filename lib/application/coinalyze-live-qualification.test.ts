@@ -61,7 +61,7 @@ function ohlc(symbols: string[], closeBase: number): CoinalyzeHistorySeries<Coin
 function liquidation(symbols: string[]): CoinalyzeHistorySeries<CoinalyzeLiquidationPoint>[] {
   return symbols.map((symbol, index) => ({
     symbol,
-    history: [{ providerTimestamp: T2, providerFieldL: 10 + index, providerFieldS: 20 + index }],
+    history: [{ providerTimestamp: T2, longLiquidationUsd: 10 + index, shortLiquidationUsd: 20 + index }],
   }));
 }
 
@@ -125,11 +125,9 @@ test("live qualification reports deterministic sample, quota and unresolved sema
   assert.equal(report.timestamps.length, 4);
   assert.equal(report.sampleAggregates?.openInterestCoverage, "COMPLETE");
   assert.equal(report.sampleAggregates?.fundingCoverage, "COMPLETE");
-  assert.deepEqual(report.unresolved, [
-    "PROVIDER_TIMESTAMP_BUCKET_ANCHOR",
-    "LIQUIDATION_L_S_CANONICAL_MAPPING",
-    "DURABLE_PRIVATE_STORAGE_USE",
-  ]);
+  assert.deepEqual(report.unresolved, ["DURABLE_PRIVATE_STORAGE_USE"]);
+  assert.equal(report.semantics.providerTimestamp, "INTERVAL_START");
+  assert.equal(report.semantics.liquidationL, "LONGS_LIQUIDATION_VOLUME");
 });
 
 test("live qualification fails closed when any sampled evidence family fails", async () => {
