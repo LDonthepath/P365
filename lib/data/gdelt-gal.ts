@@ -30,6 +30,7 @@ export type GdeltGalFeedSnapshot = {
   feedWindowStartAt: string;
   coverage: "ROLLING_15_MINUTES";
   totalFeedItems: number;
+  invalidItemCount: number;
   candidates: GdeltGalCandidateArticle[];
 };
 
@@ -152,9 +153,23 @@ export async function fetchGdeltGalCandidateSnapshot(
         : [];
 
     const deduped = new Map<string, GdeltGalCandidateArticle>();
-    for (const [index, item] of items.entries()) {
-      const title = nonEmptyString(item.title, `item[${index}].title`);
-      const url = nonEmptyString(item.link, `item[${index}].link`);
+    let invalidItemCount = 0;
+    for (const item of items) {
+      const title = typeof item.title === "string" ? item.title.trim() : "";
+      const url = typeof item.link === "string" ? item.link.trim() : "";
+      if (!title || !url) {
+        invalidItemCount += 1;
+        continue;
+      }
+
+      let domain: string;
+      try {
+        domain = domainFromUrl(url);
+      } catch {
+        invalidItemCount += 1;
+        continue;
+      }
+
       if (!isAssetCandidate(query.asset, title, url)) continue;
       if (deduped.has(url)) continue;
 
@@ -163,7 +178,7 @@ export async function fetchGdeltGalCandidateSnapshot(
         asset: query.asset,
         url,
         title,
-        domain: domainFromUrl(url),
+        domain,
         providerDate,
         providerDateSemantics: providerDate ? "PUBLICATION_OR_FIRST_SEEN" : "UNAVAILABLE",
       });
@@ -178,6 +193,7 @@ export async function fetchGdeltGalCandidateSnapshot(
       feedWindowStartAt: new Date(lastBuildMs - GDELT_GAL_ROLLING_WINDOW_MS).toISOString(),
       coverage: "ROLLING_15_MINUTES",
       totalFeedItems: items.length,
+      invalidItemCount,
       candidates: [...deduped.values()],
     };
 

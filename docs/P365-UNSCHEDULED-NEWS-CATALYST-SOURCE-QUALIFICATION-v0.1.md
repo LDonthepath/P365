@@ -170,6 +170,7 @@ Authorized:
 - local BTC/Gold candidate filtering;
 - exact feed coverage metadata;
 - URL deduplication;
+- malformed individual feed rows are skipped and counted instead of failing the whole feed;
 - source-domain provenance;
 - provider-date semantics;
 - explicit current-only replay limitation;

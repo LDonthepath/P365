@@ -92,3 +92,21 @@ test("GDELT GAL maps upstream HTTP failure through ProviderResult", async () => 
   assert.equal(result.status, "ERROR");
   assert.equal(result.errorCode, "UPSTREAM_UNAVAILABLE");
 });
+
+
+test("GDELT GAL skips malformed individual items without failing the feed", async () => {
+  const result = await fetchGdeltGalCandidateSnapshot(
+    { asset: "BTC" },
+    {
+      now: () => NOW,
+      fetch: async () => new Response(rss(`
+        <item><title></title><link>https://example.com/blank</link></item>
+        <item><title>Bitcoin market update</title><link>https://example.com/bitcoin</link><pubDate>4 Oct 2026 11:58:00 +0000</pubDate></item>
+      `), { status: 200 }),
+    },
+  );
+
+  assert.equal(result.status, "SUCCESS");
+  assert.equal(result.data[0].invalidItemCount, 1);
+  assert.equal(result.data[0].candidates.length, 1);
+});
