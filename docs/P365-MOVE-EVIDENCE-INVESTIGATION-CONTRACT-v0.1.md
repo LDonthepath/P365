@@ -291,7 +291,7 @@ The next isolated checkpoint should therefore be:
 
 **CRYPTO-STRUCT-001A — Binance Derivatives Evidence Contract & Source Qualification**
 
-CRYPTO-STRUCT-001A source qualification is now defined in `P365-BINANCE-BTC-DERIVATIVES-EVIDENCE-CONTRACT-v0.1.md`. It qualifies a REST-first BTCUSDT USDⓈ-M subset and preserves liquidation as a separate partial WebSocket evidence problem rather than treating it as complete total-liquidation data.
+CRYPTO-STRUCT-001A source qualification is now defined in `P365-BTC-DERIVATIVES-PROVIDER-QUALIFICATION-v0.1.md`. It compares cross-exchange providers before runtime selection: CryptoQuant is the current preferred market-wide candidate, Coinalyze is the free validation/fallback candidate, CoinGlass is the richest feature benchmark but carries cost/storage constraints, and Binance remains venue-native secondary evidence rather than the market-wide default.
 
 That checkpoint may evaluate Binance only for the metrics required by MOVE investigation. It must separately qualify semantics, endpoint availability, history depth, rate limits, temporal meaning, licensing/usage boundary, and canonical series definitions before any ingestion code is added.
 
