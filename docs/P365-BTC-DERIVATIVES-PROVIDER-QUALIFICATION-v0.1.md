@@ -851,21 +851,30 @@ Therefore P365 must not silently rename Coinalyze `bv` to `TAKER_BUY_VOLUME`.
 
 The qualified derived candidate is instead:
 
-`BUY_VOLUME_SHARE(t) = Σ buy_volume_i(t) / Σ total_volume_i(t)`
+Because `future-markets.oi_lq_vol_denominated_in` explicitly covers **OI, liquidation
+and volume denomination**, OHLCV `v` / `bv` cannot be summed across contracts unless
+their denominations have first been normalized.
 
-subject to:
+The OHLCV history endpoint has no `convert_to_usd` parameter.
 
-- `has_buy_sell_data = true`;
-- valid `v > 0`;
-- valid `0 <= bv <= v`;
-- common bucket alignment;
-- retained contract coverage.
+Therefore CRYPTO-STRUCT-001A **withdraws the candidate cross-venue formula**
+`Σ buy_volume / Σ total_volume`.
 
-This is a factual directional-volume proxy, not proof of aggressor/taker semantics.
+Qualified handling is now:
 
-Exact market-wide taker CVD remains a separate evidence question. ChainVector documents
-cross-venue taker CVD from its own tick capture, but its free tier is explicitly positioned
-for evaluation/prototypes. Venue-native official APIs may also remain validation inputs.
+- persist per-contract `v` and `bv` only where `has_buy_sell_data = true`;
+- retain `oi_lq_vol_denominated_in` in provenance;
+- allow per-contract `buy_volume_share_i = bv_i / v_i` when `v_i > 0`;
+- do not sum `v` or `bv` across contracts with different denominations;
+- do not invent USD normalization from close price without a separately frozen
+  methodology.
+
+A market-wide directional-volume / CVD aggregate remains **NOT_QUALIFIED** from
+Coinalyze alone in CRYPTO-STRUCT-001A.
+
+ChainVector documents normalized cross-venue taker CVD from its own tick capture, but its
+free tier is explicitly positioned for evaluation/prototypes. Venue-native official APIs
+may also remain validation inputs.
 
 ### 15.7 Timestamp alignment gate
 
@@ -927,7 +936,8 @@ Derived P365 outputs:
 | Multi-venue total OI USD | DERIVED_METRIC |
 | OI-weighted funding | DERIVED_METRIC |
 | Multi-venue long/short liquidation totals | DERIVED_METRIC |
-| Multi-venue buy-volume share | DERIVED_METRIC |
+| Per-contract buy-volume share | DERIVED_METRIC |
+| Multi-venue buy-volume / CVD aggregate | NOT_QUALIFIED |
 
 No derived output is State, Regime, Risk, Intelligence, or a trading signal.
 
@@ -946,3 +956,120 @@ After this documentation pass, only live-provider facts remain unresolved:
 9. durable private-use/storage clarification if needed from Coinalyze.
 
 No runtime code should precede those checks.
+
+
+## 16. Free-tier call-budget contract
+
+Coinalyze documents:
+
+- 40 API calls/minute per API key;
+- maximum 20 symbols in one request;
+- **each symbol consumes one API call**;
+- HTTP 429 returns `Retry-After`.
+
+For the initial 5m evidence cycle, let:
+
+`N = number of eligible BTC perpetual contracts`
+
+Core historical endpoint families:
+
+1. OI;
+2. funding;
+3. liquidation;
+4. OHLCV.
+
+Provider call-credit demand per complete 5m cycle is therefore:
+
+`CYCLE_CREDITS = 4 × N`
+
+HTTP request count is:
+
+`HTTP_REQUESTS = 4 × ceil(N / 20)`
+
+but quota consumption remains `4 × N`, not the HTTP-request count.
+
+### 16.1 Hard feasibility ceiling
+
+Across a five-minute cycle, the theoretical maximum provider quota is:
+
+`40 calls/min × 5 min = 200 symbol-calls`
+
+Therefore a complete four-family 5m cycle is mathematically impossible when:
+
+`4N > 200`
+
+or:
+
+`N > 50`
+
+This is a hard provider-limit statement, not a guessed market threshold.
+
+P365 must not silently drop venues or evidence families merely to fit the free quota.
+
+### 16.2 Minute-level scheduler rule
+
+No rolling minute may schedule more than 40 symbol-credits.
+
+The scheduler must:
+
+- chunk each endpoint to at most 20 symbols/request;
+- count every requested symbol against quota;
+- spread endpoint families across the 5m collection window;
+- honor `Retry-After` on 429;
+- fail the cycle explicitly when the required universe cannot be completed before the
+  next canonical bucket deadline;
+- retain per-family acquisition completion time.
+
+The exact production schedule remains live-universe dependent.
+
+### 16.3 No invented reserve percentage
+
+CRYPTO-STRUCT-001A does not hardcode a guessed 10%/20% quota reserve.
+
+The live-key checkpoint must measure:
+
+- actual BTC universe size;
+- retry/error rate;
+- response latency;
+- metadata refresh cost;
+- practical completion time.
+
+Only then may a bounded operational reserve be frozen.
+
+### 16.4 Universe refresh
+
+`/future-markets` has no symbol fan-out parameter and is used to discover the effective
+universe.
+
+The source contract does not justify pretending the universe is immutable.
+
+Runtime must refresh it periodically and retain the exact retrieved universe snapshot,
+but CRYPTO-STRUCT-001A does not invent a refresh cadence before live behavior is measured.
+
+## 17. Updated acceptance boundary before runtime
+
+Documentation-only qualification is now exhausted enough that further progress requires
+a real free API key.
+
+CRYPTO-STRUCT-001B must prove, with live responses:
+
+1. eligible BTC perpetual count `N`;
+2. whether `4N` fits the desired 5m cycle with practical latency;
+3. exact bucket-anchor meaning of `t`;
+4. exact OI/funding OHLC behavior;
+5. liquidation `l` / `s` side mapping;
+6. USD-converted OI/liquidation output values;
+7. actual market denomination metadata;
+8. per-contract OHLCV volume-unit behavior;
+9. response gaps / staleness;
+10. 429 / `Retry-After` behavior;
+11. universe-change handling;
+12. private durable-storage/use suitability.
+
+Until those are proven:
+
+- no ingestion runtime;
+- no Supabase cron;
+- no backfill;
+- no market-wide Coinalyze volume/CVD claim;
+- no causal label such as short-covering or leverage expansion.
