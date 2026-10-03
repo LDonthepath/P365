@@ -94,8 +94,8 @@ ASIA-MACRO-001A reuses the same provider boundary and adds no new SaaS/API/depen
 
 Provider-native symbols:
 
-- USD/JPY: `JPY=X`
-- USD/CNH: `CNH=X`
+- USD/JPY: `USDJPY=X`
+- USD/CNH: `USDCNH=X`
 
 Provider resource remains:
 
