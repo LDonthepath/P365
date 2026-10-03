@@ -37,7 +37,7 @@ test("Coinalyze future-markets is credential-gated and filters BTC perpetuals ex
           quote_asset: "USDT",
           is_perpetual: true,
           margined: "STABLE",
-          expire_at: 0,
+          expire_at: null,
           oi_lq_vol_denominated_in: "BASE_ASSET",
           has_long_short_ratio_data: true,
           has_ohlcv_data: true,
@@ -191,4 +191,48 @@ test("Coinalyze maps 401/429/provider failures without leaking the API key", asy
   assert.equal(limited.status, "ERROR");
   assert.equal(limited.errorCode, "RATE_LIMIT");
   assert.match(limited.message ?? "", /Retry-After=12/);
+});
+
+
+test("Coinalyze accepts live null expire_at for perpetual markets and rejects invalid expiry semantics", async () => {
+  const valid = await fetchCoinalyzeFutureMarkets({
+    apiKey: () => KEY,
+    now: () => new Date(NOW),
+    fetch: async () => json([{
+      symbol: "BTCUSDT_PERP.A",
+      exchange: "A",
+      symbol_on_exchange: "BTCUSDT",
+      base_asset: "BTC",
+      quote_asset: "USDT",
+      is_perpetual: true,
+      margined: "STABLE",
+      expire_at: null,
+      oi_lq_vol_denominated_in: "BASE_ASSET",
+      has_long_short_ratio_data: true,
+      has_ohlcv_data: true,
+      has_buy_sell_data: true,
+    }]),
+  });
+  assert.equal(valid.status, "SUCCESS");
+  assert.equal(valid.data[0].expireAt, null);
+
+  const invalidPerpetual = await fetchCoinalyzeFutureMarkets({
+    apiKey: () => KEY,
+    now: () => new Date(NOW),
+    fetch: async () => json([{
+      symbol: "BTCUSDT_PERP.A",
+      exchange: "A",
+      symbol_on_exchange: "BTCUSDT",
+      base_asset: "BTC",
+      quote_asset: "USDT",
+      is_perpetual: true,
+      margined: "STABLE",
+      expire_at: 123,
+      oi_lq_vol_denominated_in: "BASE_ASSET",
+      has_long_short_ratio_data: true,
+      has_ohlcv_data: true,
+      has_buy_sell_data: true,
+    }]),
+  });
+  assert.equal(invalidPerpetual.status, "ERROR");
 });

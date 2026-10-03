@@ -18,7 +18,7 @@ export type CoinalyzeFutureMarket = {
   quoteAsset: string;
   isPerpetual: boolean;
   margined: string;
-  expireAt: number;
+  expireAt: number | null;
   denomination: string;
   hasLongShortRatioData: boolean;
   hasOhlcvData: boolean;
@@ -121,6 +121,15 @@ function parseFutureMarkets(payload: unknown): CoinalyzeFutureMarket[] {
         throw new Error(`Coinalyze malformed payload: future-market[${index}].${flag} must be boolean`);
       }
     }
+    const expireAt = row.expire_at === null
+      ? null
+      : nonNegativeInteger(row.expire_at, `future-market[${index}].expire_at`);
+    if (row.is_perpetual && expireAt !== null && expireAt !== 0) {
+      throw new Error(`Coinalyze malformed payload: perpetual future-market[${index}].expire_at must be null or 0`);
+    }
+    if (!row.is_perpetual && (expireAt === null || expireAt <= 0)) {
+      throw new Error(`Coinalyze malformed payload: dated future-market[${index}].expire_at must be a positive integer`);
+    }
     return {
       symbol,
       exchange: nonEmptyString(row.exchange, `future-market[${index}].exchange`),
@@ -129,7 +138,7 @@ function parseFutureMarkets(payload: unknown): CoinalyzeFutureMarket[] {
       quoteAsset: nonEmptyString(row.quote_asset, `future-market[${index}].quote_asset`),
       isPerpetual: row.is_perpetual,
       margined: nonEmptyString(row.margined, `future-market[${index}].margined`),
-      expireAt: nonNegativeInteger(row.expire_at, `future-market[${index}].expire_at`),
+      expireAt,
       denomination: nonEmptyString(row.oi_lq_vol_denominated_in, `future-market[${index}].oi_lq_vol_denominated_in`),
       hasLongShortRatioData: row.has_long_short_ratio_data as boolean,
       hasOhlcvData: row.has_ohlcv_data as boolean,
@@ -286,7 +295,10 @@ function apiKey(dependencies: Dependencies): string | undefined {
 
 export function eligibleCoinalyzeBtcPerpetualMarkets(markets: CoinalyzeFutureMarket[]): CoinalyzeFutureMarket[] {
   return markets
-    .filter((market) => market.baseAsset.toUpperCase() === "BTC" && market.isPerpetual && market.expireAt === 0)
+    .filter((market) =>
+      market.baseAsset.toUpperCase() === "BTC"
+      && market.isPerpetual
+      && (market.expireAt === null || market.expireAt === 0))
     .sort((left, right) => left.symbol.localeCompare(right.symbol));
 }
 
