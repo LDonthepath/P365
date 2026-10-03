@@ -439,3 +439,256 @@ It must still stop before:
 
 Those actions require an explicit owner choice of the provider/plan after this PR is
 reviewed.
+
+
+## 12. Free-first qualification pass — 4 Oct 2026
+
+Owner direction:
+
+> Prefer a free source when it is adequate. Do not depend on Binance merely because its
+> endpoints are convenient.
+
+This pass therefore re-ranks the candidates by **zero-cost MVP viability**.
+
+### 12.1 Coinalyze — preferred free-first candidate
+
+The official Coinalyze API is explicitly free.
+
+Current documented contract:
+
+- API-key authentication after free account registration;
+- 40 API calls/minute per key;
+- up to 20 symbols per request, with each symbol consuming one call;
+- 1m / 5m / 15m / 30m and higher intraday granularity;
+- approximately 1500–2000 retained datapoints for intraday intervals;
+- daily history retained without the intraday deletion rule;
+- future-market discovery exposes:
+  - exchange;
+  - symbol;
+  - perpetual flag;
+  - margin type;
+  - `oi_lq_vol_denominated_in`;
+  - whether OHLCV / buy-sell / long-short data exists;
+- open-interest history with optional `convert_to_usd=true`;
+- funding-rate history;
+- predicted-funding history;
+- liquidation history with optional `convert_to_usd=true`;
+- OHLCV history includes:
+  - total volume;
+  - buy volume;
+  - total transaction count;
+  - buy transaction count.
+
+This means a free P365 prototype can obtain enough raw evidence to build:
+
+- multi-venue BTC OI in USD;
+- per-venue funding;
+- long/short liquidation USD;
+- aggressive-buy volume share / taker-flow proxy from buy volume vs total volume;
+- venue metadata needed for an explicit constituent universe.
+
+#### Important methodology boundary
+
+Coinalyze does not expose the audited market-wide provider-native aggregate needed by
+P365 as one canonical all-exchange series.
+
+Therefore any P365 all-exchange output must be a **versioned derived methodology**.
+
+Examples:
+
+- total BTC perpetual OI = sum of eligible venue OI USD;
+- market-wide funding = OI-weighted average of eligible venue funding rates;
+- total long/short liquidations = sum of eligible venue liquidation USD;
+- taker buy ratio = sum eligible buy volume / sum eligible total volume.
+
+The methodology must freeze:
+
+- eligible venue list;
+- stablecoin-margined vs coin-margined treatment;
+- duplicate/overlapping contract handling;
+- missing venue behavior;
+- timestamp alignment tolerance;
+- stale venue rejection;
+- denominator requirements;
+- source-unit conversion;
+- methodology version.
+
+No aggregation may silently change when Coinalyze adds/removes a venue.
+
+#### Retention implication
+
+At 5m:
+
+- 1500 datapoints ≈ 5.2 days;
+- 2000 datapoints ≈ 6.9 days.
+
+Therefore P365 must begin durable capture early if it wants longer historical MOVE context.
+
+This is not a blocker because Market Memory is explicitly designed to own durable
+history.
+
+#### Legal/usage boundary
+
+The API documentation explicitly says the API is free and asks for source attribution
+when API/data are used publicly.
+
+The audit did not find a stronger API-specific durable-storage licence or a prohibition
+equivalent to CoinGlass's independent-database restriction.
+
+Therefore the free source remains **usage-rights clarification required for durable
+production**, but no explicit storage prohibition was found in the audited Coinalyze API
+documentation.
+
+Verdict:
+
+> **PREFERRED FREE-FIRST CANDIDATE — LIVE KEY / RESPONSE / STORAGE-USE VERIFICATION REQUIRED**
+
+### 12.2 ChainVector — technically stronger free aggregate, prototype-labelled
+
+ChainVector's current free plan is USD 0 forever and includes:
+
+- normalized multi-exchange spot + perp market data across 40+ venues;
+- funding;
+- OI;
+- liquidations;
+- 10 requests/minute;
+- 10,000 requests/month;
+- seven days of history.
+
+Its documentation exposes:
+
+- cross-venue funding;
+- open-interest history;
+- liquidation tape;
+- 5m / 1h / 4h / 1d liquidation aggregates;
+- order-flow/CVD;
+- cross-venue basis;
+- normalized multi-exchange symbology.
+
+Technically this is closer to the desired P365 market-wide representation than
+Coinalyze's per-market raw inputs.
+
+However, the provider describes Free as:
+
+`Evaluate the API and build prototypes`
+
+while production side projects are positioned on the paid Developer tier.
+
+The provider launched its public v1 platform in 2026, so its operational history is also
+short relative to older market-data sources.
+
+Verdict:
+
+> **FREE EVALUATION / CROSS-EXCHANGE REFERENCE — NOT YET PRIMARY PRODUCTION SOURCE**
+
+ChainVector should be live-compared against Coinalyze before any production decision.
+
+### 12.3 Kiyotaka — good schema, free tier does not include multi-exchange aggregation
+
+Kiyotaka Free currently provides:
+
+- 10 weight/minute;
+- 1000 weight/day;
+- seven days of history;
+- OI;
+- funding;
+- liquidations;
+- candles/trades;
+- API key included.
+
+Its API has strong normalization semantics and explicitly documents multi-exchange
+aggregation methodologies:
+
+- OI: sum;
+- funding: OI-weighted average;
+- liquidations: sum;
+- USD normalization.
+
+But the pricing contract says **multi-exchange aggregation is not included in Free**.
+
+P365 could call venues separately and reproduce the same methodology itself, but that
+adds no clear advantage over Coinalyze while having a lower free request budget.
+
+Verdict:
+
+> **FREE SECONDARY REFERENCE — NOT FIRST CHOICE**
+
+### 12.4 CoinBoss — feature-rich but free access is explicitly temporary
+
+CoinBoss currently exposes free public endpoints including:
+
+- aggregated liquidations;
+- OI;
+- funding;
+- long/short ratios;
+- derivatives and exchange data.
+
+However, its own pricing page states:
+
+- all endpoints are currently free;
+- current Professional access is free **for a limited time**;
+- paid tiers are planned.
+
+A time-limited free state is not a defensible durable dependency for P365.
+
+Verdict:
+
+> **TEMPORARY-FREE REFERENCE ONLY**
+
+### 12.5 Loris Tools — rejected for production dependency
+
+Loris Tools offers a free tier with BTC/ETH data across many venues, but its own API
+documentation explicitly warns:
+
+> Do not rely on this API for production trading systems.
+
+That makes it unsuitable as a P365 canonical production provider.
+
+Verdict:
+
+> **REJECTED AS PRODUCTION DEPENDENCY**
+
+## 13. Free-first provider hierarchy
+
+For the current no-cost MVP objective:
+
+```text
+PRIMARY FREE CANDIDATE
+Coinalyze
+  raw per-venue 1m/5m facts
+  + explicit P365 aggregation methodology
+        |
+        +-- validation/reference: ChainVector Free
+        |
+        +-- venue-native validation:
+              Binance / Bybit / OKX / BitMEX / other official public APIs
+```
+
+This architecture intentionally prefers:
+
+1. free raw factual inputs;
+2. P365-owned transparent aggregation;
+3. independent cross-checks;
+4. no single-exchange dependency.
+
+## 14. Revised next gate
+
+CRYPTO-STRUCT-001B should now be:
+
+**Coinalyze Free Live Qualification + Aggregation Methodology Freeze**
+
+It should remain in a separate checkpoint after owner merge of CRYPTO-STRUCT-001A.
+
+Before runtime code:
+
+1. owner creates/provides a free Coinalyze API key;
+2. live `future-markets` response is captured;
+3. exact BTC perpetual venue universe is recorded;
+4. 5m OI/funding/liquidation/OHLCV shapes are verified;
+5. USD conversion is verified on real responses;
+6. timestamp/bucket semantics are verified;
+7. P365 aggregation methodology is frozen;
+8. ChainVector Free is optionally used as an independent aggregate comparison;
+9. no public/commercial redistribution is assumed.
+
+Binance remains fallback evidence rather than primary data ownership.
