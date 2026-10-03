@@ -8,7 +8,10 @@ import type {
 export type CoinalyzeAggregateCoverage = "COMPLETE" | "PARTIAL" | "EMPTY";
 
 export type CoinalyzeAggregateLineage = {
+  /** Beginning of the Coinalyze interval. */
   providerTimestamp: number;
+  /** End of the 5m interval; earliest safe canonical observedAt for interval-close/flow facts. */
+  intervalEndTimestamp: number;
   universeSymbols: string[];
   includedSymbols: string[];
   missingSymbols: string[];
@@ -21,13 +24,13 @@ export type CoinalyzeOpenInterestAggregate = CoinalyzeAggregateLineage & {
 };
 
 export type CoinalyzeFundingAggregate = CoinalyzeAggregateLineage & {
-  oiWeightedFundingRate: number | null;
+  oiWeightedFundingRatePercent: number | null;
   totalWeightOpenInterestUsd: number;
 };
 
 export type CoinalyzeLiquidationProviderFieldAggregate = CoinalyzeAggregateLineage & {
-  providerFieldLSumUsd: number | null;
-  providerFieldSSumUsd: number | null;
+  longLiquidationUsd: number | null;
+  shortLiquidationUsd: number | null;
 };
 
 function normalizedUniverse(symbols: readonly string[]): string[] {
@@ -74,6 +77,7 @@ function lineage(
   const missing = universeSymbols.filter((symbol) => !includedSet.has(symbol));
   return {
     providerTimestamp,
+    intervalEndTimestamp: providerTimestamp + 300,
     universeSymbols,
     includedSymbols: included,
     missingSymbols: missing,
@@ -136,15 +140,12 @@ export function aggregateCoinalyzeOiWeightedFunding(input: {
   }
   return {
     ...lineage(input.providerTimestamp, universe, included),
-    oiWeightedFundingRate: totalWeight > 0 ? weighted / totalWeight : null,
+    oiWeightedFundingRatePercent: totalWeight > 0 ? weighted / totalWeight : null,
     totalWeightOpenInterestUsd: totalWeight,
   };
 }
 
-/**
- * CRYPTO-STRUCT-001A intentionally retains provider field names L/S.
- * Their canonical long/short side mapping remains a live-provider acceptance gate.
- */
+/** Coinalyze OpenAPI defines l=longs liquidation volume and s=shorts liquidation volume. */
 export function aggregateCoinalyzeLiquidationProviderFields(input: {
   universeSymbols: string[];
   providerTimestamp: number;
@@ -159,20 +160,20 @@ export function aggregateCoinalyzeLiquidationProviderFields(input: {
     const point = rowAt(bySymbol.get(symbol), input.providerTimestamp);
     if (!point) continue;
     if (
-      !Number.isFinite(point.providerFieldL)
-      || point.providerFieldL < 0
-      || !Number.isFinite(point.providerFieldS)
-      || point.providerFieldS < 0
+      !Number.isFinite(point.longLiquidationUsd)
+      || point.longLiquidationUsd < 0
+      || !Number.isFinite(point.shortLiquidationUsd)
+      || point.shortLiquidationUsd < 0
     ) {
       throw new Error(`Invalid Coinalyze liquidation fields for ${symbol}`);
     }
     included.push(symbol);
-    fieldL += point.providerFieldL;
-    fieldS += point.providerFieldS;
+    fieldL += point.longLiquidationUsd;
+    fieldS += point.shortLiquidationUsd;
   }
   return {
     ...lineage(input.providerTimestamp, universe, included),
-    providerFieldLSumUsd: included.length > 0 ? fieldL : null,
-    providerFieldSSumUsd: included.length > 0 ? fieldS : null,
+    longLiquidationUsd: included.length > 0 ? fieldL : null,
+    shortLiquidationUsd: included.length > 0 ? fieldS : null,
   };
 }

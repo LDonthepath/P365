@@ -37,7 +37,7 @@ test("Coinalyze future-markets is credential-gated and filters BTC perpetuals ex
           quote_asset: "USDT",
           is_perpetual: true,
           margined: "STABLE",
-          expire_at: 0,
+          expire_at: null,
           oi_lq_vol_denominated_in: "BASE_ASSET",
           has_long_short_ratio_data: true,
           has_ohlcv_data: true,
@@ -111,7 +111,7 @@ test("Coinalyze OI history batches 20 symbols, requests USD conversion and valid
   assert.equal(malformed.errorCode, "MALFORMED_PAYLOAD");
 });
 
-test("Coinalyze funding accepts negative rates but fails closed on missing requested symbols", async () => {
+test("Coinalyze funding accepts negative rates and reports sparse requested-symbol coverage", async () => {
   const result = await fetchCoinalyzeFundingRateHistory(
     { symbols: ["BTC-A"], from: 1_000, to: 2_000 },
     {
@@ -129,8 +129,9 @@ test("Coinalyze funding accepts negative rates but fails closed on missing reque
     { symbols: ["BTC-A", "BTC-B"], from: 1_000, to: 2_000 },
     { apiKey: () => KEY, now: () => new Date(NOW), fetch: async () => json([{ symbol: "BTC-A", history: [] }]) },
   );
-  assert.equal(missing.status, "ERROR");
-  assert.match(missing.message ?? "", /missing funding-rate symbols/);
+  assert.equal(missing.status, "SUCCESS");
+  assert.equal(missing.data.length, 1);
+  assert.match(missing.message ?? "", /omitted 1\/2 requested funding-rate symbols/);
 });
 
 test("Coinalyze liquidation retains provider L/S fields and requests USD conversion", async () => {
@@ -150,8 +151,8 @@ test("Coinalyze liquidation retains provider L/S fields and requests USD convers
   assert.equal(new URL(requestedUrl).searchParams.get("convert_to_usd"), "true");
   assert.deepEqual(result.data[0].history[0], {
     providerTimestamp: 1_000,
-    providerFieldL: 25,
-    providerFieldS: 75,
+    longLiquidationUsd: 25,
+    shortLiquidationUsd: 75,
   });
 });
 
@@ -191,4 +192,93 @@ test("Coinalyze maps 401/429/provider failures without leaking the API key", asy
   assert.equal(limited.status, "ERROR");
   assert.equal(limited.errorCode, "RATE_LIMIT");
   assert.match(limited.message ?? "", /Retry-After=12/);
+});
+
+
+test("Coinalyze accepts live null expire_at for perpetual markets and rejects invalid expiry semantics", async () => {
+  const valid = await fetchCoinalyzeFutureMarkets({
+    apiKey: () => KEY,
+    now: () => new Date(NOW),
+    fetch: async () => json([{
+      symbol: "BTCUSDT_PERP.A",
+      exchange: "A",
+      symbol_on_exchange: "BTCUSDT",
+      base_asset: "BTC",
+      quote_asset: "USDT",
+      is_perpetual: true,
+      margined: "STABLE",
+      expire_at: null,
+      oi_lq_vol_denominated_in: "BASE_ASSET",
+      has_long_short_ratio_data: true,
+      has_ohlcv_data: true,
+      has_buy_sell_data: true,
+    }]),
+  });
+  assert.equal(valid.status, "SUCCESS");
+  assert.equal(valid.data[0].expireAt, null);
+
+  const invalidPerpetual = await fetchCoinalyzeFutureMarkets({
+    apiKey: () => KEY,
+    now: () => new Date(NOW),
+    fetch: async () => json([{
+      symbol: "BTCUSDT_PERP.A",
+      exchange: "A",
+      symbol_on_exchange: "BTCUSDT",
+      base_asset: "BTC",
+      quote_asset: "USDT",
+      is_perpetual: true,
+      margined: "STABLE",
+      expire_at: 123,
+      oi_lq_vol_denominated_in: "BASE_ASSET",
+      has_long_short_ratio_data: true,
+      has_ohlcv_data: true,
+      has_buy_sell_data: true,
+    }]),
+  });
+  assert.equal(invalidPerpetual.status, "ERROR");
+});
+
+
+test("Coinalyze retries one bounded 429 using Retry-After and then succeeds", async () => {
+  let calls = 0;
+  const sleeps: number[] = [];
+  const result = await fetchCoinalyzeOpenInterestHistory(
+    { symbols: ["BTC-A"], from: 1_000, to: 2_000 },
+    {
+      apiKey: () => KEY,
+      now: () => new Date(NOW),
+      sleep: async (milliseconds) => { sleeps.push(milliseconds); },
+      fetch: async () => {
+        calls += 1;
+        if (calls === 1) {
+          return new Response("slow down", { status: 429, headers: { "Retry-After": "2.241" } });
+        }
+        return json([{ symbol: "BTC-A", history: [
+          { t: 1_000, o: 100, h: 110, l: 90, c: 105 },
+        ] }]);
+      },
+    },
+  );
+  assert.equal(result.status, "SUCCESS");
+  assert.equal(calls, 2);
+  assert.deepEqual(sleeps, [2241]);
+});
+
+test("Coinalyze does not retry unsafe or excessive Retry-After values", async () => {
+  let calls = 0;
+  const result = await fetchCoinalyzeOpenInterestHistory(
+    { symbols: ["BTC-A"], from: 1_000, to: 2_000 },
+    {
+      apiKey: () => KEY,
+      now: () => new Date(NOW),
+      sleep: async () => { throw new Error("sleep should not be called"); },
+      fetch: async () => {
+        calls += 1;
+        return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
+      },
+    },
+  );
+  assert.equal(result.status, "ERROR");
+  assert.equal(result.errorCode, "RATE_LIMIT");
+  assert.equal(calls, 1);
 });

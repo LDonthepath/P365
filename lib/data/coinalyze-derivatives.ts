@@ -6,9 +6,11 @@ import { providerResult, type ProviderResult } from "./types";
 export const COINALYZE_BASE_URL = "https://api.coinalyze.net/v1" as const;
 export const COINALYZE_SOURCE_ID = "coinalyze" as const;
 export const COINALYZE_INTERVAL = "5min" as const;
+export const COINALYZE_INTERVAL_SECONDS = 5 * 60;
 export const COINALYZE_MAX_SYMBOLS_PER_REQUEST = 20;
 export const COINALYZE_MAX_SYMBOLS_PER_OPERATION = 50;
 const REQUEST_TIMEOUT_MS = 10_000;
+const MAX_RATE_LIMIT_RETRY_AFTER_SECONDS = 10;
 
 export type CoinalyzeFutureMarket = {
   symbol: string;
@@ -18,7 +20,7 @@ export type CoinalyzeFutureMarket = {
   quoteAsset: string;
   isPerpetual: boolean;
   margined: string;
-  expireAt: number;
+  expireAt: number | null;
   denomination: string;
   hasLongShortRatioData: boolean;
   hasOhlcvData: boolean;
@@ -34,9 +36,12 @@ export type CoinalyzeOhlcPoint = {
 };
 
 export type CoinalyzeLiquidationPoint = {
+  /** Beginning of the provider interval, UNIX seconds. */
   providerTimestamp: number;
-  providerFieldL: number;
-  providerFieldS: number;
+  /** Coinalyze OpenAPI field `l`: longs liquidation volume; USD because the fetcher requests convert_to_usd=true. */
+  longLiquidationUsd: number;
+  /** Coinalyze OpenAPI field `s`: shorts liquidation volume; USD because the fetcher requests convert_to_usd=true. */
+  shortLiquidationUsd: number;
 };
 
 export type CoinalyzeOhlcvPoint = CoinalyzeOhlcPoint & {
@@ -62,6 +67,7 @@ type Dependencies = {
   fetch?: typeof fetch;
   now?: () => Date;
   apiKey?: () => string | undefined;
+  sleep?: (milliseconds: number) => Promise<void>;
 };
 
 type HistoryKind = "open-interest" | "funding-rate" | "liquidation" | "ohlcv";
@@ -121,6 +127,15 @@ function parseFutureMarkets(payload: unknown): CoinalyzeFutureMarket[] {
         throw new Error(`Coinalyze malformed payload: future-market[${index}].${flag} must be boolean`);
       }
     }
+    const expireAt = row.expire_at === null
+      ? null
+      : nonNegativeInteger(row.expire_at, `future-market[${index}].expire_at`);
+    if (row.is_perpetual && expireAt !== null && expireAt !== 0) {
+      throw new Error(`Coinalyze malformed payload: perpetual future-market[${index}].expire_at must be null or 0`);
+    }
+    if (!row.is_perpetual && (expireAt === null || expireAt <= 0)) {
+      throw new Error(`Coinalyze malformed payload: dated future-market[${index}].expire_at must be a positive integer`);
+    }
     return {
       symbol,
       exchange: nonEmptyString(row.exchange, `future-market[${index}].exchange`),
@@ -129,7 +144,7 @@ function parseFutureMarkets(payload: unknown): CoinalyzeFutureMarket[] {
       quoteAsset: nonEmptyString(row.quote_asset, `future-market[${index}].quote_asset`),
       isPerpetual: row.is_perpetual,
       margined: nonEmptyString(row.margined, `future-market[${index}].margined`),
-      expireAt: nonNegativeInteger(row.expire_at, `future-market[${index}].expire_at`),
+      expireAt,
       denomination: nonEmptyString(row.oi_lq_vol_denominated_in, `future-market[${index}].oi_lq_vol_denominated_in`),
       hasLongShortRatioData: row.has_long_short_ratio_data as boolean,
       hasOhlcvData: row.has_ohlcv_data as boolean,
@@ -164,8 +179,8 @@ function parseLiquidationRow(candidate: unknown, label: string): CoinalyzeLiquid
   const row = candidate as Record<string, unknown>;
   return {
     providerTimestamp: providerTimestamp(row.t, `${label}.t`),
-    providerFieldL: nonNegativeNumber(row.l, `${label}.l`),
-    providerFieldS: nonNegativeNumber(row.s, `${label}.s`),
+    longLiquidationUsd: nonNegativeNumber(row.l, `${label}.l`),
+    shortLiquidationUsd: nonNegativeNumber(row.s, `${label}.s`),
   };
 }
 
@@ -228,10 +243,6 @@ function parseHistoryPayload<T>(
     );
     return { symbol, history: history as T[] };
   });
-  const missing = requestedSymbols.filter((symbol) => !seen.has(symbol));
-  if (missing.length > 0) {
-    throw new Error(`Coinalyze malformed payload: missing ${kind} symbols: ${missing.join(",")}`);
-  }
   return parsed;
 }
 
@@ -280,13 +291,45 @@ async function responseJson(response: Response, providerLabel: string): Promise<
   }
 }
 
+
+function retryAfterSeconds(response: Response): number | null {
+  const raw = response.headers.get("retry-after");
+  if (!raw) return null;
+  const seconds = Number.parseFloat(raw);
+  if (!Number.isFinite(seconds) || seconds <= 0 || seconds > MAX_RATE_LIMIT_RETRY_AFTER_SECONDS) {
+    return null;
+  }
+  return seconds;
+}
+
+async function fetchJsonWithRateLimitRetry(
+  fetcher: typeof fetch,
+  input: string,
+  init: () => RequestInit,
+  providerLabel: string,
+  sleep: (milliseconds: number) => Promise<void>,
+): Promise<unknown> {
+  let response = await fetcher(input, init());
+  if (response.status === 429) {
+    const retryAfter = retryAfterSeconds(response);
+    if (retryAfter !== null) {
+      await sleep(Math.ceil(retryAfter * 1000));
+      response = await fetcher(input, init());
+    }
+  }
+  return responseJson(response, providerLabel);
+}
+
 function apiKey(dependencies: Dependencies): string | undefined {
   return (dependencies.apiKey ?? (() => process.env.COINALYZE_API_KEY))();
 }
 
 export function eligibleCoinalyzeBtcPerpetualMarkets(markets: CoinalyzeFutureMarket[]): CoinalyzeFutureMarket[] {
   return markets
-    .filter((market) => market.baseAsset.toUpperCase() === "BTC" && market.isPerpetual && market.expireAt === 0)
+    .filter((market) =>
+      market.baseAsset.toUpperCase() === "BTC"
+      && market.isPerpetual
+      && (market.expireAt === null || market.expireAt === 0))
     .sort((left, right) => left.symbol.localeCompare(right.symbol));
 }
 
@@ -299,13 +342,20 @@ export async function fetchCoinalyzeFutureMarkets(
     return providerResult(COINALYZE_SOURCE_ID, "UNAVAILABLE", [], "COINALYZE_API_KEY is not configured", undefined, now().toISOString());
   }
   const fetcher = dependencies.fetch ?? fetch;
+  const sleep = dependencies.sleep ?? ((milliseconds: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   try {
-    const response = await fetcher(`${COINALYZE_BASE_URL}/future-markets`, {
-      headers: { accept: "application/json", api_key: key },
-      ...providerFetchPolicy("FRESH", 300),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-    const payload = await responseJson(response, "Coinalyze future-markets");
+    const payload = await fetchJsonWithRateLimitRetry(
+      fetcher,
+      `${COINALYZE_BASE_URL}/future-markets`,
+      () => ({
+        headers: { accept: "application/json", api_key: key },
+        ...providerFetchPolicy("FRESH", 300),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      }),
+      "Coinalyze future-markets",
+      sleep,
+    );
     const data = parseFutureMarkets(payload);
     const retrievedAt = now().toISOString();
     return providerResult(
@@ -349,6 +399,8 @@ async function fetchHistory<T>(
     return providerResult(COINALYZE_SOURCE_ID, "UNAVAILABLE", [], "COINALYZE_API_KEY is not configured", undefined, now().toISOString());
   }
   const fetcher = dependencies.fetch ?? fetch;
+  const sleep = dependencies.sleep ?? ((milliseconds: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   const output: CoinalyzeHistorySeries<T>[] = [];
   try {
     for (const symbolChunk of chunks(symbols, COINALYZE_MAX_SYMBOLS_PER_REQUEST)) {
@@ -358,20 +410,32 @@ async function fetchHistory<T>(
       url.searchParams.set("from", String(query.from));
       url.searchParams.set("to", String(query.to));
       if (convertToUsd) url.searchParams.set("convert_to_usd", "true");
-      const response = await fetcher(url.toString(), {
-        headers: { accept: "application/json", api_key: key },
-        ...providerFetchPolicy(query.acquisitionMode ?? "FRESH", 300),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
-      const payload = await responseJson(response, `Coinalyze ${kind}`);
+      const payload = await fetchJsonWithRateLimitRetry(
+        fetcher,
+        url.toString(),
+        () => ({
+          headers: { accept: "application/json", api_key: key },
+          ...providerFetchPolicy(query.acquisitionMode ?? "FRESH", 300),
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        }),
+        `Coinalyze ${kind}`,
+        sleep,
+      );
       output.push(...parseHistoryPayload(payload, symbolChunk, kind, parsePoint));
     }
     const retrievedAt = now().toISOString();
+    const returnedSymbols = new Set(output.map((series) => series.symbol));
+    const missingSymbols = symbols.filter((symbol) => !returnedSymbols.has(symbol));
+    const message = output.length === 0
+      ? `Coinalyze returned no ${kind} history for the requested window`
+      : missingSymbols.length > 0
+        ? `Coinalyze omitted ${missingSymbols.length}/${symbols.length} requested ${kind} symbols: ${missingSymbols.join(",")}`
+        : undefined;
     return providerResult(
       COINALYZE_SOURCE_ID,
       output.length > 0 ? "SUCCESS" : "EMPTY",
       output,
-      output.length > 0 ? undefined : `Coinalyze returned no ${kind} history`,
+      message,
       undefined,
       retrievedAt,
     );
@@ -435,4 +499,20 @@ export function fetchCoinalyzeOhlcvHistory(
     false,
     dependencies,
   );
+}
+
+
+/** Coinalyze history `t` is the beginning of the interval. */
+export function coinalyzeCompletedIntervalEndTimestamp(providerTimestamp: number): number {
+  if (!Number.isInteger(providerTimestamp) || providerTimestamp < 0) {
+    throw new Error("Coinalyze providerTimestamp must be a non-negative integer");
+  }
+  return providerTimestamp + COINALYZE_INTERVAL_SECONDS;
+}
+
+export function isCoinalyzeIntervalComplete(providerTimestamp: number, retrievedAtSeconds: number): boolean {
+  if (!Number.isFinite(retrievedAtSeconds) || retrievedAtSeconds < 0) {
+    throw new Error("Coinalyze retrievedAtSeconds must be non-negative");
+  }
+  return coinalyzeCompletedIntervalEndTimestamp(providerTimestamp) <= retrievedAtSeconds;
 }

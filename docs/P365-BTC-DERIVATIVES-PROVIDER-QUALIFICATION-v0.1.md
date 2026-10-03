@@ -1217,3 +1217,177 @@ Explicit unresolved gates remain:
 The diagnostic is considered executable only after a real free `COINALYZE_API_KEY` is
 configured. Until then it returns a blocked status rather than weakening canonical
 semantics.
+
+
+## 20. CRYPTO-STRUCT-001B.1 live proof findings — 4 Oct 2026
+
+Live preview qualification using the owner-provided free API key established:
+
+- credential is valid and reaches the official API;
+- `future-markets` returned 5,469 total futures-market records at the observed run;
+- 26 records qualified as BTC perpetuals across 16 provider exchange codes;
+- a complete four-family 5m cycle implies 104 symbol-calls;
+- 104 is below the documented theoretical 200 symbol-call capacity across five minutes,
+  but above the 40-call single-minute limit;
+- acquisition therefore must be spread across the five-minute bucket rather than burst
+  concurrently.
+
+### Live schema discrepancy
+
+Coinalyze's public OpenAPI still declares `future_market_info.expire_at` as integer
+milliseconds, and the HTML example shows `0`.
+
+The live perpetual-market payload instead returns:
+
+`expire_at: null`
+
+P365 therefore accepts only:
+
+- perpetual market: `expire_at = null | 0`;
+- dated future: positive integer expiry.
+
+Any other combination fails closed.
+
+### Official OpenAPI semantic resolution
+
+The official OpenAPI specification explicitly defines:
+
+- history `t` = **the beginning of the interval**, UNIX seconds;
+- liquidation `l` = **Longs liquidation volume**;
+- liquidation `s` = **Shorts liquidation volume**.
+
+These two gates are therefore closed by normative provider documentation, not inferred
+from price behavior.
+
+### Sparse history behavior
+
+Live qualification also proved that Coinalyze may omit requested symbols from a history
+response in a bounded window:
+
+- sampled OI omitted 1 of 5 symbols;
+- sampled funding returned data;
+- sampled liquidation returned no series in the 45-minute window;
+- sampled OHLCV returned data.
+
+Missing history series are therefore coverage evidence, not malformed JSON.
+
+P365 keeps unexpected symbols, duplicate symbols, malformed rows and non-ascending
+timestamps fail-closed, while requested-but-omitted symbols are exposed as missing
+coverage.
+
+An empty liquidation window is permitted as absence of reported liquidation evidence; it
+must not be converted into fabricated per-market zero observations.
+
+### Remaining governance gate
+
+The only unresolved CRYPTO-STRUCT-001B source gate is:
+
+`DURABLE_PRIVATE_STORAGE_USE`
+
+The API documentation explicitly states that the API is free and asks for attribution
+when data are used publicly, but the audited public terms do not explicitly address
+building a private durable historical database. No CoinGlass-like storage prohibition was
+found, but absence of prohibition is not equivalent to explicit storage permission.
+
+
+### Point-in-time completion rule
+
+The live 5m API returns the currently forming interval before that interval is complete.
+
+Observed example:
+
+- qualification retrieved at approximately 19:41 UTC;
+- provider already returned a bucket with `t = 19:40 UTC`.
+
+Because the official OpenAPI defines `t` as interval **beginning** and OHLC `c` as
+the interval **end** value, P365 must not canonicalize the currently forming bucket.
+
+Frozen rule:
+
+`canonical observedAt = provider t + 5 minutes`
+
+and a bucket is eligible only when:
+
+`provider t + 5 minutes <= retrievedAt`
+
+This applies to:
+
+- OI close;
+- funding close;
+- liquidation interval totals;
+- OHLCV interval totals / buy volume.
+
+Provider `t` remains lineage as the interval-start timestamp.
+
+The current in-progress bucket may be used only as explicitly provisional diagnostics,
+never as a final point-in-time Observation.
+
+
+## 21. CRYPTO-STRUCT-001B.1 final live proof
+
+Final preview live run at `2026-10-03T19:47:29.089Z` returned
+`READY_FOR_SEMANTIC_REVIEW` with zero durable writes.
+
+Verified live facts:
+
+- eligible BTC perpetual universe: **26 contracts**;
+- provider exchange-code count: **16**;
+- four-family full-universe 5m budget: **104 symbol-calls**;
+- documented five-minute theoretical capacity: **200 symbol-calls**;
+- full cycle therefore fits across five minutes but not a single 40-call minute;
+- sampled OI: 4/5 symbols returned;
+- sampled funding: 5/5 returned;
+- sampled liquidation: 0/5 returned in the 45-minute window;
+- sampled OHLCV: 5/5 returned;
+- OI/funding/OHLCV timestamps were all aligned to 5-minute boundaries;
+- provider returned the currently forming interval;
+- latest completed sample interval started at `19:40 UTC` and canonical
+  `observedAt` is `19:45 UTC`;
+- sampled completed-bucket OI aggregate was approximately
+  `805,939,454.28 USD` with PARTIAL coverage;
+- sampled OI-weighted funding was approximately
+  `-0.0041365%` with PARTIAL coverage.
+
+The numeric sample is qualification evidence, not a canonical durable Observation.
+
+### 21.1 Rate-limit behavior
+
+A prior qualification invocation received HTTP 429 with
+`Retry-After=2.241`.
+
+The adapter now honors one bounded provider-directed retry when:
+
+- status is 429;
+- `Retry-After` parses to a positive finite number;
+- wait is no more than 10 seconds.
+
+It creates a fresh request timeout for the retry and still fails closed if the retry
+fails. Large/invalid retry waits are not followed.
+
+The full production 26-contract universe must still be intentionally paced across the
+five-minute acquisition window; retry logic is resilience, not a substitute for
+scheduler design.
+
+### 21.2 Technical verdict
+
+CRYPTO-STRUCT-001B is a **TECHNICAL LIVE-QUALIFICATION PASS** for:
+
+- credential/access;
+- live future-market schema;
+- BTC perpetual universe discovery;
+- sparse history handling;
+- 5m timestamp alignment;
+- interval-start semantics;
+- completed-bucket point-in-time rule;
+- OI USD acquisition;
+- funding percent semantics;
+- documented long/short liquidation fields;
+- bounded 429 recovery;
+- free-tier quota feasibility over a five-minute cycle.
+
+The remaining blocker is governance/legal rather than provider-shape/runtime:
+
+`DURABLE_PRIVATE_STORAGE_USE`
+
+No Market Memory persistence or Supabase schedule is authorized until that boundary is
+accepted or explicitly clarified.
