@@ -1,7 +1,7 @@
 # P365 Unscheduled News / Catalyst Source Qualification v0.1
 
 **Checkpoint:** NEWS-001B  
-**Status:** GDELT GAL CURRENT-15M RUNTIME IMPLEMENTED / LIVE FILTER PROOF PENDING  
+**Status:** GDELT GAL CURRENT-15M LIVE-QUALIFIED READ-ONLY / HISTORICAL MOVE-WINDOW COVERAGE MISSING  
 **Provider:** GDELT Article List (GAL)  
 **Scope:** current BTC/Gold candidate-catalyst discovery only
 
@@ -207,3 +207,58 @@ Technical qualification requires:
 7. provider failure remains explicit;
 8. exact-head build succeeds;
 9. writes performed = 0.
+
+
+## 11. Live proof — 4 Oct 2026
+
+The P365 Vercel preview executed the final Bitcoin-specific GAL runtime successfully.
+
+Observed proof snapshot:
+
+- provider status = `SUCCESS`;
+- writes performed = false;
+- feed last-build time = `2026-10-03T20:47:00.000Z`;
+- derived feed-window start = `2026-10-03T20:32:00.000Z`;
+- feed coverage = `ROLLING_15_MINUTES`;
+- total RSS items = `2,898`;
+- Bitcoin-specific candidates returned by the narrowed filter = `1`;
+- candidate source domain in that snapshot = `www.onvista.de`;
+- candidate provider date = `2026-10-03T20:46:00.000Z`;
+- provider-date semantics = `PUBLICATION_OR_FIRST_SEEN`;
+- causal attribution = `NOT_EVALUATED`;
+- historical point-in-time replay = `NOT_SUPPORTED_WITHOUT_DURABLE_ACQUISITION`.
+
+An earlier broad-filter proof admitted unrelated generic crypto/altcoin pages. The final
+runtime therefore requires explicit `Bitcoin` or `BTC` matching rather than generic
+`crypto` wording alone.
+
+A separate live proof also exposed at least one malformed RSS item with an empty title.
+The final parser skips and counts malformed individual rows while retaining strict feed
+structure and `lastBuildDate` validation.
+
+These proof values describe one live feed snapshot only. They are not a claim that the
+candidate article caused any BTC move.
+
+## 12. Acceptance result
+
+**Technical qualification: PASS for current rolling-15-minute candidate-catalyst discovery.**
+
+Qualified now:
+
+- credential-free static GAL acquisition from Vercel;
+- explicit rolling 15-minute coverage;
+- Bitcoin-specific and Gold-market candidate filtering;
+- URL/domain provenance;
+- conservative publication-or-first-seen time semantics;
+- malformed-row tolerance with explicit accounting;
+- candidate/no-candidate/provider-unavailable states;
+- non-causal evidence semantics.
+
+Still missing:
+
+- durable GAL acquisition/history;
+- arbitrary historical 30/60/120-minute move-window replay;
+- official-source authority verification/ranking;
+- article-body semantic analysis;
+- attention/tone timeline runtime;
+- MOVE-002B integration.
