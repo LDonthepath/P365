@@ -221,9 +221,12 @@ function parseHistoryPayload<T>(
     if (!Array.isArray(row.history)) {
       throw new Error(`Coinalyze malformed payload: ${kind}[${index}].history must be an array`);
     }
-    const history = row.history.map((item, pointIndex) =>
-      parsePoint(item, `${kind}[${symbol}].history[${pointIndex}]`));
-    return { symbol, history };
+    const history = strictlyAscending(
+      row.history.map((item, pointIndex) =>
+        parsePoint(item, `${kind}[${symbol}].history[${pointIndex}]`)) as Array<T & { providerTimestamp: number }>,
+      `${kind}[${symbol}].history`,
+    );
+    return { symbol, history: history as T[] };
   });
   const missing = requestedSymbols.filter((symbol) => !seen.has(symbol));
   if (missing.length > 0) {
