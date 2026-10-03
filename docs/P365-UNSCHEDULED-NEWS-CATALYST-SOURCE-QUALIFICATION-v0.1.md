@@ -71,8 +71,10 @@ locally.
 BTC candidate terms:
 
 - Bitcoin;
-- BTC;
-- crypto / cryptocurrency.
+- BTC.
+
+Generic `crypto` / `cryptocurrency` alone is not sufficient. Live proof showed that a
+broad crypto term admits unrelated altcoin/product pages into the BTC catalyst set.
 
 Gold candidates require:
 

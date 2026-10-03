@@ -110,3 +110,21 @@ test("GDELT GAL skips malformed individual items without failing the feed", asyn
   assert.equal(result.data[0].invalidItemCount, 1);
   assert.equal(result.data[0].candidates.length, 1);
 });
+
+
+test("generic crypto pages do not qualify as BTC candidates", async () => {
+  const result = await fetchGdeltGalCandidateSnapshot(
+    { asset: "BTC" },
+    {
+      now: () => NOW,
+      fetch: async () => new Response(rss(`
+        <item><title>Crypto markets rise as altcoins rally</title><link>https://example.com/crypto-altcoins</link><pubDate>4 Oct 2026 11:58:00 +0000</pubDate></item>
+        <item><title>Bitcoin rises after macro headline</title><link>https://example.com/bitcoin-macro</link><pubDate>4 Oct 2026 11:57:00 +0000</pubDate></item>
+      `), { status: 200 }),
+    },
+  );
+
+  assert.equal(result.status, "SUCCESS");
+  assert.equal(result.data[0].candidates.length, 1);
+  assert.match(result.data[0].candidates[0].title, /Bitcoin/);
+});

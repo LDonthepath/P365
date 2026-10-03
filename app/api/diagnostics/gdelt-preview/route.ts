@@ -27,6 +27,7 @@ export async function GET(): Promise<Response> {
       },
       evidence,
       totalFeedItems: result.data[0]?.totalFeedItems ?? null,
+      invalidItemCount: result.data[0]?.invalidItemCount ?? null,
     },
     {
       status: result.status === "ERROR" ? 502 : 200,
