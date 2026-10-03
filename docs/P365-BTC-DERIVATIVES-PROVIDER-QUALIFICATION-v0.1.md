@@ -1,7 +1,7 @@
 # P365 BTC Derivatives Provider Qualification v0.1
 
 **Checkpoint:** CRYPTO-STRUCT-001A  
-**Status:** SOURCE QUALIFICATION + IMPLEMENTATION SCAFFOLD ACTIVE — LIVE KEY QUALIFICATION PENDING  
+**Status:** CRYPTO-STRUCT-001A MERGED / PR #156 — CRYPTO-STRUCT-001B LIVE QUALIFICATION ACTIVE  
 **Downstream dependency:** MOVE-002A crypto-market-structure evidence gap  
 **Scope:** Provider comparison and source selection only  
 **Primary asset:** BTC derivatives / perpetual market structure  
@@ -1179,3 +1179,41 @@ Still gated by the live Coinalyze key:
 
 This boundary is intentional: P365 now has real provider/aggregation code while avoiding
 durable storage of facts whose provider timestamp/side semantics have not yet been proven.
+
+
+## 19. CRYPTO-STRUCT-001B live qualification runtime
+
+CRYPTO-STRUCT-001B adds a **read-only diagnostic execution path** on top of the merged
+Coinalyze provider scaffold.
+
+Route:
+
+`GET /api/diagnostics/coinalyze`
+
+Security:
+
+- reuses the existing `CRON_SECRET` bearer-authorization contract;
+- creates no new authentication mechanism.
+
+Behavior:
+
+1. fetches `future-markets`;
+2. derives the current eligible BTC perpetual universe;
+3. reports full-universe free-tier quota arithmetic;
+4. selects at most five symbols deterministically across distinct exchanges for the
+   semantic smoke test;
+5. requests 45 minutes of fresh 5m OI, funding, liquidation and OHLCV;
+6. reports timestamp alignment/lag evidence without guessing bucket-open vs bucket-close;
+7. computes sample OI USD and OI-weighted funding only at an exact shared provider
+   timestamp;
+8. performs **zero** Supabase/Market Memory writes.
+
+Explicit unresolved gates remain:
+
+- `PROVIDER_TIMESTAMP_BUCKET_ANCHOR`;
+- `LIQUIDATION_L_S_CANONICAL_MAPPING`;
+- `DURABLE_PRIVATE_STORAGE_USE`.
+
+The diagnostic is considered executable only after a real free `COINALYZE_API_KEY` is
+configured. Until then it returns a blocked status rather than weakening canonical
+semantics.
