@@ -30,6 +30,8 @@ export type ProviderId =
   | "coingecko"
   | "coinalyze"
   | "binance-spot"
+  | "binance-futures"
+  | "hyperliquid"
   | "bybit-spot"
   | "defillama"
   | "sosovalue"
