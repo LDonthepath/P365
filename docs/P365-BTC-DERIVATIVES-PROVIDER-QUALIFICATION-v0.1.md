@@ -1321,3 +1321,73 @@ Provider `t` remains lineage as the interval-start timestamp.
 
 The current in-progress bucket may be used only as explicitly provisional diagnostics,
 never as a final point-in-time Observation.
+
+
+## 21. CRYPTO-STRUCT-001B.1 final live proof
+
+Final preview live run at `2026-10-03T19:47:29.089Z` returned
+`READY_FOR_SEMANTIC_REVIEW` with zero durable writes.
+
+Verified live facts:
+
+- eligible BTC perpetual universe: **26 contracts**;
+- provider exchange-code count: **16**;
+- four-family full-universe 5m budget: **104 symbol-calls**;
+- documented five-minute theoretical capacity: **200 symbol-calls**;
+- full cycle therefore fits across five minutes but not a single 40-call minute;
+- sampled OI: 4/5 symbols returned;
+- sampled funding: 5/5 returned;
+- sampled liquidation: 0/5 returned in the 45-minute window;
+- sampled OHLCV: 5/5 returned;
+- OI/funding/OHLCV timestamps were all aligned to 5-minute boundaries;
+- provider returned the currently forming interval;
+- latest completed sample interval started at `19:40 UTC` and canonical
+  `observedAt` is `19:45 UTC`;
+- sampled completed-bucket OI aggregate was approximately
+  `805,939,454.28 USD` with PARTIAL coverage;
+- sampled OI-weighted funding was approximately
+  `-0.0041365%` with PARTIAL coverage.
+
+The numeric sample is qualification evidence, not a canonical durable Observation.
+
+### 21.1 Rate-limit behavior
+
+A prior qualification invocation received HTTP 429 with
+`Retry-After=2.241`.
+
+The adapter now honors one bounded provider-directed retry when:
+
+- status is 429;
+- `Retry-After` parses to a positive finite number;
+- wait is no more than 10 seconds.
+
+It creates a fresh request timeout for the retry and still fails closed if the retry
+fails. Large/invalid retry waits are not followed.
+
+The full production 26-contract universe must still be intentionally paced across the
+five-minute acquisition window; retry logic is resilience, not a substitute for
+scheduler design.
+
+### 21.2 Technical verdict
+
+CRYPTO-STRUCT-001B is a **TECHNICAL LIVE-QUALIFICATION PASS** for:
+
+- credential/access;
+- live future-market schema;
+- BTC perpetual universe discovery;
+- sparse history handling;
+- 5m timestamp alignment;
+- interval-start semantics;
+- completed-bucket point-in-time rule;
+- OI USD acquisition;
+- funding percent semantics;
+- documented long/short liquidation fields;
+- bounded 429 recovery;
+- free-tier quota feasibility over a five-minute cycle.
+
+The remaining blocker is governance/legal rather than provider-shape/runtime:
+
+`DURABLE_PRIVATE_STORAGE_USE`
+
+No Market Memory persistence or Supabase schedule is authorized until that boundary is
+accepted or explicitly clarified.

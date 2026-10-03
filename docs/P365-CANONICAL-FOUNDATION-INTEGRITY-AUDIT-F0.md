@@ -64,6 +64,8 @@ The system must become market-first rather than calendar-first: a material BTC o
 
 CRYPTO-STRUCT-001B now adds a read-only, CRON_SECRET-protected qualification diagnostic that exercises the merged Coinalyze adapter against a bounded deterministic BTC-perpetual sample, reports universe/quota/timestamp evidence, and performs sample OI/funding aggregation without any durable write. Live execution remains blocked until `COINALYZE_API_KEY` is configured; timestamp bucket anchor, liquidation L/S canonical mapping and durable-use rights remain explicit unresolved gates.
 
+Final Coinalyze live proof returned `READY_FOR_SEMANTIC_REVIEW`: 26 eligible BTC perpetual contracts across 16 exchange codes; four-family 5m demand 104 symbol-calls versus documented 200/5m theoretical capacity; OI 4/5 sampled, funding 5/5, liquidation sparse/empty, OHLCV 5/5. The runtime now accepts live `expire_at=null` only for perpetuals, treats omitted history as explicit partial coverage, freezes provider `t` as interval start and `l/s` as long/short liquidation from official OpenAPI, excludes currently forming 5m buckets from canonical eligibility, labels funding in percent units, and honors one bounded 429 Retry-After retry. No durable write occurred. `DURABLE_PRIVATE_STORAGE_USE` remains the only source-governance blocker before CRYPTO-STRUCT-001C.
+
 ### Foundation readiness by layer
 
 | Layer | Status | Audit result |
@@ -891,7 +893,7 @@ Intelligence / Briefing
 25. MOVE-001C Read-Only Continuous Move Detector Runtime         ← CLOSED / PR #154
 26. MOVE-002A Move-Centered Evidence Investigation Contract       ← CLOSED / PR #155
 27. CRYPTO-STRUCT-001A BTC Derivatives Provider Qualification    ← CLOSED / PR #156
-28. CRYPTO-STRUCT-001B Coinalyze Free Live Qualification          ← LIVE PROOF PASS / PIT semantics frozen; durable-use gate remains
+28. CRYPTO-STRUCT-001B Coinalyze Free Live Qualification          ← TECHNICAL PASS / live proof complete; durable-use governance gate remains
 29. CRYPTO-STRUCT-001C Bounded Factual Runtime                     ← only after 001B proves selected source
 30. MOVE-002B Read-Only Move Evidence Bundle Runtime              ← after market-structure runtime; unresolved evidence stays explicit
 31. Intraday Rates/Pricing Source Qualification                   ← demand-driven gap for BTC + Gold
