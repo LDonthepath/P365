@@ -1,7 +1,7 @@
 # P365 BTC Derivatives Provider Qualification v0.1
 
 **Checkpoint:** CRYPTO-STRUCT-001A  
-**Status:** PROVIDER LANDSCAPE / SOURCE QUALIFICATION PROPOSED — OWNER MERGE PENDING  
+**Status:** SOURCE QUALIFICATION + IMPLEMENTATION SCAFFOLD ACTIVE — LIVE KEY QUALIFICATION PENDING  
 **Downstream dependency:** MOVE-002A crypto-market-structure evidence gap  
 **Scope:** Provider comparison and source selection only  
 **Primary asset:** BTC derivatives / perpetual market structure  
@@ -1090,3 +1090,92 @@ there.
 
 This prevents Coinalyze or any derivatives provider from becoming the de facto P365 data
 architecture.
+
+
+## 19. Implementation scaffold — active in PR #156
+
+CRYPTO-STRUCT-001A is no longer documentation-only.
+
+The branch now contains a bounded Coinalyze implementation scaffold:
+
+### Provider adapter
+
+`lib/data/coinalyze-derivatives.ts`
+
+Implemented:
+
+- `COINALYZE_API_KEY` configuration guard;
+- official `/future-markets` acquisition;
+- official 5m `/open-interest-history`;
+- official 5m `/funding-rate-history`;
+- official 5m `/liquidation-history`;
+- official 5m `/ohlcv-history`;
+- header-based `api_key` authentication;
+- 10-second request timeout;
+- shared P365 provider fetch policy;
+- maximum 20 symbols per HTTP request;
+- bounded maximum 50 symbols per operation;
+- deterministic request chunking;
+- strict finite-number and history-order validation;
+- duplicate / missing / unexpected symbol rejection;
+- explicit `convert_to_usd=true` for OI and liquidation;
+- 401 / 403 / 429 / 5xx classification through existing `ProviderResult`;
+- API-key redaction from diagnostics;
+- explicit provider `l` / `s` liquidation fields with **no canonical side assumption**.
+
+The adapter does not convert provider `t` into canonical `observedAt` because bucket-anchor
+meaning remains a live-provider acceptance gate.
+
+### Aggregation primitives
+
+`lib/application/coinalyze-derivatives-aggregation.ts`
+
+Implemented pure read-only functions:
+
+- exact-provider-bucket USD OI summation;
+- exact-provider-bucket OI-weighted funding;
+- provider-field liquidation summation without assigning long/short semantics;
+- explicit COMPLETE / PARTIAL / EMPTY coverage;
+- exact included/missing symbol lineage;
+- deterministic universe hash.
+
+Partial coverage never converts missing venues to zero.
+
+### Focused tests
+
+Added:
+
+- provider credential guard;
+- BTC-perpetual universe filtering;
+- 20-symbol request chunking;
+- USD conversion query enforcement;
+- strict ascending-history rejection;
+- negative funding-rate acceptance;
+- missing requested symbol rejection;
+- liquidation L/S preservation;
+- OHLCV per-contract volume preservation;
+- authentication / rate-limit classification and credential redaction;
+- complete/partial OI aggregation;
+- OI-weighted funding;
+- liquidation provider-field aggregation.
+
+Vercel preview for exact commit `cf5d00371fa87c17d134a3d069e774cbbbb4931e`
+completed **READY** and returned HTTP 200, proving the current TypeScript/Next build path
+accepts the implementation.
+
+### Deliberately not implemented yet
+
+Still gated by the live Coinalyze key:
+
+- canonical Observation series keys for Coinalyze derivatives facts;
+- `observedAt` mapping from provider `t`;
+- canonical long-vs-short mapping of liquidation `l` / `s`;
+- FND-018A measurement/revision normalization;
+- Market Memory persistence;
+- historical backfill;
+- Supabase cron;
+- MOVE evidence-bundle consumption;
+- dashboard/UI.
+
+This boundary is intentional: P365 now has real provider/aggregation code while avoiding
+durable storage of facts whose provider timestamp/side semantics have not yet been proven.
