@@ -1,4 +1,4 @@
-import { fetchUsdCnhSpot, fetchUsdJpySpot } from "../../../../../lib/data/yahoo-finance-markets";
+import { fetchUsdCnhSpot, fetchUsdJpySpot } from "../../../../lib/data/yahoo-finance-markets";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
