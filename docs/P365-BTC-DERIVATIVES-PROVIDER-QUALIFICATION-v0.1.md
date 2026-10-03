@@ -1073,3 +1073,20 @@ Until those are proven:
 - no backfill;
 - no market-wide Coinalyze volume/CVD claim;
 - no causal label such as short-covering or leverage expansion.
+
+
+## 18. Cross-family evidence handoff
+
+CRYPTO-STRUCT-001A is intentionally limited to the derivatives provider decision.
+
+The broader mixed-provider implementation order is frozen separately in:
+
+`P365-EVIDENCE-COVERAGE-MATRIX-v0.1.md`
+
+That matrix makes derivatives only the first P0 market-mechanics family, followed by
+spot flow, order-book liquidity, unscheduled catalysts and intraday rates/pricing.
+Options, on-chain, stablecoin/DeFi expansion and sentiment remain P1/P2 as documented
+there.
+
+This prevents Coinalyze or any derivatives provider from becoming the de facto P365 data
+architecture.

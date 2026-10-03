@@ -491,6 +491,10 @@ A provider is selected only after proving:
 
 No provider should be added merely because it exposes a desired number.
 
+## 12.1 Operational prioritization matrix
+
+For the current P0/P1/P2 implementation order, cadence roles, current coverage, and free-first provider candidates, use `P365-EVIDENCE-COVERAGE-MATRIX-v0.1.md`. That matrix refines implementation priority without changing this document's normative evidence universe.
+
 ## 13. Non-goals
 
 This contract does not define:
