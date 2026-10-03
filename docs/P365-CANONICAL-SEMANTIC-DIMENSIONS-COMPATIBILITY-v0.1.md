@@ -235,6 +235,22 @@ legacy domain      ASSET
 marketDomain       FX
 informationClass   PRICING
 asset              USD
+
+fx.usdjpy.jpy_per_usd
+legacy domain      ASSET
+marketDomain       FX
+informationClass   PRICING
+jurisdiction       JAPAN
+instrument         FX_PAIR
+asset              USDJPY
+
+fx.usdcnh.cnh_per_usd
+legacy domain      ASSET
+marketDomain       FX
+informationClass   PRICING
+jurisdiction       CHINA
+instrument         FX_PAIR
+asset              USDCNH
 ```
 
 The coexistence of different legacy domains for observations that belong to one market domain is intentional during migration.
@@ -316,7 +332,7 @@ This checkpoint passes only if:
 4. existing Market Memory rows require no rewrite;
 5. current FRED registry series all have approved semantic mappings;
 6. current CoinGecko metric families all have approved semantic mappings;
-7. current Yahoo Gold/Russell/DXY metrics all have approved semantic mappings;
+7. current Yahoo Gold/Russell/DXY/USDJPY/USDCNH metrics all have approved semantic mappings;
 8. new normalized Observations carry additive semantic dimensions;
 9. legacy rows can resolve approved semantics from series/metric identity;
 10. unknown semantics fail or remain explicitly missing rather than being guessed;
