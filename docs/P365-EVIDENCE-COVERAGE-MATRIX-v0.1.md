@@ -34,6 +34,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | Evidence family | Market question | Priority | Cadence role | Current P365 state | Free-first direction |
 |---|---|---:|---|---|---|
 | BTC / ETH / Gold / DXY price | What moved and what confirmed/diverged? | P0 | SYNC | **ACTIVE** | Existing qualified sources |
+| Asia FX transmission — USDJPY / USDCNH | Did Japan/yen or China/offshore-RMB pricing reprice with the move? | P0 | SYNC | **ASIA-MACRO-001B PRODUCTION ACTIVE / DURABLE FORWARD** | Existing Yahoo trial path; fail-closed FX freshness |
 | Continuous move materiality | Is the move historically unusual? | P0 | SYNC | **ACTIVE / MOVE-001C** | Existing Market Memory |
 | Scheduled macro events | Was there a qualified scheduled catalyst? | P0 | EVENT | **ACTIVE** | Existing event pipeline |
 | BTC derivatives OI | Is leverage exposure expanding/contracting? | P0 | SYNC | **TECHNICAL LIVE PASS / DURABLE-USE GATE** | Coinalyze free-first |
@@ -71,6 +72,7 @@ Already available:
 - ETH spot;
 - Gold futures;
 - DXY;
+- USDJPY and offshore USDCNH synchronous FX transmission evidence;
 - MOVE-001C historical materiality.
 
 Role:
@@ -79,7 +81,7 @@ Role:
 - establish synchronous confirmation/divergence;
 - never infer causality from co-movement alone.
 
-No new provider is required for this family before MOVE evidence bundling.
+No new provider is required for this family before MOVE evidence bundling. USDJPY/USDCNH are now collected by the existing Supabase `p365-market-fast` five-minute owner; they remain factual transmission evidence and do not imply Japan/China causality.
 
 ### 3.2 BTC derivatives / leverage — IN QUALIFICATION
 
