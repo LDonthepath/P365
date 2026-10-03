@@ -314,3 +314,128 @@ CRYPTO-STRUCT-001A does not authorize:
 - prediction;
 - BUY / SELL / LONG / SHORT;
 - position sizing or execution.
+
+## 10. Deeper qualification pass — 4 Oct 2026
+
+### 10.1 CryptoQuant API contract is materially stronger than one-venue data
+
+The current BTC Market Data documentation explicitly supports:
+
+- Open Interest: `exchange=all_exchange`, provider-normalized to USD;
+- Funding Rates: `exchange=all_exchange`;
+- Taker Buy/Sell Stats: `exchange=all_exchange`, buy/sell volumes normalized to USD;
+- Liquidations: `exchange=all_exchange`, including long/short liquidation USD values;
+- aggregation windows: `day`, `hour`, and `min` for market-data endpoints.
+
+The provider's time convention defines `window=min` as the UTC minute bucket from
+`HH:MM:00` through `HH:MM:59`.
+
+This is a better semantic fit for MOVE than venue-specific Binance OI/funding/taker data
+because the economic question is market-wide leverage/flow context.
+
+### 10.2 CryptoQuant entitlement documentation inconsistency
+
+The current pricing surface says:
+
+- Basic: market-data API, daily resolution;
+- Advanced: market-data API, hourly resolution;
+- Professional: market-data + on-chain API, minute-resolution market data;
+- Premium: minute-resolution market data with full history.
+
+However, current API endpoint/discovery documentation still says that an access token is
+obtained after upgrading to Professional or Premium.
+
+P365 must treat this as an entitlement-documentation inconsistency.
+
+Consequences:
+
+1. no runtime assumption may be made from the pricing page alone;
+2. exact minute endpoint entitlement must be smoke-tested with the intended plan;
+3. HTTP `401` / `403` behavior must be treated as an entitlement failure, not schema absence;
+4. CRYPTO-STRUCT runtime remains blocked until a real key proves the selected plan.
+
+### 10.3 CryptoQuant usage boundary
+
+Current CryptoQuant Terms grant API users internal, non-commercial use rights and prohibit
+resale/redistribution. The pricing page labels Professional as `Personal use` and current
+Terms reserve retail plans such as Professional for retail customers rather than corporate
+entities.
+
+For the current owner-operated internal/non-commercial P365 MVP this is potentially
+compatible, but it is not proof of future corporate/commercial entitlement.
+
+Before durable production use, live qualification must confirm:
+
+- the owner account is eligible for the selected plan;
+- API-derived normalized facts may be retained inside private P365 Market Memory under the
+  applicable subscription/license;
+- no public redistribution is performed.
+
+A move to corporate/public/commercial P365 requires a fresh license/plan review.
+
+### 10.4 CoinGlass durable-storage blocker confirmed
+
+Current CoinGlass API Terms explicitly prohibit, without prior written consent:
+
+- bulk collection/storage/aggregation to create independent databases;
+- redistribution of API data or derived data;
+- API proxy/gateway redistribution.
+
+This conflicts directly with the P365 Market Memory durability model.
+
+CoinGlass therefore remains technically excellent but **not runtime-eligible for durable
+Market Memory without written consent**, regardless of endpoint richness.
+
+### 10.5 Coinalyze free-first capability confirmed, legal boundary still weaker
+
+The current Coinalyze API documentation confirms:
+
+- free API access after account/API-key creation;
+- 40 calls/minute per key;
+- 1m and 5m OI history;
+- 1m and 5m funding history;
+- 1m and 5m liquidation history;
+- `convert_to_usd` for OI/liquidation;
+- future-market metadata including exchange, margin type and
+  `oi_lq_vol_denominated_in`;
+- only approximately 1500–2000 intraday datapoints retained.
+
+The public API documentation encourages source attribution for public use, but the audit
+did not find an API-specific durable-storage licence as explicit as CryptoQuant's internal
+API-use grant.
+
+Therefore Coinalyze remains the strongest **free validation/prototype candidate**, not the
+preferred durable canonical source until its storage/use boundary is clearer.
+
+### 10.6 Selection state after deeper audit
+
+Current selection state:
+
+1. **CryptoQuant — preferred primary candidate for market-wide BTC derivatives evidence**
+   subject to live entitlement and private durable-storage confirmation.
+2. **Coinalyze — free-first validation/fallback candidate**, with P365-owned aggregation
+   methodology required for market-wide series and storage terms still to clarify.
+3. **Binance — venue-native fallback/reference**, not the market-wide default.
+4. **CoinGlass — feature benchmark**, technically strong but durable-storage blocked
+   without written consent.
+5. **Coin Metrics / Kaiko / Amberdata — institutional references** if budget/entitlement
+   later makes them practical.
+
+CRYPTO-STRUCT-001A still does not activate any provider.
+
+## 11. Same-PR stopping gate
+
+Because the owner requested this source work to continue in one PR, PR #156 may continue
+to refine source qualification until the documentation evidence is exhausted.
+
+It must still stop before:
+
+- purchasing a plan;
+- creating/using a new provider credential;
+- committing provider runtime code;
+- writing production data;
+- changing Supabase cron;
+- adding a new external dependency.
+
+Those actions require an explicit owner choice of the provider/plan after this PR is
+reviewed.
