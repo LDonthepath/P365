@@ -193,22 +193,29 @@ For synchronous MOVE evidence, P365 values:
 4. provider-native timestamps;
 5. no fabricated interpolation.
 
-The tested session showed:
+The first tested session showed:
 
 - `2YY`: no usable trade bars;
 - `10Y` Yield futures: usable but materially less liquid than standard Treasury futures;
-- `ZT` and `ZN`: dense five-minute observations on both curve points.
+- `ZT` and `ZN`: dense five-minute observations.
 
-Therefore, if P365 later authorizes a **proxy** rates path, the preferred coherent pair is:
+The subsequent tenor-fidelity risk review found that `ZN` is not sufficiently close to the
+current 10Y cash point for P365's intended macro label, while `TN` is explicitly designed
+around original-issue 10Y notes with roughly 9y5m–10y remaining maturity.
+
+A bounded `TNZ6` proof in the same test window returned 525 five-minute bars, 2,029,436
+provider volume and 167,668 transactions.
+
+Therefore, if a **free and rights-compatible** source later qualifies, the preferred proxy pair is:
 
 - `ZT` for front-end Treasury-futures price evidence;
-- `ZN` for long-end Treasury-futures price evidence.
+- `TN` for 10Y-point Treasury-futures price evidence.
 
-This is a technical proxy selection, **not** production authorization.
+This is a risk-bounded proxy preference, **not** production authorization.
 
 ## 6. Non-negotiable semantic boundary
 
-ZT/ZN are:
+ZT/TN are:
 
 `RATES / PRICING / US / FUTURE`
 
@@ -275,7 +282,7 @@ P365 therefore freezes the following selection methodology.
 
 ### 7.1 Eligible universe
 
-For product code `ZT` or `ZN` and target exchange session `S`:
+For product code `ZT` or `TN` and target exchange session `S`:
 
 1. query Massive Contracts point-in-time at `date=S`;
 2. retain only:
@@ -425,7 +432,7 @@ Non-Display permission is satisfied.
 Before production activation, owner-approved written entitlement must explicitly cover, at
 minimum:
 
-1. CBOT ZT and ZN market data;
+1. CBOT ZT and TN market data;
 2. recurring server-side acquisition;
 3. Category C-2 research/analysis or equivalent permitted non-display use;
 4. internal durable storage/retention needed by Market Memory;
@@ -452,7 +459,7 @@ For exact economic semantics:
 2. standard Treasury futures are a proxy, not a replacement for exact cash yield;
 3. daily FRED/Treasury remains the authoritative slow/background layer.
 
-The value of Massive ZT/ZN is narrower:
+The value of a future free ZT/TN source would be narrower:
 
 > provide dense, synchronous front-end/long-end Treasury **futures-price repricing evidence**
 > when exact intraday cash yields are unavailable.
@@ -500,7 +507,7 @@ Semantics:
 - tenor: `2Y` or `10Y`
 - unit: provider-native Treasury futures price points, par basis 100
 - provider provenance: `massive`
-- native symbol: exact selected contract ticker, e.g. `ZTZ6` or `ZNZ6`
+- native symbol: exact selected contract ticker, e.g. `ZTZ6` or `TNZ6`
 
 The logical series key describes the economic proxy family; exact contract identity remains
 mandatory provenance on every row.
@@ -538,7 +545,7 @@ Before any Massive rates runtime may be implemented:
 4. implementation follows the frozen session-volume roll methodology exactly;
 5. implementation follows the frozen completed-bar/missing-bar rules;
 6. provider 429/backoff behavior remains fail-closed/bounded;
-7. no cash-yield or basis-point labels are applied to ZT/ZN prices.
+7. no cash-yield or basis-point labels are applied to ZT/TN prices.
 
 Current blocker:
 
