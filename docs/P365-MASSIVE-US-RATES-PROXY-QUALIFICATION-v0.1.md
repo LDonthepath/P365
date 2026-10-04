@@ -407,8 +407,20 @@ intended automated runtime:
 > **CURRENT INDIVIDUAL ACCESS DOES NOT AUTHORIZE THE PROPOSED P365 NON-DISPLAY WORKFLOW.**
 
 Massive currently advertises a CBOT Business futures plan at USD 999/month with exchange
-assistance, but P365 must not assume that purchasing that plan alone automatically satisfies
-every CME Non-Display permission.
+assistance.
+
+CME's June 2026 fee list separately lists Category C Non-Display — which includes C-2 Research
+and Analysis — at USD 363/month for the Basic tier (one Application), assessed per DCM.
+
+Because ZT/ZN are CBOT products, CBOT is the relevant DCM for this proxy family.
+
+P365 must **not** assume that the public Massive subscription price and the CME Category C fee
+are simply additive, included, or billed separately. The actual commercial arrangement must be
+confirmed by Massive/CME in writing. These public prices are recorded only to establish that the
+rights path is materially paid and requires an explicit owner decision.
+
+Purchasing the Massive plan alone must not be treated as automatic proof that every CME
+Non-Display permission is satisfied.
 
 Before production activation, owner-approved written entitlement must explicitly cover, at
 minimum:
@@ -560,6 +572,7 @@ Massive:
 
 - https://massive.com/legal/market-data-terms-of-service
 - https://massive.com/business-futures
+- https://www.cmegroup.com/market-data/files/june-2026-market-data-fee-list.pdf
 - https://massive.com/docs/rest/futures/contracts
 - https://massive.com/docs/rest/futures/aggregates
 
