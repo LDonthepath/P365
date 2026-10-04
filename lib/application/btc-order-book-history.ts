@@ -131,10 +131,13 @@ function binanceEvidenceId(snapshot: BtcOrderBookLiquiditySnapshot): string {
 }
 
 function hyperliquidEvidenceId(snapshot: BtcPerpOrderBookLiquiditySnapshot): string {
-  const { retrievedAt: _retrievedAt, ...providerFact } = snapshot;
   // Hyperliquid supplies a provider-native book timestamp. Re-fetching the same
   // provider fact later must therefore resolve to the same canonical identity.
-  return `hyperliquid-btc-perp-order-book-v1-${digest(providerFact)}`;
+  // JSON serialization omits the explicit undefined retrieval-time field.
+  return `hyperliquid-btc-perp-order-book-v1-${digest({
+    ...snapshot,
+    retrievedAt: undefined,
+  })}`;
 }
 
 export function binanceBtcSpotOrderBookSnapshotToEvidence(
