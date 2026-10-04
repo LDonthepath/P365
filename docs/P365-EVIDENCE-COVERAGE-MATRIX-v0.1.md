@@ -41,7 +41,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC derivatives OI | Is leverage exposure expanding/contracting? | P0 | SYNC | **TECHNICAL LIVE PASS / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC funding | Is perpetual positioning becoming expensive/crowded? | P0 | SYNC/NEAR | **LIVE-QUALIFIED / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **TECHNICAL LIVE PASS — SPARSE WINDOW / DURABLE-USE GATE** | Coinalyze free-first; ChainVector validation |
-| BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **SPOT-FLOW-001A/001B/001C PRODUCTION ACTIVE / DURABLE FORWARD / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot completed 5m taker-flow persists via existing `p365-market-fast`; MOVE-002B replay consumption remains separate |
+| BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **SPOT-FLOW-001A/B/C PRODUCTION ACTIVE + MOVE-002C REPLAY IMPLEMENTED / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot completed 5m taker-flow persists via existing `p365-market-fast` and is point-in-time consumable by BTC MATERIAL_MOVE bundles |
 | BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **SPOT BINANCE + PERP HYPERLIQUID CURRENT SNAPSHOTS LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | Binance Spot current depth + Hyperliquid BTC perp current depth; Binance Futures Vercel-egress unavailable |
 | Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **NEWS-001B/001C/001D PRODUCTION ACTIVE / DURABLE FORWARD HISTORY ACCUMULATING** | GDELT GAL BTC+Gold snapshots persist every fast-market cycle via existing `p365-market-fast`; no pre-activation backfill is claimed |
 | Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MACRO-RATES-001A/001B FREE-ONLY / PAID PATHS REJECTED / ZT+TN PROXY RISK-QUALIFIED ONLY / NO RUNTIME / REAL-YIELD INTRADAY UNRESOLVED** | Daily FRED remains canonical background; if any future free lawful proxy is found, ZT+TN is preferred over ZT+ZN after tenor-fidelity review |
@@ -137,7 +137,7 @@ Current production coverage:
 - Bybit Spot public recent trades remain an approved secondary taker-side sample, but current Vercel egress cannot reach the provider;
 - no market-wide spot-flow aggregate is authorized until a venue universe and normalization methodology are frozen.
 
-The remaining P0 gap is historical consumption inside MOVE-002B, not acquisition continuity.
+Historical acquisition and MOVE-bundle consumption are now both implemented for Binance spot-flow. Remaining spot-flow limitations are pre-activation history, single-venue scope, unavailable Bybit secondary validation, and the absence of any authorized market-wide aggregation or causal interpretation.
 
 ### 3.4 Order-book liquidity — CURRENT SNAPSHOTS PARTIALLY COVERED
 
@@ -571,7 +571,7 @@ MOVE-002B does not add another provider. It consumes durable point-in-time facts
 available and exposes unresolved temporal gaps explicitly:
 
 - Coinalyze derivatives: technically live-qualified, durable replay not approved;
-- Binance spot-flow: durable FORWARD acquisition is production-active; MOVE-002B historical-Evidence consumption remains pending;
+- Binance spot-flow: durable FORWARD acquisition is production-active and MOVE-002C consumes point-in-time historical Evidence for BTC MATERIAL_MOVE bundles;
 - spot/perp order books: current snapshots, historical window missing;
 - GDELT GAL: durable forward snapshot acquisition is now production-active; pre-activation history remains unavailable and MOVE-002B historical-Evidence wiring remains separate;
 - intraday rates: FREE_ONLY / no approved runtime.
@@ -579,8 +579,7 @@ available and exposes unresolved temporal gaps explicitly:
 NEWS-001D production activation closes the acquisition side of the unscheduled-news gap:
 the remaining news work is consumption/replay integration, not another provider or scheduler.
 
-SPOT-FLOW-001C likewise closes the acquisition-continuity side of BTC spot taker-flow:
-the remaining spot-flow work is MOVE-002B historical replay consumption and later evidence composition, not another scheduler or fake backfill.
+SPOT-FLOW-001C plus MOVE-002C close the acquisition-and-replay continuity loop for Binance BTCUSDT taker-flow. Pre-activation MOVE windows still remain missing by design; no fake backfill, market-wide aggregation or causal label is authorized.
 
 Those gaps may be addressed later as isolated checkpoints only when their source/use boundary
 is defensible. Options/on-chain/sentiment expansion must not pre-empt unresolved P0 evidence
