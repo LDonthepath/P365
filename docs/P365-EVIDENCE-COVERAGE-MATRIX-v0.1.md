@@ -569,7 +569,7 @@ MOVE-002B does not add another provider. It consumes durable point-in-time facts
 available and exposes unresolved temporal gaps explicitly:
 
 - Coinalyze derivatives: technically live-qualified, durable replay not approved;
-- Binance spot-flow: current read-only, durable replay missing;
+- Binance spot-flow: durable FORWARD Evidence runtime implemented; production scheduler activation and MOVE-002B replay consumption remain pending;
 - spot/perp order books: current snapshots, historical window missing;
 - GDELT GAL: durable forward snapshot acquisition is now production-active; pre-activation history remains unavailable and MOVE-002B historical-Evidence wiring remains separate;
 - intraday rates: FREE_ONLY / no approved runtime.
