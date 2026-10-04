@@ -43,7 +43,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **BINANCE LIVE-QUALIFIED READ-ONLY / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot 5m primary; second-venue validation still open |
 | BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **SPOT BINANCE + PERP HYPERLIQUID CURRENT SNAPSHOTS LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | Binance Spot current depth + Hyperliquid BTC perp current depth; Binance Futures Vercel-egress unavailable |
 | Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **NEWS-001B GDELT GAL CURRENT-15M LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | GDELT GAL rolling 15m current feed; historical move-window coverage still missing |
-| Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MISSING** | Free/source search still required |
+| Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MACRO-RATES-001A SOURCE-QUALIFIED / NOMINAL RUNTIME PROVIDER OPEN / REAL-YIELD INTRADAY UNRESOLVED** | BrokerTec direct-cash preferred if licensed; CME 2YY/10Y explicit futures-proxy fallback; Twelve Data requires live provenance qualification |
 | BTC basis | Is futures pricing rich/cheap vs spot/index? | P1 | SYNC | **MISSING / VENUE FALLBACK AVAILABLE** | Official exchange basis where qualified |
 | BTC options IV / DVOL / skew | Did expected volatility/hedging reprice? | P1 | SYNC/NEAR | **MISSING** | Deribit public API candidate |
 | BTC ETF net flow | Is institutional spot flow supportive/contradictory? | P1 | SLOW | **ACTIVE** | SoSoValue existing |
@@ -196,26 +196,39 @@ P365 requirements:
 - official issuer/government/exchange sources should outrank secondary reporting when
   available.
 
-### 3.6 Intraday rates / policy pricing — MISSING P0
+### 3.6 Intraday rates / policy pricing — SOURCE-QUALIFIED / RUNTIME OPEN
 
 Required for both BTC and Gold:
 
-- US 2Y;
-- US 10Y;
-- real yield where intraday qualified;
-- policy-expectation / futures pricing where qualified.
+- US 2Y nominal intraday pricing;
+- US 10Y nominal intraday pricing;
+- real-yield/TIPS evidence only where its economic meaning is explicitly qualified;
+- policy-expectation / futures pricing where separately qualified.
 
 Primary question:
 
 > Did the macro pricing complex reprice during the same move?
 
-Current FRED daily facts remain useful background but cannot answer this question.
+MACRO-RATES-001A source qualification establishes:
+
+- Treasury/FRED `DGS2`, `DGS10`, and `DFII10` remain authoritative **daily background** and are not intraday substitutes;
+- BrokerTec on-the-run U.S. Treasuries are the preferred audited **direct cash-market** path for 2Y/10Y if licensing and exact runtime schema are approved;
+- CME `2YY` / `10Y` Yield futures are the preferred audited **explicit futures proxy** if direct cash is impractical, but they must remain `FUTURE` evidence and require authorized market-data access;
+- Twelve Data fixed income is an operationally promising aggregator candidate but remains runtime-unqualified until exact source lineage, both tenors, timestamps, latency, history, and durable-use rights are live-proven;
+- GovPX provides strong realtime TIPS market coverage, but public documentation does not prove a provider-native intraday constant-maturity series equivalent to `DFII10`;
+- therefore intraday 10Y constant-maturity real yield remains `MISSING_HIGH_VALUE_EVIDENCE`.
 
 The existing research/event ZT path must not be silently relabeled as canonical US 2Y
 cash-yield evidence.
 
-Provider selection remains open. This gap is **P0** and should be source-qualified after
-the derivatives live gate or in parallel if it does not block the current PR.
+The separate policy-path contract remains unchanged: CME FedWatch is semantically qualified
+but runtime licensing/entitlement remains open.
+
+Normative source audit:
+
+`P365-INTRADAY-US-RATES-SOURCE-QUALIFICATION-v0.1.md`
+
+No runtime/provider activation is authorized by MACRO-RATES-001A.
 
 ## 4. P1 — High-value confirmation and market-specific context
 
@@ -550,6 +563,6 @@ evidence changes the priority:
 1. BTC spot-flow source qualification;
 2. BTC order-book liquidity source qualification;
 3. unscheduled-news/catalyst source qualification;
-4. intraday rates/policy-pricing source qualification.
+4. intraday rates/policy-pricing runtime source selection/live qualification after MACRO-RATES-001A.
 
 Options/on-chain/sentiment expansion must not pre-empt these P0 gaps.
