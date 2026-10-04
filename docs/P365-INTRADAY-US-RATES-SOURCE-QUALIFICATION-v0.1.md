@@ -1,7 +1,7 @@
 # P365 Intraday US Rates Transmission Source Qualification v0.1
 
 **Checkpoint:** MACRO-RATES-001A  
-**Status:** SOURCE QUALIFICATION COMPLETE / TWELVE DATA ACCESS-GATED / NOMINAL RUNTIME PROVIDER NOT APPROVED / REAL-YIELD INTRADAY UNRESOLVED  
+**Status:** SOURCE QUALIFICATION COMPLETE / MASSIVE FUTURES TECHNICAL LIVE PASS / DURABLE NON-DISPLAY RIGHTS GATE / REAL-YIELD INTRADAY UNRESOLVED  
 **Scope:** US rates transmission evidence for BTC + Gold MOVE investigation  
 **Implementation effect:** Documentation/source-qualification only. No provider runtime, API credential, dependency, scheduler, durable write, UI, State/Regime/Risk/Intelligence, causal conclusion, or trading logic.
 
@@ -473,6 +473,7 @@ or an approved calculation methodology closes the gap.
 | CME 2YY / 10Y Yield futures | Yield-quoted futures proxy | Yes | Excellent | CME market-data entitlement | **PREFERRED EXPLICIT FUTURES PROXY; RUNTIME BLOCKED** |
 | Standard ZT / 10Y note futures | Treasury futures-price proxy | Yes | Excellent | market-data entitlement | **RESEARCH PROXY ONLY** |
 | Twelve Data fixed income | Aggregated Treasury-yield API candidate | Potentially | **Open** | fixed-income entitlement + third-party terms | **MACRO-RATES-001B ACCESS-GATED; NOT RUNTIME-APPROVED** |
+| Massive CME/CBOT futures | Standard Treasury futures + Yield futures proxy | Yes where traded | Excellent instrument provenance | non-display/business/CME rights | **MACRO-RATES-001B TECHNICAL LIVE PASS; DURABLE RIGHTS GATE** |
 | GovPX TIPS | Direct TIPS market pricing | Yes | Excellent for TIPS market | CME/GovPX licensing | **REAL-RATE CANDIDATE; CMT EQUIVALENCE NOT PROVEN** |
 
 ## 14. Checkpoint verdict
@@ -483,11 +484,11 @@ The market-data route is now understood, but no production provider is approved.
 
 Preferred hierarchy:
 
-1. **BrokerTec direct cash** if owner-approved entitlement + exact schema satisfy runtime needs;
-2. **CME Yield futures 2YY/10Y** as explicitly labeled derivatives proxies if direct cash is
-   impractical and authorized market-data access exists;
-3. **Twelve Data** only after owner-approved fixed-income entitlement; MACRO-RATES-001B stopped at the access gate because P365 has no Twelve Data credential, Basic/demo access does not prove fixed-income market data, and exact 10Y/live semantics remain unverified;
-4. existing daily FRED remains background when no qualified intraday path is authorized.
+1. **BrokerTec direct cash** remains preferred if owner-approved entitlement + exact schema satisfy runtime needs;
+2. for an explicitly labeled intraday **proxy**, **Massive standard Treasury futures ZT/ZN** are now the strongest technically proven pair because both tenors showed dense 5-minute trade bars in the bounded Vercel proof; they remain futures-price evidence and production durable use is blocked by non-display/business/CME rights plus roll-methodology gates;
+3. **CME Yield futures** remain semantically attractive because they trade directly in yield, but the bounded Massive proof found usable 10Y activity and no 2YY trade bars in the same test window, so the pair is not selected as the primary synchronous proxy;
+4. **Twelve Data** remains access-gated; owner-approved fixed-income entitlement would still be required before a genuine live yield-series qualification;
+5. existing daily FRED remains background when no qualified intraday runtime is authorized.
 
 P365 must not scrape CME/Yahoo websites to bypass a licensing gate.
 
@@ -579,3 +580,62 @@ Normative qualification record:
 
 No credential, purchase, provider runtime, scheduler or durable write is authorized by this
 result.
+
+
+## 18. MACRO-RATES-001B continuation — Massive Treasury Futures qualification
+
+The owner instructed MACRO-RATES-001B to continue in PR #166 rather than opening a new PR.
+
+P365 therefore audited the already-configured Massive provider before accepting a new paid
+rates dependency.
+
+A preview-only Vercel qualification using the existing server-side `MASSIVE_API_KEY` proved:
+
+### Yield Futures
+
+- `2YY`: product and active-contract discovery PASS, but both tested active single contracts
+  (`2YYV6`, `2YYX6`) returned zero 5-minute trade bars in the tested session;
+- `10Y`: product/contract discovery PASS;
+- `10YV6`: 344 five-minute bars, volume 3,540, 1,739 transactions;
+- `10YX6`: 48 bars, volume 233, 128 transactions.
+
+Verdict:
+
+`YIELD_FUTURES = PARTIAL_TECHNICAL_PASS / 2YY_SYNCHRONOUS_LIQUIDITY_FAIL`
+
+### Standard Treasury Futures
+
+Most liquid observed contracts in the same test window:
+
+- `ZTZ6` — 527 five-minute bars, volume 3,050,214, 174,869 transactions;
+- `ZNZ6` — 528 five-minute bars, volume 6,765,907, 384,754 transactions.
+
+Both had only one observed gap over 15 minutes in the bounded window, consistent with a
+session break rather than sparse trading.
+
+Verdict:
+
+`ZT_ZN = STRONG_TECHNICAL_LIVE_PASS_AS_FUTURES_PRICE_PROXY`
+
+This does not authorize a cash-yield label or exact basis-point inference. Standard Treasury
+futures are physically delivered price contracts with deliverable-basket, CTD, conversion
+factor, carry and roll mechanics.
+
+### Rights gate
+
+Massive's current individual Market Data Terms restrict market data to personal/non-business
+use and, absent a separate agreement, default display use. Non-display use/derived application
+use requires the appropriate permission/license.
+
+P365 recurring server-side acquisition + durable Market Memory + automated MOVE reasoning must
+therefore remain:
+
+`DURABLE_NON_DISPLAY_RIGHTS_UNVERIFIED`
+
+The existing key proves technical access only.
+
+Normative detailed record:
+
+`P365-MASSIVE-US-RATES-PROXY-QUALIFICATION-v0.1.md`
+
+No production adapter, scheduler or Market Memory write is authorized by this qualification.
