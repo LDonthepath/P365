@@ -184,7 +184,7 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
     jurisdiction: "US",
     scheduledAt,
     retrievedAt: "2026-10-02T01:00:00.000Z",
-    status: "SCHEDULED",
+    status: "UPCOMING",
     importance: "HIGH",
     sourceId: "test-calendar",
     evidenceId: "event-evidence",
