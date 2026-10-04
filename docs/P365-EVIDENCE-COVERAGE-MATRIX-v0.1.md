@@ -43,7 +43,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **BINANCE LIVE-QUALIFIED READ-ONLY / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot 5m primary; second-venue validation still open |
 | BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **SPOT BINANCE + PERP HYPERLIQUID CURRENT SNAPSHOTS LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | Binance Spot current depth + Hyperliquid BTC perp current depth; Binance Futures Vercel-egress unavailable |
 | Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **NEWS-001B GDELT GAL CURRENT-15M LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | GDELT GAL rolling 15m current feed; historical move-window coverage still missing |
-| Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MACRO-RATES-001A/001B SOURCE-QUALIFIED / MASSIVE ZT+ZN TECHNICAL LIVE PASS / DURABLE RIGHTS GATE / REAL-YIELD INTRADAY UNRESOLVED** | BrokerTec direct-cash preferred if licensed; existing Massive access proves liquid ZT/ZN futures-price proxy; 2YY sparse; Twelve Data access-gated |
+| Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MACRO-RATES-001A/001B SOURCE-QUALIFIED / MASSIVE ZT+ZN TECHNICAL LIVE PASS / ROLL METHODOLOGY FROZEN / CURRENT INDIVIDUAL RIGHTS FAIL / REAL-YIELD INTRADAY UNRESOLVED** | BrokerTec direct-cash preferred if licensed; ZT/ZN proxy technically qualified; current Massive individual terms do not authorize P365 non-display runtime; Twelve Data access-gated |
 | BTC basis | Is futures pricing rich/cheap vs spot/index? | P1 | SYNC | **MISSING / VENUE FALLBACK AVAILABLE** | Official exchange basis where qualified |
 | BTC options IV / DVOL / skew | Did expected volatility/hedging reprice? | P1 | SYNC/NEAR | **MISSING** | Deribit public API candidate |
 | BTC ETF net flow | Is institutional spot flow supportive/contradictory? | P1 | SLOW | **ACTIVE** | SoSoValue existing |
@@ -231,7 +231,7 @@ Normative source audit:
 
 `P365-INTRADAY-US-RATES-SOURCE-QUALIFICATION-v0.1.md`
 
-No runtime/provider activation is authorized by MACRO-RATES-001A or MACRO-RATES-001B. Massive ZT/ZN are technically qualified only; durable non-display rights and roll methodology remain open. Twelve Data remains access-gated until owner-approved fixed-income entitlement exists.
+No runtime/provider activation is authorized by MACRO-RATES-001A or MACRO-RATES-001B. Massive ZT/ZN are technically qualified and the point-in-time session-volume roll methodology is frozen, but the current individual Massive entitlement explicitly fails the intended P365 non-display runtime boundary. Twelve Data remains access-gated until owner-approved fixed-income entitlement exists.
 
 ## 4. P1 — High-value confirmation and market-specific context
 
@@ -566,6 +566,6 @@ evidence changes the priority:
 1. BTC spot-flow source qualification;
 2. BTC order-book liquidity source qualification;
 3. unscheduled-news/catalyst source qualification;
-4. intraday rates/policy-pricing rights/methodology decision after MACRO-RATES-001A/001B — either authorize a compliant Massive ZT/ZN futures-proxy runtime after non-display rights + roll rules are frozen, pursue licensed BrokerTec direct cash, or keep intraday rates evidence missing; Twelve Data no longer needs priority merely to obtain a technical proxy.
+4. intraday rates/policy-pricing rights decision after MACRO-RATES-001A/001B — ZT/ZN technical proof and roll methodology are now closed; remaining choice is obtain written Massive/CME non-display + durable-use entitlement, pursue licensed BrokerTec direct cash, or keep intraday rates evidence explicitly missing. Twelve Data no longer needs priority merely to obtain a technical proxy.
 
 Options/on-chain/sentiment expansion must not pre-empt these P0 gaps.
