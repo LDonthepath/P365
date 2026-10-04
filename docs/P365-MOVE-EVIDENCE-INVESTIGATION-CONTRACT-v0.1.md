@@ -1,11 +1,11 @@
 # P365 Move-Centered Evidence Investigation Contract v0.1
 
-**Checkpoint:** MOVE-002A  
-**Status:** MERGED / PR #155  
+**Checkpoint:** MOVE-002A + MOVE-002B  
+**Status:** MOVE-002A MERGED / MOVE-002B READ-ONLY RUNTIME IMPLEMENTED  
 **Trigger dependency:** MOVE-001C `ContinuousMoveAssessment.status = MATERIAL_MOVE`  
 **Scope:** Evidence organization and coverage qualification for move-driven investigation  
 **Primary MVP targets:** Bitcoin + Gold  
-**Implementation effect:** Contract / coverage audit only. No provider integration, persistence, scheduler, UI, causal engine, State/Regime/Risk/Intelligence, prediction, or trading logic.
+**Implementation effect:** MOVE-002A defines the contract; MOVE-002B adds a read-only repository-backed evidence bundle runtime. No provider activation, persistence, scheduler, UI, causal engine, State/Regime/Risk/Intelligence, prediction, or trading logic.
 
 ## 1. Purpose
 
@@ -47,12 +47,16 @@ MOVE evidence is divided by temporal role. These roles must not be silently mixe
 
 Evidence that can be measured on an intraday cadence close enough to the MOVE window to describe the contemporaneous market fingerprint.
 
-Current qualified MVP set:
+Current qualified durable MVP set:
 
 - BTC spot;
 - ETH spot;
 - DXY;
-- Gold futures.
+- Gold futures;
+- USDJPY;
+- offshore USDCNH.
+
+USDJPY/USDCNH were added later by ASIA-MACRO-001A/001B and remain factual FX transmission evidence only.
 
 For cross-series synchronization, the first policy permits nearest-time alignment within **±120 seconds** around the MOVE start/end timestamps.
 
@@ -333,3 +337,179 @@ MOVE-002A does not add:
 - predictions;
 - BUY / SELL / LONG / SHORT;
 - position sizing or execution.
+
+## 11. MOVE-002B Read-Only Evidence Bundle Runtime
+
+MOVE-002B implements the first runtime boundary defined in section 7.
+
+Application:
+
+`lib/application/move-evidence-bundle.ts`
+
+### 11.1 Trigger and identity
+
+The runtime accepts only a MOVE-001C assessment with:
+
+`status = MATERIAL_MOVE`
+
+and:
+
+`hasMaterialMove = true`
+
+The MOVE assessment remains the root identity. No synthetic economic Event is created.
+
+The investigation window is unchanged:
+
+- end = MOVE target end Observation time;
+- start = earliest target-start Observation among material horizons;
+- knowledge cutoff = the exact MOVE assessment `asOf`.
+
+The runtime returns `NOT_TRIGGERED` rather than constructing a bundle from a non-material MOVE.
+
+### 11.2 Point-in-time synchronous market fingerprint
+
+MOVE-002B reads only durable `HistoricalObservationRepository` history under:
+
+`retrievedAt <= assessment.asOf`
+
+Series:
+
+- BTC spot;
+- ETH spot;
+- DXY;
+- Gold futures;
+- USDJPY;
+- USDCNH.
+
+Each start/end point is independently selected inside the frozen **±120 second** alignment tolerance.
+
+Rules:
+
+- latest knowable revision per `observedAt`;
+- FND-002Q historical-fitness eligibility;
+- no interpolation;
+- no forward-fill;
+- no backward-fill;
+- no later-known revision leakage;
+- percentage change only when both selected values are finite and start value is non-zero.
+
+Each series exposes its own state:
+
+- `AVAILABLE_SYNCHRONOUS`;
+- `INSUFFICIENT_DATA`;
+- `UNKNOWN`.
+
+The family additionally exposes `COMPLETE / PARTIAL / EMPTY` coverage.
+
+### 11.3 Scheduled catalysts
+
+MOVE-002B reads canonical Event history only inside the investigation window and only when:
+
+`Event.retrievedAt <= assessment.asOf`
+
+Zero events is a valid complete result; it means no scheduled catalyst is present in the bounded window under the current Event history.
+
+A bounded 500-row hit fails closed as `UNKNOWN` rather than silently asserting complete coverage.
+
+### 11.4 Slow background
+
+For BTC:
+
+- USD stablecoin liquidity read model;
+- matured US spot BTC ETF daily net-flow read model.
+
+For Gold:
+
+- CFTC Gold positioning read model.
+
+These remain `AVAILABLE_BACKGROUND` only. Their slow cadence cannot be promoted to synchronous cause evidence.
+
+### 11.5 Current-only P0 evidence stays explicit
+
+The following source paths are technically available but do not yet provide durable point-in-time MOVE replay:
+
+- Coinalyze BTC derivatives;
+- Binance BTC spot taker-flow;
+- Binance Spot order-book snapshot;
+- Hyperliquid/Binance-perp order-book snapshot;
+- GDELT GAL rolling 15-minute current feed.
+
+MOVE-002B therefore does **not** issue fresh provider calls to explain a historical MOVE.
+
+For BTC market structure these are emitted as `INSUFFICIENT_DATA`, with component-specific reasons.
+
+Unscheduled catalysts are also `INSUFFICIENT_DATA` until durable GDELT acquisition can reproduce the MOVE cutoff.
+
+This distinction is deliberate:
+
+`current technical availability != point-in-time historical evidence`
+
+### 11.6 Intraday rates guardrail
+
+MACRO-RATES-001A/001B froze owner policy:
+
+`FREE_ONLY`
+
+No paid rates path is allowed, and no free rates proxy runtime is approved.
+
+MOVE-002B therefore emits:
+
+- state: `MISSING_HIGH_VALUE_EVIDENCE`;
+- policy: `FREE_ONLY_NO_APPROVED_RUNTIME`.
+
+It does not call Massive, Twelve Data, BrokerTec, CME, or any rates proxy.
+
+### 11.7 Completeness and causal boundary
+
+The first runtime reports:
+
+`evidenceCompleteness = EVIDENCE_INCOMPLETE`
+
+while high-value unscheduled/market-structure/rates evidence remains non-replayable or missing.
+
+It always retains:
+
+`causalAttribution = NOT_EVALUATED`
+
+MOVE-002B does not populate:
+
+- driver hypotheses;
+- supporting/contradicting judgements;
+- causal scoring;
+- confidence scores;
+- prose explanation.
+
+Those require a later methodology checkpoint.
+
+### 11.8 Read-only boundary
+
+MOVE-002B performs:
+
+- no provider acquisition;
+- no canonical write;
+- no Market Memory write;
+- no scheduler mutation;
+- no Snapshot write;
+- no UI mutation.
+
+The returned bundle explicitly records:
+
+`writesPerformed = false`
+
+The bundle ID is deterministic from the factual bundle content.
+
+### 11.9 Regression coverage
+
+`lib/application/move-evidence-bundle.test.ts` covers:
+
+- material-horizon union window;
+- deterministic bundle identity;
+- ±120s synchronous alignment;
+- rejection of later-known Observation revisions;
+- scheduled Event `retrievedAt <= asOf` filtering;
+- BTC stablecoin/ETF background composition;
+- explicit current-only P0 gaps;
+- free-only intraday-rates missing state;
+- non-material MOVE rejection;
+- unchanged `causalAttribution = NOT_EVALUATED`.
+
