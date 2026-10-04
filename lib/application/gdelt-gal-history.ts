@@ -41,6 +41,30 @@ function assertSnapshot(snapshot: GdeltGalFeedSnapshot): void {
   if (!Number.isInteger(snapshot.invalidItemCount) || snapshot.invalidItemCount < 0) {
     throw new Error("GDELT durable snapshot invalidItemCount must be a non-negative integer");
   }
+  if (!Number.isInteger(snapshot.matchingCandidateCount) || snapshot.matchingCandidateCount < 0) {
+    throw new Error("GDELT durable snapshot matchingCandidateCount must be a non-negative integer");
+  }
+  if (
+    snapshot.candidateCoverage !== "COMPLETE"
+    && snapshot.candidateCoverage !== "TRUNCATED"
+  ) {
+    throw new Error("GDELT durable snapshot candidateCoverage is invalid");
+  }
+  if (snapshot.matchingCandidateCount < snapshot.candidates.length) {
+    throw new Error("GDELT durable snapshot matching count cannot be below retained candidates");
+  }
+  if (
+    snapshot.candidateCoverage === "COMPLETE"
+    && snapshot.matchingCandidateCount !== snapshot.candidates.length
+  ) {
+    throw new Error("GDELT durable COMPLETE candidate coverage requires all matches");
+  }
+  if (
+    snapshot.candidateCoverage === "TRUNCATED"
+    && snapshot.matchingCandidateCount <= snapshot.candidates.length
+  ) {
+    throw new Error("GDELT durable TRUNCATED coverage requires omitted matching candidates");
+  }
 
   const urls = new Set<string>();
   for (const candidate of snapshot.candidates) {
@@ -104,7 +128,9 @@ export function gdeltGalSnapshotsToEvidence(input: {
         feedLastBuildAt: snapshot.feedLastBuildAt,
         totalFeedItems: snapshot.totalFeedItems,
         invalidItemCount: snapshot.invalidItemCount,
+        matchingCandidateCount: snapshot.matchingCandidateCount,
         candidateCount: snapshot.candidates.length,
+        candidateCoverage: snapshot.candidateCoverage,
       },
     };
   });
