@@ -1,9 +1,9 @@
 # P365 Unscheduled News / Catalyst Source Qualification v0.1
 
-**Checkpoint:** NEWS-001B  
-**Status:** GDELT GAL CURRENT-15M LIVE-QUALIFIED READ-ONLY / HISTORICAL MOVE-WINDOW COVERAGE MISSING  
+**Checkpoint:** NEWS-001B + NEWS-001C  
+**Status:** CURRENT-15M LIVE-QUALIFIED / DURABLE SNAPSHOT RUNTIME IMPLEMENTED / PRODUCTION SCHEDULER ACTIVATION PENDING  
 **Provider:** GDELT Article List (GAL)  
-**Scope:** current BTC/Gold candidate-catalyst discovery only
+**Scope:** current candidate discovery plus forward-only durable BTC/Gold feed-snapshot history
 
 ## 1. Product question
 
@@ -262,3 +262,159 @@ Still missing:
 - article-body semantic analysis;
 - attention/tone timeline runtime;
 - MOVE-002B integration.
+
+
+## 13. NEWS-001C Durable GAL Snapshot Runtime
+
+NEWS-001C closes the code/runtime side of the historical replay gap without introducing
+another provider or another database table.
+
+### 13.1 Acquisition shape
+
+The provider adapter now supports one GAL RSS fetch that derives both:
+
+- BTC candidate snapshot;
+- Gold candidate snapshot.
+
+This prevents two downloads of the same global feed per scheduler cycle.
+
+The existing single-asset function remains available for current read-only callers.
+
+### 13.2 Durable canonical shape
+
+NEWS-001C persists **feed snapshots as canonical NEWS Evidence**, not fake numeric
+Observations and not synthetic economic Events.
+
+Methodology:
+
+`gdelt-gal-durable-snapshot-v1`
+
+One Evidence row represents one:
+
+`asset + feedLastBuildAt`
+
+identity.
+
+Each row retains:
+
+- asset: BTC or GOLD;
+- feed last-build time;
+- feed rolling-window start;
+- retrieval time;
+- rolling-15m coverage semantics;
+- total feed item count;
+- invalid-row count;
+- candidate count;
+- full candidate title/URL/domain/providerDate payload;
+- source `gdelt`;
+- `kind = NEWS`.
+
+For the Evidence row itself:
+
+`releasedAt = feedLastBuildAt`
+
+because the canonical object is the **provider feed snapshot**. This must not be confused with
+an article publication timestamp.
+
+Individual article dates remain inside the snapshot payload with the existing
+`PUBLICATION_OR_FIRST_SEEN / UNAVAILABLE` semantics.
+
+### 13.3 Why snapshots, not article-only rows
+
+Persisting only matching articles would lose an important factual distinction:
+
+- no matching headline existed in the sampled feed;
+- versus
+- P365 never sampled that interval.
+
+NEWS-001C therefore also stores valid snapshots containing **zero candidates**.
+
+This preserves feed coverage/absence evidence for later MOVE replay.
+
+### 13.4 Idempotency
+
+Canonical Evidence ID is deterministic from:
+
+`asset + feedLastBuildAt`
+
+The Market Memory Evidence effective time is the source feed build time.
+
+Repeated polling of the same GDELT feed build therefore resolves to the same canonical
+snapshot identity and does not create a second logical snapshot.
+
+A later feed build creates a new immutable Evidence record.
+
+### 13.5 Historical Evidence repository
+
+NEWS-001C adds a canonical point-in-time Evidence history contract and Supabase adapter.
+
+Queries can be bounded by:
+
+- source;
+- Evidence kind;
+- effective-time range;
+- `retrievedAt <= asOf`;
+- exact string metadata filters such as asset/methodology;
+- ASC/DESC order;
+- bounded limit.
+
+The adapter fails closed if Supabase returns a row outside the requested canonical filters.
+
+This is the repository boundary that a later MOVE-news replay checkpoint can consume; MOVE code
+must not issue ad-hoc Supabase JSON queries.
+
+### 13.6 Historical ingestion lane
+
+Existing authenticated historical ingestion gains:
+
+`provider = gdelt`
+
+with **FORWARD only** semantics.
+
+Each successful cycle:
+
+1. downloads GAL once;
+2. derives BTC + Gold snapshots;
+3. normalizes them into two NEWS Evidence records;
+4. writes through the existing canonical Evidence repository.
+
+No GDELT BACKFILL mode is introduced because GAL itself exposes only the current rolling
+15-minute feed. NEWS-001C must not pretend it can reconstruct time before durable acquisition
+started.
+
+### 13.7 Production activation boundary
+
+This PR does **not** mutate the Supabase production scheduler.
+
+Reason:
+
+production `main` must contain the `gdelt` ingestion lane before any cron job may request it.
+
+After owner merge, a separate activation checkpoint may add `gdelt` to the existing
+Supabase-owned recurring ingestion schedule and prove:
+
+- authenticated HTTP 200;
+- two durable snapshot Evidence rows;
+- repeated same-build idempotency;
+- natural recurring cron execution;
+- historical query readback.
+
+Until that activation succeeds:
+
+`DURABLE_RUNTIME_IMPLEMENTED / PRODUCTION_ACQUISITION_NOT_ACTIVE`
+
+### 13.8 Still not authorized
+
+NEWS-001C still does not add:
+
+- DOC 2.0 hot-path polling;
+- article-body scraping;
+- tone/sentiment scoring;
+- automatic source authority ranking;
+- generated causal explanation;
+- MOVE-002B integration;
+- UI;
+- State / Regime / Risk / Intelligence;
+- trading signals.
+
+`causalAttribution = NOT_EVALUATED` remains unchanged.

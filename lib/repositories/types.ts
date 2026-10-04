@@ -45,6 +45,20 @@ export type ObservationHistoryQuery = {
   limit: number;
 };
 
+export type EvidenceHistoryOrder = "ASC" | "DESC";
+
+export type EvidenceHistoryQuery = {
+  sourceId?: string;
+  kind?: Evidence["kind"];
+  effectiveAtOnOrAfter?: string;
+  effectiveAtOnOrBefore?: string;
+  retrievedAtOnOrBefore?: string;
+  metadataEquals?: Record<string, string>;
+  order: EvidenceHistoryOrder;
+  /** Positive integer capped at 500 records per query. */
+  limit: number;
+};
+
 export type EventHistoryOrder = "ASC" | "DESC";
 
 export type EventHistoryQuery = {
@@ -102,6 +116,8 @@ export interface EventRepository { save(event: Event): Promise<void>; saveMany(e
 /** Point-in-time Event reads stay separate from canonical write persistence. */
 export interface HistoricalEventRepository { findHistory(query: EventHistoryQuery): Promise<Event[]>; }
 export interface EvidenceRepository { save(evidence: Evidence): Promise<void>; saveMany(evidence: Evidence[]): Promise<void>; findById(id: string): Promise<Evidence | null>; }
+/** Point-in-time Evidence reads stay separate from canonical write persistence. */
+export interface HistoricalEvidenceRepository { findHistory(query: EvidenceHistoryQuery): Promise<Evidence[]>; }
 export interface ContextRepository { save(context: Context): Promise<void>; saveMany(contexts: Context[]): Promise<void>; findById(id: string): Promise<Context | null>; }
 export interface EconomicEventResultRepository { save(result: EconomicEventResult): Promise<void>; saveMany(results: EconomicEventResult[]): Promise<void>; findById(id: string): Promise<EconomicEventResult | null>; }
 /** Historical EventResult reads stay separate from canonical write persistence. */
