@@ -11,6 +11,8 @@ import {
 import type { MacroObservationInput } from "../data/fred";
 import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
 import { BINANCE_SPOT_FLOW_INTERVAL_MS, type BinanceSpotKline } from "../data/binance-spot-flow";
+import type { BinanceOrderBookSnapshot } from "../data/binance-order-book";
+import type { HyperliquidPerpOrderBookSnapshot } from "../data/hyperliquid-perp-order-book";
 import {
   SOSOVALUE_ETF_FLOW_COMPLETION_BASIS,
   SOSOVALUE_ETF_FLOW_MATURITY_POLICY,
@@ -24,6 +26,10 @@ import { providerResult, type ProviderResult } from "../data/types";
 import { InMemoryEvidenceRepository, InMemoryObservationRepository } from "../repositories/memory";
 import { GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY } from "./gdelt-gal-history";
 import { BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY } from "./btc-spot-flow-history";
+import {
+  BINANCE_BTC_SPOT_ORDER_BOOK_DURABLE_METHODOLOGY,
+  HYPERLIQUID_BTC_PERP_ORDER_BOOK_DURABLE_METHODOLOGY,
+} from "./btc-order-book-history";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 import {
   runHistoricalIngestion,
@@ -203,6 +209,38 @@ function binanceSpotKline(): BinanceSpotKline {
   };
 }
 
+function binanceOrderBookSnapshot(): BinanceOrderBookSnapshot {
+  return {
+    symbol: "BTCUSDT",
+    lastUpdateId: 991,
+    bids: [
+      { priceUsdt: 100000, quantityBtc: 1 },
+      { priceUsdt: 99950, quantityBtc: 2 },
+      { priceUsdt: 99500, quantityBtc: 3 },
+    ],
+    asks: [
+      { priceUsdt: 100010, quantityBtc: 1.5 },
+      { priceUsdt: 100060, quantityBtc: 2.5 },
+      { priceUsdt: 100600, quantityBtc: 3.5 },
+    ],
+  };
+}
+
+function hyperliquidOrderBookSnapshot(): HyperliquidPerpOrderBookSnapshot {
+  return {
+    coin: "BTC",
+    providerTimeMs: Date.parse("2026-10-04T13:00:00.000Z"),
+    bids: [
+      { price: 100000, quantityBtc: 2, restingOrderCount: 4 },
+      { price: 99990, quantityBtc: 3, restingOrderCount: 5 },
+    ],
+    asks: [
+      { price: 100010, quantityBtc: 1, restingOrderCount: 2 },
+      { price: 100020, quantityBtc: 2, restingOrderCount: 3 },
+    ],
+  };
+}
+
 function gdeltSnapshot(asset: "BTC" | "GOLD"): GdeltGalFeedSnapshot {
   return {
     asset,
@@ -263,6 +301,8 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
     cftc: record("cftc", providerResult("cftc", "EMPTY", [])),
     gdelt: record("gdelt", providerResult("gdelt", "EMPTY", [])),
     "binance-spot": record("binance-spot", providerResult("binance-spot", "EMPTY", [])),
+    "binance-book": record("binance-book", providerResult("binance-spot", "EMPTY", [])),
+    "hyperliquid-book": record("hyperliquid-book", providerResult("hyperliquid", "EMPTY", [])),
   };
 }
 
@@ -553,6 +593,61 @@ async function main(): Promise<void> {
   assert.equal(spotFlowHistory.length, 1, "repeated same-window Binance flow ingestion must remain idempotent");
   assert.equal(spotFlowHistory[0]?.metadata?.netTakerBaseVolumeBtc, 2);
 
+  const orderBookStore = repositories();
+  const orderBookAcquisition = acquisition([]);
+  orderBookAcquisition["binance-book"] = async () => providerResult(
+    "binance-spot",
+    "SUCCESS",
+    [binanceOrderBookSnapshot()],
+    undefined,
+    undefined,
+    "2026-10-04T13:00:01.000Z",
+  );
+  orderBookAcquisition["hyperliquid-book"] = async () => providerResult(
+    "hyperliquid",
+    "SUCCESS",
+    [hyperliquidOrderBookSnapshot()],
+    undefined,
+    undefined,
+    "2026-10-04T13:00:01.000Z",
+  );
+  const orderBookForward = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["binance-book", "hyperliquid-book"] },
+    { acquisition: orderBookAcquisition, repositories: orderBookStore.repositories },
+  );
+  assert.equal(orderBookForward.status, "SUCCESS");
+  assert.equal(orderBookForward.persistedObservations, 0);
+  assert.equal(orderBookForward.persistedEvidence, 2);
+
+  await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["binance-book", "hyperliquid-book"] },
+    { acquisition: orderBookAcquisition, repositories: orderBookStore.repositories },
+  );
+  const durableSpotBook = await orderBookStore.evidence.findHistory({
+    sourceId: "binance-spot",
+    kind: "OBSERVATION",
+    metadataEquals: {
+      methodology: BINANCE_BTC_SPOT_ORDER_BOOK_DURABLE_METHODOLOGY,
+      venue: "BINANCE",
+    },
+    order: "ASC",
+    limit: 10,
+  });
+  const durablePerpBook = await orderBookStore.evidence.findHistory({
+    sourceId: "hyperliquid",
+    kind: "OBSERVATION",
+    metadataEquals: {
+      methodology: HYPERLIQUID_BTC_PERP_ORDER_BOOK_DURABLE_METHODOLOGY,
+      venue: "HYPERLIQUID",
+    },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(durableSpotBook.length, 1, "same Binance sampled snapshot stays idempotent");
+  assert.equal(durablePerpBook.length, 1, "same Hyperliquid provider snapshot stays idempotent");
+  assert.equal(durableSpotBook[0]?.metadata?.marketType, "SPOT");
+  assert.equal(durablePerpBook[0]?.metadata?.marketType, "PERPETUAL");
+
   const cftcFailureAcquisition = acquisition([]);
   cftcFailureAcquisition.cftc = async () => providerResult("cftc", "ERROR", [], "CFTC unavailable");
   const cftcIsolated = await runHistoricalIngestion(
@@ -643,6 +738,10 @@ async function main(): Promise<void> {
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=binance-spot")),
     { ok: true, options: { mode: "FORWARD", providers: ["binance-spot"] } },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=binance-book,hyperliquid-book")),
+    { ok: true, options: { mode: "FORWARD", providers: ["binance-book", "hyperliquid-book"] } },
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=cftc&from=2025-09-28&to=2026-10-02")),

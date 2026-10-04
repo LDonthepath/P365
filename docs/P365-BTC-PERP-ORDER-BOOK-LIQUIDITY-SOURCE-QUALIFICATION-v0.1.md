@@ -1,7 +1,7 @@
 # P365 BTC Perpetual Order-Book Liquidity Source Qualification v0.1
 
-**Checkpoint:** ORDER-BOOK-001B  
-**Status:** HYPERLIQUID LIVE-QUALIFIED READ-ONLY / BINANCE FUTURES VERCEL-EGRESS UNAVAILABLE  
+**Checkpoint:** ORDER-BOOK-001B + ORDER-BOOK-001C  
+**Status:** HYPERLIQUID LIVE-QUALIFIED / DURABLE SUMMARY RUNTIME IMPLEMENTED / PRODUCTION ACTIVATION PENDING / BINANCE FUTURES VERCEL-EGRESS UNAVAILABLE  
 **Market family:** CRYPTO / DERIVATIVES / MARKET_STRUCTURE  
 **Owner approval:** Hyperliquid + Binance Futures approved 4 Oct 2026
 
@@ -224,3 +224,75 @@ current Vercel egress.**
 
 The original historical move-window question remains open because neither current-snapshot
 adapter creates point-in-time order-book history.
+
+
+## 11. ORDER-BOOK-001C Durable Hyperliquid Geometry History
+
+ORDER-BOOK-001C adds compact forward-only historical Evidence for the already-qualified
+Hyperliquid BTC perpetual book.
+
+Durable methodology:
+
+`hyperliquid-btc-perp-order-book-geometry-snapshot-v1`
+
+The raw provider top-20 levels remain acquisition input only. Durable Evidence stores the
+derived factual geometry:
+
+- provider-native book `observedAt`;
+- P365 `retrievedAt`;
+- best bid / best ask / midpoint / spread / spread bps;
+- 5 / 10 / 25 / 50 bps BTC depth;
+- base-depth imbalance;
+- resting-order counts where available;
+- COMPLETE/PARTIAL coverage;
+- venue/instrument identity.
+
+Raw bid/ask arrays are not persisted.
+
+The authenticated historical-ingestion runtime accepts:
+
+`hyperliquid-book`
+
+and only in FORWARD mode. No historical reconstruction/backfill is authorized.
+
+### Time and idempotency
+
+Hyperliquid exposes a provider-native book snapshot timestamp. That provider time is the
+Evidence effective time and remains distinct from P365 retrieval availability.
+
+A later refetch of the exact same provider snapshot resolves to the same canonical Evidence
+identity even if P365 retrieved it later. This preserves provider-fact idempotency while
+`retrievedAt` still controls what was knowable at a historical cutoff.
+
+### Storage boundary
+
+The durable representation intentionally stores summary geometry instead of top-20 raw
+levels. Production activation must still quantify real row/index growth before scheduling
+this lane, in line with the Market Memory storage-growth audit.
+
+### Authorization boundary
+
+Implemented:
+
+- durable compact Evidence builder/parser;
+- authenticated FORWARD ingestion wiring;
+- provider-time factual identity;
+- point-in-time compatible retrieval cutoff semantics;
+- regression coverage.
+
+Still not authorized:
+
+- Supabase cron activation;
+- raw book history;
+- Binance Futures workaround or proxy routing;
+- BACKFILL;
+- MOVE replay;
+- historical liquidity deterioration classification;
+- cross-venue additive liquidity;
+- causal attribution;
+- UI;
+- State / Regime / Risk / Intelligence;
+- trading signals.
+
+Hyperliquid durable history therefore becomes production-useful only after a later activation
+checkpoint begins forward sampling.

@@ -1,9 +1,9 @@
 # P365 BTC Order-Book Liquidity Source Qualification v0.1
 
-**Checkpoint:** ORDER-BOOK-001A  
-**Status:** LIVE-QUALIFIED CURRENT SNAPSHOT / HISTORICAL MOVE-WINDOW COVERAGE MISSING  
+**Checkpoint:** ORDER-BOOK-001A + ORDER-BOOK-001C  
+**Status:** CURRENT SNAPSHOT LIVE-QUALIFIED / DURABLE SUMMARY RUNTIME IMPLEMENTED / PRODUCTION ACTIVATION PENDING  
 **Provider:** Binance Spot (already owner-approved)  
-**Scope:** current BTCUSDT order-book geometry only
+**Scope:** current BTCUSDT order-book geometry plus forward-only durable geometry Evidence runtime
 
 ## 1. Product question
 
@@ -192,3 +192,83 @@ What remains missing for the original move-investigation question:
 - cross-venue order-book confirmation.
 
 Therefore ORDER-BOOK-001A does **not** close historical move-window liquidity coverage.
+
+
+## 11. ORDER-BOOK-001C Durable Geometry History Runtime
+
+ORDER-BOOK-001C adds the persistence-capable runtime needed for future MOVE-window replay
+without storing raw Binance depth books.
+
+Durable methodology:
+
+`binance-btcusdt-order-book-geometry-snapshot-v1`
+
+The existing 500-level REST response is still used only to compute the already-qualified
+geometry. Durable Evidence retains the compact output:
+
+- best bid / best ask / midpoint / spread / spread bps;
+- provider `lastUpdateId`;
+- level counts and deepest returned prices;
+- 5 / 10 / 25 / 50 bps BTC depth;
+- native USDT quote notional;
+- quote-notional imbalance;
+- COMPLETE/PARTIAL coverage for every band;
+- exact P365 retrieval time.
+
+The raw bid/ask level arrays are **not** persisted.
+
+Because Binance Spot depth REST supplies no provider event timestamp, the snapshot remains
+explicitly:
+
+`snapshotTimeBasis = P365_RETRIEVED_AT`
+
+and `retrievedAt` is the durable sample effective time. Provider `lastUpdateId` is retained
+as sequence lineage but is not misrepresented as a timestamp.
+
+The authenticated historical-ingestion runtime accepts the forward-only provider key:
+
+`binance-book`
+
+BACKFILL remains unsupported.
+
+### Idempotency
+
+For Binance current-depth sampling, the factual sample identity includes the P365 retrieval
+time because retrieval time is the only qualified timestamp for the snapshot. Repeating the
+same exact sampled snapshot/retrieval tuple resolves to the same Evidence identity; a later
+retrieval is intentionally a new sample even when the provider sequence has not changed.
+
+### Storage boundary
+
+ORDER-BOOK-001C persists **summary geometry only**, not raw 500-level books. This is
+intentional after the 4 Oct 2026 Market Memory storage-growth audit.
+
+Production activation must measure actual persisted row size and projected daily growth
+before adding the lane to `p365-market-fast`.
+
+### Authorization boundary
+
+Implemented:
+
+- durable compact Evidence builder/parser;
+- authenticated FORWARD historical-ingestion wiring;
+- deterministic Evidence identity;
+- point-in-time compatible effective/retrieval semantics;
+- focused regression coverage.
+
+Still not authorized in ORDER-BOOK-001C:
+
+- Supabase cron activation;
+- BACKFILL;
+- raw depth-book persistence;
+- WebSocket/local-book reconstruction;
+- automatic retention/cleanup;
+- MOVE replay wiring;
+- liquidity deterioration scoring;
+- causal attribution;
+- UI;
+- State / Regime / Risk / Intelligence;
+- trading signals.
+
+Therefore historical MOVE-window liquidity remains unavailable in production until a later
+activation checkpoint accumulates forward samples and a separate MOVE consumer is approved.

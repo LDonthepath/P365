@@ -3,6 +3,8 @@ import type { DefiLlamaStablecoinBackfillRange, DefiLlamaStablecoinObservationIn
 import type { FredObservationQuery, MacroObservationInput } from "../data/fred";
 import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
 import type { BinanceSpotKline } from "../data/binance-spot-flow";
+import type { BinanceOrderBookSnapshot } from "../data/binance-order-book";
+import type { HyperliquidPerpOrderBookSnapshot } from "../data/hyperliquid-perp-order-book";
 import { soSoValueBackfillRangeError, type SoSoValueBtcEtfFlowBackfillRange, type SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
 import { cftcGoldCotBackfillRangeError, type CftcGoldCotBackfillRange, type CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { ProviderId, ProviderResult } from "../data/types";
@@ -10,6 +12,12 @@ import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMark
 import { gdeltGalSnapshotsToEvidence } from "./gdelt-gal-history";
 import { buildBinanceBtcSpotFlowWindow } from "./btc-spot-flow";
 import { btcSpotFlowWindowsToEvidence } from "./btc-spot-flow-history";
+import { buildBinanceBtcOrderBookLiquiditySnapshot } from "./btc-order-book-liquidity";
+import { buildHyperliquidBtcPerpLiquiditySnapshot } from "./btc-perp-order-book-liquidity";
+import {
+  binanceBtcSpotOrderBookSnapshotToEvidence,
+  hyperliquidBtcPerpOrderBookSnapshotToEvidence,
+} from "./btc-order-book-history";
 import type { Evidence, Observation } from "../domain/types";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 
@@ -18,7 +26,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS = 35;
 
-export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "defillama", "sosovalue", "cftc", "gdelt", "binance-spot"] as const;
+export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "defillama", "sosovalue", "cftc", "gdelt", "binance-spot", "binance-book", "hyperliquid-book"] as const;
 export type HistoricalIngestionProvider = typeof HISTORICAL_INGESTION_PROVIDERS[number];
 export type HistoricalIngestionMode = "FORWARD" | "BACKFILL";
 
@@ -44,6 +52,8 @@ export type HistoricalIngestionAcquisition = {
   cftc: () => Promise<ProviderResult<CftcGoldCotObservationInput>>;
   gdelt: () => Promise<ProviderResult<GdeltGalFeedSnapshot>>;
   "binance-spot": () => Promise<ProviderResult<BinanceSpotKline>>;
+  "binance-book": () => Promise<ProviderResult<BinanceOrderBookSnapshot>>;
+  "hyperliquid-book": () => Promise<ProviderResult<HyperliquidPerpOrderBookSnapshot>>;
 };
 
 export type HistoricalIngestionProviderReport = {
@@ -88,8 +98,10 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
   acquisition: HistoricalIngestionAcquisition;
   repositories: CanonicalRepositories;
 }> {
-  const [binanceSpot, crypto, cftc, defillama, fred, gdelt, sosovalue, yahoo, repositories] = await Promise.all([
+  const [binanceSpot, binanceBook, hyperliquidBook, crypto, cftc, defillama, fred, gdelt, sosovalue, yahoo, repositories] = await Promise.all([
     import("../data/binance-spot-flow"),
+    import("../data/binance-order-book"),
+    import("../data/hyperliquid-perp-order-book"),
     import("../data/crypto-market"),
     import("../data/cftc-gold-cot"),
     import("../data/defillama-stablecoins"),
@@ -102,6 +114,8 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
   return {
     acquisition: {
       "binance-spot": () => binanceSpot.fetchBinanceBtcSpotKlines({ limit: 3, acquisitionMode: "FRESH" }),
+      "binance-book": () => binanceBook.fetchBinanceBtcOrderBook({ limit: 500, acquisitionMode: "FRESH" }),
+      "hyperliquid-book": () => hyperliquidBook.fetchHyperliquidBtcPerpOrderBook({ acquisitionMode: "FRESH" }),
       coingecko: () => crypto.fetchCryptoMarketObservations(["BTC", "ETH"], "FRESH"),
       fred: () => fred.fetchFredMacroObservations({
         ...options.fred,
@@ -144,7 +158,8 @@ function providerId(provider: HistoricalIngestionProvider): ProviderId {
   if (provider === "sosovalue") return "sosovalue";
   if (provider === "cftc") return "cftc";
   if (provider === "gdelt") return "gdelt";
-  if (provider === "binance-spot") return "binance-spot";
+  if (provider === "binance-spot" || provider === "binance-book") return "binance-spot";
+  if (provider === "hyperliquid-book") return "hyperliquid";
   return "yahoo-finance";
 }
 
@@ -185,6 +200,22 @@ function canonicalize(
     return {
       observations: [],
       evidence: btcSpotFlowWindowsToEvidence({ windows, retrievedAt: result.retrievedAt }),
+    };
+  }
+  if (provider === "binance-book") {
+    const snapshots = (result.data as BinanceOrderBookSnapshot[]).map((snapshot) =>
+      buildBinanceBtcOrderBookLiquiditySnapshot({ snapshot, retrievedAt: result.retrievedAt }));
+    return {
+      observations: [],
+      evidence: snapshots.map(binanceBtcSpotOrderBookSnapshotToEvidence),
+    };
+  }
+  if (provider === "hyperliquid-book") {
+    const snapshots = (result.data as HyperliquidPerpOrderBookSnapshot[]).map((snapshot) =>
+      buildHyperliquidBtcPerpLiquiditySnapshot({ snapshot, retrievedAt: result.retrievedAt }));
+    return {
+      observations: [],
+      evidence: snapshots.map(hyperliquidBtcPerpOrderBookSnapshotToEvidence),
     };
   }
   return cryptoMarketToObservations(
