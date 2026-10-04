@@ -1,11 +1,11 @@
 # P365 Move-Centered Evidence Investigation Contract v0.1
 
-**Checkpoint:** MOVE-002A + MOVE-002B  
-**Status:** MOVE-002A MERGED / MOVE-002B READ-ONLY RUNTIME IMPLEMENTED  
+**Checkpoint:** MOVE-002A + MOVE-002B + MOVE-002C  
+**Status:** MOVE-002A MERGED / MOVE-002B READ-ONLY RUNTIME IMPLEMENTED / MOVE-002C BTC SPOT-FLOW REPLAY IMPLEMENTED  
 **Trigger dependency:** MOVE-001C `ContinuousMoveAssessment.status = MATERIAL_MOVE`  
 **Scope:** Evidence organization and coverage qualification for move-driven investigation  
 **Primary MVP targets:** Bitcoin + Gold  
-**Implementation effect:** MOVE-002A defines the contract; MOVE-002B adds a read-only repository-backed evidence bundle runtime. No provider activation, persistence, scheduler, UI, causal engine, State/Regime/Risk/Intelligence, prediction, or trading logic.
+**Implementation effect:** MOVE-002A defines the contract; MOVE-002B adds the read-only repository-backed evidence bundle runtime; MOVE-002C lets the BTC bundle consume production-active durable Binance spot-flow history under the same point-in-time cutoff. No provider activation, persistence, scheduler, UI, causal engine, State/Regime/Risk/Intelligence, prediction, or trading logic.
 
 ## 1. Purpose
 
@@ -510,7 +510,8 @@ The bundle ID is deterministic from the factual bundle content.
 - rejection of later-known Observation revisions;
 - scheduled Event `retrievedAt <= asOf` filtering;
 - BTC stablecoin/ETF background composition;
-- explicit current-only P0 gaps;
+- durable Binance BTCUSDT 5m spot-flow replay with bounded coverage and later-known revision rejection;
+- remaining current-only P0 gaps;
 - free-only intraday-rates missing state;
 - Gold target keeps CFTC-only slow background and does not inherit BTC market-structure components;
 - non-material MOVE rejection;
@@ -617,3 +618,104 @@ Vercel account rate limit rather than a reported TypeScript/Next.js compile erro
 The checkpoint does not reinterpret a build-rate-limit status as a successful exact-head
 deployment. The repository test and production replay remain the available verification
 evidence until Vercel accepts another preview build.
+
+
+## 13. MOVE-002C Durable BTC Spot-Flow Replay
+
+MOVE-002C closes one specific MOVE-002B evidence-consumption gap: production-active durable
+Binance BTCUSDT completed 5m taker-flow Evidence may now be replayed inside a BTC
+`MATERIAL_MOVE` bundle.
+
+### 13.1 Repository and point-in-time boundary
+
+The MOVE bundle now accepts `HistoricalEvidenceRepository` in addition to historical
+Observation/Event repositories.
+
+For BTC only, the spot-flow query is restricted to:
+
+- `sourceId = binance-spot`;
+- `kind = OBSERVATION`;
+- methodology = `binance-btcusdt-5m-taker-flow-snapshot-v1`;
+- venue = `BINANCE`;
+- pair = `BTCUSDT`;
+- effective completed-window boundary inside the MOVE investigation window;
+- `retrievedAt <= assessment.asOf`.
+
+No fresh Binance call is issued during MOVE investigation.
+
+### 13.2 Window coverage
+
+The factual replay unit remains one completed provider-native 5m window.
+
+For the union MOVE investigation window, MOVE-002C deterministically derives the expected
+5m completion boundaries strictly after the investigation start and at or before the
+investigation end.
+
+The returned spot-flow component exposes:
+
+- `COMPLETE`: every expected completed 5m boundary has point-in-time eligible durable Evidence;
+- `PARTIAL`: at least one but not all expected windows are available;
+- `EMPTY`: no eligible completed window is available;
+- `BOUNDED_QUERY_LIMIT_REACHED`: the guarded 100-row Evidence query cannot safely establish coverage.
+
+Each factual window retains:
+
+- canonical Evidence ID;
+- deterministic window key;
+- observed/completed timestamp;
+- P365 retrieval timestamp;
+- total BTC volume;
+- taker-buy BTC;
+- taker-sell BTC;
+- net taker BTC;
+- taker-buy share;
+- trade count.
+
+MOVE-002C does **not** sum these windows into CVD, assign a directional label, or decide
+whether a move was spot-led.
+
+### 13.3 Revision discipline
+
+When multiple append-only revisions exist for the same durable 5m window, the bundle selects
+the latest revision knowable at the MOVE `asOf`.
+
+A correction retrieved after the historical cutoff must not leak backward.
+
+Malformed records that otherwise match the qualified durable methodology fail the spot-flow
+component to `UNKNOWN`; they are not silently skipped.
+
+### 13.4 Remaining market-structure boundary
+
+The BTC market-structure family remains overall `INSUFFICIENT_DATA` even when Binance
+spot-flow is `AVAILABLE_SYNCHRONOUS`, because durable replay is still unresolved for:
+
+- BTC derivatives/OI/funding/liquidations;
+- BTC spot order-book history;
+- BTC perpetual order-book history.
+
+Therefore:
+
+- `evidenceCompleteness = EVIDENCE_INCOMPLETE` remains unchanged;
+- `causalAttribution = NOT_EVALUATED` remains unchanged.
+
+### 13.5 Historical availability boundary
+
+SPOT-FLOW-001C began durable production acquisition on 4 Oct 2026. MOVE-002C does not create
+pre-activation history.
+
+The reproduced 2 Oct 2026 acceptance MOVE therefore remains correctly
+`INSUFFICIENT_DATA` for Binance spot-flow. Newer MOVE windows can consume only facts that
+P365 actually acquired by their historical `asOf`.
+
+### 13.6 Regression proof
+
+Focused regression coverage now verifies:
+
+- complete 120-minute MOVE window maps to 24 completed 5m spot-flow windows;
+- deterministic bundle identity;
+- point-in-time Evidence filtering;
+- later-known same-window correction exclusion;
+- factual window lineage and metrics;
+- Gold MOVE bundles remain free of BTC market-structure evidence;
+- non-material MOVE rejection;
+- unchanged read-only / no-causality boundaries.

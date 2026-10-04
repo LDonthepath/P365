@@ -4,6 +4,7 @@ import type { DataQuality, Event, Observation, ObservationDomain } from "../doma
 import { observationSemanticSeriesKey } from "../repositories/observation-history";
 import type {
   HistoricalEventRepository,
+  HistoricalEvidenceRepository,
   HistoricalObservationRepository,
 } from "../repositories/types";
 import {
@@ -21,11 +22,17 @@ import {
   buildStablecoinLiquidityReadModel,
   type StablecoinLiquidityReadModel,
 } from "./stablecoin-liquidity";
+import {
+  BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
+  btcSpotFlowWindowFromEvidence,
+} from "./btc-spot-flow-history";
 
 const MINUTE_MS = 60 * 1000;
 const CROSS_SERIES_ALIGNMENT_TOLERANCE_MS = 2 * MINUTE_MS;
 const SYNCHRONOUS_QUERY_LIMIT = 50;
 const SCHEDULED_EVENT_QUERY_LIMIT = 500;
+const SPOT_FLOW_QUERY_LIMIT = 100;
+const SPOT_FLOW_WINDOW_MS = 5 * MINUTE_MS;
 
 export const MOVE_EVIDENCE_BUNDLE_POLICY = "move-evidence-bundle-v1" as const;
 
@@ -108,6 +115,36 @@ export type MoveBackgroundItem =
       reason?: string;
     };
 
+export type MoveBtcSpotFlowWindowEvidence = {
+  evidenceId: string;
+  windowKey: string;
+  observedAt: string;
+  retrievedAt: string;
+  totalBaseVolumeBtc: number;
+  takerBuyBaseVolumeBtc: number;
+  takerSellBaseVolumeBtc: number;
+  netTakerBaseVolumeBtc: number;
+  takerBuyShare: number | null;
+  tradeCount: number;
+};
+
+export type MoveBtcSpotFlowEvidence = {
+  state: Extract<
+    MoveEvidenceAvailability,
+    "AVAILABLE_SYNCHRONOUS" | "INSUFFICIENT_DATA" | "UNKNOWN"
+  >;
+  coverage: "COMPLETE" | "PARTIAL" | "EMPTY" | "BOUNDED_QUERY_LIMIT_REACHED";
+  methodology: typeof BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY;
+  venue: "BINANCE";
+  pair: "BTCUSDT";
+  windowSeconds: 300;
+  startAt: string;
+  endAt: string;
+  expectedCompletedWindows: number;
+  windows: MoveBtcSpotFlowWindowEvidence[];
+  reason?: string;
+};
+
 export type MoveEvidenceGapComponent = {
   component:
     | "BTC_DERIVATIVES"
@@ -116,9 +153,10 @@ export type MoveEvidenceGapComponent = {
     | "BTC_PERP_ORDER_BOOK";
   state: Extract<
     MoveEvidenceAvailability,
-    "MISSING_HIGH_VALUE_EVIDENCE" | "INSUFFICIENT_DATA"
+    "AVAILABLE_SYNCHRONOUS" | "MISSING_HIGH_VALUE_EVIDENCE" | "INSUFFICIENT_DATA" | "UNKNOWN"
   >;
   reason: string;
+  spotFlow?: MoveBtcSpotFlowEvidence;
 };
 
 export type MoveEvidenceBundle = {
@@ -611,7 +649,212 @@ async function buildBackground(input: {
   }
 }
 
-function btcMarketStructure(): MoveEvidenceBundle["cryptoMarketStructure"] {
+function completedSpotFlowBoundaries(
+  startAt: string,
+  endAt: string,
+): number[] | undefined {
+  const start = timestamp(startAt);
+  const end = timestamp(endAt);
+  if (start === undefined || end === undefined || end <= start) return undefined;
+
+  const first = Math.floor(start / SPOT_FLOW_WINDOW_MS) * SPOT_FLOW_WINDOW_MS
+    + SPOT_FLOW_WINDOW_MS;
+  const last = Math.floor(end / SPOT_FLOW_WINDOW_MS) * SPOT_FLOW_WINDOW_MS;
+  if (first > last) return [];
+
+  const boundaries: number[] = [];
+  for (let current = first; current <= last; current += SPOT_FLOW_WINDOW_MS) {
+    boundaries.push(current);
+  }
+  return boundaries;
+}
+
+async function buildBtcSpotFlowEvidence(input: {
+  repository: HistoricalEvidenceRepository;
+  startAt: string;
+  endAt: string;
+  asOf: string;
+}): Promise<MoveBtcSpotFlowEvidence> {
+  const boundaries = completedSpotFlowBoundaries(input.startAt, input.endAt);
+  const start = timestamp(input.startAt);
+  if (!boundaries || start === undefined) {
+    return {
+      state: "UNKNOWN",
+      coverage: "EMPTY",
+      methodology: BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
+      venue: "BINANCE",
+      pair: "BTCUSDT",
+      windowSeconds: 300,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      expectedCompletedWindows: 0,
+      windows: [],
+      reason: "MOVE spot-flow investigation window is invalid.",
+    };
+  }
+
+  if (boundaries.length === 0) {
+    return {
+      state: "INSUFFICIENT_DATA",
+      coverage: "EMPTY",
+      methodology: BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
+      venue: "BINANCE",
+      pair: "BTCUSDT",
+      windowSeconds: 300,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      expectedCompletedWindows: 0,
+      windows: [],
+      reason: "The MOVE window contains no completed Binance 5m boundary.",
+    };
+  }
+
+  try {
+    const history = await input.repository.findHistory({
+      sourceId: "binance-spot",
+      kind: "OBSERVATION",
+      effectiveAtOnOrAfter: new Date(start + 1).toISOString(),
+      effectiveAtOnOrBefore: input.endAt,
+      retrievedAtOnOrBefore: input.asOf,
+      metadataEquals: {
+        methodology: BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
+        venue: "BINANCE",
+        pair: "BTCUSDT",
+      },
+      order: "ASC",
+      limit: SPOT_FLOW_QUERY_LIMIT,
+    });
+
+    if (history.length >= SPOT_FLOW_QUERY_LIMIT) {
+      return {
+        state: "UNKNOWN",
+        coverage: "BOUNDED_QUERY_LIMIT_REACHED",
+        methodology: BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
+        venue: "BINANCE",
+        pair: "BTCUSDT",
+        windowSeconds: 300,
+        startAt: input.startAt,
+        endAt: input.endAt,
+        expectedCompletedWindows: boundaries.length,
+        windows: [],
+        reason: "Bounded Binance spot-flow query reached its 100-row limit.",
+      };
+    }
+
+    const parsed = history.map((evidence) => ({
+      evidence,
+      window: btcSpotFlowWindowFromEvidence(evidence),
+    }));
+    if (parsed.some((item) => item.window === null)) {
+      return {
+        state: "UNKNOWN",
+        coverage: "EMPTY",
+        methodology: BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
+        venue: "BINANCE",
+        pair: "BTCUSDT",
+        windowSeconds: 300,
+        startAt: input.startAt,
+        endAt: input.endAt,
+        expectedCompletedWindows: boundaries.length,
+        windows: [],
+        reason: "Qualified Binance spot-flow history contains an invalid durable payload.",
+      };
+    }
+
+    const latestByWindow = new Map<string, MoveBtcSpotFlowWindowEvidence>();
+    for (const item of parsed) {
+      const window = item.window!;
+      const key = String(item.evidence.metadata?.windowKey ?? "");
+      const candidate: MoveBtcSpotFlowWindowEvidence = {
+        evidenceId: item.evidence.id,
+        windowKey: key,
+        observedAt: window.observedAt,
+        retrievedAt: item.evidence.retrievedAt,
+        totalBaseVolumeBtc: window.totalBaseVolumeBtc,
+        takerBuyBaseVolumeBtc: window.takerBuyBaseVolumeBtc,
+        takerSellBaseVolumeBtc: window.takerSellBaseVolumeBtc,
+        netTakerBaseVolumeBtc: window.netTakerBaseVolumeBtc,
+        takerBuyShare: window.takerBuyShare,
+        tradeCount: window.tradeCount,
+      };
+      const existing = latestByWindow.get(key);
+      if (
+        !existing
+        || candidate.retrievedAt > existing.retrievedAt
+        || (
+          candidate.retrievedAt === existing.retrievedAt
+          && candidate.evidenceId > existing.evidenceId
+        )
+      ) {
+        latestByWindow.set(key, candidate);
+      }
+    }
+
+    const expected = new Set(boundaries);
+    const windows = [...latestByWindow.values()]
+      .filter((item) => {
+        const observedAt = timestamp(item.observedAt);
+        return observedAt !== undefined && expected.has(observedAt);
+      })
+      .sort((left, right) =>
+        left.observedAt.localeCompare(right.observedAt)
+        || left.evidenceId.localeCompare(right.evidenceId));
+
+    const coverage: MoveBtcSpotFlowEvidence["coverage"] =
+      windows.length === boundaries.length
+        ? "COMPLETE"
+        : windows.length > 0
+          ? "PARTIAL"
+          : "EMPTY";
+
+    return {
+      state: windows.length > 0 ? "AVAILABLE_SYNCHRONOUS" : "INSUFFICIENT_DATA",
+      coverage,
+      methodology: BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
+      venue: "BINANCE",
+      pair: "BTCUSDT",
+      windowSeconds: 300,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      expectedCompletedWindows: boundaries.length,
+      windows,
+      ...(coverage === "COMPLETE"
+        ? {}
+        : {
+            reason:
+              `Point-in-time durable Binance spot-flow covers ${windows.length}/${boundaries.length} completed 5m windows inside the MOVE investigation window.`,
+          }),
+    };
+  } catch {
+    return {
+      state: "UNKNOWN",
+      coverage: "EMPTY",
+      methodology: BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
+      venue: "BINANCE",
+      pair: "BTCUSDT",
+      windowSeconds: 300,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      expectedCompletedWindows: boundaries.length,
+      windows: [],
+      reason: "Historical Evidence repository read failed for Binance spot-flow.",
+    };
+  }
+}
+
+async function btcMarketStructure(input: {
+  evidence: HistoricalEvidenceRepository;
+  startAt: string;
+  endAt: string;
+  asOf: string;
+}): Promise<MoveEvidenceBundle["cryptoMarketStructure"]> {
+  const spotFlow = await buildBtcSpotFlowEvidence({
+    repository: input.evidence,
+    startAt: input.startAt,
+    endAt: input.endAt,
+    asOf: input.asOf,
+  });
+
   const components: MoveEvidenceGapComponent[] = [
     {
       component: "BTC_DERIVATIVES",
@@ -621,9 +864,10 @@ function btcMarketStructure(): MoveEvidenceBundle["cryptoMarketStructure"] {
     },
     {
       component: "BTC_SPOT_FLOW",
-      state: "INSUFFICIENT_DATA",
-      reason:
-        "Binance BTCUSDT 5m taker flow is current read-only evidence without durable MOVE-window history.",
+      state: spotFlow.state,
+      reason: spotFlow.reason
+        ?? "Durable Binance BTCUSDT completed 5m taker-flow windows are replayable under the MOVE asOf cutoff.",
+      spotFlow,
     },
     {
       component: "BTC_SPOT_ORDER_BOOK",
@@ -642,8 +886,9 @@ function btcMarketStructure(): MoveEvidenceBundle["cryptoMarketStructure"] {
   return {
     state: "INSUFFICIENT_DATA",
     components,
-    reason:
-      "BTC market-structure sources are technically available read-only, but current qualified paths do not provide durable point-in-time replay for the MOVE cutoff.",
+    reason: spotFlow.state === "AVAILABLE_SYNCHRONOUS"
+      ? "Durable Binance spot-flow is replayable, but BTC derivatives and spot/perpetual order-book history remain incomplete."
+      : "BTC market-structure evidence remains incomplete under the MOVE point-in-time cutoff.",
   };
 }
 
@@ -739,6 +984,7 @@ export async function buildMoveEvidenceBundle(input: {
   assessment: ContinuousMoveAssessment;
   observations: HistoricalObservationRepository;
   events: HistoricalEventRepository;
+  evidence: HistoricalEvidenceRepository;
 }): Promise<MoveEvidenceBundleBuildResult> {
   const materialHorizons = materialHorizonWindows(input.assessment);
   const window = materialHorizons ? investigationWindow(materialHorizons) : undefined;
@@ -759,7 +1005,7 @@ export async function buildMoveEvidenceBundle(input: {
   }
 
   const asset = targetAsset(input.assessment.seriesKey);
-  const [synchronousHorizons, scheduledCatalysts, slowBackground] = await Promise.all([
+  const [synchronousHorizons, scheduledCatalysts, slowBackground, marketStructure] = await Promise.all([
     Promise.all(materialHorizons.map((horizon) => buildSynchronousHorizon({
       repository: input.observations,
       horizon,
@@ -776,6 +1022,14 @@ export async function buildMoveEvidenceBundle(input: {
       asset,
       asOf: input.assessment.asOf,
     }),
+    asset === "BTC"
+      ? btcMarketStructure({
+          evidence: input.evidence,
+          startAt: window.startAt,
+          endAt: window.endAt,
+          asOf: input.assessment.asOf,
+        })
+      : Promise.resolve(undefined),
   ]);
 
   const completeHorizons = synchronousHorizons.filter((item) => item.coverage === "COMPLETE").length;
@@ -817,7 +1071,7 @@ export async function buildMoveEvidenceBundle(input: {
         "GDELT GAL is qualified for the current rolling 15-minute feed only; no durable acquisition exists to replay candidate catalysts at the MOVE asOf cutoff.",
       currentSourceCapability: "GDELT_GAL_ROLLING_15M_CURRENT_ONLY",
     },
-    ...(asset === "BTC" ? { cryptoMarketStructure: btcMarketStructure() } : {}),
+    ...(asset === "BTC" ? { cryptoMarketStructure: marketStructure } : {}),
     intradayRatesPricing: {
       state: "MISSING_HIGH_VALUE_EVIDENCE",
       reason:

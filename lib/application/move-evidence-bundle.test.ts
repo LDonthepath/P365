@@ -3,10 +3,16 @@ import test from "node:test";
 import type { Event, Observation } from "../domain/types";
 import {
   InMemoryEventRepository,
+  InMemoryEvidenceRepository,
   InMemoryHistoricalEventRepository,
   InMemoryObservationRepository,
 } from "../repositories/memory";
 import type { ContinuousMoveAssessment } from "./continuous-move-detector";
+import {
+  BTC_SPOT_FLOW_METHODOLOGY,
+  type BtcSpotFlowWindow,
+} from "./btc-spot-flow";
+import { btcSpotFlowWindowsToEvidence } from "./btc-spot-flow-history";
 import { buildMoveEvidenceBundle } from "./move-evidence-bundle";
 
 function observation(input: {
@@ -108,8 +114,69 @@ const synchronous = [
   ["fx.usdcnh.cnh_per_usd", "yahoo-finance", 7.1, 7.09, 7.08],
 ] as const;
 
+function spotFlowWindow(observedAt: string, overrides: Partial<BtcSpotFlowWindow> = {}): BtcSpotFlowWindow {
+  const observedAtMs = Date.parse(observedAt);
+  const providerIntervalStartMs = observedAtMs - 5 * 60 * 1000;
+  return {
+    asset: "BTC",
+    venue: "BINANCE",
+    pair: "BTCUSDT",
+    baseUnit: "BTC",
+    providerIntervalStartMs,
+    observedAt,
+    windowSeconds: 300,
+    totalBaseVolumeBtc: 10,
+    takerBuyBaseVolumeBtc: 6,
+    takerSellBaseVolumeBtc: 4,
+    netTakerBaseVolumeBtc: 2,
+    takerBuyShare: 0.6,
+    tradeCount: 100,
+    coverage: "COMPLETE",
+    methodology: BTC_SPOT_FLOW_METHODOLOGY,
+    ...overrides,
+  };
+}
+
+async function seedCompleteSpotFlow(
+  evidence: InMemoryEvidenceRepository,
+  startAt: string,
+  endAt: string,
+): Promise<{ finalEvidenceId: string; lateCorrectionId: string }> {
+  const start = Date.parse(startAt);
+  const end = Date.parse(endAt);
+  const windowMs = 5 * 60 * 1000;
+  const firstBoundary = Math.floor(start / windowMs) * windowMs + windowMs;
+  const lastBoundary = Math.floor(end / windowMs) * windowMs;
+
+  let finalEvidenceId = "";
+  for (let boundary = firstBoundary; boundary <= lastBoundary; boundary += windowMs) {
+    const observedAt = new Date(boundary).toISOString();
+    const row = btcSpotFlowWindowsToEvidence({
+      windows: [spotFlowWindow(observedAt)],
+      retrievedAt: new Date(boundary + 10_000).toISOString(),
+    })[0];
+    await evidence.save(row);
+    if (boundary === lastBoundary) finalEvidenceId = row.id;
+  }
+
+  const corrected = btcSpotFlowWindowsToEvidence({
+    windows: [spotFlowWindow(new Date(lastBoundary).toISOString(), {
+      takerBuyBaseVolumeBtc: 7,
+      takerSellBaseVolumeBtc: 3,
+      netTakerBaseVolumeBtc: 4,
+      takerBuyShare: 0.7,
+      tradeCount: 101,
+    })],
+    retrievedAt: "2026-10-02T05:00:00.000Z",
+  })[0];
+  await evidence.save(corrected);
+
+  return { finalEvidenceId, lateCorrectionId: corrected.id };
+}
+
 test("MOVE-002B builds one deterministic point-in-time evidence bundle without writes", async () => {
   const observations = new InMemoryObservationRepository();
+  const evidence = new InMemoryEvidenceRepository();
   const eventStore = new InMemoryEventRepository();
   const events = new InMemoryHistoricalEventRepository(eventStore);
 
@@ -223,9 +290,15 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
     scheduledAt: "2026-10-02T03:45:00.000Z",
   });
 
+  const { finalEvidenceId, lateCorrectionId } = await seedCompleteSpotFlow(
+    evidence,
+    start120At,
+    endAt,
+  );
+
   const assessment = materialAssessment();
-  const first = await buildMoveEvidenceBundle({ assessment, observations, events });
-  const second = await buildMoveEvidenceBundle({ assessment, observations, events });
+  const first = await buildMoveEvidenceBundle({ assessment, observations, events, evidence });
+  const second = await buildMoveEvidenceBundle({ assessment, observations, events, evidence });
 
   assert.equal(first.status, "READY");
   assert.equal(second.status, "READY");
@@ -279,6 +352,16 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
   assert.equal(first.bundle.unscheduledCatalysts.state, "INSUFFICIENT_DATA");
   assert.equal(first.bundle.cryptoMarketStructure?.state, "INSUFFICIENT_DATA");
   assert.equal(first.bundle.cryptoMarketStructure?.components.length, 4);
+  const spotFlow = first.bundle.cryptoMarketStructure?.components.find(
+    (item) => item.component === "BTC_SPOT_FLOW",
+  );
+  assert.equal(spotFlow?.state, "AVAILABLE_SYNCHRONOUS");
+  assert.equal(spotFlow?.spotFlow?.coverage, "COMPLETE");
+  assert.equal(spotFlow?.spotFlow?.expectedCompletedWindows, 24);
+  assert.equal(spotFlow?.spotFlow?.windows.length, 24);
+  assert.equal(spotFlow?.spotFlow?.windows.at(-1)?.evidenceId, finalEvidenceId);
+  assert.notEqual(spotFlow?.spotFlow?.windows.at(-1)?.evidenceId, lateCorrectionId);
+  assert.equal(spotFlow?.spotFlow?.windows.at(-1)?.netTakerBaseVolumeBtc, 2);
   assert.equal(first.bundle.intradayRatesPricing.state, "MISSING_HIGH_VALUE_EVIDENCE");
   assert.equal(
     first.bundle.intradayRatesPricing.policy,
@@ -291,6 +374,7 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
 
 test("MOVE-002B keeps the Gold target on Gold-specific background boundaries", async () => {
   const observations = new InMemoryObservationRepository();
+  const evidence = new InMemoryEvidenceRepository();
   const eventStore = new InMemoryEventRepository();
   const events = new InMemoryHistoricalEventRepository(eventStore);
   const assessment: ContinuousMoveAssessment = {
@@ -308,7 +392,7 @@ test("MOVE-002B keeps the Gold target on Gold-specific background boundaries", a
     })),
   };
 
-  const result = await buildMoveEvidenceBundle({ assessment, observations, events });
+  const result = await buildMoveEvidenceBundle({ assessment, observations, events, evidence });
   assert.equal(result.status, "READY");
   if (result.status !== "READY") return;
 
@@ -325,6 +409,7 @@ test("MOVE-002B keeps the Gold target on Gold-specific background boundaries", a
 
 test("MOVE-002B refuses to build a bundle when MOVE-001C did not trigger", async () => {
   const observations = new InMemoryObservationRepository();
+  const evidence = new InMemoryEvidenceRepository();
   const eventStore = new InMemoryEventRepository();
   const events = new InMemoryHistoricalEventRepository(eventStore);
   const assessment: ContinuousMoveAssessment = {
@@ -338,6 +423,6 @@ test("MOVE-002B refuses to build a bundle when MOVE-001C did not trigger", async
     })),
   };
 
-  const result = await buildMoveEvidenceBundle({ assessment, observations, events });
+  const result = await buildMoveEvidenceBundle({ assessment, observations, events, evidence });
   assert.equal(result.status, "NOT_TRIGGERED");
 });
