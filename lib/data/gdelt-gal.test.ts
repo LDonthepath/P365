@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchGdeltGalCandidateSnapshot } from "./gdelt-gal";
+import { fetchGdeltGalCandidateSnapshot, fetchGdeltGalCandidateSnapshots } from "./gdelt-gal";
 
 const NOW = new Date("2026-10-04T12:00:00.000Z");
 
@@ -12,6 +12,31 @@ function rss(items: string): string {
     ${items}
   </channel></rss>`;
 }
+
+
+test("GDELT GAL multi-asset acquisition fetches the feed once and returns BTC plus Gold snapshots", async () => {
+  let fetchCalls = 0;
+  const result = await fetchGdeltGalCandidateSnapshots(
+    { assets: ["BTC", "GOLD"], maxCandidates: 10 },
+    {
+      now: () => NOW,
+      fetch: async () => {
+        fetchCalls += 1;
+        return new Response(rss(`
+          <item><title>Bitcoin rises after macro headline</title><link>https://example.com/bitcoin</link><pubDate>4 Oct 2026 11:58:00 +0000</pubDate></item>
+          <item><title>Gold price rises as dollar falls</title><link>https://example.com/gold</link><pubDate>4 Oct 2026 11:57:00 +0000</pubDate></item>
+        `), { status: 200 });
+      },
+    },
+  );
+
+  assert.equal(fetchCalls, 1);
+  assert.equal(result.status, "SUCCESS");
+  assert.deepEqual(result.data.map((snapshot) => snapshot.asset), ["BTC", "GOLD"]);
+  assert.equal(result.data[0].candidates.length, 1);
+  assert.equal(result.data[1].candidates.length, 1);
+  assert.equal(result.data[0].feedLastBuildAt, result.data[1].feedLastBuildAt);
+});
 
 test("GDELT GAL parses rolling feed and locally filters BTC candidates", async () => {
   const result = await fetchGdeltGalCandidateSnapshot(
