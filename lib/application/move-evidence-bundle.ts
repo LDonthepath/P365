@@ -1,0 +1,770 @@
+import { createHash } from "node:crypto";
+import { historicalObservationFitnessEligible } from "../domain/historical-observation-fitness";
+import type { DataQuality, Event, Observation, ObservationDomain } from "../domain/types";
+import { observationSemanticSeriesKey } from "../repositories/observation-history";
+import type {
+  HistoricalEventRepository,
+  HistoricalObservationRepository,
+} from "../repositories/types";
+import {
+  buildBtcEtfFlowReadModel,
+  type BtcEtfFlowReadModel,
+} from "./btc-etf-flow";
+import type {
+  ContinuousMoveAssessment,
+} from "./continuous-move-detector";
+import {
+  buildGoldPositioningReadModel,
+  type GoldPositioningReadModel,
+} from "./gold-positioning";
+import {
+  buildStablecoinLiquidityReadModel,
+  type StablecoinLiquidityReadModel,
+} from "./stablecoin-liquidity";
+
+const MINUTE_MS = 60 * 1000;
+const CROSS_SERIES_ALIGNMENT_TOLERANCE_MS = 2 * MINUTE_MS;
+const SYNCHRONOUS_QUERY_LIMIT = 50;
+const SCHEDULED_EVENT_QUERY_LIMIT = 500;
+
+export const MOVE_EVIDENCE_BUNDLE_POLICY = "move-evidence-bundle-v1" as const;
+
+export type MoveEvidenceAvailability =
+  | "AVAILABLE_SYNCHRONOUS"
+  | "AVAILABLE_BACKGROUND"
+  | "AVAILABLE_CATALYST"
+  | "MISSING_HIGH_VALUE_EVIDENCE"
+  | "INSUFFICIENT_DATA"
+  | "UNKNOWN";
+
+export type MoveEvidenceAsset = "BTC" | "GOLD";
+
+export type MoveEvidencePoint = {
+  observationId: string;
+  value: number;
+  observedAt: string;
+  retrievedAt: string;
+  quality: DataQuality;
+};
+
+export type MoveSynchronousSeriesEvidence = {
+  seriesKey: string;
+  domain: ObservationDomain;
+  sourceId: string;
+  state: Extract<
+    MoveEvidenceAvailability,
+    "AVAILABLE_SYNCHRONOUS" | "INSUFFICIENT_DATA" | "UNKNOWN"
+  >;
+  startTargetAt: string;
+  endTargetAt: string;
+  start?: MoveEvidencePoint;
+  end?: MoveEvidencePoint;
+  startAlignmentErrorMs?: number;
+  endAlignmentErrorMs?: number;
+  signedPercentChange?: number;
+  reason?: string;
+};
+
+export type MoveScheduledCatalyst = {
+  eventId: string;
+  eventIdentityKey: string | null;
+  subject: string;
+  jurisdiction: Event["jurisdiction"] | null;
+  importance: Event["importance"];
+  scheduledAt: string;
+  retrievedAt: string;
+  sourceId: string;
+};
+
+export type MoveBackgroundItem =
+  | {
+      kind: "USD_STABLECOIN_LIQUIDITY";
+      state: Extract<MoveEvidenceAvailability, "AVAILABLE_BACKGROUND" | "INSUFFICIENT_DATA" | "UNKNOWN">;
+      data: StablecoinLiquidityReadModel | null;
+      reason?: string;
+    }
+  | {
+      kind: "BTC_ETF_NET_FLOW";
+      state: Extract<MoveEvidenceAvailability, "AVAILABLE_BACKGROUND" | "INSUFFICIENT_DATA" | "UNKNOWN">;
+      data: BtcEtfFlowReadModel | null;
+      reason?: string;
+    }
+  | {
+      kind: "GOLD_CFTC_POSITIONING";
+      state: Extract<MoveEvidenceAvailability, "AVAILABLE_BACKGROUND" | "INSUFFICIENT_DATA" | "UNKNOWN">;
+      data: GoldPositioningReadModel | null;
+      reason?: string;
+    };
+
+export type MoveEvidenceGapComponent = {
+  component:
+    | "BTC_DERIVATIVES"
+    | "BTC_SPOT_FLOW"
+    | "BTC_SPOT_ORDER_BOOK"
+    | "BTC_PERP_ORDER_BOOK";
+  state: Extract<
+    MoveEvidenceAvailability,
+    "MISSING_HIGH_VALUE_EVIDENCE" | "INSUFFICIENT_DATA"
+  >;
+  reason: string;
+};
+
+export type MoveEvidenceBundle = {
+  id: string;
+  version: "v1";
+  policy: typeof MOVE_EVIDENCE_BUNDLE_POLICY;
+  moveAssessmentId: string;
+  targetAsset: MoveEvidenceAsset;
+  targetSeriesKey: ContinuousMoveAssessment["seriesKey"];
+  asOf: string;
+  investigationWindow: {
+    startAt: string;
+    endAt: string;
+    materialHorizonsMs: number[];
+  };
+  synchronousMarket: {
+    state: Extract<
+      MoveEvidenceAvailability,
+      "AVAILABLE_SYNCHRONOUS" | "INSUFFICIENT_DATA" | "UNKNOWN"
+    >;
+    coverage: "COMPLETE" | "PARTIAL" | "EMPTY";
+    alignmentToleranceMs: typeof CROSS_SERIES_ALIGNMENT_TOLERANCE_MS;
+    series: MoveSynchronousSeriesEvidence[];
+  };
+  scheduledCatalysts: {
+    state: Extract<MoveEvidenceAvailability, "AVAILABLE_CATALYST" | "UNKNOWN">;
+    coverage: "COMPLETE" | "BOUNDED_QUERY_LIMIT_REACHED" | "UNAVAILABLE";
+    events: MoveScheduledCatalyst[];
+    reason?: string;
+  };
+  slowBackground: {
+    state: Extract<
+      MoveEvidenceAvailability,
+      "AVAILABLE_BACKGROUND" | "INSUFFICIENT_DATA" | "UNKNOWN"
+    >;
+    items: MoveBackgroundItem[];
+  };
+  unscheduledCatalysts: {
+    state: Extract<
+      MoveEvidenceAvailability,
+      "INSUFFICIENT_DATA" | "UNKNOWN"
+    >;
+    reason: string;
+    currentSourceCapability:
+      | "GDELT_GAL_ROLLING_15M_CURRENT_ONLY"
+      | "UNAVAILABLE";
+  };
+  cryptoMarketStructure?: {
+    state: Extract<
+      MoveEvidenceAvailability,
+      "MISSING_HIGH_VALUE_EVIDENCE" | "INSUFFICIENT_DATA" | "UNKNOWN"
+    >;
+    components: MoveEvidenceGapComponent[];
+    reason: string;
+  };
+  intradayRatesPricing: {
+    state: "MISSING_HIGH_VALUE_EVIDENCE";
+    reason: string;
+    policy: "FREE_ONLY_NO_APPROVED_RUNTIME";
+  };
+  evidenceCompleteness: "EVIDENCE_COMPLETE" | "EVIDENCE_INCOMPLETE";
+  causalAttribution: "NOT_EVALUATED";
+  writesPerformed: false;
+};
+
+export type MoveEvidenceBundleBuildResult =
+  | {
+      status: "READY";
+      bundle: MoveEvidenceBundle;
+    }
+  | {
+      status: "NOT_TRIGGERED";
+      reason: string;
+    }
+  | {
+      status: "UNKNOWN";
+      reason: string;
+    };
+
+type SeriesDefinition = {
+  domain: ObservationDomain;
+  seriesKey: string;
+  sourceId: string;
+};
+
+const SYNCHRONOUS_SERIES: readonly SeriesDefinition[] = [
+  { domain: "ASSET", seriesKey: "btc.spot.usd", sourceId: "coingecko-market" },
+  { domain: "ASSET", seriesKey: "eth.spot.usd", sourceId: "coingecko-market" },
+  { domain: "ASSET", seriesKey: "dxy.index.usd", sourceId: "yahoo-finance" },
+  { domain: "ASSET", seriesKey: "gold.futures.usd", sourceId: "yahoo-finance" },
+  { domain: "ASSET", seriesKey: "fx.usdjpy.jpy_per_usd", sourceId: "yahoo-finance" },
+  { domain: "ASSET", seriesKey: "fx.usdcnh.cnh_per_usd", sourceId: "yahoo-finance" },
+];
+
+function timestamp(value: string): number | undefined {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function numeric(observation: Observation): number | undefined {
+  const parsed = Number(observation.value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function point(observation: Observation): MoveEvidencePoint | undefined {
+  const value = numeric(observation);
+  if (value === undefined) return undefined;
+  return {
+    observationId: observation.id,
+    value,
+    observedAt: observation.observedAt,
+    retrievedAt: observation.retrievedAt,
+    quality: observation.quality,
+  };
+}
+
+function targetAsset(seriesKey: ContinuousMoveAssessment["seriesKey"]): MoveEvidenceAsset {
+  return seriesKey === "btc.spot.usd" ? "BTC" : "GOLD";
+}
+
+function hash(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
+}
+
+function latestByObservedAt(observations: Observation[]): Observation[] {
+  const latest = new Map<number, Observation>();
+  for (const observation of observations) {
+    const observedAt = timestamp(observation.observedAt);
+    if (observedAt === undefined) continue;
+    const existing = latest.get(observedAt);
+    if (
+      !existing
+      || observation.retrievedAt > existing.retrievedAt
+      || (
+        observation.retrievedAt === existing.retrievedAt
+        && observation.id > existing.id
+      )
+    ) {
+      latest.set(observedAt, observation);
+    }
+  }
+  return [...latest.values()];
+}
+
+function nearest(
+  observations: Observation[],
+  desiredAt: number,
+): { observation: Observation; errorMs: number } | undefined {
+  let selected: { observation: Observation; observedAt: number; errorMs: number } | undefined;
+  for (const observation of latestByObservedAt(observations)) {
+    const observedAt = timestamp(observation.observedAt);
+    if (observedAt === undefined) continue;
+    const errorMs = Math.abs(observedAt - desiredAt);
+    if (errorMs > CROSS_SERIES_ALIGNMENT_TOLERANCE_MS) continue;
+    if (
+      !selected
+      || errorMs < selected.errorMs
+      || (errorMs === selected.errorMs && observedAt > selected.observedAt)
+      || (
+        errorMs === selected.errorMs
+        && observedAt === selected.observedAt
+        && observation.id > selected.observation.id
+      )
+    ) {
+      selected = { observation, observedAt, errorMs };
+    }
+  }
+  return selected
+    ? { observation: selected.observation, errorMs: selected.errorMs }
+    : undefined;
+}
+
+async function nearestPoint(input: {
+  repository: HistoricalObservationRepository;
+  definition: SeriesDefinition;
+  desiredAt: string;
+  asOf: string;
+}): Promise<
+  | { status: "AVAILABLE"; point: MoveEvidencePoint; alignmentErrorMs: number }
+  | { status: "MISSING"; reason: string }
+  | { status: "UNKNOWN"; reason: string }
+> {
+  const desiredAt = timestamp(input.desiredAt);
+  if (desiredAt === undefined) {
+    return { status: "UNKNOWN", reason: "Synchronous target timestamp is invalid." };
+  }
+
+  const from = new Date(desiredAt - CROSS_SERIES_ALIGNMENT_TOLERANCE_MS).toISOString();
+  const through = new Date(desiredAt + CROSS_SERIES_ALIGNMENT_TOLERANCE_MS).toISOString();
+
+  try {
+    const history = await input.repository.findHistory({
+      identity: {
+        domain: input.definition.domain,
+        seriesKey: input.definition.seriesKey,
+      },
+      sourceId: input.definition.sourceId,
+      observedAtOnOrAfter: from,
+      observedAtOnOrBefore: through,
+      retrievedAtOnOrBefore: input.asOf,
+      order: "ASC",
+      limit: SYNCHRONOUS_QUERY_LIMIT,
+    });
+
+    if (history.length >= SYNCHRONOUS_QUERY_LIMIT) {
+      return {
+        status: "UNKNOWN",
+        reason: "Bounded synchronous query reached its 50-row limit.",
+      };
+    }
+
+    const eligible = history.filter((observation) =>
+      observation.domain === input.definition.domain
+      && observation.sourceId === input.definition.sourceId
+      && observationSemanticSeriesKey(observation) === input.definition.seriesKey
+      && historicalObservationFitnessEligible(observation)
+      && numeric(observation) !== undefined);
+
+    const selected = nearest(eligible, desiredAt);
+    if (!selected) {
+      return {
+        status: "MISSING",
+        reason: "No point-in-time eligible Observation exists inside the ±120s alignment window.",
+      };
+    }
+
+    const selectedPoint = point(selected.observation);
+    if (!selectedPoint) {
+      return {
+        status: "UNKNOWN",
+        reason: "Selected synchronous Observation is non-numeric.",
+      };
+    }
+
+    return {
+      status: "AVAILABLE",
+      point: selectedPoint,
+      alignmentErrorMs: selected.errorMs,
+    };
+  } catch {
+    return {
+      status: "UNKNOWN",
+      reason: "Historical Observation repository read failed.",
+    };
+  }
+}
+
+async function buildSynchronousSeries(input: {
+  repository: HistoricalObservationRepository;
+  definition: SeriesDefinition;
+  startAt: string;
+  endAt: string;
+  asOf: string;
+}): Promise<MoveSynchronousSeriesEvidence> {
+  const [start, end] = await Promise.all([
+    nearestPoint({
+      repository: input.repository,
+      definition: input.definition,
+      desiredAt: input.startAt,
+      asOf: input.asOf,
+    }),
+    nearestPoint({
+      repository: input.repository,
+      definition: input.definition,
+      desiredAt: input.endAt,
+      asOf: input.asOf,
+    }),
+  ]);
+
+  if (start.status === "UNKNOWN" || end.status === "UNKNOWN") {
+    return {
+      ...input.definition,
+      state: "UNKNOWN",
+      startTargetAt: input.startAt,
+      endTargetAt: input.endAt,
+      reason: [start, end]
+        .filter((item) => item.status === "UNKNOWN")
+        .map((item) => item.reason)
+        .join(" "),
+    };
+  }
+
+  if (start.status !== "AVAILABLE" || end.status !== "AVAILABLE") {
+    return {
+      ...input.definition,
+      state: "INSUFFICIENT_DATA",
+      startTargetAt: input.startAt,
+      endTargetAt: input.endAt,
+      ...(start.status === "AVAILABLE"
+        ? { start: start.point, startAlignmentErrorMs: start.alignmentErrorMs }
+        : {}),
+      ...(end.status === "AVAILABLE"
+        ? { end: end.point, endAlignmentErrorMs: end.alignmentErrorMs }
+        : {}),
+      reason: [start, end]
+        .filter((item) => item.status === "MISSING")
+        .map((item) => item.reason)
+        .join(" "),
+    };
+  }
+
+  const signedPercentChange = start.point.value === 0
+    ? undefined
+    : ((end.point.value - start.point.value) / start.point.value) * 100;
+
+  if (signedPercentChange === undefined || !Number.isFinite(signedPercentChange)) {
+    return {
+      ...input.definition,
+      state: "UNKNOWN",
+      startTargetAt: input.startAt,
+      endTargetAt: input.endAt,
+      start: start.point,
+      end: end.point,
+      startAlignmentErrorMs: start.alignmentErrorMs,
+      endAlignmentErrorMs: end.alignmentErrorMs,
+      reason: "Synchronous percentage change is undefined for the selected points.",
+    };
+  }
+
+  return {
+    ...input.definition,
+    state: "AVAILABLE_SYNCHRONOUS",
+    startTargetAt: input.startAt,
+    endTargetAt: input.endAt,
+    start: start.point,
+    end: end.point,
+    startAlignmentErrorMs: start.alignmentErrorMs,
+    endAlignmentErrorMs: end.alignmentErrorMs,
+    signedPercentChange,
+  };
+}
+
+async function buildScheduledCatalysts(input: {
+  repository: HistoricalEventRepository;
+  startAt: string;
+  endAt: string;
+  asOf: string;
+}): Promise<MoveEvidenceBundle["scheduledCatalysts"]> {
+  try {
+    const events = await input.repository.findHistory({
+      scheduledAtOnOrAfter: input.startAt,
+      scheduledAtOnOrBefore: input.endAt,
+      retrievedAtOnOrBefore: input.asOf,
+      order: "ASC",
+      limit: SCHEDULED_EVENT_QUERY_LIMIT,
+    });
+
+    if (events.length >= SCHEDULED_EVENT_QUERY_LIMIT) {
+      return {
+        state: "UNKNOWN",
+        coverage: "BOUNDED_QUERY_LIMIT_REACHED",
+        events: [],
+        reason: "Scheduled Event query reached the bounded 500-row limit.",
+      };
+    }
+
+    return {
+      state: "AVAILABLE_CATALYST",
+      coverage: "COMPLETE",
+      events: events.flatMap((event) => {
+        const scheduledAt = event.identity?.scheduledAt ?? event.scheduledAt;
+        if (!scheduledAt) return [];
+        return [{
+          eventId: event.id,
+          eventIdentityKey: event.identity?.key ?? null,
+          subject: event.subject,
+          jurisdiction: event.jurisdiction ?? null,
+          importance: event.importance,
+          scheduledAt,
+          retrievedAt: event.retrievedAt,
+          sourceId: event.sourceId,
+        }];
+      }),
+    };
+  } catch {
+    return {
+      state: "UNKNOWN",
+      coverage: "UNAVAILABLE",
+      events: [],
+      reason: "Historical Event repository read failed.",
+    };
+  }
+}
+
+async function buildBackground(input: {
+  repository: HistoricalObservationRepository;
+  asset: MoveEvidenceAsset;
+  asOf: string;
+}): Promise<MoveEvidenceBundle["slowBackground"]> {
+  const asOf = new Date(input.asOf);
+  if (!Number.isFinite(asOf.getTime())) {
+    return {
+      state: "UNKNOWN",
+      items: [],
+    };
+  }
+
+  if (input.asset === "BTC") {
+    const [stablecoin, etf] = await Promise.all([
+      (async (): Promise<MoveBackgroundItem> => {
+        try {
+          const data = await buildStablecoinLiquidityReadModel(input.repository, asOf);
+          return data.latest
+            ? {
+                kind: "USD_STABLECOIN_LIQUIDITY",
+                state: "AVAILABLE_BACKGROUND",
+                data,
+              }
+            : {
+                kind: "USD_STABLECOIN_LIQUIDITY",
+                state: "INSUFFICIENT_DATA",
+                data,
+                reason: "No point-in-time stablecoin liquidity observation is available.",
+              };
+        } catch {
+          return {
+            kind: "USD_STABLECOIN_LIQUIDITY",
+            state: "UNKNOWN",
+            data: null,
+            reason: "Stablecoin liquidity history read failed.",
+          };
+        }
+      })(),
+      (async (): Promise<MoveBackgroundItem> => {
+        try {
+          const data = await buildBtcEtfFlowReadModel(input.repository, asOf);
+          return data.latest
+            ? {
+                kind: "BTC_ETF_NET_FLOW",
+                state: "AVAILABLE_BACKGROUND",
+                data,
+              }
+            : {
+                kind: "BTC_ETF_NET_FLOW",
+                state: "INSUFFICIENT_DATA",
+                data,
+                reason: "No matured point-in-time BTC ETF flow observation is available.",
+              };
+        } catch {
+          return {
+            kind: "BTC_ETF_NET_FLOW",
+            state: "UNKNOWN",
+            data: null,
+            reason: "BTC ETF flow history read failed.",
+          };
+        }
+      })(),
+    ]);
+
+    const items = [stablecoin, etf];
+    const available = items.filter((item) => item.state === "AVAILABLE_BACKGROUND").length;
+    return {
+      state: available > 0
+        ? "AVAILABLE_BACKGROUND"
+        : items.some((item) => item.state === "UNKNOWN")
+          ? "UNKNOWN"
+          : "INSUFFICIENT_DATA",
+      items,
+    };
+  }
+
+  try {
+    const data = await buildGoldPositioningReadModel(input.repository, asOf);
+    const item: MoveBackgroundItem = data.status === "AVAILABLE"
+      ? {
+          kind: "GOLD_CFTC_POSITIONING",
+          state: "AVAILABLE_BACKGROUND",
+          data,
+        }
+      : {
+          kind: "GOLD_CFTC_POSITIONING",
+          state: "INSUFFICIENT_DATA",
+          data,
+          reason: data.reason,
+        };
+    return {
+      state: item.state,
+      items: [item],
+    };
+  } catch {
+    return {
+      state: "UNKNOWN",
+      items: [{
+        kind: "GOLD_CFTC_POSITIONING",
+        state: "UNKNOWN",
+        data: null,
+        reason: "Gold positioning history read failed.",
+      }],
+    };
+  }
+}
+
+function btcMarketStructure(): MoveEvidenceBundle["cryptoMarketStructure"] {
+  const components: MoveEvidenceGapComponent[] = [
+    {
+      component: "BTC_DERIVATIVES",
+      state: "INSUFFICIENT_DATA",
+      reason:
+        "Coinalyze derivatives are technically live-qualified read-only, but durable point-in-time history is not approved; current data cannot replay the MOVE asOf cutoff.",
+    },
+    {
+      component: "BTC_SPOT_FLOW",
+      state: "INSUFFICIENT_DATA",
+      reason:
+        "Binance BTCUSDT 5m taker flow is current read-only evidence without durable MOVE-window history.",
+    },
+    {
+      component: "BTC_SPOT_ORDER_BOOK",
+      state: "INSUFFICIENT_DATA",
+      reason:
+        "Binance Spot order-book evidence is a current retrieval-time snapshot without historical MOVE-window snapshots.",
+    },
+    {
+      component: "BTC_PERP_ORDER_BOOK",
+      state: "INSUFFICIENT_DATA",
+      reason:
+        "Hyperliquid/Binance-perp order-book evidence is current-only and cannot establish past MOVE-window liquidity geometry.",
+    },
+  ];
+
+  return {
+    state: "INSUFFICIENT_DATA",
+    components,
+    reason:
+      "BTC market-structure sources are technically available read-only, but current qualified paths do not provide durable point-in-time replay for the MOVE cutoff.",
+  };
+}
+
+function investigationWindow(
+  assessment: ContinuousMoveAssessment,
+):
+  | {
+      startAt: string;
+      endAt: string;
+      materialHorizonsMs: number[];
+    }
+  | undefined {
+  if (assessment.status !== "MATERIAL_MOVE" || !assessment.hasMaterialMove) return undefined;
+
+  const material = assessment.horizons.filter((item) => item.status === "MATERIAL_MOVE");
+  if (material.length === 0) return undefined;
+
+  const starts = material.flatMap((item) => {
+    const value = item.targetStartObservedAt;
+    if (!value) return [];
+    const parsed = timestamp(value);
+    return parsed === undefined ? [] : [parsed];
+  });
+  const end = timestamp(assessment.targetEndObservedAt);
+
+  if (starts.length !== material.length || end === undefined) return undefined;
+
+  return {
+    startAt: new Date(Math.min(...starts)).toISOString(),
+    endAt: new Date(end).toISOString(),
+    materialHorizonsMs: material.map((item) => item.horizonMs).sort((a, b) => a - b),
+  };
+}
+
+export async function buildMoveEvidenceBundle(input: {
+  assessment: ContinuousMoveAssessment;
+  observations: HistoricalObservationRepository;
+  events: HistoricalEventRepository;
+}): Promise<MoveEvidenceBundleBuildResult> {
+  const window = investigationWindow(input.assessment);
+  if (!window) {
+    return {
+      status: "NOT_TRIGGERED",
+      reason: "MOVE-002B requires a MOVE-001C MATERIAL_MOVE assessment with complete material-horizon lineage.",
+    };
+  }
+
+  const asOfMs = timestamp(input.assessment.asOf);
+  const endMs = timestamp(window.endAt);
+  if (asOfMs === undefined || endMs === undefined || endMs > asOfMs) {
+    return {
+      status: "UNKNOWN",
+      reason: "MOVE assessment has an invalid point-in-time cutoff.",
+    };
+  }
+
+  const asset = targetAsset(input.assessment.seriesKey);
+  const [synchronousSeries, scheduledCatalysts, slowBackground] = await Promise.all([
+    Promise.all(SYNCHRONOUS_SERIES.map((definition) => buildSynchronousSeries({
+      repository: input.observations,
+      definition,
+      startAt: window.startAt,
+      endAt: window.endAt,
+      asOf: input.assessment.asOf,
+    }))),
+    buildScheduledCatalysts({
+      repository: input.events,
+      startAt: window.startAt,
+      endAt: window.endAt,
+      asOf: input.assessment.asOf,
+    }),
+    buildBackground({
+      repository: input.observations,
+      asset,
+      asOf: input.assessment.asOf,
+    }),
+  ]);
+
+  const availableSynchronous = synchronousSeries.filter(
+    (item) => item.state === "AVAILABLE_SYNCHRONOUS",
+  ).length;
+  const synchronousState: MoveEvidenceBundle["synchronousMarket"]["state"] =
+    availableSynchronous > 0
+      ? "AVAILABLE_SYNCHRONOUS"
+      : synchronousSeries.some((item) => item.state === "UNKNOWN")
+        ? "UNKNOWN"
+        : "INSUFFICIENT_DATA";
+  const synchronousCoverage: MoveEvidenceBundle["synchronousMarket"]["coverage"] =
+    availableSynchronous === synchronousSeries.length
+      ? "COMPLETE"
+      : availableSynchronous > 0
+        ? "PARTIAL"
+        : "EMPTY";
+
+  const withoutId: Omit<MoveEvidenceBundle, "id"> = {
+    version: "v1",
+    policy: MOVE_EVIDENCE_BUNDLE_POLICY,
+    moveAssessmentId: input.assessment.id,
+    targetAsset: asset,
+    targetSeriesKey: input.assessment.seriesKey,
+    asOf: input.assessment.asOf,
+    investigationWindow: window,
+    synchronousMarket: {
+      state: synchronousState,
+      coverage: synchronousCoverage,
+      alignmentToleranceMs: CROSS_SERIES_ALIGNMENT_TOLERANCE_MS,
+      series: synchronousSeries,
+    },
+    scheduledCatalysts,
+    slowBackground,
+    unscheduledCatalysts: {
+      state: "INSUFFICIENT_DATA",
+      reason:
+        "GDELT GAL is qualified for the current rolling 15-minute feed only; no durable acquisition exists to replay candidate catalysts at the MOVE asOf cutoff.",
+      currentSourceCapability: "GDELT_GAL_ROLLING_15M_CURRENT_ONLY",
+    },
+    ...(asset === "BTC" ? { cryptoMarketStructure: btcMarketStructure() } : {}),
+    intradayRatesPricing: {
+      state: "MISSING_HIGH_VALUE_EVIDENCE",
+      reason:
+        "Owner policy is FREE_ONLY. No free, rights-compatible intraday cash-rates or risk-bounded Treasury-futures proxy runtime is approved; MOVE-002B must keep rates evidence explicitly missing.",
+      policy: "FREE_ONLY_NO_APPROVED_RUNTIME",
+    },
+    evidenceCompleteness: "EVIDENCE_INCOMPLETE",
+    causalAttribution: "NOT_EVALUATED",
+    writesPerformed: false,
+  };
+
+  return {
+    status: "READY",
+    bundle: {
+      id: "move-evidence-bundle-v1-" + hash(withoutId),
+      ...withoutId,
+    },
+  };
+}
