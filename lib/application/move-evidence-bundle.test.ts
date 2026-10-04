@@ -100,12 +100,12 @@ function materialAssessment(): ContinuousMoveAssessment {
 }
 
 const synchronous = [
-  ["btc.spot.usd", "coingecko-market", 100, 102],
-  ["eth.spot.usd", "coingecko-market", 200, 202],
-  ["dxy.index.usd", "yahoo-finance", 98, 97.9],
-  ["gold.futures.usd", "yahoo-finance", 2600, 2610],
-  ["fx.usdjpy.jpy_per_usd", "yahoo-finance", 150, 149.5],
-  ["fx.usdcnh.cnh_per_usd", "yahoo-finance", 7.1, 7.08],
+  ["btc.spot.usd", "coingecko-market", 100, 101, 102],
+  ["eth.spot.usd", "coingecko-market", 200, 201, 202],
+  ["dxy.index.usd", "yahoo-finance", 98, 97.95, 97.9],
+  ["gold.futures.usd", "yahoo-finance", 2600, 2605, 2610],
+  ["fx.usdjpy.jpy_per_usd", "yahoo-finance", 150, 149.8, 149.5],
+  ["fx.usdcnh.cnh_per_usd", "yahoo-finance", 7.1, 7.09, 7.08],
 ] as const;
 
 test("MOVE-002B builds one deterministic point-in-time evidence bundle without writes", async () => {
@@ -113,27 +113,38 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
   const eventStore = new InMemoryEventRepository();
   const events = new InMemoryHistoricalEventRepository(eventStore);
 
-  const startAt = "2026-10-02T02:30:00.000Z";
+  const start120At = "2026-10-02T02:30:00.000Z";
+  const start60At = "2026-10-02T03:30:00.000Z";
   const endAt = "2026-10-02T04:30:00.000Z";
 
-  await observations.saveMany(synchronous.flatMap(([seriesKey, sourceId, start, end], index) => [
-    observation({
-      id: `sync-${index}-start`,
-      seriesKey,
-      sourceId,
-      value: start,
-      observedAt: startAt,
-      retrievedAt: "2026-10-02T02:30:10.000Z",
-    }),
-    observation({
-      id: `sync-${index}-end`,
-      seriesKey,
-      sourceId,
-      value: end,
-      observedAt: endAt,
-      retrievedAt: "2026-10-02T04:30:10.000Z",
-    }),
-  ]));
+  await observations.saveMany(synchronous.flatMap(
+    ([seriesKey, sourceId, start120, start60, end], index) => [
+      observation({
+        id: `sync-${index}-start-120`,
+        seriesKey,
+        sourceId,
+        value: start120,
+        observedAt: start120At,
+        retrievedAt: "2026-10-02T02:30:10.000Z",
+      }),
+      observation({
+        id: `sync-${index}-start-60`,
+        seriesKey,
+        sourceId,
+        value: start60,
+        observedAt: start60At,
+        retrievedAt: "2026-10-02T03:30:10.000Z",
+      }),
+      observation({
+        id: `sync-${index}-end`,
+        seriesKey,
+        sourceId,
+        value: end,
+        observedAt: endAt,
+        retrievedAt: "2026-10-02T04:30:10.000Z",
+      }),
+    ],
+  ));
 
   // Same effective DXY point, but learned after the MOVE cutoff: must not leak backward.
   await observations.save(observation({
@@ -221,7 +232,7 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
   if (first.status !== "READY" || second.status !== "READY") return;
 
   assert.equal(first.bundle.id, second.bundle.id);
-  assert.equal(first.bundle.investigationWindow.startAt, startAt);
+  assert.equal(first.bundle.investigationWindow.startAt, start120At);
   assert.equal(first.bundle.investigationWindow.endAt, endAt);
   assert.deepEqual(first.bundle.investigationWindow.materialHorizonsMs, [
     60 * 60 * 1000,
@@ -230,14 +241,26 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
 
   assert.equal(first.bundle.synchronousMarket.state, "AVAILABLE_SYNCHRONOUS");
   assert.equal(first.bundle.synchronousMarket.coverage, "COMPLETE");
-  assert.equal(first.bundle.synchronousMarket.series.length, 6);
-
-  const dxy = first.bundle.synchronousMarket.series.find(
-    (item) => item.seriesKey === "dxy.index.usd",
+  assert.equal(first.bundle.synchronousMarket.horizons.length, 2);
+  assert.deepEqual(
+    first.bundle.synchronousMarket.horizons.map((item) => [
+      item.horizonMs,
+      item.startAt,
+      item.coverage,
+    ]),
+    [
+      [60 * 60 * 1000, start60At, "COMPLETE"],
+      [120 * 60 * 1000, start120At, "COMPLETE"],
+    ],
   );
-  assert.equal(dxy?.state, "AVAILABLE_SYNCHRONOUS");
-  assert.equal(dxy?.end?.observationId, "sync-2-end");
-  assert.notEqual(dxy?.end?.observationId, "dxy-later-revision");
+
+  for (const horizon of first.bundle.synchronousMarket.horizons) {
+    assert.equal(horizon.series.length, 6);
+    const dxy = horizon.series.find((item) => item.seriesKey === "dxy.index.usd");
+    assert.equal(dxy?.state, "AVAILABLE_SYNCHRONOUS");
+    assert.equal(dxy?.end?.observationId, "sync-2-end");
+    assert.notEqual(dxy?.end?.observationId, "dxy-later-revision");
+  }
 
   assert.equal(first.bundle.scheduledCatalysts.state, "AVAILABLE_CATALYST");
   assert.deepEqual(first.bundle.scheduledCatalysts.events.map((item) => item.eventId), [
