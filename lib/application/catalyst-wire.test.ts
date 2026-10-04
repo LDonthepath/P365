@@ -68,6 +68,7 @@ test("official-origin discovery wins duplicate media headline without changing t
   assert.equal(result.items[0]?.sourceLabel, "SEC · via GDELT");
   assert.equal(result.items[0]?.timeBasis, "SOURCE_OR_FIRST_SEEN");
   assert.equal(result.items[0]?.displayAt, "2026-10-04T14:46:00.000Z");
+  assert.equal(result.discoveryStatus, "CURRENT");
 });
 
 test("missing GDELT provider date uses P365 discovery time instead of inventing publication time", () => {
@@ -127,4 +128,24 @@ test("only the latest durable GDELT snapshot per asset feeds the current wire", 
 
   assert.equal(result.items.length, 0);
   assert.equal(result.discoveryFeedAt, "2026-10-04T14:47:00.000Z");
+  assert.equal(result.discoveryStatus, "CURRENT");
+});
+
+test("stale durable discovery feed fails closed instead of replaying old headlines", () => {
+  const evidence = gdeltGalSnapshotsToEvidence({
+    snapshots: [snapshot({
+      feedLastBuildAt: "2026-10-04T13:00:00.000Z",
+      feedWindowStartAt: "2026-10-04T12:45:00.000Z",
+    })],
+    retrievedAt: "2026-10-04T13:00:30.000Z",
+  });
+  const result = buildCatalystWireReadModel({
+    macroNews: [],
+    cryptoNews: [],
+    gdeltEvidence: evidence,
+    asOf: AS_OF,
+  });
+
+  assert.equal(result.items.length, 0);
+  assert.equal(result.discoveryStatus, "STALE");
 });
