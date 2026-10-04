@@ -1,7 +1,7 @@
 # P365 Intraday US Rates Transmission Source Qualification v0.1
 
 **Checkpoint:** MACRO-RATES-001A  
-**Status:** SOURCE QUALIFICATION COMPLETE / MASSIVE ZT+ZN TECHNICAL LIVE PASS / ROLL METHODOLOGY FROZEN / CURRENT INDIVIDUAL RIGHTS FAIL / REAL-YIELD INTRADAY UNRESOLVED  
+**Status:** SOURCE QUALIFICATION COMPLETE / OWNER FREE-ONLY / PAID PATHS REJECTED / ZT+TN PROXY RISK-QUALIFIED ONLY / NO RUNTIME APPROVED / REAL-YIELD INTRADAY UNRESOLVED  
 **Scope:** US rates transmission evidence for BTC + Gold MOVE investigation  
 **Implementation effect:** Documentation/source-qualification only. No provider runtime, API credential, dependency, scheduler, durable write, UI, State/Regime/Risk/Intelligence, causal conclusion, or trading logic.
 
@@ -485,7 +485,7 @@ The market-data route is now understood, but no production provider is approved.
 Preferred hierarchy:
 
 1. **BrokerTec direct cash** remains preferred if owner-approved entitlement + exact schema satisfy runtime needs;
-2. for an explicitly labeled intraday **proxy**, **Massive standard Treasury futures ZT/ZN** are now the strongest technically proven pair because both tenors showed dense 5-minute trade bars in the bounded Vercel proof; they remain futures-price evidence, the point-in-time roll methodology is now frozen, and current individual Massive rights explicitly fail the intended P365 non-display runtime gate;
+2. for an explicitly labeled intraday **proxy**, the risk review now prefers **ZT + TN**, not ZT + ZN: ZT is tightly aligned to the 2Y maturity area, while CME's TN Ultra 10-Year basket is materially closer to the 10Y cash point than ZN; bounded live proof showed TNZ6 remained highly liquid in the tested session. This is risk qualification only, not runtime approval;
 3. **CME Yield futures** remain semantically attractive because they trade directly in yield, but the bounded Massive proof found usable 10Y activity and no 2YY trade bars in the same test window, so the pair is not selected as the primary synchronous proxy;
 4. **Twelve Data** remains access-gated; owner-approved fixed-income entitlement would still be required before a genuine live yield-series qualification;
 5. existing daily FRED remains background when no qualified intraday runtime is authorized.
@@ -511,7 +511,7 @@ individual Massive entitlement.
 
 The technical source-selection gate is now closed for an explicit proxy:
 
-- product family: `ZT` + `ZN`;
+- product family, if a free lawful source later qualifies: `ZT` + `TN`;
 - semantics: Treasury futures **price** proxy, never cash yield;
 - 5m technical coverage: live-proven;
 - point-in-time contract roll: frozen in
@@ -520,19 +520,18 @@ The technical source-selection gate is now closed for an explicit proxy:
 
 The remaining blocking gate is rights/entitlement.
 
-Before implementation, written provider/exchange permission must cover:
+Paid entitlement is no longer an implementation option for the current MVP.
 
-1. recurring server-side CBOT ZT/ZN acquisition;
-2. non-display research/analysis use;
-3. durable internal storage/retention;
+A future runtime may proceed only if a **free** source can legally support:
+
+1. recurring server-side ZT/TN acquisition;
+2. internal automated analysis;
+3. durable storage/retention where required;
 4. derived factual comparison outputs;
-5. any intended dashboard/display exposure.
+5. the intended display boundary.
 
-A Massive Business CBOT plan is a possible commercial path, but P365 must not assume the
-public plan price alone grants every required CME permission.
-
-If rights are not approved, P365 must keep intraday rates proxy evidence explicitly unavailable
-rather than activate the technically working individual feed.
+If no free source passes these gates, P365 must keep intraday rates proxy evidence explicitly
+unavailable.
 
 ## 16. Explicit non-goals
 
@@ -724,3 +723,64 @@ production roll policy.
 Current final state:
 
 `PROXY_TECHNICALLY_QUALIFIED / METHODOLOGY_FROZEN / RUNTIME_BLOCKED_BY_RIGHTS`
+
+
+## 20. Owner FREE-ONLY + proxy-risk decision — 4 Oct 2026
+
+Owner decision:
+
+> Do not use paid data. If a proxy is considered, assess its risk before activation.
+
+This overrides any earlier "possible paid entitlement" implementation path.
+
+### Paid paths rejected for current MVP
+
+Do not activate:
+
+- Massive Business / CME paid Non-Display;
+- Twelve Data paid fixed income;
+- BrokerTec paid cash Treasury;
+- any equivalent paid rates feed.
+
+### Proxy risk conclusion
+
+The earlier ZT+ZN preference was revised after tenor-fidelity review.
+
+CME contract structure:
+
+- ZT deliverable maturity: approximately 1y9m–2y;
+- ZN deliverable maturity: approximately 6.5–8y;
+- TN Ultra 10-Year: approximately 9y5m–10y.
+
+Therefore ZN is not sufficiently faithful to the 10Y cash point for the intended P365 macro
+label.
+
+A bounded TN live check returned:
+
+- TNZ6: 525 five-minute bars;
+- volume: 2,029,436;
+- transactions: 167,668.
+
+So, if a free and legally compatible source later exists, the preferred proxy family is:
+
+`ZT + TN`
+
+not:
+
+`ZT + ZN`.
+
+Even ZT+TN remains subject to CTD/basis/repo, DV01 mismatch, roll, closed-market, stress
+dislocation and causality risks. It may only serve as explicitly labeled synchronous
+Treasury-futures **price** evidence.
+
+It must never substitute for:
+
+- DGS2/DGS10 cash/constant-maturity yield values;
+- basis-point yield changes;
+- 2s10s curve magnitude;
+- DFII10 real yield;
+- Fed policy probabilities.
+
+Current runtime decision:
+
+`FREE_ONLY / PROXY_RISK_REVIEWED / NO_RATES_PROXY_RUNTIME_APPROVED`
