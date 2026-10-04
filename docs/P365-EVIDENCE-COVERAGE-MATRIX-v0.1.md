@@ -43,7 +43,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **TECHNICAL LIVE PASS — SPARSE WINDOW / DURABLE-USE GATE** | Coinalyze free-first; ChainVector validation |
 | BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **BINANCE LIVE-QUALIFIED READ-ONLY / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot 5m primary; second-venue validation still open |
 | BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **SPOT BINANCE + PERP HYPERLIQUID CURRENT SNAPSHOTS LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | Binance Spot current depth + Hyperliquid BTC perp current depth; Binance Futures Vercel-egress unavailable |
-| Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **NEWS-001B LIVE / NEWS-001C DURABLE RUNTIME IMPLEMENTED / ACTIVATION PENDING** | GDELT GAL snapshots persist as point-in-time NEWS Evidence after activation; no pre-activation backfill is claimed |
+| Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **NEWS-001B/001C/001D PRODUCTION ACTIVE / DURABLE FORWARD HISTORY ACCUMULATING** | GDELT GAL BTC+Gold snapshots persist every fast-market cycle via existing `p365-market-fast`; no pre-activation backfill is claimed |
 | Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MACRO-RATES-001A/001B FREE-ONLY / PAID PATHS REJECTED / ZT+TN PROXY RISK-QUALIFIED ONLY / NO RUNTIME / REAL-YIELD INTRADAY UNRESOLVED** | Daily FRED remains canonical background; if any future free lawful proxy is found, ZT+TN is preferred over ZT+ZN after tenor-fidelity review |
 | BTC basis | Is futures pricing rich/cheap vs spot/index? | P1 | SYNC | **MISSING / VENUE FALLBACK AVAILABLE** | Official exchange basis where qualified |
 | BTC options IV / DVOL / skew | Did expected volatility/hedging reprice? | P1 | SYNC/NEAR | **MISSING** | Deribit public API candidate |
@@ -561,7 +561,7 @@ This matrix is complete enough for MVP prioritization when:
 The P0 source-qualification sequence has progressed through derivatives, spot-flow,
 order-book, unscheduled-news and intraday-rates qualification.
 
-The active composition checkpoint is now:
+The active composition runtime is now merged:
 
 **MOVE-002B — Read-Only Move Evidence Bundle Runtime**
 
@@ -571,8 +571,11 @@ available and exposes unresolved temporal gaps explicitly:
 - Coinalyze derivatives: technically live-qualified, durable replay not approved;
 - Binance spot-flow: current read-only, durable replay missing;
 - spot/perp order books: current snapshots, historical window missing;
-- GDELT GAL: current rolling 15m, durable 30/60/120m replay missing;
+- GDELT GAL: durable forward snapshot acquisition is now production-active; pre-activation history remains unavailable and MOVE-002B historical-Evidence wiring remains separate;
 - intraday rates: FREE_ONLY / no approved runtime.
+
+NEWS-001D production activation closes the acquisition side of the unscheduled-news gap:
+the remaining news work is consumption/replay integration, not another provider or scheduler.
 
 Those gaps may be addressed later as isolated checkpoints only when their source/use boundary
 is defensible. Options/on-chain/sentiment expansion must not pre-empt unresolved P0 evidence

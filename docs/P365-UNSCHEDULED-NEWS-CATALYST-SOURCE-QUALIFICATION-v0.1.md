@@ -1,7 +1,7 @@
 # P365 Unscheduled News / Catalyst Source Qualification v0.1
 
-**Checkpoint:** NEWS-001B + NEWS-001C  
-**Status:** CURRENT-15M LIVE-QUALIFIED / DURABLE SNAPSHOT RUNTIME IMPLEMENTED / PRODUCTION SCHEDULER ACTIVATION PENDING  
+**Checkpoint:** NEWS-001B + NEWS-001C + NEWS-001D  
+**Status:** CURRENT-15M LIVE-QUALIFIED / DURABLE SNAPSHOT PRODUCTION-ACTIVE / FORWARD HISTORY ACCUMULATING  
 **Provider:** GDELT Article List (GAL)  
 **Scope:** current candidate discovery plus forward-only durable BTC/Gold feed-snapshot history
 
@@ -53,15 +53,17 @@ Therefore NEWS-001B can answer:
 > What BTC/Gold-related candidate headlines are present in GDELT's current rolling
 > 15-minute feed?
 
-It cannot yet answer:
+NEWS-001B by itself cannot answer:
 
 > What headlines were available at an arbitrary historical 30/60/120-minute move window?
 
-Historical point-in-time replay remains:
+That current-only output therefore correctly retains:
 
 `NOT_SUPPORTED_WITHOUT_DURABLE_ACQUISITION`
 
-This is explicit because MOVE detection includes horizons longer than the GAL live window.
+NEWS-001C/001D add the separate durable path. Historical point-in-time replay is now possible
+**only for windows covered after production activation**. Pre-activation periods remain
+unavailable and are never reconstructed from the current rolling feed.
 
 ## 4. Candidate extraction
 
@@ -163,7 +165,9 @@ whose free tiers prohibit production analytics or independent storage.
 
 NEWS-001B itself remains read-only and does not activate persistence.
 
-## 9. Runtime boundary
+## 9. NEWS-001B current-runtime boundary
+
+This section records the original NEWS-001B boundary. NEWS-001C/001D later authorize the separate durable Evidence lane and Supabase scheduler activation described in sections 13–14.
 
 Authorized:
 
@@ -256,12 +260,12 @@ Qualified now:
 
 Still missing:
 
-- durable GAL acquisition/history;
-- arbitrary historical 30/60/120-minute move-window replay;
+- pre-activation GAL history; no backfill is claimed or fabricated;
+- MOVE-window replay for periods not covered by accumulated forward snapshots;
 - official-source authority verification/ranking;
 - article-body semantic analysis;
 - attention/tone timeline runtime;
-- MOVE-002B integration.
+- MOVE-002B historical-Evidence integration.
 
 
 ## 13. NEWS-001C Durable GAL Snapshot Runtime
@@ -384,24 +388,51 @@ started.
 
 ### 13.7 Production activation boundary
 
-This PR does **not** mutate the Supabase production scheduler.
+NEWS-001D activates the already-merged NEWS-001C runtime without creating a second scheduler.
 
-Reason:
+Existing Supabase job:
 
-production `main` must contain the `gdelt` ingestion lane before any cron job may request it.
+- job name: `p365-market-fast`;
+- job id: `2`;
+- cadence: `2-57/5 * * * *`;
+- owner: Supabase `pg_cron`.
 
-After owner merge, a separate activation checkpoint may add `gdelt` to the existing
-Supabase-owned recurring ingestion schedule and prove:
+The existing provider list was extended from:
 
-- authenticated HTTP 200;
-- two durable snapshot Evidence rows;
-- repeated same-build idempotency;
-- natural recurring cron execution;
-- historical query readback.
+`coingecko,gold,dxy,usdjpy,usdcnh`
 
-Until that activation succeeds:
+to:
 
-`DURABLE_RUNTIME_IMPLEMENTED / PRODUCTION_ACQUISITION_NOT_ACTIVE`
+`coingecko,gold,dxy,usdjpy,usdcnh,gdelt`
+
+using `cron.schedule` on the same job name. No direct `cron.job` mutation and no duplicate job
+were created.
+
+Production activation proof on 4 Oct 2026:
+
+- manual authenticated request id `34068`: HTTP 200 / overall `SUCCESS`;
+- GDELT provider: `SUCCESS`, acquired 2 snapshots, normalized 2, persistedEvidence 2;
+- first durable feed build: `2026-10-04T11:47:00.000Z`;
+- BTC snapshot: 3 matching/retained candidates, `COMPLETE`;
+- Gold snapshot: 0 matching candidates, `COMPLETE`;
+- repeated request id `34069`: HTTP 200 / `SUCCESS`;
+- row count after repeated same-build polling remained exactly 2 rows / 1 feed build / 2 assets;
+- first natural recurring run after activation: cron run `34088` at
+  `2026-10-04T11:57:00Z`, request id `34070`, HTTP 200 / `SUCCESS`;
+- natural run retained the same 2 logical rows while the provider feed build remained unchanged;
+- Vercel runtime errors after manual + natural runs: 0.
+
+Point-in-time readback was also verified for the first durable snapshot:
+
+- cutoff before retrieval (`2026-10-04T11:56:00Z`) => 0 rows;
+- cutoff after retrieval (`2026-10-04T11:57:00Z`) => 2 rows: BTC + GOLD.
+
+Therefore:
+
+`DURABLE_GDELT_FORWARD_ACQUISITION = PRODUCTION_ACTIVE`
+
+This does **not** create history before activation. Historical MOVE replay is available only for
+windows covered by accumulated forward snapshots.
 
 ### 13.8 Still not authorized
 
@@ -418,3 +449,76 @@ NEWS-001C still does not add:
 - trading signals.
 
 `causalAttribution = NOT_EVALUATED` remains unchanged.
+
+
+## 14. NEWS-001D Production Activation
+
+NEWS-001D closes the production-acquisition gate for durable unscheduled-catalyst snapshots.
+
+### 14.1 Scheduler ownership
+
+P365 reuses `p365-market-fast`; it does not create a GDELT-specific scheduler.
+
+This preserves one fast-market acquisition owner and avoids overlapping fetches.
+
+### 14.2 First durable snapshot
+
+First production Evidence pair:
+
+`feedLastBuildAt = 2026-10-04T11:47:00.000Z`
+
+BTC:
+
+- candidateCoverage = `COMPLETE`;
+- matchingCandidateCount = 3;
+- candidateCount = 3.
+
+Gold:
+
+- candidateCoverage = `COMPLETE`;
+- matchingCandidateCount = 0;
+- candidateCount = 0.
+
+The zero-candidate Gold snapshot is intentional evidence of sampled absence, not missing data.
+
+### 14.3 Idempotency proof
+
+Three successful acquisitions observed the same provider feed build:
+
+- manual request `34068`;
+- manual request `34069`;
+- natural cron request `34070`.
+
+Market Memory remained:
+
+- 2 GDELT durable rows;
+- 1 distinct feed build;
+- 2 distinct assets.
+
+This proves deterministic `asset + feedLastBuildAt` identity and Market Memory dedupe behavior.
+
+### 14.4 Point-in-time replay proof
+
+The same first snapshot was invisible before P365 retrieval and visible after retrieval:
+
+- `retrievedAt <= 11:56:00Z` => 0;
+- `retrievedAt <= 11:57:00Z` => BTC + GOLD.
+
+Therefore future MOVE replay can preserve what P365 actually knew at the target cutoff.
+
+### 14.5 Remaining boundary
+
+Production acquisition is active **forward only**.
+
+NEWS-001D does not authorize:
+
+- historical reconstruction before 4 Oct 2026 activation;
+- article-body scraping;
+- tone/sentiment scoring;
+- source-authority ranking;
+- causal attribution;
+- State / Regime / Risk / Intelligence;
+- trading semantics.
+
+The next news-specific product step is repository-backed MOVE integration once the requested MOVE
+window falls inside accumulated durable coverage.
