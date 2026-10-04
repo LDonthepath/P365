@@ -944,6 +944,22 @@ Intelligence / Briefing
 
 One logical remediation = one PR = one verification checkpoint. This sequence may only change when a verified dependency requires it; changes must be recorded here.
 
+## Deferred operational backlog — Market Memory storage
+
+The 4 Oct 2026 read-only storage audit is recorded in:
+
+`docs/P365-MARKET-MEMORY-STORAGE-GROWTH-AUDIT-2026-10-04.md`
+
+It records the verified Free-plan storage boundary, current database/Market Memory/cron
+footprint, the legacy Observation-Evidence duplication defect already fixed by PR #110,
+current post-fix idempotency, index-usage findings, runway scenarios, and the deferred
+housekeeping sequence.
+
+No housekeeping implementation is active from this record. In particular, canonical Market
+Memory must not receive automatic age-based deletion. The deferred order is storage
+monitoring → operational `cron.job_run_details` retention → index review → owner capacity
+decision → formal hot/cold archival design only if needed.
+
 ## 22. Final audit conclusion
 
 P365 should **not** restart its architecture and should **not** add a reasoning engine yet.
