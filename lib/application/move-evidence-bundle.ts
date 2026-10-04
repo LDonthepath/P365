@@ -26,6 +26,10 @@ import {
   BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
   btcSpotFlowWindowFromEvidence,
 } from "./btc-spot-flow-history";
+import {
+  GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
+  gdeltGalSnapshotFromEvidence,
+} from "./gdelt-gal-history";
 
 const MINUTE_MS = 60 * 1000;
 const CROSS_SERIES_ALIGNMENT_TOLERANCE_MS = 2 * MINUTE_MS;
@@ -33,6 +37,7 @@ const SYNCHRONOUS_QUERY_LIMIT = 50;
 const SCHEDULED_EVENT_QUERY_LIMIT = 500;
 const SPOT_FLOW_QUERY_LIMIT = 100;
 const SPOT_FLOW_WINDOW_MS = 5 * MINUTE_MS;
+const GDELT_NEWS_QUERY_LIMIT = 100;
 
 export const MOVE_EVIDENCE_BUNDLE_POLICY = "move-evidence-bundle-v1" as const;
 
@@ -197,11 +202,42 @@ export type MoveEvidenceBundle = {
   unscheduledCatalysts: {
     state: Extract<
       MoveEvidenceAvailability,
-      "INSUFFICIENT_DATA" | "UNKNOWN"
+      "AVAILABLE_CATALYST" | "INSUFFICIENT_DATA" | "UNKNOWN"
     >;
-    reason: string;
+    coverage:
+      | "COMPLETE"
+      | "PARTIAL"
+      | "EMPTY"
+      | "BOUNDED_QUERY_LIMIT_REACHED"
+      | "UNAVAILABLE";
+    methodology: typeof GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY;
+    asset: MoveEvidenceAsset;
+    startAt: string;
+    endAt: string;
+    windowDurationMs: number;
+    coveredDurationMs: number;
+    snapshots: Array<{
+      evidenceId: string;
+      feedWindowStartAt: string;
+      feedLastBuildAt: string;
+      retrievedAt: string;
+      candidateCoverage: "COMPLETE" | "TRUNCATED";
+      matchingCandidateCount: number;
+      retainedCandidateCount: number;
+    }>;
+    candidates: Array<{
+      url: string;
+      title: string;
+      domain: string;
+      providerDate: string | null;
+      providerDateSemantics: "PUBLICATION_OR_FIRST_SEEN" | "UNAVAILABLE";
+      temporalFit: "WITHIN_MOVE_WINDOW" | "TIMESTAMP_UNAVAILABLE";
+      firstSeenRetrievedAt: string;
+      firstSnapshotEvidenceId: string;
+    }>;
+    reason?: string;
     currentSourceCapability:
-      | "GDELT_GAL_ROLLING_15M_CURRENT_ONLY"
+      | "GDELT_GAL_DURABLE_ROLLING_15M"
       | "UNAVAILABLE";
   };
   cryptoMarketStructure?: {
@@ -537,6 +573,249 @@ async function buildScheduledCatalysts(input: {
       coverage: "UNAVAILABLE",
       events: [],
       reason: "Historical Event repository read failed.",
+    };
+  }
+}
+
+async function buildUnscheduledCatalysts(input: {
+  repository: HistoricalEvidenceRepository;
+  asset: MoveEvidenceAsset;
+  startAt: string;
+  endAt: string;
+  asOf: string;
+}): Promise<MoveEvidenceBundle["unscheduledCatalysts"]> {
+  const start = timestamp(input.startAt);
+  const end = timestamp(input.endAt);
+  const asOf = timestamp(input.asOf);
+  if (
+    start === undefined
+    || end === undefined
+    || asOf === undefined
+    || end <= start
+    || end > asOf
+  ) {
+    return {
+      state: "UNKNOWN",
+      coverage: "UNAVAILABLE",
+      methodology: GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
+      asset: input.asset,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      windowDurationMs: 0,
+      coveredDurationMs: 0,
+      snapshots: [],
+      candidates: [],
+      reason: "MOVE unscheduled-catalyst investigation window is invalid.",
+      currentSourceCapability: "UNAVAILABLE",
+    };
+  }
+
+  const windowDurationMs = end - start;
+
+  try {
+    const history = await input.repository.findHistory({
+      sourceId: "gdelt",
+      kind: "NEWS",
+      effectiveAtOnOrAfter: input.startAt,
+      effectiveAtOnOrBefore: input.asOf,
+      retrievedAtOnOrBefore: input.asOf,
+      metadataEquals: {
+        methodology: GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
+        gdeltAsset: input.asset,
+      },
+      order: "ASC",
+      limit: GDELT_NEWS_QUERY_LIMIT,
+    });
+
+    if (history.length >= GDELT_NEWS_QUERY_LIMIT) {
+      return {
+        state: "UNKNOWN",
+        coverage: "BOUNDED_QUERY_LIMIT_REACHED",
+        methodology: GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
+        asset: input.asset,
+        startAt: input.startAt,
+        endAt: input.endAt,
+        windowDurationMs,
+        coveredDurationMs: 0,
+        snapshots: [],
+        candidates: [],
+        reason: "Bounded GDELT NEWS Evidence query reached its 100-row limit.",
+        currentSourceCapability: "GDELT_GAL_DURABLE_ROLLING_15M",
+      };
+    }
+
+    const parsed = history.map((evidence) => ({
+      evidence,
+      snapshot: gdeltGalSnapshotFromEvidence(evidence),
+    }));
+    if (parsed.some((item) => item.snapshot === null)) {
+      return {
+        state: "UNKNOWN",
+        coverage: "UNAVAILABLE",
+        methodology: GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
+        asset: input.asset,
+        startAt: input.startAt,
+        endAt: input.endAt,
+        windowDurationMs,
+        coveredDurationMs: 0,
+        snapshots: [],
+        candidates: [],
+        reason: "Qualified GDELT durable history contains an invalid snapshot payload.",
+        currentSourceCapability: "GDELT_GAL_DURABLE_ROLLING_15M",
+      };
+    }
+
+    const overlapping = parsed
+      .filter((item) => {
+        const snapshot = item.snapshot!;
+        const feedStart = timestamp(snapshot.feedWindowStartAt);
+        const feedEnd = timestamp(snapshot.feedLastBuildAt);
+        if (feedStart === undefined || feedEnd === undefined) return false;
+        return Math.max(start, feedStart) < Math.min(end, feedEnd);
+      })
+      .sort((left, right) =>
+        left.snapshot!.feedLastBuildAt.localeCompare(right.snapshot!.feedLastBuildAt)
+        || left.evidence.id.localeCompare(right.evidence.id));
+
+    if (overlapping.length === 0) {
+      return {
+        state: "INSUFFICIENT_DATA",
+        coverage: "EMPTY",
+        methodology: GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
+        asset: input.asset,
+        startAt: input.startAt,
+        endAt: input.endAt,
+        windowDurationMs,
+        coveredDurationMs: 0,
+        snapshots: [],
+        candidates: [],
+        reason: "No point-in-time durable GDELT snapshot overlaps the MOVE investigation window.",
+        currentSourceCapability: "GDELT_GAL_DURABLE_ROLLING_15M",
+      };
+    }
+
+    const intervals = overlapping
+      .map((item) => {
+        const snapshot = item.snapshot!;
+        return {
+          start: Math.max(start, timestamp(snapshot.feedWindowStartAt)!),
+          end: Math.min(end, timestamp(snapshot.feedLastBuildAt)!),
+        };
+      })
+      .filter((interval) => interval.start < interval.end)
+      .sort((left, right) => left.start - right.start || left.end - right.end);
+
+    let coveredDurationMs = 0;
+    let currentStart: number | undefined;
+    let currentEnd: number | undefined;
+    for (const interval of intervals) {
+      if (currentStart === undefined || currentEnd === undefined) {
+        currentStart = interval.start;
+        currentEnd = interval.end;
+        continue;
+      }
+      if (interval.start <= currentEnd) {
+        currentEnd = Math.max(currentEnd, interval.end);
+        continue;
+      }
+      coveredDurationMs += currentEnd - currentStart;
+      currentStart = interval.start;
+      currentEnd = interval.end;
+    }
+    if (currentStart !== undefined && currentEnd !== undefined) {
+      coveredDurationMs += currentEnd - currentStart;
+    }
+
+    const candidateByUrl = new Map<string, MoveEvidenceBundle["unscheduledCatalysts"]["candidates"][number]>();
+    for (const item of overlapping) {
+      const snapshot = item.snapshot!;
+      for (const candidate of snapshot.candidates) {
+        const providerDate = candidate.providerDate === null
+          ? undefined
+          : timestamp(candidate.providerDate);
+        if (
+          providerDate !== undefined
+          && (providerDate < start || providerDate > end)
+        ) {
+          continue;
+        }
+
+        const next: MoveEvidenceBundle["unscheduledCatalysts"]["candidates"][number] = {
+          url: candidate.url,
+          title: candidate.title,
+          domain: candidate.domain,
+          providerDate: candidate.providerDate,
+          providerDateSemantics: candidate.providerDateSemantics,
+          temporalFit: providerDate === undefined
+            ? "TIMESTAMP_UNAVAILABLE"
+            : "WITHIN_MOVE_WINDOW",
+          firstSeenRetrievedAt: item.evidence.retrievedAt,
+          firstSnapshotEvidenceId: item.evidence.id,
+        };
+        const existing = candidateByUrl.get(candidate.url);
+        if (
+          !existing
+          || next.firstSeenRetrievedAt < existing.firstSeenRetrievedAt
+          || (
+            next.firstSeenRetrievedAt === existing.firstSeenRetrievedAt
+            && next.firstSnapshotEvidenceId < existing.firstSnapshotEvidenceId
+          )
+        ) {
+          candidateByUrl.set(candidate.url, next);
+        }
+      }
+    }
+
+    const candidates = [...candidateByUrl.values()].sort((left, right) =>
+      (left.providerDate ?? left.firstSeenRetrievedAt)
+        .localeCompare(right.providerDate ?? right.firstSeenRetrievedAt)
+      || left.url.localeCompare(right.url));
+
+    const coverage: MoveEvidenceBundle["unscheduledCatalysts"]["coverage"] =
+      coveredDurationMs >= windowDurationMs
+        ? "COMPLETE"
+        : coveredDurationMs > 0
+          ? "PARTIAL"
+          : "EMPTY";
+
+    return {
+      state: "AVAILABLE_CATALYST",
+      coverage,
+      methodology: GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
+      asset: input.asset,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      windowDurationMs,
+      coveredDurationMs,
+      snapshots: overlapping.map((item) => ({
+        evidenceId: item.evidence.id,
+        feedWindowStartAt: item.snapshot!.feedWindowStartAt,
+        feedLastBuildAt: item.snapshot!.feedLastBuildAt,
+        retrievedAt: item.evidence.retrievedAt,
+        candidateCoverage: item.snapshot!.candidateCoverage,
+        matchingCandidateCount: item.snapshot!.matchingCandidateCount,
+        retainedCandidateCount: item.snapshot!.candidates.length,
+      })),
+      candidates,
+      ...(candidates.length === 0
+        ? { reason: "Durable GDELT coverage exists, but no temporally eligible asset candidate is present in the MOVE window." }
+        : {}),
+      currentSourceCapability: "GDELT_GAL_DURABLE_ROLLING_15M",
+    };
+  } catch {
+    return {
+      state: "UNKNOWN",
+      coverage: "UNAVAILABLE",
+      methodology: GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
+      asset: input.asset,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      windowDurationMs,
+      coveredDurationMs: 0,
+      snapshots: [],
+      candidates: [],
+      reason: "Historical Evidence repository read failed for GDELT NEWS snapshots.",
+      currentSourceCapability: "GDELT_GAL_DURABLE_ROLLING_15M",
     };
   }
 }
@@ -1005,7 +1284,7 @@ export async function buildMoveEvidenceBundle(input: {
   }
 
   const asset = targetAsset(input.assessment.seriesKey);
-  const [synchronousHorizons, scheduledCatalysts, slowBackground, marketStructure] = await Promise.all([
+  const [synchronousHorizons, scheduledCatalysts, slowBackground, unscheduledCatalysts, marketStructure] = await Promise.all([
     Promise.all(materialHorizons.map((horizon) => buildSynchronousHorizon({
       repository: input.observations,
       horizon,
@@ -1020,6 +1299,13 @@ export async function buildMoveEvidenceBundle(input: {
     buildBackground({
       repository: input.observations,
       asset,
+      asOf: input.assessment.asOf,
+    }),
+    buildUnscheduledCatalysts({
+      repository: input.evidence,
+      asset,
+      startAt: window.startAt,
+      endAt: window.endAt,
       asOf: input.assessment.asOf,
     }),
     asset === "BTC"
@@ -1065,12 +1351,7 @@ export async function buildMoveEvidenceBundle(input: {
     },
     scheduledCatalysts,
     slowBackground,
-    unscheduledCatalysts: {
-      state: "INSUFFICIENT_DATA",
-      reason:
-        "GDELT GAL is qualified for the current rolling 15-minute feed only; no durable acquisition exists to replay candidate catalysts at the MOVE asOf cutoff.",
-      currentSourceCapability: "GDELT_GAL_ROLLING_15M_CURRENT_ONLY",
-    },
+    unscheduledCatalysts,
     ...(asset === "BTC" ? { cryptoMarketStructure: marketStructure } : {}),
     intradayRatesPricing: {
       state: "MISSING_HIGH_VALUE_EVIDENCE",

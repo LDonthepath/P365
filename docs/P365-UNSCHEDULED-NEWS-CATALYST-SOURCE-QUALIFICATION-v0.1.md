@@ -1,7 +1,7 @@
 # P365 Unscheduled News / Catalyst Source Qualification v0.1
 
-**Checkpoint:** NEWS-001B + NEWS-001C + NEWS-001D  
-**Status:** CURRENT-15M LIVE-QUALIFIED / DURABLE SNAPSHOT PRODUCTION-ACTIVE / FORWARD HISTORY ACCUMULATING  
+**Checkpoint:** NEWS-001B + NEWS-001C + NEWS-001D + MOVE-002D  
+**Status:** CURRENT-15M LIVE-QUALIFIED / DURABLE SNAPSHOT PRODUCTION-ACTIVE / MOVE REPLAY IMPLEMENTED  
 **Provider:** GDELT Article List (GAL)  
 **Scope:** current candidate discovery plus forward-only durable BTC/Gold feed-snapshot history
 
@@ -261,11 +261,11 @@ Qualified now:
 Still missing:
 
 - pre-activation GAL history; no backfill is claimed or fabricated;
-- MOVE-window replay for periods not covered by accumulated forward snapshots;
+- pre-activation MOVE-window replay remains unavailable by design;
 - official-source authority verification/ranking;
 - article-body semantic analysis;
 - attention/tone timeline runtime;
-- MOVE-002B historical-Evidence integration.
+- causal/hypothesis interpretation beyond factual MOVE-002D candidate replay.
 
 
 ## 13. NEWS-001C Durable GAL Snapshot Runtime
@@ -522,3 +522,17 @@ NEWS-001D does not authorize:
 
 The next news-specific product step is repository-backed MOVE integration once the requested MOVE
 window falls inside accumulated durable coverage.
+
+
+## 15. MOVE-002D consumption boundary
+
+MOVE-002D consumes the existing durable NEWS Evidence path; it does not change GDELT
+acquisition or persistence.
+
+The MOVE bundle reads only point-in-time eligible BTC/Gold snapshots under
+`retrievedAt <= MOVE asOf`, measures actual union coverage of the rolling-15-minute feed
+windows, preserves zero-candidate snapshots as valid absence evidence, and returns only
+provider-dated candidates inside the MOVE window plus explicitly untimed candidates.
+
+No fresh provider call, new scheduler, new write, fake backfill, article scraping,
+tone/ranking, causal attribution or trading semantics are introduced.

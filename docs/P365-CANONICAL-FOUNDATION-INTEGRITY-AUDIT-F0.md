@@ -89,7 +89,7 @@ Final Coinalyze live proof returned `READY_FOR_SEMANTIC_REVIEW`: 26 eligible BTC
 | Pricing baseline | **PRC-001 FULL PASS AT CURRENT MVP CAPTURE BOUNDARY / PRODUCTION E2E VERIFIED** | CAP-001 actively consumes provider-scoped point-in-time Pricing baselines. Durable Goods Orders natural production evidence shows BTC, ETH, DXY and Gold Pricing baselines `VALID` across PRE/T+5/T+15/T+30/T+60 with `observedAt` + `retrievedAt` cutoffs preserved. OIS/Fed-funds/SOFR-futures policy-path pricing remains a separate coverage gap. |
 | Historical baseline | **HIST-001A-D MERGED / HIST-001E EVENT-RESPONSE INTEGRATION IMPLEMENTED / OWNER MERGE PENDING** | Historical distribution runtime, event-window integration and calibrated v1 magnitude policy are merged. HIST-001E binds HIST-001C context to EVR-001 only when Event identity, Event Window, post role, CMP comparison ID and post-event knowledge cutoff match. The calibrated wrapper applies the frozen 36-hour / minimum-30 / `ABSOLUTE_PERCENT_CHANGE` BTC-DXY-Gold policy. No dashboard query, percentile label, causality, abnormality conclusion or higher-order interpretation is introduced. |
 | Continuous market move detection | **MOVE-001A MERGED / PR #151 — MOVE-001B MERGED / PR #153 — MOVE-001C MERGED / PR #154** | BTC/Gold have an approved move-driven entry path plus the frozen 15/30/60/120-minute, ±60s, 36h / minimum-120 / rolling P97.5 runtime. The read-only detector preserves point-in-time revision filtering, deterministic pairing, runtime percentile_cont-compatible thresholds, explicit fail-closed states, and exact lineage. No scheduler, persistence, UI, causality, State/Regime/Risk/Intelligence or trading semantics are activated. |
-| Move-centered evidence investigation | **MOVE-002A/002B MERGED BOUNDARY / MOVE-002C BTC SPOT-FLOW REPLAY IMPLEMENTED** | The deterministic MATERIAL_MOVE bundle now consumes durable Binance BTCUSDT completed 5m spot-flow through `HistoricalEvidenceRepository` under the same MOVE `asOf`. Coverage is explicit COMPLETE/PARTIAL/EMPTY, same-window append-only revisions are resolved by latest knowable retrieval, and later-known corrections cannot leak backward. Coinalyze derivatives and spot/perp order-book history remain `INSUFFICIENT_DATA`; durable GDELT acquisition is production-active but historical-news consumption remains separate. Intraday rates remain `MISSING_HIGH_VALUE_EVIDENCE` under FREE_ONLY. `evidenceCompleteness=EVIDENCE_INCOMPLETE` and `causalAttribution=NOT_EVALUATED` remain unchanged. |
+| Move-centered evidence investigation | **MOVE-002A/B MERGED BOUNDARY / MOVE-002C SPOT-FLOW + MOVE-002D GDELT REPLAY IMPLEMENTED** | The deterministic MATERIAL_MOVE bundle consumes durable Binance BTCUSDT 5m spot-flow and durable GDELT BTC/Gold rolling-15m NEWS Evidence through `HistoricalEvidenceRepository` under the same MOVE `asOf`. GDELT coverage is calculated from source-native feed windows; zero-candidate snapshots remain valid absence evidence and provider-dated candidates are bounded to the MOVE window. Coinalyze derivatives and spot/perp order-book history remain `INSUFFICIENT_DATA`; intraday rates remain `MISSING_HIGH_VALUE_EVIDENCE` under FREE_ONLY. `evidenceCompleteness=EVIDENCE_INCOMPLETE` and `causalAttribution=NOT_EVALUATED` remain unchanged. |
 | MVP evidence coverage matrix | **PROPOSED / PR #156** | Free-first mixed-provider priorities are now explicit. P0 new gaps: BTC derivatives, spot-flow, order-book liquidity, unscheduled news/catalysts, and intraday rates/policy pricing. P1: basis/options, on-chain exchange/large-holder flows, stablecoin/DeFi liquidity expansion and Gold ETF flows. P2: mempool/network context and broad sentiment/attention. Existing BTC/ETH/Gold/DXY, scheduled events, ETF flow, stablecoin supply and Gold CFTC remain active. Derivatives providers do not become the overall P365 data architecture. |
 | BTC spot trade flow | **SPOT-FLOW-001A/001B/001C PRODUCTION ACTIVE / DURABLE FORWARD HISTORY ACCUMULATING / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot `BTCUSDT` completed 5m taker-flow windows now persist through the existing `p365-market-fast` five-minute Supabase job (job id 2), with no duplicate scheduler. First natural run 34105 / HTTP request 34087 returned 200/SUCCESS and persisted exactly two completed windows; repeat request 34088 returned 200/SUCCESS while Market Memory remained 2 rows / 2 window keys / 2 Evidence IDs, proving idempotency. Retrieval cutoff proof returned 0 rows before `2026-10-04T12:27:02.170Z` and 2 at that timestamp. No Binance BACKFILL, MOVE-002B consumption, market-wide aggregation, UI, causality or trading semantics are active. Bybit remains unavailable from current Vercel egress. |
 | BTC order-book liquidity | **ORDER-BOOK-001A BINANCE CURRENT SNAPSHOT LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | Reuses owner-approved Binance Spot. Public `/api/v3/depth` provides current limited BTCUSDT book levels with `lastUpdateId` but no exchange timestamp, so P365 uses `retrievedAt` as the only qualified snapshot time and does not invent `observedAt`. The read-only application reports spread plus BTC/USDT-native visible depth and quote-notional imbalance at 5/10/25/50 bps bands, with per-band COMPLETE/PARTIAL coverage. A single snapshot cannot establish liquidity deterioration around a past move; historical move-window liquidity still requires later durable sampling or qualified local-book reconstruction. No persistence, cron, MOVE wiring or causal attribution is activated. |
@@ -812,6 +812,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 
 This gate does **not** mean P365 is feature-complete and does not authorize State/Regime/Risk/Intelligence. It means the platform has enough verified factual infrastructure to stop open-ended hardening and move into the next product dependency chain.
 
+| 4 Oct 2026 | MOVE-002D Durable GDELT Catalyst Replay | Extends the read-only MATERIAL_MOVE bundle to consume production-active GDELT BTC/Gold rolling-15m NEWS Evidence under the same point-in-time cutoff. Durable feed intervals are clipped/unioned against the MOVE window to expose COMPLETE/PARTIAL/EMPTY coverage; zero-candidate snapshots remain valid coverage evidence; provider-dated candidates outside the MOVE window are excluded, while missing provider dates remain explicitly TIMESTAMP_UNAVAILABLE. No fresh GDELT call, persistence, scheduler, fake backfill, article scraping/tone/ranking, hypothesis scoring, causal attribution or trading semantics are introduced. |
+
 | Exit criterion | Result | Evidence / boundary |
 |---|---|---|
 | Canonical factual contracts are stable enough for downstream references | PASS | Observation/Event/Evidence/Context contracts are active; additive semantics preserve legacy history compatibility. |
@@ -934,12 +936,29 @@ Intelligence / Briefing
 29F. ASIA-MACRO-001B Asia FX Production Activation                  ← existing p365-market-fast expanded; durable FORWARD rows + natural recurring run proven
 30. MOVE-002B Read-Only Move Evidence Bundle Runtime              ← IMPLEMENTED; repository-only point-in-time bundle
 30A. MOVE-002C Durable BTC Spot-Flow Replay                          ← IMPLEMENTED; HistoricalEvidence point-in-time consumption / no causal scoring
+30B. MOVE-002D Durable GDELT Catalyst Replay                          ← IMPLEMENTED; BTC/Gold NEWS Evidence coverage + candidate replay / no causal scoring
 31. MACRO-RATES-001A Intraday Rates/Pricing Source Qualification ← source-qualified; nominal runtime provider open; real-yield intraday unresolved
 31A. MACRO-RATES-001B Rates Access & Proxy Qualification            ← OWNER FREE-ONLY; paid paths rejected; ZT+TN preferred only as risk-bounded future free proxy; no runtime approved
 32. Derived State → Risk/Regime → Intelligence → Briefing        ← remains deferred
 ```
 
 One logical remediation = one PR = one verification checkpoint. This sequence may only change when a verified dependency requires it; changes must be recorded here.
+
+## Deferred operational backlog — Market Memory storage
+
+The 4 Oct 2026 read-only storage audit is recorded in:
+
+`docs/P365-MARKET-MEMORY-STORAGE-GROWTH-AUDIT-2026-10-04.md`
+
+It records the verified Free-plan storage boundary, current database/Market Memory/cron
+footprint, the legacy Observation-Evidence duplication defect already fixed by PR #110,
+current post-fix idempotency, index-usage findings, runway scenarios, and the deferred
+housekeeping sequence.
+
+No housekeeping implementation is active from this record. In particular, canonical Market
+Memory must not receive automatic age-based deletion. The deferred order is storage
+monitoring → operational `cron.job_run_details` retention → index review → owner capacity
+decision → formal hot/cold archival design only if needed.
 
 ## 22. Final audit conclusion
 

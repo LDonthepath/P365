@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Event, Observation } from "../domain/types";
+import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
 import {
   InMemoryEventRepository,
   InMemoryEvidenceRepository,
@@ -13,6 +14,7 @@ import {
   type BtcSpotFlowWindow,
 } from "./btc-spot-flow";
 import { btcSpotFlowWindowsToEvidence } from "./btc-spot-flow-history";
+import { gdeltGalSnapshotsToEvidence } from "./gdelt-gal-history";
 import { buildMoveEvidenceBundle } from "./move-evidence-bundle";
 
 function observation(input: {
@@ -174,6 +176,88 @@ async function seedCompleteSpotFlow(
   return { finalEvidenceId, lateCorrectionId: corrected.id };
 }
 
+function gdeltSnapshot(input: {
+  asset: "BTC" | "GOLD";
+  buildAt: string;
+  candidates?: GdeltGalFeedSnapshot["candidates"];
+}): GdeltGalFeedSnapshot {
+  const build = Date.parse(input.buildAt);
+  const candidates = input.candidates ?? [];
+  return {
+    asset: input.asset,
+    feedLastBuildAt: new Date(build).toISOString(),
+    feedWindowStartAt: new Date(build - 15 * 60 * 1000).toISOString(),
+    coverage: "ROLLING_15_MINUTES",
+    totalFeedItems: 100,
+    invalidItemCount: 0,
+    matchingCandidateCount: candidates.length,
+    candidateCoverage: "COMPLETE",
+    candidates,
+  };
+}
+
+async function seedCompleteGdeltHistory(input: {
+  evidence: InMemoryEvidenceRepository;
+  asset: "BTC" | "GOLD";
+  startAt: string;
+  endAt: string;
+  withCandidate: boolean;
+}): Promise<{ snapshotCount: number; candidateUrl: string; lateCandidateUrl: string }> {
+  const start = Date.parse(input.startAt);
+  const end = Date.parse(input.endAt);
+  const intervalMs = 15 * 60 * 1000;
+  const firstBuild = Math.floor(start / intervalMs) * intervalMs + intervalMs;
+  const candidateUrl = "https://example.com/move-window-candidate";
+  const lateCandidateUrl = "https://example.com/learned-after-cutoff";
+  let snapshotCount = 0;
+
+  for (let build = firstBuild; build <= end; build += intervalMs) {
+    const buildAt = new Date(build).toISOString();
+    const includeCandidate = input.withCandidate && build === firstBuild + 2 * intervalMs;
+    const snapshot = gdeltSnapshot({
+      asset: input.asset,
+      buildAt,
+      candidates: includeCandidate
+        ? [{
+            asset: input.asset,
+            url: candidateUrl,
+            title: input.asset === "BTC"
+              ? "Bitcoin headline inside MOVE window"
+              : "Gold market headline inside MOVE window",
+            domain: "example.com",
+            providerDate: new Date(build - 60_000).toISOString(),
+            providerDateSemantics: "PUBLICATION_OR_FIRST_SEEN",
+          }]
+        : [],
+    });
+    const row = gdeltGalSnapshotsToEvidence({
+      snapshots: [snapshot],
+      retrievedAt: new Date(build + 5_000).toISOString(),
+    })[0];
+    await input.evidence.save(row);
+    snapshotCount += 1;
+  }
+
+  const lateBuild = end + intervalMs;
+  await input.evidence.save(gdeltGalSnapshotsToEvidence({
+    snapshots: [gdeltSnapshot({
+      asset: input.asset,
+      buildAt: new Date(lateBuild).toISOString(),
+      candidates: [{
+        asset: input.asset,
+        url: lateCandidateUrl,
+        title: "Headline learned after MOVE cutoff",
+        domain: "example.com",
+        providerDate: new Date(end - 60_000).toISOString(),
+        providerDateSemantics: "PUBLICATION_OR_FIRST_SEEN",
+      }],
+    })],
+    retrievedAt: new Date(lateBuild + 5_000).toISOString(),
+  })[0]);
+
+  return { snapshotCount, candidateUrl, lateCandidateUrl };
+}
+
 test("MOVE-002B builds one deterministic point-in-time evidence bundle without writes", async () => {
   const observations = new InMemoryObservationRepository();
   const evidence = new InMemoryEvidenceRepository();
@@ -295,6 +379,13 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
     start120At,
     endAt,
   );
+  const newsSeed = await seedCompleteGdeltHistory({
+    evidence,
+    asset: "BTC",
+    startAt: start120At,
+    endAt,
+    withCandidate: true,
+  });
 
   const assessment = materialAssessment();
   const first = await buildMoveEvidenceBundle({ assessment, observations, events, evidence });
@@ -349,7 +440,31 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
     ],
   );
 
-  assert.equal(first.bundle.unscheduledCatalysts.state, "INSUFFICIENT_DATA");
+  assert.equal(first.bundle.unscheduledCatalysts.state, "AVAILABLE_CATALYST");
+  assert.equal(first.bundle.unscheduledCatalysts.coverage, "COMPLETE");
+  assert.equal(first.bundle.unscheduledCatalysts.snapshots.length, newsSeed.snapshotCount);
+  assert.equal(
+    first.bundle.unscheduledCatalysts.coveredDurationMs,
+    120 * 60 * 1000,
+  );
+  assert.deepEqual(
+    first.bundle.unscheduledCatalysts.candidates.map((item) => item.url),
+    [newsSeed.candidateUrl],
+  );
+  assert.equal(
+    first.bundle.unscheduledCatalysts.candidates[0]?.temporalFit,
+    "WITHIN_MOVE_WINDOW",
+  );
+  assert.equal(
+    first.bundle.unscheduledCatalysts.candidates.some(
+      (item) => item.url === newsSeed.lateCandidateUrl,
+    ),
+    false,
+  );
+  assert.equal(
+    first.bundle.unscheduledCatalysts.currentSourceCapability,
+    "GDELT_GAL_DURABLE_ROLLING_15M",
+  );
   assert.equal(first.bundle.cryptoMarketStructure?.state, "INSUFFICIENT_DATA");
   assert.equal(first.bundle.cryptoMarketStructure?.components.length, 4);
   const spotFlow = first.bundle.cryptoMarketStructure?.components.find(
@@ -392,6 +507,14 @@ test("MOVE-002B keeps the Gold target on Gold-specific background boundaries", a
     })),
   };
 
+  await seedCompleteGdeltHistory({
+    evidence,
+    asset: "GOLD",
+    startAt: "2026-10-02T02:30:00.000Z",
+    endAt: "2026-10-02T04:30:00.000Z",
+    withCandidate: false,
+  });
+
   const result = await buildMoveEvidenceBundle({ assessment, observations, events, evidence });
   assert.equal(result.status, "READY");
   if (result.status !== "READY") return;
@@ -401,6 +524,13 @@ test("MOVE-002B keeps the Gold target on Gold-specific background boundaries", a
   assert.equal(result.bundle.slowBackground.items[0]?.kind, "GOLD_CFTC_POSITIONING");
   assert.equal(result.bundle.slowBackground.items[0]?.state, "INSUFFICIENT_DATA");
   assert.equal(result.bundle.cryptoMarketStructure, undefined);
+  assert.equal(result.bundle.unscheduledCatalysts.state, "AVAILABLE_CATALYST");
+  assert.equal(result.bundle.unscheduledCatalysts.coverage, "COMPLETE");
+  assert.equal(result.bundle.unscheduledCatalysts.candidates.length, 0);
+  assert.match(
+    result.bundle.unscheduledCatalysts.reason ?? "",
+    /no temporally eligible asset candidate/,
+  );
   assert.equal(result.bundle.intradayRatesPricing.state, "MISSING_HIGH_VALUE_EVIDENCE");
   assert.equal(result.bundle.evidenceCompleteness, "EVIDENCE_INCOMPLETE");
   assert.equal(result.bundle.causalAttribution, "NOT_EVALUATED");
