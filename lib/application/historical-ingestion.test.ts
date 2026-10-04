@@ -191,6 +191,8 @@ function gdeltSnapshot(asset: "BTC" | "GOLD"): GdeltGalFeedSnapshot {
     coverage: "ROLLING_15_MINUTES",
     totalFeedItems: 500,
     invalidItemCount: 2,
+    matchingCandidateCount: asset === "BTC" ? 1 : 0,
+    candidateCoverage: "COMPLETE",
     candidates: asset === "BTC"
       ? [{
           asset,
