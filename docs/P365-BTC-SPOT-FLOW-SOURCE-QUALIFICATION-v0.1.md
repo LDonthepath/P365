@@ -1,8 +1,8 @@
 # P365 BTC Spot Flow Source Qualification v0.1
 
-**Checkpoint:** SPOT-FLOW-001A  
-**Status:** BINANCE LIVE-QUALIFIED READ-ONLY / BYBIT VERCEL-EGRESS UNAVAILABLE  
-**Scope:** BTC spot taker-flow evidence only  
+**Checkpoint:** SPOT-FLOW-001A + SPOT-FLOW-001B  
+**Status:** BINANCE LIVE-QUALIFIED / DURABLE FORWARD RUNTIME IMPLEMENTED / PRODUCTION ACTIVATION PENDING / BYBIT VERCEL-EGRESS UNAVAILABLE  
+**Scope:** BTC spot taker-flow evidence plus forward durable history  
 **Owner approval:** Binance Spot + Bybit Spot provider expansion approved 4 Oct 2026
 
 ## 1. Product question
@@ -257,3 +257,59 @@ Bybit remains semantically qualified as a taker-side recent-trade source, but it
 active P365 validation source from the current Vercel environment.
 
 No alternate venue is added in this checkpoint without a new owner provider approval.
+
+
+## 10. SPOT-FLOW-001B durable history runtime
+
+SPOT-FLOW-001B implements forward-only durable history for the already-qualified Binance
+BTCUSDT 5m flow window. It does **not** add another provider or change the SPOT-FLOW-001A
+economic meaning.
+
+### 10.1 Durable record shape
+
+Each completed Binance 5m window is persisted as one atomic canonical `Evidence` record:
+
+- `sourceId = binance-spot`;
+- `kind = OBSERVATION`;
+- methodology = `binance-btcusdt-5m-taker-flow-snapshot-v1`;
+- venue/pair identity remains `BINANCE / BTCUSDT`;
+- the full factual payload retains total BTC volume, taker-buy BTC, taker-sell BTC,
+  net taker BTC, taker-buy share and trade count;
+- the completed 5m boundary remains the source-effective time;
+- `retrievedAt` remains the P365 knowledge-time cutoff.
+
+The durable ID fingerprints the complete factual payload. An identical refetch is therefore
+idempotent, while a changed provider fact for the same 5m measurement receives a new
+append-only Evidence revision. A separate deterministic `windowKey` groups revisions of the
+same venue/pair/interval.
+
+### 10.2 Acquisition boundary
+
+The existing authenticated historical-ingestion runtime gains provider `binance-spot` in
+`FORWARD` mode.
+
+Routine acquisition requests only the latest three Binance 5m klines:
+
+- currently forming bars are still rejected by the provider adapter;
+- completed overlap is intentionally small and allows one missed poll to self-heal;
+- repeated completed windows remain idempotent;
+- no unbounded historical scan is performed.
+
+`BACKFILL` is **not** enabled by this checkpoint.
+
+### 10.3 Explicit non-activation boundary
+
+SPOT-FLOW-001B does not activate:
+
+- Supabase `pg_cron` changes;
+- production writes before owner merge/review;
+- historical backfill;
+- Bybit persistence;
+- market-wide spot-flow aggregation;
+- MOVE-002B consumption;
+- dashboard/UI;
+- causal attribution;
+- State / Regime / Risk / Intelligence;
+- trading signals.
+
+Production activation is a separate checkpoint after merge and runtime verification.
