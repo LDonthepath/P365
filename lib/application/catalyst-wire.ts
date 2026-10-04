@@ -190,12 +190,13 @@ function gdeltItems(evidence: Evidence[], asOf: string): {
     snapshot.candidates.flatMap((candidate, index): CatalystWireItem[] => {
       if (!candidate.title.trim() || !candidate.url.trim()) return [];
       const primary = officialSourceLabel(candidate.url);
-      const hasProviderTime = validTimestamp(candidate.providerDate);
-      const displayAt = hasProviderTime
+      const providerTime = validTimestamp(candidate.providerDate)
         ? candidate.providerDate
-        : validTimestamp(row.retrievedAt)
+        : null;
+      const displayAt = providerTime
+        ?? (validTimestamp(row.retrievedAt)
           ? row.retrievedAt
-          : snapshot.feedLastBuildAt;
+          : snapshot.feedLastBuildAt);
 
       return [{
         id: `gdelt:${snapshot.asset}:${normalizeUrl(candidate.url)}:${index}`,
@@ -207,7 +208,7 @@ function gdeltItems(evidence: Evidence[], asOf: string): {
         title: displayTitle(candidate.title),
         url: candidate.url,
         displayAt,
-        timeBasis: hasProviderTime ? "SOURCE_OR_FIRST_SEEN" : "DISCOVERED",
+        timeBasis: providerTime ? "SOURCE_OR_FIRST_SEEN" : "DISCOVERED",
       }];
     }),
   );
