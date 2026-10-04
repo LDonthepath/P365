@@ -1,7 +1,7 @@
 # P365 Intraday US Rates Transmission Source Qualification v0.1
 
 **Checkpoint:** MACRO-RATES-001A  
-**Status:** SOURCE QUALIFICATION COMPLETE / MASSIVE FUTURES TECHNICAL LIVE PASS / DURABLE NON-DISPLAY RIGHTS GATE / REAL-YIELD INTRADAY UNRESOLVED  
+**Status:** SOURCE QUALIFICATION COMPLETE / MASSIVE ZT+ZN TECHNICAL LIVE PASS / ROLL METHODOLOGY FROZEN / CURRENT INDIVIDUAL RIGHTS FAIL / REAL-YIELD INTRADAY UNRESOLVED  
 **Scope:** US rates transmission evidence for BTC + Gold MOVE investigation  
 **Implementation effect:** Documentation/source-qualification only. No provider runtime, API credential, dependency, scheduler, durable write, UI, State/Regime/Risk/Intelligence, causal conclusion, or trading logic.
 
@@ -485,7 +485,7 @@ The market-data route is now understood, but no production provider is approved.
 Preferred hierarchy:
 
 1. **BrokerTec direct cash** remains preferred if owner-approved entitlement + exact schema satisfy runtime needs;
-2. for an explicitly labeled intraday **proxy**, **Massive standard Treasury futures ZT/ZN** are now the strongest technically proven pair because both tenors showed dense 5-minute trade bars in the bounded Vercel proof; they remain futures-price evidence and production durable use is blocked by non-display/business/CME rights plus roll-methodology gates;
+2. for an explicitly labeled intraday **proxy**, **Massive standard Treasury futures ZT/ZN** are now the strongest technically proven pair because both tenors showed dense 5-minute trade bars in the bounded Vercel proof; they remain futures-price evidence, the point-in-time roll methodology is now frozen, and current individual Massive rights explicitly fail the intended P365 non-display runtime gate;
 3. **CME Yield futures** remain semantically attractive because they trade directly in yield, but the bounded Massive proof found usable 10Y activity and no 2YY trade bars in the same test window, so the pair is not selected as the primary synchronous proxy;
 4. **Twelve Data** remains access-gated; owner-approved fixed-income entitlement would still be required before a genuine live yield-series qualification;
 5. existing daily FRED remains background when no qualified intraday runtime is authorized.
@@ -506,24 +506,33 @@ Remain under the existing FedWatch contract and licensing gate.
 
 ## 15. Next runtime gate
 
-Do **not** implement MACRO-RATES-001B as durable production ingestion until the owner approves
-one access path.
+Do **not** implement MACRO-RATES-001B as durable production ingestion under the current
+individual Massive entitlement.
 
-A source-selection/live-qualification step must first prove:
+The technical source-selection gate is now closed for an explicit proxy:
 
-1. exact provider entitlement;
-2. exact 2Y + 10Y symbols/resources;
-3. economic meaning;
-4. source lineage;
-5. 5m cadence;
-6. timestamps;
-7. history;
-8. market calendar;
-9. durable retention rights;
-10. fail-closed error semantics.
+- product family: `ZT` + `ZN`;
+- semantics: Treasury futures **price** proxy, never cash yield;
+- 5m technical coverage: live-proven;
+- point-in-time contract roll: frozen in
+  `P365-MASSIVE-US-RATES-PROXY-QUALIFICATION-v0.1.md`;
+- completed-bar and missing-bar semantics: frozen.
 
-If no path passes those gates, P365 should continue to report intraday rates evidence as
-missing rather than substitute an unqualified proxy.
+The remaining blocking gate is rights/entitlement.
+
+Before implementation, written provider/exchange permission must cover:
+
+1. recurring server-side CBOT ZT/ZN acquisition;
+2. non-display research/analysis use;
+3. durable internal storage/retention;
+4. derived factual comparison outputs;
+5. any intended dashboard/display exposure.
+
+A Massive Business CBOT plan is a possible commercial path, but P365 must not assume the
+public plan price alone grants every required CME permission.
+
+If rights are not approved, P365 must keep intraday rates proxy evidence explicitly unavailable
+rather than activate the technically working individual feed.
 
 ## 16. Explicit non-goals
 
@@ -630,12 +639,88 @@ use requires the appropriate permission/license.
 P365 recurring server-side acquisition + durable Market Memory + automated MOVE reasoning must
 therefore remain:
 
-`DURABLE_NON_DISPLAY_RIGHTS_UNVERIFIED`
+`CURRENT_INDIVIDUAL_RIGHTS_NOT_AUTHORIZED_FOR_P365_NON_DISPLAY_RUNTIME`
 
-The existing key proves technical access only.
+The existing key proves technical access only. CME's published non-display guidance classifies research and analysis as Category C-2 application use, so this is now an explicit entitlement blocker rather than an unknown legal state.
 
 Normative detailed record:
 
 `P365-MASSIVE-US-RATES-PROXY-QUALIFICATION-v0.1.md`
 
 No production adapter, scheduler or Market Memory write is authorized by this qualification.
+
+
+## 19. MACRO-RATES-001B rights + roll closure — 4 Oct 2026
+
+The owner asked to continue in PR #166.
+
+### Rights conclusion
+
+Current public Massive individual Market Data Terms are incompatible with the proposed
+production workflow because they restrict individual data to personal/non-business use, default
+to display use, and prohibit non-display/derived use unless separately licensed.
+
+CME's published Non-Display guidance defines non-viewable processing/analysis in software as
+Non-Display Use and explicitly places research and analysis in Category C-2.
+
+Therefore:
+
+`CURRENT MASSIVE INDIVIDUAL ACCESS = NOT AUTHORIZED FOR P365 PRODUCTION NON-DISPLAY USE`
+
+This is stronger than the previous `UNVERIFIED` status.
+
+A future compliant path must be documented in writing through Massive/CME. Massive currently
+advertises a CBOT Business futures plan with exchange assistance, but purchase alone is not
+treated as proof of Category C-2, storage, or derived-output rights.
+
+### Roll methodology
+
+The canonical ZT/ZN proxy selection is now frozen:
+
+1. point-in-time active `type=single` contracts only;
+2. target-session selection uses only the most recent **completed prior CBOT session**;
+3. liquidity measure = provider-reported prior-session volume;
+4. selected ticker is fixed for the full target session;
+5. incumbent remains selected unless a **later-expiry** contract has strictly greater prior-session volume;
+6. ties retain incumbent;
+7. roll can move forward only, never backward;
+8. inactive incumbent must be replaced by the highest-volume eligible later contract;
+9. no positive-volume candidate + no retainable incumbent => `UNAVAILABLE_CONTRACT_SELECTION`;
+10. no cross-contract price comparison is allowed — differing native tickers produce
+    `ROLL_BOUNDARY`.
+
+No guessed percentage crossover threshold is used.
+
+### Bar completion
+
+Massive documents `window_start` as the beginning of the aggregation window and states that
+no-trade intervals have no bar.
+
+For 5m canonical data:
+
+`observedAt = window_start + 5m`
+
+and only completed bars are eligible.
+
+### Canonical proxy identities
+
+If rights are later approved:
+
+- `rates.us_treasury_2y_note_futures_price.points`
+- `rates.us_treasury_10y_note_futures_price.points`
+
+with:
+
+`RATES / PRICING / US / FUTURE / tenor=2Y|10Y`
+
+and exact contract ticker retained as mandatory provider provenance.
+
+### Existing research helper
+
+`rates-historical-reconstruction.ts` remains research-only and unchanged. Its current
+nearest-maturity-with-bars selection must not be reused silently as the future canonical
+production roll policy.
+
+Current final state:
+
+`PROXY_TECHNICALLY_QUALIFIED / METHODOLOGY_FROZEN / RUNTIME_BLOCKED_BY_RIGHTS`
