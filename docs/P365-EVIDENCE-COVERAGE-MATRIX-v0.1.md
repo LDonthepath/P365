@@ -42,7 +42,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC funding | Is perpetual positioning becoming expensive/crowded? | P0 | SYNC/NEAR | **LIVE-QUALIFIED / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **TECHNICAL LIVE PASS — SPARSE WINDOW / DURABLE-USE GATE** | Coinalyze free-first; ChainVector validation |
 | BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **SPOT-FLOW-001A/B/C PRODUCTION ACTIVE + MOVE-002C REPLAY IMPLEMENTED / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot completed 5m taker-flow persists via existing `p365-market-fast` and is point-in-time consumable by BTC MATERIAL_MOVE bundles |
-| BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **SPOT BINANCE + PERP HYPERLIQUID CURRENT SNAPSHOTS LIVE-QUALIFIED / HISTORICAL WINDOW MISSING** | Binance Spot current depth + Hyperliquid BTC perp current depth; Binance Futures Vercel-egress unavailable |
+| BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **ORDER-BOOK-001A/B LIVE + ORDER-BOOK-001C DURABLE SUMMARY RUNTIME IMPLEMENTED / ACTIVATION + MOVE REPLAY PENDING** | Binance Spot + Hyperliquid BTC perp geometry can now persist as compact forward-only Evidence; no production cron or historical MOVE replay yet |
 | Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **NEWS-001B/C/D PRODUCTION ACTIVE + MOVE-002D REPLAY IMPLEMENTED** | Durable GDELT GAL BTC+Gold snapshots are point-in-time consumable by MATERIAL_MOVE bundles; no pre-activation backfill is claimed |
 | Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MACRO-RATES-001A/001B FREE-ONLY / PAID PATHS REJECTED / ZT+TN PROXY RISK-QUALIFIED ONLY / NO RUNTIME / REAL-YIELD INTRADAY UNRESOLVED** | Daily FRED remains canonical background; if any future free lawful proxy is found, ZT+TN is preferred over ZT+ZN after tenor-fidelity review |
 | BTC basis | Is futures pricing rich/cheap vs spot/index? | P1 | SYNC | **MISSING / VENUE FALLBACK AVAILABLE** | Official exchange basis where qualified |
@@ -139,7 +139,7 @@ Current production coverage:
 
 Historical acquisition and MOVE-bundle consumption are now both implemented for Binance spot-flow. Remaining spot-flow limitations are pre-activation history, single-venue scope, unavailable Bybit secondary validation, and the absence of any authorized market-wide aggregation or causal interpretation.
 
-### 3.4 Order-book liquidity — CURRENT SNAPSHOTS PARTIALLY COVERED
+### 3.4 Order-book liquidity — CURRENT SNAPSHOTS LIVE / DURABLE SUMMARY RUNTIME IMPLEMENTED
 
 Required facts:
 
@@ -156,7 +156,9 @@ Current coverage:
 - Binance Spot BTCUSDT current book: live-qualified;
 - Hyperliquid BTC perpetual current book: live-qualified;
 - Binance USDⓈ-M BTCUSDT perpetual adapter: qualified but Vercel-egress unavailable;
-- historical move-window book state: still missing.
+- ORDER-BOOK-001C adds compact durable Evidence builders and authenticated FORWARD ingestion for Binance Spot + Hyperliquid;
+- raw depth levels are not persisted;
+- production sampling/cron is not active, so historical move-window book state is still missing in production.
 
 Primary question:
 
@@ -572,8 +574,8 @@ available and exposes unresolved temporal gaps explicitly:
 
 - Coinalyze derivatives: technically live-qualified, durable replay not approved;
 - Binance spot-flow: durable FORWARD acquisition is production-active and MOVE-002C consumes point-in-time historical Evidence for BTC MATERIAL_MOVE bundles;
-- spot/perp order books: current snapshots, historical window missing;
-- GDELT GAL: durable forward snapshot acquisition is now production-active; pre-activation history remains unavailable and MOVE-002B historical-Evidence wiring remains separate;
+- spot/perp order books: durable summary runtime exists in ORDER-BOOK-001C, but production sampling and MOVE replay are not yet active;
+- GDELT GAL: durable forward snapshot acquisition is production-active and MOVE-002D consumes point-in-time historical Evidence; pre-activation history remains unavailable;
 - intraday rates: FREE_ONLY / no approved runtime.
 
 NEWS-001D plus MOVE-002D close the acquisition-and-replay continuity loop for GDELT BTC/Gold candidate snapshots. Pre-activation periods remain unavailable by design; source-authority ranking, article semantics/tone and causal interpretation remain separate work.
