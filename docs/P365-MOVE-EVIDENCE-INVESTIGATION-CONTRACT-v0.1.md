@@ -512,6 +512,7 @@ The bundle ID is deterministic from the factual bundle content.
 - BTC stablecoin/ETF background composition;
 - explicit current-only P0 gaps;
 - free-only intraday-rates missing state;
+- Gold target keeps CFTC-only slow background and does not inherit BTC market-structure components;
 - non-material MOVE rejection;
 - unchanged `causalAttribution = NOT_EVALUATED`.
 
