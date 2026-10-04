@@ -25,7 +25,38 @@ async function probeProduct(productCode: "2YY" | "10Y", apiKey: string): Promise
     ? await massive(`/futures/v1/aggs/${encodeURIComponent(ticker)}?resolution=5min&limit=6&sort=window_start.desc`, apiKey)
     : { status: "NO_CONTRACT_TICKER" };
 
-  return { productCode, product, contracts, selectedTicker: ticker, bars };
+  const session = ticker
+    ? await massive(`/futures/v1/aggs/${encodeURIComponent(ticker)}?resolution=5min&window_start.gte=2026-10-01&window_start.lt=2026-10-03&limit=50000&sort=window_start.asc`, apiKey)
+    : { status: "NO_CONTRACT_TICKER" };
+
+  const sessionBars = Array.isArray(session.results) ? session.results as Array<Record<string, unknown>> : [];
+  const starts = sessionBars
+    .map((bar) => typeof bar.window_start === "number" ? bar.window_start : null)
+    .filter((value): value is number => value !== null);
+  const gapsMinutes = starts.slice(1).map((value, index) => (value - starts[index]) / 60_000_000_000);
+  const volume = sessionBars.reduce((sum, bar) => sum + (typeof bar.volume === "number" ? bar.volume : 0), 0);
+  const transactions = sessionBars.reduce((sum, bar) => sum + (typeof bar.transactions === "number" ? bar.transactions : 0), 0);
+
+  return {
+    productCode,
+    product,
+    contracts,
+    selectedTicker: ticker,
+    bars,
+    sessionCoverage: {
+      httpStatus: session.httpStatus ?? null,
+      status: session.status ?? null,
+      barCount: sessionBars.length,
+      totalVolume: volume,
+      totalTransactions: transactions,
+      firstWindowStart: starts[0] ?? null,
+      lastWindowStart: starts.at(-1) ?? null,
+      maxGapMinutes: gapsMinutes.length ? Math.max(...gapsMinutes) : null,
+      gapsOver15m: gapsMinutes.filter((gap) => gap > 15).length,
+      gapsOver30m: gapsMinutes.filter((gap) => gap > 30).length,
+      gapsOver60m: gapsMinutes.filter((gap) => gap > 60).length,
+    },
+  };
 }
 
 export async function GET(): Promise<Response> {
