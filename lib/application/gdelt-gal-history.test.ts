@@ -17,6 +17,8 @@ function snapshot(asset: "BTC" | "GOLD", buildAt: string): GdeltGalFeedSnapshot 
     coverage: "ROLLING_15_MINUTES",
     totalFeedItems: 100,
     invalidItemCount: 1,
+    matchingCandidateCount: asset === "BTC" ? 1 : 0,
+    candidateCoverage: "COMPLETE",
     candidates: asset === "BTC"
       ? [{
           asset,
@@ -50,6 +52,8 @@ test("GDELT durable snapshot Evidence is deterministic and preserves zero-candid
     GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
   );
   assert.equal(evidence[0].metadata?.candidateCount, 1);
+  assert.equal(evidence[0].metadata?.matchingCandidateCount, 1);
+  assert.equal(evidence[0].metadata?.candidateCoverage, "COMPLETE");
   assert.equal(evidence[1].metadata?.candidateCount, 0);
 
   const repeated = gdeltGalSnapshotsToEvidence({
