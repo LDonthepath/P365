@@ -36,6 +36,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC / ETH / Gold / DXY price | What moved and what confirmed/diverged? | P0 | SYNC | **ACTIVE** | Existing qualified sources |
 | Asia FX transmission — USDJPY / USDCNH | Did Japan/yen or China/offshore-RMB pricing reprice with the move? | P0 | SYNC | **ASIA-MACRO-001B PRODUCTION ACTIVE / DURABLE FORWARD** | Existing Yahoo trial path; fail-closed FX freshness |
 | Continuous move materiality | Is the move historically unusual? | P0 | SYNC | **ACTIVE / MOVE-001C** | Existing Market Memory |
+| Move evidence bundle | What point-in-time evidence was actually knowable around a material MOVE? | P0 | SYNC/EVENT/SLOW | **MOVE-002B READ-ONLY RUNTIME IMPLEMENTED** | Repository-backed composition only; current-only/non-durable families remain explicit gaps |
 | Scheduled macro events | Was there a qualified scheduled catalyst? | P0 | EVENT | **ACTIVE** | Existing event pipeline |
 | BTC derivatives OI | Is leverage exposure expanding/contracting? | P0 | SYNC | **TECHNICAL LIVE PASS / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC funding | Is perpetual positioning becoming expensive/crowded? | P0 | SYNC/NEAR | **LIVE-QUALIFIED / DURABLE-USE GATE** | Coinalyze free-first |
@@ -557,16 +558,22 @@ This matrix is complete enough for MVP prioritization when:
 
 ## 10. Immediate handoff
 
-The immediate active work remains:
+The P0 source-qualification sequence has progressed through derivatives, spot-flow,
+order-book, unscheduled-news and intraday-rates qualification.
 
-**CRYPTO-STRUCT-001B — Coinalyze Free Live Qualification + Aggregation Methodology Freeze**
+The active composition checkpoint is now:
 
-After that, the next missing **P0** families should be addressed in this order unless new
-evidence changes the priority:
+**MOVE-002B — Read-Only Move Evidence Bundle Runtime**
 
-1. BTC spot-flow source qualification;
-2. BTC order-book liquidity source qualification;
-3. unscheduled-news/catalyst source qualification;
-4. intraday rates/policy-pricing free-source decision after MACRO-RATES-001A/001B — do not pursue paid entitlement. Search only for a free source whose terms support P365's intended use; if none qualifies, keep intraday rates evidence explicitly missing. Any proxy must preserve the ZT+TN risk boundaries and may not masquerade as cash yield.
+MOVE-002B does not add another provider. It consumes durable point-in-time facts already
+available and exposes unresolved temporal gaps explicitly:
 
-Options/on-chain/sentiment expansion must not pre-empt these P0 gaps.
+- Coinalyze derivatives: technically live-qualified, durable replay not approved;
+- Binance spot-flow: current read-only, durable replay missing;
+- spot/perp order books: current snapshots, historical window missing;
+- GDELT GAL: current rolling 15m, durable 30/60/120m replay missing;
+- intraday rates: FREE_ONLY / no approved runtime.
+
+Those gaps may be addressed later as isolated checkpoints only when their source/use boundary
+is defensible. Options/on-chain/sentiment expansion must not pre-empt unresolved P0 evidence
+continuity without a concrete product reason.
