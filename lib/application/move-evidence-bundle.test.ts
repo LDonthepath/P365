@@ -289,6 +289,40 @@ test("MOVE-002B builds one deterministic point-in-time evidence bundle without w
   assert.equal(first.bundle.writesPerformed, false);
 });
 
+test("MOVE-002B keeps the Gold target on Gold-specific background boundaries", async () => {
+  const observations = new InMemoryObservationRepository();
+  const eventStore = new InMemoryEventRepository();
+  const events = new InMemoryHistoricalEventRepository(eventStore);
+  const assessment: ContinuousMoveAssessment = {
+    ...materialAssessment(),
+    id: "move-gold-1",
+    seriesKey: "gold.futures.usd",
+    sourceId: "yahoo-finance",
+    targetEndObservationId: "gold-end",
+    horizons: materialAssessment().horizons.map((item) => ({
+      ...item,
+      targetStartObservationId: item.targetStartObservationId
+        ? item.targetStartObservationId.replace("btc", "gold")
+        : undefined,
+      targetEndObservationId: "gold-end",
+    })),
+  };
+
+  const result = await buildMoveEvidenceBundle({ assessment, observations, events });
+  assert.equal(result.status, "READY");
+  if (result.status !== "READY") return;
+
+  assert.equal(result.bundle.targetAsset, "GOLD");
+  assert.equal(result.bundle.slowBackground.items.length, 1);
+  assert.equal(result.bundle.slowBackground.items[0]?.kind, "GOLD_CFTC_POSITIONING");
+  assert.equal(result.bundle.slowBackground.items[0]?.state, "INSUFFICIENT_DATA");
+  assert.equal(result.bundle.cryptoMarketStructure, undefined);
+  assert.equal(result.bundle.intradayRatesPricing.state, "MISSING_HIGH_VALUE_EVIDENCE");
+  assert.equal(result.bundle.evidenceCompleteness, "EVIDENCE_INCOMPLETE");
+  assert.equal(result.bundle.causalAttribution, "NOT_EVALUATED");
+  assert.equal(result.bundle.writesPerformed, false);
+});
+
 test("MOVE-002B refuses to build a bundle when MOVE-001C did not trigger", async () => {
   const observations = new InMemoryObservationRepository();
   const eventStore = new InMemoryEventRepository();
