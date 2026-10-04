@@ -53,15 +53,17 @@ Therefore NEWS-001B can answer:
 > What BTC/Gold-related candidate headlines are present in GDELT's current rolling
 > 15-minute feed?
 
-It cannot yet answer:
+NEWS-001B by itself cannot answer:
 
 > What headlines were available at an arbitrary historical 30/60/120-minute move window?
 
-Historical point-in-time replay remains:
+That current-only output therefore correctly retains:
 
 `NOT_SUPPORTED_WITHOUT_DURABLE_ACQUISITION`
 
-This is explicit because MOVE detection includes horizons longer than the GAL live window.
+NEWS-001C/001D add the separate durable path. Historical point-in-time replay is now possible
+**only for windows covered after production activation**. Pre-activation periods remain
+unavailable and are never reconstructed from the current rolling feed.
 
 ## 4. Candidate extraction
 
@@ -163,7 +165,9 @@ whose free tiers prohibit production analytics or independent storage.
 
 NEWS-001B itself remains read-only and does not activate persistence.
 
-## 9. Runtime boundary
+## 9. NEWS-001B current-runtime boundary
+
+This section records the original NEWS-001B boundary. NEWS-001C/001D later authorize the separate durable Evidence lane and Supabase scheduler activation described in sections 13–14.
 
 Authorized:
 
