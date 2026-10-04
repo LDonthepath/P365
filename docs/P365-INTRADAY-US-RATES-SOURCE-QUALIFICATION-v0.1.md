@@ -1,7 +1,7 @@
 # P365 Intraday US Rates Transmission Source Qualification v0.1
 
 **Checkpoint:** MACRO-RATES-001A  
-**Status:** SOURCE QUALIFICATION COMPLETE / NOMINAL INTRADAY PATH IDENTIFIED / RUNTIME PROVIDER NOT APPROVED / REAL-YIELD INTRADAY UNRESOLVED  
+**Status:** SOURCE QUALIFICATION COMPLETE / TWELVE DATA ACCESS-GATED / NOMINAL RUNTIME PROVIDER NOT APPROVED / REAL-YIELD INTRADAY UNRESOLVED  
 **Scope:** US rates transmission evidence for BTC + Gold MOVE investigation  
 **Implementation effect:** Documentation/source-qualification only. No provider runtime, API credential, dependency, scheduler, durable write, UI, State/Regime/Risk/Intelligence, causal conclusion, or trading logic.
 
@@ -472,7 +472,7 @@ or an approved calculation methodology closes the gap.
 | BrokerTec UST Benchmarks | Transaction-based OTR benchmark yield | Discrete | Excellent | CME licensing | **VALIDATION/ANCHOR; CADENCE FAIL** |
 | CME 2YY / 10Y Yield futures | Yield-quoted futures proxy | Yes | Excellent | CME market-data entitlement | **PREFERRED EXPLICIT FUTURES PROXY; RUNTIME BLOCKED** |
 | Standard ZT / 10Y note futures | Treasury futures-price proxy | Yes | Excellent | market-data entitlement | **RESEARCH PROXY ONLY** |
-| Twelve Data fixed income | Aggregated Treasury-yield API candidate | Potentially | **Open** | plan + third-party terms | **LIVE QUALIFICATION CANDIDATE; NOT YET APPROVED** |
+| Twelve Data fixed income | Aggregated Treasury-yield API candidate | Potentially | **Open** | fixed-income entitlement + third-party terms | **MACRO-RATES-001B ACCESS-GATED; NOT RUNTIME-APPROVED** |
 | GovPX TIPS | Direct TIPS market pricing | Yes | Excellent for TIPS market | CME/GovPX licensing | **REAL-RATE CANDIDATE; CMT EQUIVALENCE NOT PROVEN** |
 
 ## 14. Checkpoint verdict
@@ -486,8 +486,7 @@ Preferred hierarchy:
 1. **BrokerTec direct cash** if owner-approved entitlement + exact schema satisfy runtime needs;
 2. **CME Yield futures 2YY/10Y** as explicitly labeled derivatives proxies if direct cash is
    impractical and authorized market-data access exists;
-3. **Twelve Data** only after a bounded live qualification proves upstream lineage, both tenors,
-   timing semantics and durable-use rights;
+3. **Twelve Data** only after owner-approved fixed-income entitlement; MACRO-RATES-001B stopped at the access gate because P365 has no Twelve Data credential, Basic/demo access does not prove fixed-income market data, and exact 10Y/live semantics remain unverified;
 4. existing daily FRED remains background when no qualified intraday path is authorized.
 
 P365 must not scrape CME/Yahoo websites to bypass a licensing gate.
@@ -547,3 +546,36 @@ MACRO-RATES-001A does not add or activate:
 - State/Regime/Risk/Intelligence;
 - causal scoring;
 - trading signals or execution.
+
+
+## 17. MACRO-RATES-001B Twelve Data bounded qualification — 4 Oct 2026
+
+MACRO-RATES-001B attempted the next bounded qualification step without activating a provider.
+
+Verified public/provider facts:
+
+- Twelve Data documents `US2Y` in the fixed-income reference catalog;
+- the generic time-series API supports 5-minute intervals and bar-open timestamp semantics;
+- fixed-income **market data** is listed on Pro individual / Venture business tiers, while Basic
+  primarily exposes reference data plus other market families and trial symbols;
+- the current US trial-symbol page identifies AAPL rather than a Treasury-yield symbol;
+- Twelve Data terms permit Internal Use processing/storage only subject to the actual
+  subscription tier, add-ons and third-party restrictions.
+
+P365 environment inspection found no `TWELVE_DATA_API_KEY`.
+
+Therefore a genuine US2Y/10Y 5-minute market-data proof could not be executed without first
+obtaining owner-approved account entitlement. Exact 10Y symbol identity, symbol-specific
+history, latency, market-session behavior and upstream Treasury benchmark lineage remain
+unverified.
+
+Verdict:
+
+> **TWELVE DATA = ACCESS-GATED CANDIDATE / NOT RUNTIME-APPROVED**
+
+Normative qualification record:
+
+`P365-TWELVE-DATA-US-RATES-QUALIFICATION-v0.1.md`
+
+No credential, purchase, provider runtime, scheduler or durable write is authorized by this
+result.
