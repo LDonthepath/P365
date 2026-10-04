@@ -185,45 +185,79 @@ function findMarketValue(observations: Observation[], seriesKey: string): { valu
   return { value, observedAt: item.observedAt, quality: item.quality };
 }
 
-function OverviewQuickGlance({ data, observations }: { data: DashboardData; observations: Observation[] }) {
-  const bitcoin = findMarketValue(observations, "btc.spot.usd");
-  const gold = findMarketValue(observations, "gold.futures.usd");
+function observationChangePercent(observation: Observation | undefined): number | null {
+  const raw = observation?.metadata?.changePct;
+  if (raw === null || raw === undefined) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+function TerminalChange({ value, label = "PERUBAHAN" }: { value: number | null; label?: string }) {
+  const direction = value === null || value === 0 ? "neutral" : value > 0 ? "up" : "down";
+  return <span className={`terminal-change ${direction}`}>{label} {value === null ? "—" : formatSignedPercentValue(value)}</span>;
+}
+
+function OverviewMarketTape({ data, observations }: { data: DashboardData; observations: Observation[] }) {
+  const bitcoin = observations.find((item) => item.subject === "btc.spot.usd");
+  const gold = observations.find((item) => item.subject === "gold.futures.usd");
+  const dxy = observations.find((item) => item.subject === "dxy.index.usd");
+  const us10y = observations.find((item) => String(item.metadata?.seriesId ?? "") === "DGS10");
+  const bitcoinValue = bitcoin ? numberValue(bitcoin.value) : null;
+  const goldValue = gold ? numberValue(gold.value) : null;
+  const dxyValue = dxy ? numberValue(dxy.value) : null;
   const stablecoin = data.stablecoinLiquidity.latest;
+  const stablecoinChange = data.stablecoinLiquidity.change1d?.percentChange ?? null;
   const etfFlow = data.btcEtfFlow.latest;
 
-  return <section className="beginner-section" aria-labelledby="quick-glance-title">
-    <div className="beginner-section-head">
+  return <section className="market-terminal-strip" aria-labelledby="market-tape-title">
+    <div className="market-terminal-head">
       <div>
-        <span className="beginner-kicker">RINGKASAN PASAR</span>
-        <h2 id="quick-glance-title">Apa yang perlu dilihat sekarang?</h2>
-        <p>Empat angka utama untuk orientasi awal. Buka halaman Crypto, Gold, atau Makro jika ingin detail.</p>
+        <span className="market-terminal-kicker">MARKET TAPE · FAKTUAL</span>
+        <h2 id="market-tape-title">Snapshot lintas pasar</h2>
       </div>
+      <div className="market-terminal-cutoff">CUTOFF · {relativeTimeID(data.mvpFactualContext.asOf)}</div>
     </div>
-    <div className="quick-glance-grid">
-      <article className="quick-glance-card">
-        <span className="quick-glance-label">Bitcoin</span>
-        <strong>{bitcoin ? formatMoney(bitcoin.value) : "—"}</strong>
-        <small>{bitcoin ? `Harga spot · ${relativeTimeID(bitcoin.observedAt)}` : "Harga belum tersedia"}</small>
+    <p className="market-terminal-note">Data existing P365 dalam satu tampilan cepat. Perubahan mengikuti basis masing-masing provider/seri dan bukan sinyal arah.</p>
+    <div className="market-terminal-grid">
+      <article className="market-terminal-cell">
+        <div className="market-terminal-label"><span>BTC</span><span>{bitcoin ? qualityLabel(bitcoin.quality) : "BELUM ADA"}</span></div>
+        <strong>{bitcoinValue !== null ? formatMoney(bitcoinValue) : "—"}</strong>
+        <TerminalChange value={observationChangePercent(bitcoin)} />
+        <small>{bitcoin ? `CoinGecko · ${relativeTimeID(bitcoin.observedAt)}` : "Harga spot belum tersedia"}</small>
       </article>
-      <article className="quick-glance-card">
-        <span className="quick-glance-label">Gold</span>
-        <strong>{gold ? formatMoney(gold.value) : "—"}</strong>
-        <small>{gold ? `COMEX futures · ${relativeTimeID(gold.observedAt)}` : "Harga belum tersedia"}</small>
+      <article className="market-terminal-cell">
+        <div className="market-terminal-label"><span>GOLD</span><span>{gold ? qualityLabel(gold.quality) : "BELUM ADA"}</span></div>
+        <strong>{goldValue !== null ? formatMoney(goldValue) : "—"}</strong>
+        <TerminalChange value={observationChangePercent(gold)} />
+        <small>{gold ? `Yahoo · GC=F · ${relativeTimeID(gold.observedAt)}` : "Gold futures belum tersedia"}</small>
       </article>
-      <article className="quick-glance-card">
-        <span className="quick-glance-label">Likuiditas stablecoin</span>
-        <strong>{stablecoin ? formatMoney(stablecoin.value) : "—"}</strong>
-        <small>{stablecoin ? `Supply USD stablecoin · ${stablecoin.observedAt.slice(0, 10)}` : "Data belum tersedia"}</small>
+      <article className="market-terminal-cell">
+        <div className="market-terminal-label"><span>DXY</span><span>{dxy ? qualityLabel(dxy.quality) : "BELUM ADA"}</span></div>
+        <strong>{dxyValue !== null ? dxyValue.toFixed(2) : "—"}</strong>
+        <TerminalChange value={observationChangePercent(dxy)} />
+        <small>{dxy ? `Yahoo · DX-Y.NYB · ${relativeTimeID(dxy.observedAt)}` : "Dollar Index belum tersedia"}</small>
       </article>
-      <article className="quick-glance-card">
-        <span className="quick-glance-label">Arus ETF Bitcoin AS</span>
+      <article className="market-terminal-cell">
+        <div className="market-terminal-label"><span>US 10Y</span><span>{us10y ? qualityLabel(us10y.quality) : "BELUM ADA"}</span></div>
+        <strong>{us10y ? formatMacroDisplayValue(us10y.value, String(us10y.metadata?.unit ?? "")) : "—"}</strong>
+        <span className="terminal-change neutral">TREASURY YIELD</span>
+        <small>{us10y ? `FRED · DGS10 · ${relativeTimeID(us10y.observedAt)}` : "Yield 10Y belum tersedia"}</small>
+      </article>
+      <article className="market-terminal-cell">
+        <div className="market-terminal-label"><span>BTC ETF</span><span>{etfFlow ? "TERKONFIRMASI" : "BELUM ADA"}</span></div>
         <strong>{etfFlow ? formatSignedMoney(etfFlow.value) : "—"}</strong>
-        <small>{etfFlow ? `Net flow · ${etfFlow.providerTradingDate}` : "Data terkonfirmasi belum tersedia"}</small>
+        <span className={`terminal-change ${etfFlow ? (etfFlow.value > 0 ? "up" : etfFlow.value < 0 ? "down" : "neutral") : "neutral"}`}>NET FLOW</span>
+        <small>{etfFlow ? `SoSoValue · ${etfFlow.providerTradingDate}` : "Flow matang belum tersedia"}</small>
+      </article>
+      <article className="market-terminal-cell">
+        <div className="market-terminal-label"><span>STABLECOIN</span><span>{stablecoin ? recencyLabel(stablecoin.recency) : "BELUM ADA"}</span></div>
+        <strong>{stablecoin ? formatMoney(stablecoin.value) : "—"}</strong>
+        <TerminalChange value={stablecoinChange} label="1 HARI" />
+        <small>{stablecoin ? `DefiLlama · ${stablecoin.observedAt.slice(0, 10)}` : "Supply USD stablecoin belum tersedia"}</small>
       </article>
     </div>
   </section>;
 }
-
 function StablecoinLiquidityPanel({ data }: { data: DashboardData["stablecoinLiquidity"] }) {
   const latest = data.latest;
   return <section className="panel decision-panel" aria-labelledby="stablecoin-liquidity-title">
@@ -506,7 +540,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
     <div className="dashboard-content" role="tabpanel">
       {activeMenu === "overview" && <>
         <div className="page-intro"><span>DASHBOARD UTAMA</span><h1>Pasar sekarang</h1><p>Mulai dari ringkasan, lalu lihat perubahan terbaru dan event yang berpotensi menggerakkan pasar. Detail teknis disimpan di bagian lanjutan.</p></div>
-        <OverviewQuickGlance data={data} observations={observations} />
+        <OverviewMarketTape data={data} observations={observations} />
         <div className="intraday-priority-grid">
           <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
           <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
