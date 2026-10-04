@@ -1,7 +1,7 @@
 # P365 Massive US Rates Proxy Qualification v0.1
 
 **Checkpoint:** MACRO-RATES-001B continuation  
-**Status:** TECHNICAL LIVE PASS / CURRENT INDIVIDUAL ACCESS NOT AUTHORIZED FOR P365 NON-DISPLAY RUNTIME / ZT+ZN ROLL METHODOLOGY FROZEN  
+**Status:** TECHNICAL RESEARCH PASS / OWNER FREE-ONLY GUARDRAIL / PAID RUNTIME REJECTED / PROXY RISK REVIEW COMPLETE / ZT+TN PREFERRED IF A FREE RIGHTS-COMPATIBLE SOURCE EVER QUALIFIES  
 **Scope:** Existing Massive access as an explicit intraday U.S. rates-pricing proxy candidate  
 **Implementation effect:** Qualification only. No canonical runtime, scheduler, Market Memory write, MOVE wiring, UI, causality, or trading semantics.
 
@@ -183,7 +183,7 @@ Verdict:
 
 > **STRONG TECHNICAL LIVE PASS AS A 10Y TREASURY FUTURES-PRICE PROXY**
 
-## 5. Why ZT + ZN is the preferred proxy pair
+## 5. Why ZT + TN is the preferred proxy pair
 
 For synchronous MOVE evidence, P365 values:
 
@@ -585,3 +585,194 @@ CME:
 
 This checkpoint records the public-contract boundary for repository governance. It is not legal
 advice and does not substitute for a provider/exchange entitlement agreement.
+
+
+## 17. Owner decision — FREE-ONLY rates data
+
+On 4 Oct 2026 the owner explicitly froze the following product constraint:
+
+> P365 must not use paid market-data access for this rates capability.
+
+Therefore:
+
+- Massive Business / CME paid Non-Display entitlement is **not an implementation path**;
+- Twelve Data paid fixed-income entitlement is **not an implementation path**;
+- BrokerTec paid direct-cash entitlement is **not an implementation path** for the current MVP;
+- no paid provider may be activated implicitly as a "temporary" bridge.
+
+If no free source is both semantically defensible and legally compatible with P365's intended
+runtime, intraday rates evidence must remain explicit `MISSING`.
+
+Cost is not a reason to weaken provenance or licensing constraints.
+
+## 18. Proxy risk review — REQUIRED before any free runtime
+
+A futures proxy can be useful only as a bounded factual market-pricing observation. It can also
+mislead P365 if treated as a yield series.
+
+### 18.1 Tenor-fidelity risk — HIGH
+
+The earlier qualification preferred `ZN` because of liquidity.
+
+That is not sufficiently precise for a "10Y" macro interpretation.
+
+CME's current deliverable specifications show:
+
+- `ZT` 2-Year T-Note futures: deliverable remaining maturity approximately 1y9m–2y;
+- `ZN` 10-Year T-Note futures: deliverable remaining maturity approximately 6.5–8y;
+- `TN` Ultra 10-Year futures: original-issue 10Y notes with remaining maturity approximately
+  9y5m–10y.
+
+Therefore `ZN` is materially closer to the intermediate/belly sector than to a pure current
+10Y cash point.
+
+### 18.2 TN live liquidity check
+
+A bounded read-only Massive preview was run only to assess this tenor-risk question.
+
+For the same 1–2 Oct 2026 five-minute test window:
+
+- `TNZ6`: **525 bars**
+- provider volume: **2,029,436**
+- provider transactions: **167,668**
+
+This shows that, in the tested session, the more tenor-faithful `TN` contract did not require
+accepting an obviously illiquid instrument.
+
+The temporary diagnostic route was deleted immediately after the proof and made zero durable
+writes.
+
+### 18.3 Preferred proxy pair if a free lawful source later exists
+
+For economic fidelity, the preferred pair becomes:
+
+- `ZT` — front-end Treasury futures-price proxy;
+- `TN` — 10Y-point Treasury futures-price proxy.
+
+`ZN` remains useful market evidence but must not be labeled as the P365 10Y proxy solely from
+its product marketing name.
+
+### 18.4 CTD / basis / repo risk — HIGH
+
+Treasury futures are physically delivered contracts.
+
+Their price is affected not only by Treasury yield changes, but also by:
+
+- cheapest-to-deliver (CTD) security selection;
+- conversion factors;
+- cash-futures basis;
+- repo/financing conditions;
+- delivery-option value;
+- carry.
+
+CME's Treasury Analytics explicitly calculates a futures-implied yield using the CTD bond,
+conversion factor, accrued interest and delivery settlement assumptions.
+
+Therefore P365 must not convert a futures-price move into an exact cash-yield basis-point move
+without a separately approved CTD methodology.
+
+### 18.5 CTD-switch risk — HIGH
+
+The economically dominant CTD security may change as rates, repo conditions or delivery
+economics change.
+
+A futures price can therefore change sensitivity even when the contract ticker does not change.
+
+Exact cash-yield interpretation is prohibited.
+
+### 18.6 Duration / DV01 comparability risk — HIGH
+
+Raw percent price changes in `ZT` and `TN` do not have equivalent yield sensitivity.
+
+P365 must not infer:
+
+- a 2s10s curve steepening/flattening magnitude;
+- relative basis-point repricing;
+- "front end moved more than long end"
+
+from raw percentage price changes alone.
+
+A later curve interpretation would require an explicit DV01/yield methodology.
+
+### 18.7 Roll risk — HIGH
+
+Different quarterly contracts have different price levels and basis.
+
+Existing frozen rules remain:
+
+- select using only prior completed-session information;
+- keep one ticker fixed for the target session;
+- roll forward only;
+- never compute a price return across different native tickers;
+- differing tickers => `ROLL_BOUNDARY`.
+
+No back-adjusted/continuous futures series is authorized.
+
+### 18.8 Market-hours mismatch — MEDIUM/HIGH
+
+Treasury futures trade nearly around the clock on weekdays but do not cover the entire 24/7 BTC
+week.
+
+A material BTC move during a Treasury-closed period cannot be explained by manufacturing a
+stale rates proxy.
+
+Required output in that case:
+
+`INTRADAY_RATES_EVIDENCE_UNAVAILABLE`
+
+### 18.9 Sparse/no-trade risk — MEDIUM
+
+No-trade intervals must remain missing.
+
+No forward-fill, zero-fill or interpolation is allowed for the MOVE hot path.
+
+### 18.10 Stress/basis-dislocation risk — HIGH
+
+During market stress, Treasury futures may be valuable precisely because they react rapidly, but
+cash-futures basis and funding mechanics can also become unusually important.
+
+Therefore synchronous futures repricing is evidence of **rates-market repricing**, not proof of
+the exact cash-yield move or its cause.
+
+### 18.11 Causality risk — HIGH
+
+Even a perfectly aligned Treasury futures move does not establish:
+
+`rates caused BTC/Gold`
+
+The allowed role is supporting/contradicting synchronous evidence only.
+
+`causalAttribution = NOT_EVALUATED` remains mandatory.
+
+### 18.12 Real-yield and Fed-path substitution risk — PROHIBITED
+
+ZT/TN may not substitute for:
+
+- `DFII10` / intraday real yield;
+- breakeven inflation;
+- Fed meeting probability;
+- OIS/SOFR/FedWatch policy path.
+
+Those remain separate evidence families.
+
+## 19. Proxy acceptance policy — FREE SOURCE ONLY
+
+A future free provider may be considered only if all conditions pass:
+
+1. no paid subscription or exchange entitlement is required;
+2. provider terms permit the intended recurring/internal/durable use;
+3. exact native contract identity is available;
+4. `ZT` and `TN` have adequate completed-bar coverage;
+5. no-trade intervals remain missing;
+6. roll logic is point-in-time and session-locked;
+7. exact ticker lineage is durable;
+8. no futures-price-to-cash-yield conversion occurs;
+9. no raw ZT-vs-TN percent comparison is used as a curve metric;
+10. output labels explicitly say **Treasury futures-price proxy**;
+11. causal attribution remains `NOT_EVALUATED`.
+
+Until a free source passes every gate:
+
+> **DO NOT ACTIVATE AN INTRADAY RATES PROXY.**
+
+Daily Treasury/FRED remains the canonical slow factual rates layer.
