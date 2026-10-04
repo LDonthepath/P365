@@ -27,6 +27,7 @@ export type CatalystWireReadModel = {
   items: CatalystWireItem[];
   discoveryFeedAt: string | null;
   discoveryStatus: CatalystDiscoveryStatus;
+  primaryItemCount: number;
   mediaItemCount: number;
   discoveryItemCount: number;
 };
@@ -174,16 +175,20 @@ function gdeltItems(evidence: Evidence[], asOf: string): {
     .filter(validTimestamp)
     .sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
 
-  const discoveryStatus: CatalystDiscoveryStatus = !discoveryFeedAt
+  const feedAgeMs = discoveryFeedAt
+    ? Date.parse(asOf) - Date.parse(discoveryFeedAt)
+    : null;
+  const discoveryStatus: CatalystDiscoveryStatus = feedAgeMs === null
     ? "UNAVAILABLE"
-    : Date.parse(asOf) - Date.parse(discoveryFeedAt) <= GDELT_WIRE_MAX_AGE_MS
+    : feedAgeMs >= 0 && feedAgeMs <= GDELT_WIRE_MAX_AGE_MS
       ? "CURRENT"
       : "STALE";
 
   const currentSnapshots = discoveryStatus === "CURRENT"
-    ? latest.filter(({ snapshot }) =>
-        Date.parse(asOf) - Date.parse(snapshot.feedLastBuildAt) <= GDELT_WIRE_MAX_AGE_MS
-      )
+    ? latest.filter(({ snapshot }) => {
+        const ageMs = Date.parse(asOf) - Date.parse(snapshot.feedLastBuildAt);
+        return ageMs >= 0 && ageMs <= GDELT_WIRE_MAX_AGE_MS;
+      })
     : [];
 
   const items = currentSnapshots.flatMap(({ evidence: row, snapshot }) =>
@@ -266,6 +271,7 @@ export function buildCatalystWireReadModel(input: {
     items,
     discoveryFeedAt: discovery.discoveryFeedAt,
     discoveryStatus: discovery.discoveryStatus,
+    primaryItemCount: items.filter((item) => item.sourceRole === "PRIMARY").length,
     mediaItemCount: items.filter((item) => item.sourceRole === "MEDIA").length,
     discoveryItemCount: items.filter((item) => item.sourceRole === "DISCOVERY").length,
   };
