@@ -1,6 +1,7 @@
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinBackfillRange, DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { FredObservationQuery, MacroObservationInput } from "../data/fred";
+import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
 import { soSoValueBackfillRangeError, type SoSoValueBtcEtfFlowBackfillRange, type SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
 import { cftcGoldCotBackfillRangeError, type CftcGoldCotBackfillRange, type CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { ProviderId, ProviderResult } from "../data/types";
