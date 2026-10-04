@@ -2,11 +2,14 @@ import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinBackfillRange, DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { FredObservationQuery, MacroObservationInput } from "../data/fred";
 import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
+import type { BinanceSpotKline } from "../data/binance-spot-flow";
 import { soSoValueBackfillRangeError, type SoSoValueBtcEtfFlowBackfillRange, type SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
 import { cftcGoldCotBackfillRangeError, type CftcGoldCotBackfillRange, type CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { ProviderId, ProviderResult } from "../data/types";
 import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../domain/normalize";
 import { gdeltGalSnapshotsToEvidence } from "./gdelt-gal-history";
+import { buildBinanceBtcSpotFlowWindow } from "./btc-spot-flow";
+import { btcSpotFlowWindowsToEvidence } from "./btc-spot-flow-history";
 import type { Evidence, Observation } from "../domain/types";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 
@@ -15,7 +18,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS = 35;
 
-export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "defillama", "sosovalue", "cftc", "gdelt"] as const;
+export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "defillama", "sosovalue", "cftc", "gdelt", "binance-spot"] as const;
 export type HistoricalIngestionProvider = typeof HISTORICAL_INGESTION_PROVIDERS[number];
 export type HistoricalIngestionMode = "FORWARD" | "BACKFILL";
 
@@ -40,6 +43,7 @@ export type HistoricalIngestionAcquisition = {
   sosovalue: () => Promise<ProviderResult<SoSoValueBtcEtfFlowObservationInput>>;
   cftc: () => Promise<ProviderResult<CftcGoldCotObservationInput>>;
   gdelt: () => Promise<ProviderResult<GdeltGalFeedSnapshot>>;
+  "binance-spot": () => Promise<ProviderResult<BinanceSpotKline>>;
 };
 
 export type HistoricalIngestionProviderReport = {
@@ -84,7 +88,8 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
   acquisition: HistoricalIngestionAcquisition;
   repositories: CanonicalRepositories;
 }> {
-  const [crypto, cftc, defillama, fred, gdelt, sosovalue, yahoo, repositories] = await Promise.all([
+  const [binanceSpot, crypto, cftc, defillama, fred, gdelt, sosovalue, yahoo, repositories] = await Promise.all([
+    import("../data/binance-spot-flow"),
     import("../data/crypto-market"),
     import("../data/cftc-gold-cot"),
     import("../data/defillama-stablecoins"),
@@ -96,6 +101,7 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
   ]);
   return {
     acquisition: {
+      "binance-spot": () => binanceSpot.fetchBinanceBtcSpotKlines({ limit: 3, acquisitionMode: "FRESH" }),
       coingecko: () => crypto.fetchCryptoMarketObservations(["BTC", "ETH"], "FRESH"),
       fred: () => fred.fetchFredMacroObservations({
         ...options.fred,
@@ -138,6 +144,7 @@ function providerId(provider: HistoricalIngestionProvider): ProviderId {
   if (provider === "sosovalue") return "sosovalue";
   if (provider === "cftc") return "cftc";
   if (provider === "gdelt") return "gdelt";
+  if (provider === "binance-spot") return "binance-spot";
   return "yahoo-finance";
 }
 
@@ -171,6 +178,13 @@ function canonicalize(
         snapshots: result.data as GdeltGalFeedSnapshot[],
         retrievedAt: result.retrievedAt,
       }),
+    };
+  }
+  if (provider === "binance-spot") {
+    const windows = (result.data as BinanceSpotKline[]).map(buildBinanceBtcSpotFlowWindow);
+    return {
+      observations: [],
+      evidence: btcSpotFlowWindowsToEvidence({ windows, retrievedAt: result.retrievedAt }),
     };
   }
   return cryptoMarketToObservations(

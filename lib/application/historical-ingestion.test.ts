@@ -10,6 +10,7 @@ import {
 } from "../data/cftc-gold-cot";
 import type { MacroObservationInput } from "../data/fred";
 import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
+import { BINANCE_SPOT_FLOW_INTERVAL_MS, type BinanceSpotKline } from "../data/binance-spot-flow";
 import {
   SOSOVALUE_ETF_FLOW_COMPLETION_BASIS,
   SOSOVALUE_ETF_FLOW_MATURITY_POLICY,
@@ -22,6 +23,7 @@ import { providerFetchPolicy } from "../data/provider-fetch-policy";
 import { providerResult, type ProviderResult } from "../data/types";
 import { InMemoryEvidenceRepository, InMemoryObservationRepository } from "../repositories/memory";
 import { GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY } from "./gdelt-gal-history";
+import { BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY } from "./btc-spot-flow-history";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 import {
   runHistoricalIngestion,
@@ -183,6 +185,24 @@ function cftcInput(value: number): CftcGoldCotObservationInput {
 }
 
 
+function binanceSpotKline(): BinanceSpotKline {
+  const providerIntervalStartMs = Date.parse("2026-10-04T12:00:00.000Z");
+  return {
+    symbol: "BTCUSDT",
+    providerIntervalStartMs,
+    providerCloseTimeMs: providerIntervalStartMs + BINANCE_SPOT_FLOW_INTERVAL_MS - 1,
+    open: 100000,
+    high: 101000,
+    low: 99000,
+    close: 100500,
+    baseVolumeBtc: 10,
+    quoteVolumeUsdt: 1005000,
+    tradeCount: 200,
+    takerBuyBaseVolumeBtc: 6,
+    takerBuyQuoteVolumeUsdt: 603000,
+  };
+}
+
 function gdeltSnapshot(asset: "BTC" | "GOLD"): GdeltGalFeedSnapshot {
   return {
     asset,
@@ -242,6 +262,7 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
     sosovalue: record("sosovalue", providerResult("sosovalue", "EMPTY", [])),
     cftc: record("cftc", providerResult("cftc", "EMPTY", [])),
     gdelt: record("gdelt", providerResult("gdelt", "EMPTY", [])),
+    "binance-spot": record("binance-spot", providerResult("binance-spot", "EMPTY", [])),
   };
 }
 
@@ -495,6 +516,43 @@ async function main(): Promise<void> {
     ["BTC", "GOLD"],
   );
 
+  const spotFlowStore = repositories();
+  const spotFlowAcquisition = acquisition([]);
+  spotFlowAcquisition["binance-spot"] = async () => providerResult(
+    "binance-spot",
+    "SUCCESS",
+    [binanceSpotKline()],
+    undefined,
+    undefined,
+    "2026-10-04T12:05:02.000Z",
+  );
+  const spotFlowForward = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["binance-spot"] },
+    { acquisition: spotFlowAcquisition, repositories: spotFlowStore.repositories },
+  );
+  assert.equal(spotFlowForward.status, "SUCCESS");
+  assert.equal(spotFlowForward.providers[0].acquired, 1);
+  assert.equal(spotFlowForward.providers[0].normalized, 1);
+  assert.equal(spotFlowForward.persistedObservations, 0);
+  assert.equal(spotFlowForward.persistedEvidence, 1);
+
+  await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["binance-spot"] },
+    { acquisition: spotFlowAcquisition, repositories: spotFlowStore.repositories },
+  );
+  const spotFlowHistory = await spotFlowStore.evidence.findHistory({
+    sourceId: "binance-spot",
+    kind: "OBSERVATION",
+    metadataEquals: {
+      methodology: BINANCE_BTC_SPOT_FLOW_DURABLE_METHODOLOGY,
+      pair: "BTCUSDT",
+    },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(spotFlowHistory.length, 1, "repeated same-window Binance flow ingestion must remain idempotent");
+  assert.equal(spotFlowHistory[0]?.metadata?.netTakerBaseVolumeBtc, 2);
+
   const cftcFailureAcquisition = acquisition([]);
   cftcFailureAcquisition.cftc = async () => providerResult("cftc", "ERROR", [], "CFTC unavailable");
   const cftcIsolated = await runHistoricalIngestion(
@@ -581,6 +639,10 @@ async function main(): Promise<void> {
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=cftc")),
     { ok: true, options: { mode: "FORWARD", providers: ["cftc"] } },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=binance-spot")),
+    { ok: true, options: { mode: "FORWARD", providers: ["binance-spot"] } },
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=cftc&from=2025-09-28&to=2026-10-02")),
