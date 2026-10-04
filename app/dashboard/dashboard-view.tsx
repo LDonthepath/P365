@@ -177,14 +177,6 @@ function qualityLabel(value: DataQuality): string {
   return "TERSEDIA";
 }
 
-function findMarketValue(observations: Observation[], seriesKey: string): { value: number; observedAt: string; quality: DataQuality } | null {
-  const item = observations.find((observation) => observation.subject === seriesKey);
-  if (!item) return null;
-  const value = numberValue(item.value);
-  if (value === null) return null;
-  return { value, observedAt: item.observedAt, quality: item.quality };
-}
-
 function observationChangePercent(observation: Observation | undefined): number | null {
   const raw = observation?.metadata?.changePct;
   if (raw === null || raw === undefined) return null;
