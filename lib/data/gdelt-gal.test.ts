@@ -108,6 +108,25 @@ test("GDELT GAL de-duplicates exact URLs", async () => {
   assert.equal(result.data[0].candidates.length, 1);
 });
 
+
+test("GDELT GAL marks candidate coverage truncated without losing total match count", async () => {
+  const result = await fetchGdeltGalCandidateSnapshot(
+    { asset: "BTC", maxCandidates: 1 },
+    {
+      now: () => NOW,
+      fetch: async () => new Response(rss(`
+        <item><title>Bitcoin headline one</title><link>https://example.com/btc-1</link><pubDate>4 Oct 2026 11:58:00 +0000</pubDate></item>
+        <item><title>Bitcoin headline two</title><link>https://example.com/btc-2</link><pubDate>4 Oct 2026 11:57:00 +0000</pubDate></item>
+      `), { status: 200 }),
+    },
+  );
+
+  assert.equal(result.status, "SUCCESS");
+  assert.equal(result.data[0].candidates.length, 1);
+  assert.equal(result.data[0].matchingCandidateCount, 2);
+  assert.equal(result.data[0].candidateCoverage, "TRUNCATED");
+});
+
 test("GDELT GAL maps upstream HTTP failure through ProviderResult", async () => {
   const result = await fetchGdeltGalCandidateSnapshot(
     { asset: "BTC" },
