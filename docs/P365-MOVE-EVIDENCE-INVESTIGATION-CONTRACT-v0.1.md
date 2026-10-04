@@ -381,7 +381,9 @@ Series:
 - USDJPY;
 - USDCNH.
 
-Each start/end point is independently selected inside the frozen **±120 second** alignment tolerance.
+Each material horizon retains its own synchronous fingerprint. Its start/end points are independently selected inside the frozen **±120 second** alignment tolerance.
+
+The union investigation window is used for catalysts/background scope; it does not collapse 15m/30m/60m/120m fingerprints into one arbitrary return.
 
 Rules:
 
@@ -513,3 +515,104 @@ The bundle ID is deterministic from the factual bundle content.
 - non-material MOVE rejection;
 - unchanged `causalAttribution = NOT_EVALUATED`.
 
+
+## 12. MOVE-002B read-only production replay proof — 2 Oct 2026
+
+Because Vercel preview builds reached the Hobby build-rate limit during this checkpoint, the
+temporary preview diagnostic route was removed and no attempt was made to bypass the platform
+limit.
+
+A direct **read-only** production Market Memory audit instead verified the repository inputs
+that MOVE-002B consumes. No rows were written or changed.
+
+Replay knowledge cutoff:
+
+`2026-10-02T04:45:00Z`
+
+Target MOVE end:
+
+`2026-10-02T04:30:30Z`
+
+The 04:45 cutoff is deliberate: it preserves point-in-time knowledge while allowing the
+existing Yahoo cadence to have retrieved the DXY/Gold end observations at approximately 04:42.
+
+### 12.1 Per-horizon synchronous fingerprint
+
+Nearest point-in-time eligible rows inside ±120 seconds reproduce:
+
+| Series | 15m | 30m | 60m | 120m |
+|---|---:|---:|---:|---:|
+| BTC spot | +1.4988% | +1.4691% | +1.7750% | +2.1669% |
+| ETH spot | +1.0956% | +0.9480% | +1.1012% | +1.2231% |
+| DXY | -0.0177% | +0.0020% | -0.0186% | -0.1049% |
+| Gold futures | +0.1162% | +0.2232% | +0.3328% | +0.7472% |
+
+Alignment errors were:
+
+- BTC: 0–10s;
+- ETH: 0–10s;
+- DXY: 82–89s for the sampled points;
+- Gold: 80–89s for the sampled points.
+
+All remain inside the frozen ±120s policy.
+
+USDJPY and USDCNH have no point-in-time rows for this historical case because
+ASIA-MACRO-001A/001B durable acquisition began later. MOVE-002B therefore reports those series
+as `INSUFFICIENT_DATA`; it does not backfill or substitute later observations.
+
+For the current six-series synchronous family, each reproduced horizon is therefore
+`PARTIAL` rather than falsely `COMPLETE`.
+
+### 12.2 Scheduled catalysts
+
+Canonical Event history returned zero Events scheduled inside:
+
+`02:30:20Z → 04:30:30Z`
+
+under the same replay cutoff.
+
+That reproduces MOVE-002A's finding that there was no same-window scheduled catalyst. It does
+not rule out unscheduled information.
+
+### 12.3 Slow background
+
+Knowable by 04:45Z:
+
+- USD stablecoin market cap:
+  - observed 2 Oct 00:00Z;
+  - retrieved 2 Oct 01:17Z;
+  - value approximately USD 311.47bn;
+- latest matured US spot BTC ETF flow:
+  - provider trading date 29 Sep;
+  - retrieved 1 Oct;
+  - approximately +USD 66.19m.
+
+These remain background only.
+
+### 12.4 Explicit unresolved evidence
+
+The replay does not manufacture evidence for:
+
+- BTC derivatives historical MOVE window;
+- Binance spot taker-flow historical MOVE window;
+- spot/perp order-book historical geometry;
+- GDELT historical unscheduled catalysts;
+- intraday rates.
+
+Rates remain:
+
+`MISSING_HIGH_VALUE_EVIDENCE / FREE_ONLY_NO_APPROVED_RUNTIME`
+
+The resulting product boundary remains:
+
+`EVIDENCE_INCOMPLETE / CAUSAL_ATTRIBUTION_NOT_EVALUATED`
+
+### 12.5 Verification boundary
+
+The first runtime source file previously compiled successfully in a Vercel preview before the
+account reached its build-rate limit. Later exact-head automatic previews were blocked by the
+Vercel account rate limit rather than a reported TypeScript/Next.js compile error.
+
+The checkpoint does not reinterpret a build-rate-limit status as a successful exact-head
+deployment. The repository test and production replay remain the available verification
+evidence until Vercel accepts another preview build.
