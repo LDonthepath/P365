@@ -1,8 +1,8 @@
 # P365 BTC Spot Flow Source Qualification v0.1
 
-**Checkpoint:** SPOT-FLOW-001A + SPOT-FLOW-001B  
-**Status:** BINANCE LIVE-QUALIFIED / DURABLE FORWARD RUNTIME IMPLEMENTED / PRODUCTION ACTIVATION PENDING / BYBIT VERCEL-EGRESS UNAVAILABLE  
-**Scope:** BTC spot taker-flow evidence plus forward durable history  
+**Checkpoint:** SPOT-FLOW-001A + SPOT-FLOW-001B + SPOT-FLOW-001C  
+**Status:** BINANCE PRODUCTION ACTIVE / DURABLE FORWARD HISTORY ACCUMULATING / BYBIT VERCEL-EGRESS UNAVAILABLE  
+**Scope:** BTC spot taker-flow evidence plus production-active forward durable history  
 **Owner approval:** Binance Spot + Bybit Spot provider expansion approved 4 Oct 2026
 
 ## 1. Product question
@@ -313,3 +313,88 @@ SPOT-FLOW-001B does not activate:
 - trading signals.
 
 Production activation is a separate checkpoint after merge and runtime verification.
+
+
+## 11. SPOT-FLOW-001C Production Activation
+
+SPOT-FLOW-001C activates the already-merged SPOT-FLOW-001B durable path in production.
+It does not add a provider, change the frozen 5m flow meaning, enable BACKFILL, or activate
+higher-order interpretation.
+
+Production baseline:
+
+- merged runtime: `main@730ea95f2ca3174d42f7e3a271e10881a387b0f0`;
+- production Vercel deployment for that SHA: READY;
+- pre-activation durable Binance spot-flow rows: `0`;
+- existing scheduler owner: Supabase `pg_cron` job id `2`, `p365-market-fast`;
+- existing cadence retained: `2-57/5 * * * *`;
+- no duplicate scheduler created.
+
+The existing job command was altered in place from:
+
+`coingecko,gold,dxy,usdjpy,usdcnh,gdelt`
+
+to:
+
+`coingecko,gold,dxy,usdjpy,usdcnh,gdelt,binance-spot`
+
+### 11.1 Natural production proof
+
+The first naturally elapsed permanent scheduler run after activation was:
+
+- pg_cron run id: `34105`;
+- start: `2026-10-04T12:27:00.116276Z`;
+- pg_cron status: `succeeded`;
+- pg_net request id: `34087`;
+- HTTP status: `200`;
+- P365 ingestion status: `SUCCESS`;
+- Binance Spot acquired: `2`;
+- normalized: `2`;
+- persisted Observations: `0`;
+- persisted Evidence: `2`.
+
+The two completed factual windows were:
+
+- observedAt `2026-10-04T12:20:00.000Z`: net taker `-11.4206 BTC`,
+  taker-buy share approximately `31.25%`, trade count `8,189`;
+- observedAt `2026-10-04T12:25:00.000Z`: net taker approximately
+  `-4.6172 BTC`, taker-buy share approximately `40.76%`, trade count `3,865`.
+
+These are proof samples, not market conclusions.
+
+### 11.2 Idempotency and point-in-time proof
+
+A controlled authenticated repeat request used pg_net request id `34088` and returned
+HTTP `200 / SUCCESS`. Binance again acquired and normalized the same two completed windows,
+while Market Memory remained exactly:
+
+- `2` durable rows;
+- `2` distinct window keys;
+- `2` distinct Evidence IDs.
+
+This proves unchanged refetch idempotency at the production persistence boundary.
+
+Both initial rows were retrieved at `2026-10-04T12:27:02.170Z`.
+Historical cutoff verification returned:
+
+- `0` eligible rows at or before `2026-10-04T12:27:02.169Z`;
+- `2` eligible rows at or before `2026-10-04T12:27:02.170Z`.
+
+The retrieval-time knowledge boundary therefore remains preserved.
+
+### 11.3 Post-activation boundary
+
+No Vercel error/fatal runtime logs were observed after activation through the verification
+window. Two earlier dashboard Observation-history timeout errors at approximately
+`12:19Z` belonged to the prior production deployment and predated SPOT-FLOW-001C.
+
+Still inactive:
+
+- Binance historical BACKFILL;
+- Bybit persistence;
+- cross-venue or market-wide spot-flow aggregation;
+- MOVE-002B historical spot-flow consumption;
+- dashboard/UI;
+- causal attribution;
+- State / Regime / Risk / Intelligence;
+- trading signals.
