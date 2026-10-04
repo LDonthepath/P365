@@ -9,6 +9,7 @@ import {
   type CftcGoldCotObservationInput,
 } from "../data/cftc-gold-cot";
 import type { MacroObservationInput } from "../data/fred";
+import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
 import {
   SOSOVALUE_ETF_FLOW_COMPLETION_BASIS,
   SOSOVALUE_ETF_FLOW_MATURITY_POLICY,
@@ -20,6 +21,7 @@ import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
 import { providerFetchPolicy } from "../data/provider-fetch-policy";
 import { providerResult, type ProviderResult } from "../data/types";
 import { InMemoryEvidenceRepository, InMemoryObservationRepository } from "../repositories/memory";
+import { GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY } from "./gdelt-gal-history";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 import {
   runHistoricalIngestion,
@@ -180,13 +182,41 @@ function cftcInput(value: number): CftcGoldCotObservationInput {
   };
 }
 
-function repositories(): { repositories: CanonicalRepositories; observations: InMemoryObservationRepository } {
+
+function gdeltSnapshot(asset: "BTC" | "GOLD"): GdeltGalFeedSnapshot {
+  return {
+    asset,
+    feedLastBuildAt: "2026-10-04T12:00:00.000Z",
+    feedWindowStartAt: "2026-10-04T11:45:00.000Z",
+    coverage: "ROLLING_15_MINUTES",
+    totalFeedItems: 500,
+    invalidItemCount: 2,
+    candidates: asset === "BTC"
+      ? [{
+          asset,
+          url: "https://example.com/bitcoin",
+          title: "Bitcoin rises after macro headline",
+          domain: "example.com",
+          providerDate: "2026-10-04T11:59:00.000Z",
+          providerDateSemantics: "PUBLICATION_OR_FIRST_SEEN",
+        }]
+      : [],
+  };
+}
+
+function repositories(): {
+  repositories: CanonicalRepositories;
+  observations: InMemoryObservationRepository;
+  evidence: InMemoryEvidenceRepository;
+} {
   const observations = new InMemoryObservationRepository();
+  const evidence = new InMemoryEvidenceRepository();
   return {
     observations,
+    evidence,
     repositories: {
       observations,
-      evidence: new InMemoryEvidenceRepository(),
+      evidence,
       events: { save: async () => undefined, saveMany: async () => undefined, findById: async () => null },
       contexts: { save: async () => undefined, saveMany: async () => undefined, findById: async () => null },
     },
@@ -209,6 +239,7 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
     defillama: record("defillama", providerResult("defillama", "EMPTY", [])),
     sosovalue: record("sosovalue", providerResult("sosovalue", "EMPTY", [])),
     cftc: record("cftc", providerResult("cftc", "EMPTY", [])),
+    gdelt: record("gdelt", providerResult("gdelt", "EMPTY", [])),
   };
 }
 
@@ -422,6 +453,46 @@ async function main(): Promise<void> {
   assert.equal(cftcHistory[0]?.quality, "UNKNOWN");
   assert.equal(cftcHistory[0]?.semantics?.participant, "MANAGED_MONEY");
 
+
+  const gdeltStore = repositories();
+  const gdeltAcquisition = acquisition([]);
+  gdeltAcquisition.gdelt = async () => providerResult(
+    "gdelt",
+    "SUCCESS",
+    [gdeltSnapshot("BTC"), gdeltSnapshot("GOLD")],
+    undefined,
+    undefined,
+    "2026-10-04T12:00:05.000Z",
+  );
+  const gdeltForward = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["gdelt"] },
+    { acquisition: gdeltAcquisition, repositories: gdeltStore.repositories },
+  );
+  assert.equal(gdeltForward.status, "SUCCESS");
+  assert.equal(gdeltForward.providers[0].acquired, 2);
+  assert.equal(gdeltForward.providers[0].normalized, 2);
+  assert.equal(gdeltForward.persistedObservations, 0);
+  assert.equal(gdeltForward.persistedEvidence, 2);
+
+  await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["gdelt"] },
+    { acquisition: gdeltAcquisition, repositories: gdeltStore.repositories },
+  );
+  const gdeltHistory = await gdeltStore.evidence.findHistory({
+    sourceId: "gdelt",
+    kind: "NEWS",
+    metadataEquals: {
+      methodology: GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
+    },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(gdeltHistory.length, 2, "repeated same-build GDELT ingestion must remain idempotent");
+  assert.deepEqual(
+    gdeltHistory.map((item) => item.metadata?.gdeltAsset).sort(),
+    ["BTC", "GOLD"],
+  );
+
   const cftcFailureAcquisition = acquisition([]);
   cftcFailureAcquisition.cftc = async () => providerResult("cftc", "ERROR", [], "CFTC unavailable");
   const cftcIsolated = await runHistoricalIngestion(
@@ -447,8 +518,8 @@ async function main(): Promise<void> {
   });
 
   assert.deepEqual(
-    parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=coingecko,gold,dxy,usdjpy,usdcnh")),
-    { ok: true, options: { mode: "FORWARD", providers: ["coingecko", "gold", "dxy", "usdjpy", "usdcnh"] } },
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=coingecko,gold,dxy,usdjpy,usdcnh,gdelt")),
+    { ok: true, options: { mode: "FORWARD", providers: ["coingecko", "gold", "dxy", "usdjpy", "usdcnh", "gdelt"] } },
   );
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=coingecko,unknown")),
