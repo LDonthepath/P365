@@ -674,7 +674,7 @@ treated as proof of Category C-2, storage, or derived-output rights.
 
 ### Roll methodology
 
-The canonical ZT/ZN proxy selection is now frozen:
+The canonical proxy selection methodology is frozen and, after tenor-risk review, applies to the preferred `ZT/TN` pair:
 
 1. point-in-time active `type=single` contracts only;
 2. target-session selection uses only the most recent **completed prior CBOT session**;
