@@ -441,3 +441,228 @@
     min-height:0;
   }
 }
+
+
+/* NEWS-002A — compact factual catalyst wire using existing P365 news evidence */
+.overviewLayout :global(.catalyst-wire){
+  margin-bottom:20px;
+  border:1px solid var(--line);
+  background:#0c100e;
+}
+
+.overviewLayout :global(.catalyst-wire-head){
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+  padding:16px;
+  border-bottom:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.catalyst-wire-kicker){
+  display:block;
+  color:var(--lime);
+  font:600 9px/1.2 'DM Mono',monospace;
+  letter-spacing:.12em;
+}
+
+.overviewLayout :global(.catalyst-wire-head h2){
+  margin:6px 0 5px;
+  font-size:1.2rem;
+}
+
+.overviewLayout :global(.catalyst-wire-head p){
+  max-width:760px;
+  margin:0;
+  color:var(--muted);
+  font-size:.82rem;
+  line-height:1.5;
+}
+
+.overviewLayout :global(.catalyst-wire-status){
+  flex:0 0 auto;
+  min-width:150px;
+  text-align:right;
+  font-family:'DM Mono',monospace;
+}
+
+.overviewLayout :global(.catalyst-wire-status strong),
+.overviewLayout :global(.catalyst-wire-status span){
+  display:block;
+}
+
+.overviewLayout :global(.catalyst-wire-status strong){
+  color:var(--text);
+  font-size:9px;
+  letter-spacing:.06em;
+}
+
+.overviewLayout :global(.catalyst-wire-status span){
+  margin-top:5px;
+  color:var(--muted);
+  font-size:8px;
+}
+
+.overviewLayout :global(.catalyst-wire-legend){
+  display:flex;
+  gap:7px;
+  padding:9px 16px;
+  border-bottom:1px solid var(--line-soft);
+  font:600 8px/1 'DM Mono',monospace;
+  letter-spacing:.07em;
+}
+
+.overviewLayout :global(.catalyst-wire-legend span),
+.overviewLayout :global(.source-role){
+  padding:5px 7px;
+  border:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.catalyst-wire-legend .primary),
+.overviewLayout :global(.source-role.primary){
+  color:var(--lime);
+  border-color:rgba(179,255,125,.28);
+  background:rgba(179,255,125,.05);
+}
+
+.overviewLayout :global(.catalyst-wire-legend .media),
+.overviewLayout :global(.source-role.media){
+  color:var(--text);
+}
+
+.overviewLayout :global(.catalyst-wire-legend .discovery),
+.overviewLayout :global(.source-role.discovery){
+  color:var(--muted);
+}
+
+.overviewLayout :global(.catalyst-wire-list){
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+.overviewLayout :global(.catalyst-wire-item){
+  min-width:0;
+  padding:14px 16px 13px;
+  border-bottom:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.catalyst-wire-item:nth-child(odd)){
+  border-right:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.catalyst-wire-meta),
+.overviewLayout :global(.catalyst-wire-source),
+.overviewLayout :global(.catalyst-wire-foot){
+  font-family:'DM Mono',monospace;
+}
+
+.overviewLayout :global(.catalyst-wire-meta){
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+  color:var(--muted);
+  font-size:8px;
+  letter-spacing:.04em;
+}
+
+.overviewLayout :global(.catalyst-wire-meta time){
+  margin-left:auto;
+  white-space:nowrap;
+}
+
+.overviewLayout :global(.catalyst-wire-item > a){
+  display:block;
+  margin-top:10px;
+  color:var(--text);
+  font-size:.9rem;
+  font-weight:650;
+  line-height:1.4;
+  text-decoration:none;
+}
+
+.overviewLayout :global(.catalyst-wire-item > a:hover),
+.overviewLayout :global(.catalyst-wire-item > a:focus-visible){
+  color:var(--lime);
+}
+
+.overviewLayout :global(.catalyst-wire-source){
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:9px;
+  color:var(--muted);
+  font-size:8px;
+  line-height:1.35;
+}
+
+.overviewLayout :global(.catalyst-wire-source span:last-child){
+  text-align:right;
+}
+
+.overviewLayout :global(.catalyst-wire-empty){
+  margin:0;
+  padding:18px 16px;
+  color:var(--muted);
+  font-size:.82rem;
+}
+
+.overviewLayout :global(.catalyst-wire-foot){
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 16px;
+  color:var(--muted);
+  font-size:8px;
+  letter-spacing:.05em;
+}
+
+@media(max-width:760px){
+  .overviewLayout :global(.catalyst-wire){
+    margin-bottom:12px;
+  }
+
+  .overviewLayout :global(.catalyst-wire-head){
+    flex-direction:column;
+    gap:10px;
+    padding:14px;
+  }
+
+  .overviewLayout :global(.catalyst-wire-status){
+    min-width:0;
+    text-align:left;
+  }
+
+  .overviewLayout :global(.catalyst-wire-legend){
+    padding:8px 14px;
+    overflow-x:auto;
+  }
+
+  .overviewLayout :global(.catalyst-wire-list){
+    grid-template-columns:1fr;
+  }
+
+  .overviewLayout :global(.catalyst-wire-item){
+    padding:13px 14px;
+  }
+
+  .overviewLayout :global(.catalyst-wire-item:nth-child(odd)){
+    border-right:0;
+  }
+
+  .overviewLayout :global(.catalyst-wire-source){
+    align-items:flex-start;
+    flex-direction:column;
+    gap:4px;
+  }
+
+  .overviewLayout :global(.catalyst-wire-source span:last-child){
+    text-align:left;
+  }
+
+  .overviewLayout :global(.catalyst-wire-foot){
+    flex-direction:column;
+    gap:4px;
+    padding:9px 14px;
+  }
+}

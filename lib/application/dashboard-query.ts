@@ -2,8 +2,8 @@ import "server-only";
 import type { FactualBaseline } from "../domain/baseline";
 import { ingestDashboardData } from "../ingestion/dashboard-ingestion";
 import { normalizeDashboardData, type NormalizedDashboardData } from "../normalization/dashboard-normalization";
-import { historicalEventRepository, historicalObservationRepository } from "../repositories/dashboard-repository";
-import type { Event } from "../domain/types";
+import { historicalEventRepository, historicalEvidenceRepository, historicalObservationRepository } from "../repositories/dashboard-repository";
+import type { Event, Evidence } from "../domain/types";
 import { buildRepositoryBackedMacroFactualBaselines } from "./factual-baseline";
 import { getIntradayEventMonitor, type IntradayEventMonitorResult } from "./intraday-event-monitor";
 import { buildBriefingEventRepricing } from "./briefing-event-repricing";
@@ -22,6 +22,7 @@ import {
   composeFactualMarketBriefing,
   type FactualMarketBriefing,
 } from "./factual-market-briefing";
+import { buildCatalystWireReadModel, type CatalystWireReadModel } from "./catalyst-wire";
 
 export type DashboardData = NormalizedDashboardData & {
   macroBaselines: Record<string, FactualBaseline>;
@@ -34,6 +35,7 @@ export type DashboardData = NormalizedDashboardData & {
   btcEtfFlow: BtcEtfFlowReadModel;
   goldPositioning: GoldPositioningReadModel;
   factualMarketBriefing: FactualMarketBriefing;
+  catalystWire: CatalystWireReadModel;
 };
 
 type DurableHighImpactEventBundle = {
@@ -41,6 +43,26 @@ type DurableHighImpactEventBundle = {
   contextHistory: Event[];
   contextComplete: boolean;
 };
+
+async function getRecentGdeltEvidence(asOf: Date): Promise<Evidence[]> {
+  const from = new Date(asOf.getTime() - 2 * 60 * 60_000).toISOString();
+  try {
+    return await historicalEvidenceRepository.findHistory({
+      sourceId: "gdelt",
+      kind: "NEWS",
+      effectiveAtOnOrAfter: from,
+      retrievedAtOnOrBefore: asOf.toISOString(),
+      order: "DESC",
+      limit: 20,
+    });
+  } catch (error) {
+    console.error(
+      "Durable GDELT Catalyst Wire read failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    return [];
+  }
+}
 
 async function getDurableHighImpactEventBundle(
   now = new Date(),
@@ -137,6 +159,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const stablecoinLiquidityPromise = buildStablecoinLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
   const btcEtfFlowPromise = buildBtcEtfFlowReadModel(dashboardHistoricalObservationRepository, asOf);
   const goldPositioningPromise = buildGoldPositioningReadModel(dashboardHistoricalObservationRepository, asOf);
+  const recentGdeltEvidencePromise = getRecentGdeltEvidence(asOf);
   const ingestion = await ingestDashboardData();
   const normalized = normalizeDashboardData(ingestion);
 
@@ -150,6 +173,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     stablecoinLiquidity,
     btcEtfFlow,
     goldPositioning,
+    recentGdeltEvidence,
   ] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
@@ -163,6 +187,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     stablecoinLiquidityPromise,
     btcEtfFlowPromise,
     goldPositioningPromise,
+    recentGdeltEvidencePromise,
   ]);
 
   const eventRepricing = buildBriefingEventRepricing({
@@ -174,6 +199,13 @@ export async function getDashboardData(): Promise<DashboardData> {
   const confirmation = buildBriefingConfirmation({
     eventRepricing,
     btcEtfFlow,
+  });
+
+  const catalystWire = buildCatalystWireReadModel({
+    macroNews: normalized.macroNews,
+    cryptoNews: normalized.cryptoNews,
+    gdeltEvidence: recentGdeltEvidence,
+    asOf: asOf.toISOString(),
   });
 
   const factualMarketBriefing = composeFactualMarketBriefing({
@@ -201,5 +233,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     btcEtfFlow,
     goldPositioning,
     factualMarketBriefing,
+    catalystWire,
   };
 }
