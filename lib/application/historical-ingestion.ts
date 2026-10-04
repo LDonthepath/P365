@@ -5,6 +5,7 @@ import { soSoValueBackfillRangeError, type SoSoValueBtcEtfFlowBackfillRange, typ
 import { cftcGoldCotBackfillRangeError, type CftcGoldCotBackfillRange, type CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { ProviderId, ProviderResult } from "../data/types";
 import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../domain/normalize";
+import { gdeltGalSnapshotsToEvidence } from "./gdelt-gal-history";
 import type { Evidence, Observation } from "../domain/types";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 
@@ -13,7 +14,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS = 35;
 
-export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "defillama", "sosovalue", "cftc"] as const;
+export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "defillama", "sosovalue", "cftc", "gdelt"] as const;
 export type HistoricalIngestionProvider = typeof HISTORICAL_INGESTION_PROVIDERS[number];
 export type HistoricalIngestionMode = "FORWARD" | "BACKFILL";
 
@@ -37,6 +38,7 @@ export type HistoricalIngestionAcquisition = {
   defillama: () => Promise<ProviderResult<DefiLlamaStablecoinObservationInput>>;
   sosovalue: () => Promise<ProviderResult<SoSoValueBtcEtfFlowObservationInput>>;
   cftc: () => Promise<ProviderResult<CftcGoldCotObservationInput>>;
+  gdelt: () => Promise<ProviderResult<GdeltGalFeedSnapshot>>;
 };
 
 export type HistoricalIngestionProviderReport = {
@@ -81,11 +83,12 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
   acquisition: HistoricalIngestionAcquisition;
   repositories: CanonicalRepositories;
 }> {
-  const [crypto, cftc, defillama, fred, sosovalue, yahoo, repositories] = await Promise.all([
+  const [crypto, cftc, defillama, fred, gdelt, sosovalue, yahoo, repositories] = await Promise.all([
     import("../data/crypto-market"),
     import("../data/cftc-gold-cot"),
     import("../data/defillama-stablecoins"),
     import("../data/fred"),
+    import("../data/gdelt-gal"),
     import("../data/sosovalue-etf-flow"),
     import("../data/yahoo-finance-markets"),
     import("../repositories/dashboard-repository"),
@@ -118,6 +121,10 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
         acquisitionMode: "FRESH",
         ...(options.mode === "BACKFILL" ? { range: options.cftc } : {}),
       }),
+      gdelt: () => gdelt.fetchGdeltGalCandidateSnapshots({
+        assets: ["BTC", "GOLD"],
+        acquisitionMode: "FRESH",
+      }),
     },
     repositories: repositories.canonicalRepositories,
   };
@@ -129,6 +136,7 @@ function providerId(provider: HistoricalIngestionProvider): ProviderId {
   if (provider === "defillama") return "defillama";
   if (provider === "sosovalue") return "sosovalue";
   if (provider === "cftc") return "cftc";
+  if (provider === "gdelt") return "gdelt";
   return "yahoo-finance";
 }
 
@@ -154,6 +162,15 @@ function canonicalize(
   }
   if (provider === "cftc") {
     return cftcGoldCotToCanonicalRecords(result.data as CftcGoldCotObservationInput[]);
+  }
+  if (provider === "gdelt") {
+    return {
+      observations: [],
+      evidence: gdeltGalSnapshotsToEvidence({
+        snapshots: result.data as GdeltGalFeedSnapshot[],
+        retrievedAt: result.retrievedAt,
+      }),
+    };
   }
   return cryptoMarketToObservations(
     result.data as CryptoMarketObservationInput[],
@@ -219,7 +236,7 @@ async function executeProvider(
 ): Promise<HistoricalIngestionProviderReport> {
   const result = await acquire(provider, acquisition);
   const canonical = canonicalize(result, provider, mode);
-  const normalized = canonical.observations.length;
+  const normalized = Math.max(canonical.observations.length, canonical.evidence.length);
 
   if (normalized === 0 && canonical.evidence.length === 0) {
     return {
