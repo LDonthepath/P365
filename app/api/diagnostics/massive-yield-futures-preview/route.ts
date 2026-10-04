@@ -11,7 +11,7 @@ async function massive(path: string, apiKey: string): Promise<Json> {
   return { httpStatus: response.status, ok: response.ok, ...body };
 }
 
-async function probeProduct(productCode: "2YY" | "10Y", apiKey: string): Promise<Json> {
+async function probeProduct(productCode: string, apiKey: string): Promise<Json> {
   const contracts = await massive(
     `/futures/v1/contracts?product_code=${productCode}&active=true&date=2026-10-02&limit=20&sort=ticker.asc`,
     apiKey,
@@ -68,17 +68,18 @@ export async function GET(): Promise<Response> {
     return Response.json({ error: "MASSIVE_API_KEY missing", writesPerformed: false }, { status: 503 });
   }
 
-  const [twoYear, tenYear] = await Promise.all([
-    probeProduct("2YY", apiKey),
-    probeProduct("10Y", apiKey),
+  const [twoYearNote, tenYearNote] = await Promise.all([
+    probeProduct("ZT", apiKey),
+    probeProduct("ZN", apiKey),
   ]);
 
   return Response.json({
     evaluatedAt: new Date().toISOString(),
     writesPerformed: false,
     credentialSource: "existing-server-env",
-    twoYear,
-    tenYear,
+    probeMode: "standard-treasury-futures",
+    twoYearNote,
+    tenYearNote,
   }, {
     headers: {
       "cache-control": "no-store",
