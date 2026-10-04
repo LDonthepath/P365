@@ -1,9 +1,10 @@
 import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
-import type { ContextRepository, EventHistoryQuery, EventRepository, EvidenceRepository, HistoricalEventRepository, HistoricalMarketSnapshotRepository, HistoricalObservationRepository, MarketSnapshotHistoryQuery, MarketSnapshotRepository, ObservationHistoryQuery, ObservationRepository } from "./types";
+import type { ContextRepository, EventHistoryQuery, EventRepository, EvidenceHistoryQuery, EvidenceRepository, HistoricalEvidenceRepository, HistoricalEventRepository, HistoricalMarketSnapshotRepository, HistoricalObservationRepository, MarketSnapshotHistoryQuery, MarketSnapshotRepository, ObservationHistoryQuery, ObservationRepository } from "./types";
 import { compareObservationHistory, observationHistoryTimestamp, observationSemanticSeriesKey, validateObservationHistoryQuery } from "./observation-history";
 import { compareMarketSnapshotHistory, marketSnapshotHistoryTimestamp, validateMarketSnapshotHistoryQuery } from "./snapshot-history";
 import { compareEventHistory, validateEventHistoryQuery } from "./event-history";
+import { compareEvidenceHistory, evidenceHistoryEffectiveAt, validateEvidenceHistoryQuery } from "./evidence-history";
 
 export class InMemoryObservationRepository implements ObservationRepository, HistoricalObservationRepository {
   private readonly items = new Map<string, Observation>();
@@ -125,5 +126,43 @@ export class InMemoryEventRepository implements EventRepository {
     return this.items.get(id) ?? null;
   }
 }
-export class InMemoryEvidenceRepository implements EvidenceRepository { private readonly items = new Map<string, Evidence>(); async save(item: Evidence): Promise<void> { this.items.set(item.id, item); } async saveMany(items: Evidence[]): Promise<void> { items.forEach((item) => this.items.set(item.id, item)); } async findById(id: string): Promise<Evidence | null> { return this.items.get(id) ?? null; } }
+export class InMemoryEvidenceRepository
+implements EvidenceRepository, HistoricalEvidenceRepository {
+  private readonly items = new Map<string, Evidence>();
+
+  async save(item: Evidence): Promise<void> {
+    if (!this.items.has(item.id)) this.items.set(item.id, item);
+  }
+
+  async saveMany(items: Evidence[]): Promise<void> {
+    items.forEach((item) => {
+      if (!this.items.has(item.id)) this.items.set(item.id, item);
+    });
+  }
+
+  async findById(id: string): Promise<Evidence | null> {
+    return this.items.get(id) ?? null;
+  }
+
+  async findHistory(query: EvidenceHistoryQuery): Promise<Evidence[]> {
+    const bounds = validateEvidenceHistoryQuery(query);
+    const matches = [...this.items.values()].filter((evidence) => {
+      if (query.sourceId !== undefined && evidence.sourceId !== query.sourceId) return false;
+      if (query.kind !== undefined && evidence.kind !== query.kind) return false;
+      for (const [key, value] of Object.entries(query.metadataEquals ?? {})) {
+        if (evidence.metadata?.[key] !== value) return false;
+      }
+
+      const effectiveAt = evidenceHistoryEffectiveAt(evidence);
+      const retrievedAt = Date.parse(evidence.retrievedAt);
+      return (bounds.effectiveFrom === undefined || effectiveAt >= bounds.effectiveFrom)
+        && (bounds.effectiveThrough === undefined || effectiveAt <= bounds.effectiveThrough)
+        && (bounds.retrievedThrough === undefined || retrievedAt <= bounds.retrievedThrough);
+    });
+
+    matches.sort(compareEvidenceHistory);
+    if (query.order === "DESC") matches.reverse();
+    return matches.slice(0, query.limit);
+  }
+}
 export class InMemoryContextRepository implements ContextRepository { private readonly items = new Map<string, Context>(); async save(item: Context): Promise<void> { this.items.set(item.id, item); } async saveMany(items: Context[]): Promise<void> { items.forEach((item) => this.items.set(item.id, item)); } async findById(id: string): Promise<Context | null> { return this.items.get(id) ?? null; } }

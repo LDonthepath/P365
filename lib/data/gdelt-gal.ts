@@ -14,6 +14,7 @@ const REQUEST_TIMEOUT_MS = 15_000;
 
 export type GdeltMoveAsset = "BTC" | "GOLD";
 export type GdeltProviderDateSemantics = "PUBLICATION_OR_FIRST_SEEN" | "UNAVAILABLE";
+export type GdeltCandidateCoverage = "COMPLETE" | "TRUNCATED";
 
 export type GdeltGalCandidateArticle = {
   asset: GdeltMoveAsset;
@@ -31,11 +32,19 @@ export type GdeltGalFeedSnapshot = {
   coverage: "ROLLING_15_MINUTES";
   totalFeedItems: number;
   invalidItemCount: number;
+  matchingCandidateCount: number;
+  candidateCoverage: GdeltCandidateCoverage;
   candidates: GdeltGalCandidateArticle[];
 };
 
 export type GdeltGalQuery = {
   asset: GdeltMoveAsset;
+  maxCandidates?: number;
+  acquisitionMode?: ProviderAcquisitionMode;
+};
+
+export type GdeltGalMultiQuery = {
+  assets: GdeltMoveAsset[];
   maxCandidates?: number;
   acquisitionMode?: ProviderAcquisitionMode;
 };
@@ -51,12 +60,13 @@ type RssItem = {
   pubDate?: unknown;
 };
 
-function nonEmptyString(value: unknown, label: string): string {
-  if (typeof value !== "string" || !value.trim()) {
-    throw new Error(`GDELT GAL malformed payload: ${label} must be a non-empty string`);
-  }
-  return value.trim();
-}
+type ValidFeedItem = {
+  title: string;
+  url: string;
+  domain: string;
+  providerDate: string | null;
+  providerDateSemantics: GdeltProviderDateSemantics;
+};
 
 function parseOptionalDate(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -104,14 +114,138 @@ function validateMaxCandidates(value: number | undefined): number {
   return maxCandidates;
 }
 
-export async function fetchGdeltGalCandidateSnapshot(
-  query: GdeltGalQuery,
+function validateAssets(assets: GdeltMoveAsset[]): GdeltMoveAsset[] {
+  const unique = [...new Set(assets)];
+  if (unique.length === 0) throw new Error("GDELT GAL requires at least one asset");
+  if (unique.some((asset) => asset !== "BTC" && asset !== "GOLD")) {
+    throw new Error("GDELT GAL supports only BTC and GOLD");
+  }
+  return unique;
+}
+
+function parseFeed(xml: string): {
+  feedLastBuildAt: string;
+  rawItems: RssItem[];
+} {
+  const parsed = new XMLParser({ ignoreAttributes: false }).parse(xml) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("GDELT GAL malformed payload: RSS root must be an object");
+  }
+
+  const rss = parsed as Record<string, unknown>;
+  const channelCandidate =
+    rss.rss && typeof rss.rss === "object" && !Array.isArray(rss.rss)
+      ? (rss.rss as Record<string, unknown>).channel
+      : undefined;
+  if (!channelCandidate || typeof channelCandidate !== "object" || Array.isArray(channelCandidate)) {
+    throw new Error("GDELT GAL malformed payload: channel must be an object");
+  }
+
+  const channel = channelCandidate as Record<string, unknown>;
+  const feedLastBuildAt = parseOptionalDate(channel.lastBuildDate);
+  if (!feedLastBuildAt) {
+    throw new Error("GDELT GAL malformed payload: lastBuildDate is missing or invalid");
+  }
+
+  const raw = channel.item;
+  const rawItems: RssItem[] = Array.isArray(raw)
+    ? raw as RssItem[]
+    : raw && typeof raw === "object"
+      ? [raw as RssItem]
+      : [];
+
+  return { feedLastBuildAt, rawItems };
+}
+
+function normalizeFeedItems(rawItems: RssItem[]): {
+  items: ValidFeedItem[];
+  invalidItemCount: number;
+} {
+  const items: ValidFeedItem[] = [];
+  let invalidItemCount = 0;
+
+  for (const item of rawItems) {
+    const title = typeof item.title === "string" ? item.title.trim() : "";
+    const url = typeof item.link === "string" ? item.link.trim() : "";
+    if (!title || !url) {
+      invalidItemCount += 1;
+      continue;
+    }
+
+    let domain: string;
+    try {
+      domain = domainFromUrl(url);
+    } catch {
+      invalidItemCount += 1;
+      continue;
+    }
+
+    const providerDate = parseOptionalDate(item.pubDate);
+    items.push({
+      title,
+      url,
+      domain,
+      providerDate,
+      providerDateSemantics: providerDate ? "PUBLICATION_OR_FIRST_SEEN" : "UNAVAILABLE",
+    });
+  }
+
+  return { items, invalidItemCount };
+}
+
+function snapshotForAsset(input: {
+  asset: GdeltMoveAsset;
+  feedLastBuildAt: string;
+  totalFeedItems: number;
+  invalidItemCount: number;
+  items: ValidFeedItem[];
+  maxCandidates: number;
+}): GdeltGalFeedSnapshot {
+  const seenUrls = new Set<string>();
+  const candidates: GdeltGalCandidateArticle[] = [];
+  let matchingCandidateCount = 0;
+
+  for (const item of input.items) {
+    if (!isAssetCandidate(input.asset, item.title, item.url)) continue;
+    if (seenUrls.has(item.url)) continue;
+    seenUrls.add(item.url);
+    matchingCandidateCount += 1;
+
+    if (candidates.length < input.maxCandidates) {
+      candidates.push({
+        asset: input.asset,
+        url: item.url,
+        title: item.title,
+        domain: item.domain,
+        providerDate: item.providerDate,
+        providerDateSemantics: item.providerDateSemantics,
+      });
+    }
+  }
+
+  const lastBuildMs = Date.parse(input.feedLastBuildAt);
+  return {
+    asset: input.asset,
+    feedLastBuildAt: input.feedLastBuildAt,
+    feedWindowStartAt: new Date(lastBuildMs - GDELT_GAL_ROLLING_WINDOW_MS).toISOString(),
+    coverage: "ROLLING_15_MINUTES",
+    totalFeedItems: input.totalFeedItems,
+    invalidItemCount: input.invalidItemCount,
+    matchingCandidateCount,
+    candidateCoverage: matchingCandidateCount > candidates.length ? "TRUNCATED" : "COMPLETE",
+    candidates,
+  };
+}
+
+export async function fetchGdeltGalCandidateSnapshots(
+  query: GdeltGalMultiQuery,
   dependencies: Dependencies = {},
 ): Promise<ProviderResult<GdeltGalFeedSnapshot>> {
   const now = dependencies.now ?? (() => new Date());
   const retrievedAt = now().toISOString();
 
   try {
+    const assets = validateAssets(query.assets);
     const maxCandidates = validateMaxCandidates(query.maxCandidates);
     const response = await (dependencies.fetch ?? fetch)(GDELT_GAL_RSS_URL, {
       headers: { accept: "application/rss+xml, application/xml, text/xml" },
@@ -125,83 +259,26 @@ export async function fetchGdeltGalCandidateSnapshot(
     }
 
     const xml = await response.text();
-    const parsed = new XMLParser({ ignoreAttributes: false }).parse(xml) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("GDELT GAL malformed payload: RSS root must be an object");
-    }
-
-    const rss = parsed as Record<string, unknown>;
-    const channelCandidate =
-      rss.rss && typeof rss.rss === "object" && !Array.isArray(rss.rss)
-        ? (rss.rss as Record<string, unknown>).channel
-        : undefined;
-    if (!channelCandidate || typeof channelCandidate !== "object" || Array.isArray(channelCandidate)) {
-      throw new Error("GDELT GAL malformed payload: channel must be an object");
-    }
-
-    const channel = channelCandidate as Record<string, unknown>;
-    const feedLastBuildAt = parseOptionalDate(channel.lastBuildDate);
-    if (!feedLastBuildAt) {
-      throw new Error("GDELT GAL malformed payload: lastBuildDate is missing or invalid");
-    }
-
-    const rawItems = channel.item;
-    const items: RssItem[] = Array.isArray(rawItems)
-      ? rawItems as RssItem[]
-      : rawItems && typeof rawItems === "object"
-        ? [rawItems as RssItem]
-        : [];
-
-    const deduped = new Map<string, GdeltGalCandidateArticle>();
-    let invalidItemCount = 0;
-    for (const item of items) {
-      const title = typeof item.title === "string" ? item.title.trim() : "";
-      const url = typeof item.link === "string" ? item.link.trim() : "";
-      if (!title || !url) {
-        invalidItemCount += 1;
-        continue;
-      }
-
-      let domain: string;
-      try {
-        domain = domainFromUrl(url);
-      } catch {
-        invalidItemCount += 1;
-        continue;
-      }
-
-      if (!isAssetCandidate(query.asset, title, url)) continue;
-      if (deduped.has(url)) continue;
-
-      const providerDate = parseOptionalDate(item.pubDate);
-      deduped.set(url, {
-        asset: query.asset,
-        url,
-        title,
-        domain,
-        providerDate,
-        providerDateSemantics: providerDate ? "PUBLICATION_OR_FIRST_SEEN" : "UNAVAILABLE",
-      });
-
-      if (deduped.size >= maxCandidates) break;
-    }
-
-    const lastBuildMs = Date.parse(feedLastBuildAt);
-    const snapshot: GdeltGalFeedSnapshot = {
-      asset: query.asset,
-      feedLastBuildAt,
-      feedWindowStartAt: new Date(lastBuildMs - GDELT_GAL_ROLLING_WINDOW_MS).toISOString(),
-      coverage: "ROLLING_15_MINUTES",
-      totalFeedItems: items.length,
-      invalidItemCount,
-      candidates: [...deduped.values()],
-    };
+    const feed = parseFeed(xml);
+    const normalized = normalizeFeedItems(feed.rawItems);
+    const snapshots = assets.map((asset) => snapshotForAsset({
+      asset,
+      feedLastBuildAt: feed.feedLastBuildAt,
+      totalFeedItems: feed.rawItems.length,
+      invalidItemCount: normalized.invalidItemCount,
+      items: normalized.items,
+      maxCandidates,
+    }));
+    const totalCandidates = snapshots.reduce(
+      (sum, snapshot) => sum + snapshot.matchingCandidateCount,
+      0,
+    );
 
     return providerResult(
       GDELT_GAL_SOURCE_ID,
       "SUCCESS",
-      [snapshot],
-      snapshot.candidates.length > 0 ? undefined : "GDELT GAL feed contained no matching asset candidates",
+      snapshots,
+      totalCandidates > 0 ? undefined : "GDELT GAL feed contained no matching asset candidates",
       undefined,
       retrievedAt,
     );
@@ -215,4 +292,15 @@ export async function fetchGdeltGalCandidateSnapshot(
       retrievedAt,
     );
   }
+}
+
+export async function fetchGdeltGalCandidateSnapshot(
+  query: GdeltGalQuery,
+  dependencies: Dependencies = {},
+): Promise<ProviderResult<GdeltGalFeedSnapshot>> {
+  return fetchGdeltGalCandidateSnapshots({
+    assets: [query.asset],
+    maxCandidates: query.maxCandidates,
+    acquisitionMode: query.acquisitionMode,
+  }, dependencies);
 }

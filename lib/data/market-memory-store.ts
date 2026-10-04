@@ -2,6 +2,7 @@ import "server-only";
 import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
 import type { ContextRepository, EventRepository, EvidenceRepository, MarketSnapshotRepository, ObservationRepository } from "../repositories/types";
+import { SupabaseHistoricalEvidenceRepository } from "./supabase-evidence-history";
 import { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
 import { marketMemoryDedupeKey, marketMemoryEffectiveAt, type CanonicalRecord, type MarketMemoryRecordType } from "./market-memory-record";
 
@@ -190,4 +191,6 @@ export const supabaseMarketSnapshotRepository =
   new SupabaseRepository<MarketSnapshot>("SNAPSHOT") satisfies MarketSnapshotRepository;
 
 export const supabaseHistoricalObservationRepository = new SupabaseHistoricalObservationRepository({ config: requireConfig });
+export const supabaseHistoricalEvidenceRepository = new SupabaseHistoricalEvidenceRepository({ config: requireConfig });
 export { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
+export { SupabaseHistoricalEvidenceRepository } from "./supabase-evidence-history";
