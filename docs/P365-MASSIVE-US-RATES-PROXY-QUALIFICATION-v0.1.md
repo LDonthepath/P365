@@ -1,7 +1,7 @@
 # P365 Massive US Rates Proxy Qualification v0.1
 
 **Checkpoint:** MACRO-RATES-001B continuation  
-**Status:** TECHNICAL LIVE PASS FOR STANDARD TREASURY FUTURES / YIELD-FUTURES PARTIAL / DURABLE NON-DISPLAY RIGHTS GATE  
+**Status:** TECHNICAL LIVE PASS / CURRENT INDIVIDUAL ACCESS NOT AUTHORIZED FOR P365 NON-DISPLAY RUNTIME / ZT+ZN ROLL METHODOLOGY FROZEN  
 **Scope:** Existing Massive access as an explicit intraday U.S. rates-pricing proxy candidate  
 **Implementation effect:** Qualification only. No canonical runtime, scheduler, Market Memory write, MOVE wiring, UI, causality, or trading semantics.
 
@@ -258,24 +258,103 @@ methodology provides that value.
 
 No hidden futures-price-to-yield conversion is authorized.
 
-## 7. Contract selection / roll boundary
+## 7. Contract selection / roll methodology — FROZEN v0.1
 
-A future adapter must not hardcode a calendar-nearest contract without liquidity checks.
+A canonical runtime must not hardcode a calendar-nearest contract.
 
-The bounded proof showed active contracts with materially different activity.
+CME Treasury futures use the March/June/September/December quarterly cycle, and liquidity
+migrates from the expiring quarterly contract into the next contract before delivery. CME's
+delivery education explicitly describes large holders rolling forward before delivery and
+moving liquidity into the next quarterly contract.
 
-A future methodology must freeze at least:
+Massive provides point-in-time contract discovery with exact contract ticker, active status,
+last-trade date, settlement date and days-to-maturity, while its aggregate endpoint provides
+trade-derived session volume.
 
-- eligible `type=single` contracts only;
-- active-contract requirement;
-- volume and/or open-interest selection rule;
-- switch/roll rule;
-- minimum liquidity/freshness gate;
-- no splicing across contracts without an explicit continuous-series methodology.
+P365 therefore freezes the following selection methodology.
 
-The sampled proof selected the highest observed session volume only for qualification.
+### 7.1 Eligible universe
 
-That is not yet a production roll methodology.
+For product code `ZT` or `ZN` and target exchange session `S`:
+
+1. query Massive Contracts point-in-time at `date=S`;
+2. retain only:
+   - exact product code;
+   - `active=true`;
+   - `type=single`;
+   - valid ticker;
+   - valid last-trade/settlement metadata where supplied;
+3. combo/calendar-spread tickers are never eligible as the canonical outright proxy.
+
+### 7.2 Information cutoff
+
+Contract selection for session `S` must use only information available before session `S`
+begins.
+
+The liquidity input is the **most recent completed prior CBOT session** `P`, not the current
+forming session and not simply the prior calendar date.
+
+For each eligible contract, P365 reads the provider session aggregate for `P` and uses
+provider-reported contract volume.
+
+This prevents same-session volume from leaking future information into point-in-time selection.
+
+### 7.3 Incumbent and switch rule
+
+Let `I` be the contract selected for the previous session, when one exists and remains active.
+
+Let `C` be the eligible later-expiry contract with the greatest positive completed-session
+volume in `P`.
+
+Rules:
+
+- if no incumbent exists, select the eligible contract with the greatest positive volume in
+  `P`;
+- if the incumbent is still active, retain it unless a **later-expiry** candidate has strictly
+  greater completed-session volume;
+- ties retain the incumbent;
+- once selection advances to a later expiry, it may not roll backward to an earlier expiry;
+- if the incumbent is no longer active, select the eligible later-expiry contract with the
+  greatest positive completed-session volume;
+- if no eligible contract has positive completed-session volume and no valid incumbent can be
+  retained, return `UNAVAILABLE_CONTRACT_SELECTION`.
+
+There is no guessed percentage crossover threshold.
+
+### 7.4 Session lock
+
+The selected ticker is frozen for the entire target exchange session `S`.
+
+P365 must not switch contracts intraday because current-session volume changes.
+
+### 7.5 Roll-boundary comparison rule
+
+Every Observation retains the exact provider-native contract ticker.
+
+If two MOVE comparison points resolve to different contract tickers:
+
+`comparisonStatus = ROLL_BOUNDARY`
+
+and P365 must not compute:
+
+- raw price delta;
+- percentage price move;
+- inferred rate-pressure direction across the boundary.
+
+A separately calibrated continuous-futures methodology would be required before any
+cross-contract splice or adjustment is permitted.
+
+### 7.6 Existing research helper is not normative
+
+The existing research-only `rates-historical-reconstruction.ts` currently chooses the
+nearest-maturity active ZT contract that has observable 1-minute bars.
+
+That behavior remains valid only for its documented research reconstruction scope.
+
+It is **not** the canonical production roll methodology and is not changed by this documentation
+checkpoint.
+
+A future canonical runtime must implement this frozen volume-led point-in-time rule explicitly.
 
 ## 8. Timestamp and missing-bar boundary
 
@@ -294,7 +373,7 @@ No-trade interval:
 P365 must not forward-fill sparse Yield Futures to manufacture synchronous evidence unless a
 separate methodology explicitly permits it.
 
-## 9. Massive access / licensing gate
+## 9. Massive / CME rights conclusion — CURRENT INDIVIDUAL ACCESS FAILS THE P365 RUNTIME GATE
 
 Technical API access is not equivalent to authorization for P365 durable automated use.
 
@@ -310,19 +389,44 @@ P365's intended workflow includes:
 - automated comparison across MOVE windows;
 - machine-generated evidence assessment.
 
-Those uses must be treated as **non-display / application use** for governance purposes until
-Massive/CME licensing explicitly authorizes them.
+Those uses are non-display/application use.
 
-Therefore the existing `MASSIVE_API_KEY` proves technical access only.
+CME's current Non-Display guidance explicitly includes **research and analysis** in Category C-2
+and states that real-time/delayed Information used by an Application requires an appropriate
+Non-Display license. Historical-only use is also licensed, even where reporting/fees differ.
 
-It does **not** authorize P365 to persist or reason over these futures data in production.
+Massive's current individual Market Data Terms separately state that:
 
-Current public Massive Futures pricing also distinguishes individual plans from business plans,
-with dedicated business exchange plans.
+- individual market data is licensed for personal, non-business use;
+- market data is display-use only unless another agreement applies;
+- non-display use and creation of derived works are prohibited unless licensed.
+
+Therefore the current individual `MASSIVE_API_KEY` is not merely "unverified" for P365's
+intended automated runtime:
+
+> **CURRENT INDIVIDUAL ACCESS DOES NOT AUTHORIZE THE PROPOSED P365 NON-DISPLAY WORKFLOW.**
+
+Massive currently advertises a CBOT Business futures plan at USD 999/month with exchange
+assistance, but P365 must not assume that purchasing that plan alone automatically satisfies
+every CME Non-Display permission.
+
+Before production activation, owner-approved written entitlement must explicitly cover, at
+minimum:
+
+1. CBOT ZT and ZN market data;
+2. recurring server-side acquisition;
+3. Category C-2 research/analysis or equivalent permitted non-display use;
+4. internal durable storage/retention needed by Market Memory;
+5. P365-derived factual comparison outputs;
+6. any dashboard/display behavior that exposes raw or derived exchange data.
+
+The compliant commercial path may be Massive Business + CME permissions/ILA or another written
+arrangement directed by Massive/CME. The exact commercial paperwork is outside this
+documentation checkpoint.
 
 ### Verdict
 
-> **MASSIVE TREASURY FUTURES = TECHNICAL LIVE PASS / DURABLE NON-DISPLAY RIGHTS GATE**
+> **MASSIVE TREASURY FUTURES = TECHNICAL LIVE PASS / CURRENT INDIVIDUAL RIGHTS FAIL / BUSINESS-NON-DISPLAY ENTITLEMENT REQUIRED**
 
 No scheduler or Market Memory activation is authorized.
 
@@ -368,25 +472,67 @@ Status remains:
 
 No nominal futures proxy may be relabeled as real yield.
 
-## 13. Production decision gate
+## 13. Canonical proxy contract — FROZEN v0.1
 
-Before any Massive rates runtime may be implemented, all of the following must be true:
+If rights are later approved, the intended canonical factual series are:
 
-1. owner explicitly approves using futures-price evidence as a proxy;
-2. provider/CME rights for server-side recurring non-display use are documented;
-3. durable storage/retention rights are documented;
-4. contract-selection/roll methodology is frozen;
-5. bar-completion and freshness rules are frozen;
-6. missing/no-trade behavior is fail-closed;
-7. exact canonical series identities are approved;
-8. provider rate-limit/backoff semantics are implemented;
-9. no cash-yield or basis-point labels are applied to ZT/ZN prices.
+- `rates.us_treasury_2y_note_futures_price.points`
+- `rates.us_treasury_10y_note_futures_price.points`
 
-Until then:
+Semantics:
 
-`PROXY_TECHNICALLY_QUALIFIED / RUNTIME_BLOCKED_BY_RIGHTS_AND_METHODOLOGY`
+- marketDomain: `RATES`
+- informationClass: `PRICING`
+- jurisdiction: `US`
+- instrument: `FUTURE`
+- tenor: `2Y` or `10Y`
+- unit: provider-native Treasury futures price points, par basis 100
+- provider provenance: `massive`
+- native symbol: exact selected contract ticker, e.g. `ZTZ6` or `ZNZ6`
 
-## 14. Explicit non-goals
+The logical series key describes the economic proxy family; exact contract identity remains
+mandatory provenance on every row.
+
+### 13.1 Bar-completion rule
+
+Massive documents `window_start` as the **beginning** of the aggregation window and states
+that bars are built from trades; no-trade intervals have no bar.
+
+For a 5-minute canonical bar:
+
+`canonical observedAt = provider window_start + 5 minutes`
+
+and the bar is eligible only when:
+
+`provider window_start + 5 minutes <= retrievedAt`
+
+No currently forming bar may be canonicalized.
+
+No-trade behavior remains:
+
+`missing bar != unchanged price != zero move`
+
+No forward-fill is authorized for the MOVE hot path.
+
+## 14. Production decision gate
+
+The technical and methodology gates are now substantially closed.
+
+Before any Massive rates runtime may be implemented:
+
+1. owner explicitly approves futures-price evidence as the intended proxy boundary;
+2. Massive/CME rights for recurring server-side non-display use are documented;
+3. durable storage/retention and derived-output rights are documented;
+4. implementation follows the frozen session-volume roll methodology exactly;
+5. implementation follows the frozen completed-bar/missing-bar rules;
+6. provider 429/backoff behavior remains fail-closed/bounded;
+7. no cash-yield or basis-point labels are applied to ZT/ZN prices.
+
+Current blocker:
+
+`PROXY_TECHNICALLY_QUALIFIED / METHODOLOGY_FROZEN / RUNTIME_BLOCKED_BY_RIGHTS`
+
+## 15. Explicit non-goals
 
 This qualification does not:
 
@@ -406,3 +552,23 @@ This qualification does not:
 
 The temporary preview-only diagnostic route used for live proof must be removed before this PR
 is merge-ready.
+
+
+## 16. Official rights and methodology references — 4 Oct 2026
+
+Massive:
+
+- https://massive.com/legal/market-data-terms-of-service
+- https://massive.com/business-futures
+- https://massive.com/docs/rest/futures/contracts
+- https://massive.com/docs/rest/futures/aggregates
+
+CME:
+
+- https://www.cmegroup.com/market-data/license-data/market-data-policy-education-center.html
+- https://www.cmegroup.com/market-data/distributor/files/cme-group-data-licensing-policy-guidelines-and-non-display-licensing-faq.pdf
+- https://www.cmegroup.com/trading/interest-rates/basics-of-us-treasury-futures.html
+- https://www.cmegroup.com/education/courses/introduction-to-treasuries/learn-about-the-treasuries-delivery-process
+
+This checkpoint records the public-contract boundary for repository governance. It is not legal
+advice and does not substitute for a provider/exchange entitlement agreement.
