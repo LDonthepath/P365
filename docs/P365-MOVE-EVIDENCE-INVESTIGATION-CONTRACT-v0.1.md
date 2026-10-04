@@ -1,11 +1,11 @@
 # P365 Move-Centered Evidence Investigation Contract v0.1
 
-**Checkpoint:** MOVE-002A + MOVE-002B + MOVE-002C  
-**Status:** MOVE-002A MERGED / MOVE-002B READ-ONLY RUNTIME IMPLEMENTED / MOVE-002C BTC SPOT-FLOW REPLAY IMPLEMENTED  
+**Checkpoint:** MOVE-002A + MOVE-002B + MOVE-002C + MOVE-002D  
+**Status:** MOVE-002A MERGED / MOVE-002B READ-ONLY RUNTIME IMPLEMENTED / MOVE-002C BTC SPOT-FLOW REPLAY IMPLEMENTED / MOVE-002D GDELT CATALYST REPLAY IMPLEMENTED  
 **Trigger dependency:** MOVE-001C `ContinuousMoveAssessment.status = MATERIAL_MOVE`  
 **Scope:** Evidence organization and coverage qualification for move-driven investigation  
 **Primary MVP targets:** Bitcoin + Gold  
-**Implementation effect:** MOVE-002A defines the contract; MOVE-002B adds the read-only repository-backed evidence bundle runtime; MOVE-002C lets the BTC bundle consume production-active durable Binance spot-flow history under the same point-in-time cutoff. No provider activation, persistence, scheduler, UI, causal engine, State/Regime/Risk/Intelligence, prediction, or trading logic.
+**Implementation effect:** MOVE-002A defines the contract; MOVE-002B adds the read-only repository-backed evidence bundle runtime; MOVE-002C adds durable Binance spot-flow replay; MOVE-002D adds durable GDELT BTC/Gold catalyst replay under the same point-in-time cutoff. No provider activation, persistence, scheduler, UI, causal engine, State/Regime/Risk/Intelligence, prediction, or trading logic.
 
 ## 1. Purpose
 
@@ -719,3 +719,49 @@ Focused regression coverage now verifies:
 - Gold MOVE bundles remain free of BTC market-structure evidence;
 - non-material MOVE rejection;
 - unchanged read-only / no-causality boundaries.
+
+
+## 14. MOVE-002D Durable GDELT Catalyst Replay
+
+MOVE-002D closes the existing durable-news consumption gap without adding acquisition,
+storage or another provider.
+
+For the MOVE target asset (BTC or GOLD), the bundle queries only canonical Evidence with:
+
+- `sourceId = gdelt`;
+- `kind = NEWS`;
+- methodology = `gdelt-gal-durable-snapshot-v1`;
+- matching `gdeltAsset`;
+- `retrievedAt <= assessment.asOf`.
+
+No fresh GDELT request is issued during MOVE investigation.
+
+Replay uses each durable snapshot's source-native rolling-15-minute
+`feedWindowStartAt → feedLastBuildAt` interval. Those intervals are clipped to the MOVE
+investigation window and merged deterministically so coverage is factual:
+
+- `COMPLETE` — durable feed windows cover the full MOVE investigation interval;
+- `PARTIAL` — some but not all of the interval is covered;
+- `EMPTY` — no point-in-time eligible durable feed snapshot overlaps the interval;
+- `BOUNDED_QUERY_LIMIT_REACHED / UNAVAILABLE` — coverage cannot be established safely.
+
+Zero-candidate snapshots remain positive coverage evidence. They mean P365 sampled the
+qualified feed interval and retained no matching asset candidate; they are not converted to
+missing data.
+
+Candidate articles are URL-deduplicated. Provider-dated candidates are retained only when
+their `PUBLICATION_OR_FIRST_SEEN` timestamp falls inside the MOVE investigation window.
+Candidates with no provider date may remain visible only as
+`TIMESTAMP_UNAVAILABLE`; MOVE-002D does not fabricate publication time.
+
+Every retained candidate preserves title, URL, domain, provider-date semantics, the first
+point-in-time snapshot Evidence ID and first P365 retrieval time.
+
+MOVE-002D does not perform article-body scraping, tone/ranking, source-authority scoring,
+driver confirmation, hypothesis scoring or causal attribution. Headline proximity remains
+candidate evidence only.
+
+Pre-NEWS-001D periods remain missing by design; no historical feed is reconstructed from the
+current rolling feed. `evidenceCompleteness = EVIDENCE_INCOMPLETE` and
+`causalAttribution = NOT_EVALUATED` remain unchanged while derivatives, historical
+order-book and free intraday-rates gaps remain unresolved.
