@@ -7,7 +7,7 @@ const SOURCE_ROLE_LABEL: Record<
 > = {
   PRIMARY: "SUMBER RESMI",
   MEDIA: "MEDIA",
-  DISCOVERY: "DISCOVERY",
+  DISCOVERY: "PENEMUAN",
 };
 
 const TIME_BASIS_LABEL: Record<
@@ -15,7 +15,7 @@ const TIME_BASIS_LABEL: Record<
   string
 > = {
   PUBLISHED: "DITERBITKAN",
-  SOURCE_OR_FIRST_SEEN: "WAKTU SUMBER / FIRST-SEEN",
+  SOURCE_OR_FIRST_SEEN: "WAKTU SUMBER / PERTAMA TERLIHAT",
   DISCOVERED: "DITEMUKAN P365",
 };
 
@@ -57,7 +57,7 @@ export function CatalystWirePanel({
       <div className="catalyst-wire-legend" aria-label="Peran sumber berita">
         <span className="primary">SUMBER RESMI</span>
         <span className="media">MEDIA</span>
-        <span className="discovery">DISCOVERY</span>
+        <span className="discovery">PENEMUAN</span>
       </div>
 
       {data.items.length ? (
@@ -90,7 +90,7 @@ export function CatalystWirePanel({
       <div className="catalyst-wire-foot">
         <span>{data.items.length} ITEM DITAMPILKAN</span>
         <span>
-          MEDIA {data.mediaItemCount} · DISCOVERY {data.discoveryItemCount}
+          RESMI {data.primaryItemCount} · MEDIA {data.mediaItemCount} · PENEMUAN {data.discoveryItemCount}
         </span>
       </div>
     </section>
