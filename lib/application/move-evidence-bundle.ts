@@ -65,6 +65,18 @@ export type MoveSynchronousSeriesEvidence = {
   reason?: string;
 };
 
+export type MoveSynchronousHorizonEvidence = {
+  horizonMs: number;
+  startAt: string;
+  endAt: string;
+  state: Extract<
+    MoveEvidenceAvailability,
+    "AVAILABLE_SYNCHRONOUS" | "INSUFFICIENT_DATA" | "UNKNOWN"
+  >;
+  coverage: "COMPLETE" | "PARTIAL" | "EMPTY";
+  series: MoveSynchronousSeriesEvidence[];
+};
+
 export type MoveScheduledCatalyst = {
   eventId: string;
   eventIdentityKey: string | null;
@@ -129,7 +141,7 @@ export type MoveEvidenceBundle = {
     >;
     coverage: "COMPLETE" | "PARTIAL" | "EMPTY";
     alignmentToleranceMs: typeof CROSS_SERIES_ALIGNMENT_TOLERANCE_MS;
-    series: MoveSynchronousSeriesEvidence[];
+    horizons: MoveSynchronousHorizonEvidence[];
   };
   scheduledCatalysts: {
     state: Extract<MoveEvidenceAvailability, "AVAILABLE_CATALYST" | "UNKNOWN">;
@@ -635,34 +647,91 @@ function btcMarketStructure(): MoveEvidenceBundle["cryptoMarketStructure"] {
   };
 }
 
-function investigationWindow(
+type MaterialHorizonWindow = {
+  horizonMs: number;
+  startAt: string;
+  endAt: string;
+};
+
+function materialHorizonWindows(
   assessment: ContinuousMoveAssessment,
-):
-  | {
-      startAt: string;
-      endAt: string;
-      materialHorizonsMs: number[];
-    }
-  | undefined {
+): MaterialHorizonWindow[] | undefined {
   if (assessment.status !== "MATERIAL_MOVE" || !assessment.hasMaterialMove) return undefined;
 
-  const material = assessment.horizons.filter((item) => item.status === "MATERIAL_MOVE");
+  const material = assessment.horizons
+    .filter((item) => item.status === "MATERIAL_MOVE")
+    .sort((left, right) => left.horizonMs - right.horizonMs);
   if (material.length === 0) return undefined;
 
-  const starts = material.flatMap((item) => {
-    const value = item.targetStartObservedAt;
-    if (!value) return [];
-    const parsed = timestamp(value);
-    return parsed === undefined ? [] : [parsed];
-  });
   const end = timestamp(assessment.targetEndObservedAt);
+  if (end === undefined) return undefined;
 
-  if (starts.length !== material.length || end === undefined) return undefined;
+  const windows = material.flatMap((item) => {
+    const start = item.targetStartObservedAt ? timestamp(item.targetStartObservedAt) : undefined;
+    const itemEnd = item.targetEndObservedAt ? timestamp(item.targetEndObservedAt) : undefined;
+    if (start === undefined || itemEnd === undefined || itemEnd !== end) return [];
+    return [{
+      horizonMs: item.horizonMs,
+      startAt: new Date(start).toISOString(),
+      endAt: new Date(end).toISOString(),
+    }];
+  });
+
+  return windows.length === material.length ? windows : undefined;
+}
+
+function investigationWindow(
+  horizons: MaterialHorizonWindow[],
+): {
+  startAt: string;
+  endAt: string;
+  materialHorizonsMs: number[];
+} | undefined {
+  if (horizons.length === 0) return undefined;
+  const starts = horizons.map((item) => timestamp(item.startAt));
+  const end = timestamp(horizons[0].endAt);
+  if (starts.some((value) => value === undefined) || end === undefined) return undefined;
 
   return {
-    startAt: new Date(Math.min(...starts)).toISOString(),
+    startAt: new Date(Math.min(...starts as number[])).toISOString(),
     endAt: new Date(end).toISOString(),
-    materialHorizonsMs: material.map((item) => item.horizonMs).sort((a, b) => a - b),
+    materialHorizonsMs: horizons.map((item) => item.horizonMs),
+  };
+}
+
+async function buildSynchronousHorizon(input: {
+  repository: HistoricalObservationRepository;
+  horizon: MaterialHorizonWindow;
+  asOf: string;
+}): Promise<MoveSynchronousHorizonEvidence> {
+  const series = await Promise.all(SYNCHRONOUS_SERIES.map((definition) =>
+    buildSynchronousSeries({
+      repository: input.repository,
+      definition,
+      startAt: input.horizon.startAt,
+      endAt: input.horizon.endAt,
+      asOf: input.asOf,
+    })));
+
+  const available = series.filter((item) => item.state === "AVAILABLE_SYNCHRONOUS").length;
+  const state: MoveSynchronousHorizonEvidence["state"] =
+    available > 0
+      ? "AVAILABLE_SYNCHRONOUS"
+      : series.some((item) => item.state === "UNKNOWN")
+        ? "UNKNOWN"
+        : "INSUFFICIENT_DATA";
+  const coverage: MoveSynchronousHorizonEvidence["coverage"] =
+    available === series.length
+      ? "COMPLETE"
+      : available > 0
+        ? "PARTIAL"
+        : "EMPTY";
+
+  return {
+    ...input.horizon,
+    state,
+    coverage,
+    series,
   };
 }
 
@@ -671,8 +740,9 @@ export async function buildMoveEvidenceBundle(input: {
   observations: HistoricalObservationRepository;
   events: HistoricalEventRepository;
 }): Promise<MoveEvidenceBundleBuildResult> {
-  const window = investigationWindow(input.assessment);
-  if (!window) {
+  const materialHorizons = materialHorizonWindows(input.assessment);
+  const window = materialHorizons ? investigationWindow(materialHorizons) : undefined;
+  if (!materialHorizons || !window) {
     return {
       status: "NOT_TRIGGERED",
       reason: "MOVE-002B requires a MOVE-001C MATERIAL_MOVE assessment with complete material-horizon lineage.",
@@ -689,12 +759,10 @@ export async function buildMoveEvidenceBundle(input: {
   }
 
   const asset = targetAsset(input.assessment.seriesKey);
-  const [synchronousSeries, scheduledCatalysts, slowBackground] = await Promise.all([
-    Promise.all(SYNCHRONOUS_SERIES.map((definition) => buildSynchronousSeries({
+  const [synchronousHorizons, scheduledCatalysts, slowBackground] = await Promise.all([
+    Promise.all(materialHorizons.map((horizon) => buildSynchronousHorizon({
       repository: input.observations,
-      definition,
-      startAt: window.startAt,
-      endAt: window.endAt,
+      horizon,
       asOf: input.assessment.asOf,
     }))),
     buildScheduledCatalysts({
@@ -710,19 +778,20 @@ export async function buildMoveEvidenceBundle(input: {
     }),
   ]);
 
-  const availableSynchronous = synchronousSeries.filter(
+  const completeHorizons = synchronousHorizons.filter((item) => item.coverage === "COMPLETE").length;
+  const anySynchronous = synchronousHorizons.some(
     (item) => item.state === "AVAILABLE_SYNCHRONOUS",
-  ).length;
+  );
   const synchronousState: MoveEvidenceBundle["synchronousMarket"]["state"] =
-    availableSynchronous > 0
+    anySynchronous
       ? "AVAILABLE_SYNCHRONOUS"
-      : synchronousSeries.some((item) => item.state === "UNKNOWN")
+      : synchronousHorizons.some((item) => item.state === "UNKNOWN")
         ? "UNKNOWN"
         : "INSUFFICIENT_DATA";
   const synchronousCoverage: MoveEvidenceBundle["synchronousMarket"]["coverage"] =
-    availableSynchronous === synchronousSeries.length
+    completeHorizons === synchronousHorizons.length
       ? "COMPLETE"
-      : availableSynchronous > 0
+      : synchronousHorizons.some((item) => item.coverage !== "EMPTY")
         ? "PARTIAL"
         : "EMPTY";
 
@@ -738,7 +807,7 @@ export async function buildMoveEvidenceBundle(input: {
       state: synchronousState,
       coverage: synchronousCoverage,
       alignmentToleranceMs: CROSS_SERIES_ALIGNMENT_TOLERANCE_MS,
-      series: synchronousSeries,
+      horizons: synchronousHorizons,
     },
     scheduledCatalysts,
     slowBackground,
