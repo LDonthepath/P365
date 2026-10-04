@@ -14,12 +14,13 @@ async function massive(path: string, apiKey: string): Promise<Json> {
 async function probeProduct(productCode: "2YY" | "10Y", apiKey: string): Promise<Json> {
   const product = await massive(`/futures/v1/products?product_code=${productCode}&limit=10`, apiKey);
   const contracts = await massive(
-    `/futures/v1/contracts?product_code=${productCode}&active=true&date=2026-10-02&limit=10&sort=days_to_maturity.asc`,
+    `/futures/v1/contracts?product_code=${productCode}&active=true&date=2026-10-02&limit=10&sort=ticker.asc`,
     apiKey,
   );
 
   const results = Array.isArray(contracts.results) ? contracts.results as Array<Record<string, unknown>> : [];
-  const ticker = typeof results[0]?.ticker === "string" ? results[0].ticker : null;
+  const ranked = [...results].sort((a, b) => Number(a.days_to_maturity ?? Number.POSITIVE_INFINITY) - Number(b.days_to_maturity ?? Number.POSITIVE_INFINITY));
+  const ticker = typeof ranked[0]?.ticker === "string" ? ranked[0].ticker : null;
   const bars = ticker
     ? await massive(`/futures/v1/aggs/${encodeURIComponent(ticker)}?resolution=5min&limit=6&sort=window_start.desc`, apiKey)
     : { status: "NO_CONTRACT_TICKER" };
