@@ -580,8 +580,10 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
       {activeMenu === "overview" && <>
         <div className="page-intro"><span>DASHBOARD UTAMA</span><h1>Pasar sekarang</h1><p>Mulai dari ringkasan, lalu lihat perubahan terbaru dan event yang berpotensi menggerakkan pasar. Detail teknis disimpan di bagian lanjutan.</p></div>
         <OverviewMarketTape data={data} observations={observations} />
-        <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
-        <CatalystWirePanel data={data.catalystWire} />
+        <div className="overview-intelligence-grid">
+          <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
+          <CatalystWirePanel data={data.catalystWire} />
+        </div>
         <div className="intraday-priority-grid">
           <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
           <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
