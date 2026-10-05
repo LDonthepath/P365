@@ -596,7 +596,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         <div className="page-intro">
           <span>RINGKASAN</span>
           <h1>Market Briefing</h1>
-          <p>Ringkasan hanya menampilkan kesimpulan faktual P365. Detail pasar, makro, crypto, Gold, catalyst, dan sumber data tersedia di layer masing-masing.</p>
+          <p>Ringkasan hanya menampilkan kesimpulan faktual P365. Detail pasar, makro, crypto, Gold, catalyst, dan sumber data tersedia di bagian masing-masing.</p>
         </div>
         <div className="overview-briefing">
           <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
@@ -606,7 +606,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         <div className="page-intro">
           <span>PASAR</span>
           <h1>Harga dan pergerakan material</h1>
-          <p>Layer pasar menampung snapshot lintas pasar, deteksi pergerakan material, dan heatmap faktual. Tidak ada sinyal trading yang ditambahkan.</p>
+          <p>Bagian Pasar menampung snapshot lintas pasar, deteksi pergerakan material, dan heatmap faktual. Tidak ada sinyal trading yang ditambahkan.</p>
         </div>
         <OverviewMarketTape data={data} observations={observations} />
         <div style={{ marginTop: "1rem" }}>
@@ -623,7 +623,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         <div className="page-intro">
           <span>MAKRO</span>
           <h1>Lingkungan makro</h1>
-          <p>Rates, inflasi, likuiditas, tenaga kerja, USD, pertumbuhan, dan jadwal event berdampak tinggi ditempatkan di layer ini.</p>
+          <p>Suku bunga, inflasi, likuiditas, tenaga kerja, USD, pertumbuhan, dan jadwal event berdampak tinggi ditempatkan di bagian ini.</p>
         </div>
         <div className="intraday-secondary-grid">
           <NetLiquidityPanel data={data.netLiquidity} />
@@ -669,8 +669,8 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
       {activeMenu === "context" && <>
         <div className="page-intro">
           <span>KONTEKS</span>
-          <h1>Catalyst dan evidence investigation</h1>
-          <p>Layer ini menampung catalyst, konteks faktual lintas Macro → BTC + Gold, dan respons pasar setelah event. Kedekatan waktu tidak dipromosikan menjadi sebab-akibat.</p>
+          <h1>Catalyst dan investigasi bukti</h1>
+          <p>Bagian Konteks menampung catalyst, konteks faktual lintas Makro → BTC + Gold, dan respons pasar setelah event. Kedekatan waktu tidak dipromosikan menjadi sebab-akibat.</p>
         </div>
         <CatalystWirePanel data={data.catalystWire} />
         <div style={{ marginTop: "1rem" }}>
