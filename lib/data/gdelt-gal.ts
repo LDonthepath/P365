@@ -94,9 +94,14 @@ function isAssetCandidate(asset: GdeltMoveAsset, title: string, url: string): bo
     return /\bbitcoin\b|\bbtc\b/.test(text);
   }
 
-  const assetMention = /\bgold\b|\bxau\b|\bbullion\b/.test(text);
-  if (!assetMention) return false;
-  if (/\bxau\b|\bbullion\b/.test(text)) return true;
+  const genericGoldMention = /\bgold\b/.test(text);
+  const bullionMention = /\bbullion\b/.test(text);
+  // XAU collides with ordinary words in some languages once URLs are lower-cased
+  // (for example Vietnamese `tin-xau`). Treat it as a ticker only when the
+  // article title carries an explicit upper-case XAU/XAUUSD token.
+  const explicitXauTicker = /\bXAU(?:USD)?\b/.test(title);
+  if (!genericGoldMention && !bullionMention && !explicitXauTicker) return false;
+  if (bullionMention || explicitXauTicker) return true;
 
   const marketContext =
     /\bprice\b|\bmarket\b|\bfutures?\b|\betf\b|\btrading\b|\binvest(?:or|ment|ing)?\b|\bfed\b|\bdollar\b|\byields?\b|\brates?\b|\bcentral bank\b|\bsafe haven\b|\brecord high\b|\bsurges?\b|\brises?\b|\bfalls?\b|\bdrops?\b|\bclimbs?\b|\bslides?\b/.test(text);
