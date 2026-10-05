@@ -694,6 +694,52 @@ test("BRF-002A composes the existing material MOVE evidence into a market-first 
               firstSeenRetrievedAt: "2026-10-01T23:45:00.000Z",
               firstSnapshotEvidenceId: "gdelt-snapshot-1",
             }],
+            slowBackground: {
+              state: "AVAILABLE_BACKGROUND",
+              items: [
+                {
+                  kind: "USD_STABLECOIN_LIQUIDITY",
+                  state: "AVAILABLE_BACKGROUND",
+                  reason: null,
+                },
+                {
+                  kind: "BTC_ETF_NET_FLOW",
+                  state: "AVAILABLE_BACKGROUND",
+                  reason: null,
+                },
+              ],
+            },
+            cryptoMarketStructure: {
+              state: "INSUFFICIENT_DATA",
+              components: [
+                {
+                  component: "BTC_DERIVATIVES",
+                  state: "INSUFFICIENT_DATA",
+                  reason: "Durable derivatives history is not approved.",
+                },
+                {
+                  component: "BTC_SPOT_FLOW",
+                  state: "AVAILABLE_SYNCHRONOUS",
+                  reason: "Durable Binance spot flow is replayable.",
+                },
+                {
+                  component: "BTC_SPOT_ORDER_BOOK",
+                  state: "INSUFFICIENT_DATA",
+                  reason: "Historical spot order-book snapshots are unavailable.",
+                },
+                {
+                  component: "BTC_PERP_ORDER_BOOK",
+                  state: "INSUFFICIENT_DATA",
+                  reason: "Historical perp order-book snapshots are unavailable.",
+                },
+              ],
+              reason: "Market structure remains incomplete.",
+            },
+            intradayRatesPricing: {
+              state: "MISSING_HIGH_VALUE_EVIDENCE",
+              reason: "No approved free intraday rates runtime.",
+              policy: "FREE_ONLY_NO_APPROVED_RUNTIME",
+            },
             btcSpotFlow: {
               coverage: "COMPLETE",
               venue: "BINANCE",
@@ -751,6 +797,26 @@ test("BRF-002A composes the existing material MOVE evidence into a market-first 
     "WITHIN_MOVE_WINDOW",
   );
   assert.equal(result.marketMoves.items[0]?.evidence?.btcSpotFlow?.takerBuyShare, 0.58);
+  assert.equal(
+    result.marketMoves.items[0]?.evidence?.slowBackground.items[0]?.state,
+    "AVAILABLE_BACKGROUND",
+  );
+  assert.equal(
+    result.marketMoves.items[0]?.evidence?.cryptoMarketStructure?.components[0]?.component,
+    "BTC_DERIVATIVES",
+  );
+  assert.equal(
+    result.marketMoves.items[0]?.evidence?.cryptoMarketStructure?.components[0]?.state,
+    "INSUFFICIENT_DATA",
+  );
+  assert.equal(
+    result.marketMoves.items[0]?.evidence?.intradayRatesPricing.state,
+    "MISSING_HIGH_VALUE_EVIDENCE",
+  );
+  assert.equal(
+    result.marketMoves.items[0]?.evidence?.evidenceCompleteness,
+    "EVIDENCE_INCOMPLETE",
+  );
   assert.equal(result.marketMoves.items[0]?.causalAttribution, "NOT_EVALUATED");
 });
 
@@ -812,6 +878,52 @@ test("BRF-002B preserves missing catalyst detail without inventing a driver", ()
           unscheduledCandidateCount: 0,
           unscheduledCatalystCoverage: "PARTIAL",
           unscheduledCandidates: [],
+          slowBackground: {
+            state: "INSUFFICIENT_DATA",
+            items: [
+              {
+                kind: "USD_STABLECOIN_LIQUIDITY",
+                state: "INSUFFICIENT_DATA",
+                reason: "No stablecoin observation at cutoff.",
+              },
+              {
+                kind: "BTC_ETF_NET_FLOW",
+                state: "INSUFFICIENT_DATA",
+                reason: "No matured ETF flow at cutoff.",
+              },
+            ],
+          },
+          cryptoMarketStructure: {
+            state: "INSUFFICIENT_DATA",
+            components: [
+              {
+                component: "BTC_DERIVATIVES",
+                state: "INSUFFICIENT_DATA",
+                reason: "Durable derivatives history is unavailable.",
+              },
+              {
+                component: "BTC_SPOT_FLOW",
+                state: "INSUFFICIENT_DATA",
+                reason: "No durable spot-flow windows at cutoff.",
+              },
+              {
+                component: "BTC_SPOT_ORDER_BOOK",
+                state: "INSUFFICIENT_DATA",
+                reason: "Historical spot order-book snapshots are unavailable.",
+              },
+              {
+                component: "BTC_PERP_ORDER_BOOK",
+                state: "INSUFFICIENT_DATA",
+                reason: "Historical perp order-book snapshots are unavailable.",
+              },
+            ],
+            reason: "BTC market structure remains incomplete.",
+          },
+          intradayRatesPricing: {
+            state: "MISSING_HIGH_VALUE_EVIDENCE",
+            reason: "No approved free intraday rates runtime.",
+            policy: "FREE_ONLY_NO_APPROVED_RUNTIME",
+          },
           btcSpotFlow: null,
         },
         causalAttribution: "NOT_EVALUATED",
@@ -825,6 +937,17 @@ test("BRF-002B preserves missing catalyst detail without inventing a driver", ()
   assert.deepEqual(move?.evidence?.scheduledCatalysts, []);
   assert.equal(move?.evidence?.unscheduledCandidateCount, 0);
   assert.deepEqual(move?.evidence?.unscheduledCandidates, []);
+  assert.equal(move?.evidence?.slowBackground.state, "INSUFFICIENT_DATA");
+  assert.equal(
+    move?.evidence?.cryptoMarketStructure?.components
+      .filter((item) => item.state === "INSUFFICIENT_DATA").length,
+    4,
+  );
+  assert.equal(
+    move?.evidence?.intradayRatesPricing.state,
+    "MISSING_HIGH_VALUE_EVIDENCE",
+  );
+  assert.equal(move?.evidence?.evidenceCompleteness, "EVIDENCE_INCOMPLETE");
   assert.equal(move?.causalAttribution, "NOT_EVALUATED");
   assert.equal(JSON.stringify(move).toLowerCase().includes("caused"), false);
 });
