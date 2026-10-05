@@ -65,8 +65,17 @@ export type MaterialMoveEvidenceSummary = {
       | "PARTIAL"
       | "EMPTY"
       | "BOUNDED_QUERY_LIMIT_REACHED";
+    venue: "BINANCE";
+    pair: "BTCUSDT";
+    windowMinutes: number | null;
     observedWindowCount: number;
     expectedWindowCount: number;
+    totalBaseVolumeBtc: number;
+    takerBuyBaseVolumeBtc: number;
+    takerSellBaseVolumeBtc: number;
+    netTakerBaseVolumeBtc: number;
+    takerBuyShare: number | null;
+    tradeCount: number;
   } | null;
 };
 
@@ -156,6 +165,26 @@ async function evidenceSummary(input: {
   const spotFlow = result.bundle.cryptoMarketStructure?.components
     .find((item) => item.component === "BTC_SPOT_FLOW")
     ?.spotFlow;
+  const spotFlowTotals = spotFlow
+    ? spotFlow.windows.reduce((totals, window) => ({
+        totalBaseVolumeBtc: totals.totalBaseVolumeBtc + window.totalBaseVolumeBtc,
+        takerBuyBaseVolumeBtc: totals.takerBuyBaseVolumeBtc + window.takerBuyBaseVolumeBtc,
+        takerSellBaseVolumeBtc: totals.takerSellBaseVolumeBtc + window.takerSellBaseVolumeBtc,
+        netTakerBaseVolumeBtc: totals.netTakerBaseVolumeBtc + window.netTakerBaseVolumeBtc,
+        tradeCount: totals.tradeCount + window.tradeCount,
+      }), {
+        totalBaseVolumeBtc: 0,
+        takerBuyBaseVolumeBtc: 0,
+        takerSellBaseVolumeBtc: 0,
+        netTakerBaseVolumeBtc: 0,
+        tradeCount: 0,
+      })
+    : null;
+  const spotFlowStart = spotFlow ? Date.parse(spotFlow.startAt) : Number.NaN;
+  const spotFlowEnd = spotFlow ? Date.parse(spotFlow.endAt) : Number.NaN;
+  const spotFlowWindowMinutes = Number.isFinite(spotFlowStart) && Number.isFinite(spotFlowEnd)
+    ? Math.max(0, Math.round((spotFlowEnd - spotFlowStart) / 60_000))
+    : null;
 
   return {
     evidenceCompleteness: result.bundle.evidenceCompleteness,
@@ -178,11 +207,18 @@ async function evidenceSummary(input: {
     scheduledCatalystCoverage: result.bundle.scheduledCatalysts.coverage,
     unscheduledCandidateCount: result.bundle.unscheduledCatalysts.candidates.length,
     unscheduledCatalystCoverage: result.bundle.unscheduledCatalysts.coverage,
-    btcSpotFlow: spotFlow
+    btcSpotFlow: spotFlow && spotFlowTotals
       ? {
           coverage: spotFlow.coverage,
+          venue: spotFlow.venue,
+          pair: spotFlow.pair,
+          windowMinutes: spotFlowWindowMinutes,
           observedWindowCount: spotFlow.windows.length,
           expectedWindowCount: spotFlow.expectedCompletedWindows,
+          ...spotFlowTotals,
+          takerBuyShare: spotFlowTotals.totalBaseVolumeBtc > 0
+            ? spotFlowTotals.takerBuyBaseVolumeBtc / spotFlowTotals.totalBaseVolumeBtc
+            : null,
         }
       : null,
   };
