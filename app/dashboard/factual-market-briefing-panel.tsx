@@ -22,6 +22,48 @@ const PRICING_LABELS: Record<string, string> = {
   "gold.futures.usd": "Emas",
 };
 
+const MOVE_ASSET_LABELS = {
+  BTC: "Bitcoin",
+  GOLD: "Emas",
+} as const;
+
+const MOVE_ASSESSMENT_LABELS: Record<
+  FactualMarketBriefing["marketMoves"]["items"][number]["status"],
+  string
+> = {
+  MATERIAL_MOVE: "GERAKAN MATERIAL",
+  BELOW_MATERIALITY_THRESHOLD: "DI BAWAH AMBANG",
+  INSUFFICIENT_DATA: "DATA BELUM CUKUP",
+  INCOMPATIBLE: "DATA TIDAK KOMPATIBEL",
+  UNKNOWN: "STATUS BELUM PASTI",
+  UNAVAILABLE: "DATA TIDAK TERSEDIA",
+};
+
+const MOVE_HORIZON_LABELS: Record<string, string> = {
+  MATERIAL_MOVE: "material",
+  BELOW_MATERIALITY_THRESHOLD: "belum material",
+  INSUFFICIENT_DATA: "data belum cukup",
+  INCOMPATIBLE: "data tidak kompatibel",
+  UNKNOWN: "status belum pasti",
+};
+
+const MOVE_COVERAGE_LABELS: Record<string, string> = {
+  COMPLETE: "lengkap",
+  PARTIAL: "sebagian",
+  EMPTY: "kosong",
+  BOUNDED_QUERY_LIMIT_REACHED: "batas query tercapai",
+  UNAVAILABLE: "tidak tersedia",
+};
+
+const MOVE_SERIES_LABELS: Record<string, string> = {
+  "btc.spot.usd": "BTC",
+  "eth.spot.usd": "ETH",
+  "dxy.index.usd": "DXY",
+  "gold.futures.usd": "Gold",
+  "fx.usdjpy.jpy_per_usd": "USD/JPY",
+  "fx.usdcnh.cnh_per_usd": "USD/CNH",
+};
+
 function dateTime(value: string): string {
   return new Intl.DateTimeFormat("id-ID", {
     timeZone: "Asia/Jakarta",
@@ -100,6 +142,81 @@ function percentMagnitude(value: number): string {
   }).format(value) + "%";
 }
 
+function signedPercent(value: number | null, digits = 2): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
+}
+
+function plainPercent(value: number | null, digits = 2): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `${value.toFixed(digits)}%`;
+}
+
+function percentileLabel(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `P${value.toFixed(1)}`;
+}
+
+function MarketMoveBriefingItem({
+  item,
+}: {
+  item: FactualMarketBriefing["marketMoves"]["items"][number];
+}) {
+  const horizon = [...item.horizons].sort((a, b) => {
+    const aMaterial = a.status === "MATERIAL_MOVE" ? 1 : 0;
+    const bMaterial = b.status === "MATERIAL_MOVE" ? 1 : 0;
+    return bMaterial - aMaterial || b.horizonMinutes - a.horizonMinutes;
+  })[0] ?? null;
+  const fingerprint = horizon
+    ? item.evidence?.synchronousFingerprint.find(
+        (candidate) => candidate.horizonMinutes === horizon.horizonMinutes,
+      )
+    : null;
+  const spotFlow = item.evidence?.btcSpotFlow ?? null;
+
+  return <div className="plain-notice">
+    <strong>
+      {MOVE_ASSET_LABELS[item.asset]} · {MOVE_ASSESSMENT_LABELS[item.status]}
+    </strong>
+    <span>
+      {item.observedAt
+        ? `Observasi ${dateTime(item.observedAt)} WIB`
+        : "Observasi durable belum tersedia."}
+    </span>
+    {horizon
+      ? <span>
+          {horizon.horizonMinutes} menit · {signedPercent(horizon.signedPercentChange)}
+          {" · "}{MOVE_HORIZON_LABELS[horizon.status] ?? "status belum tersedia"}
+          {" · "}ambang {plainPercent(horizon.materialityThresholdPercent)}
+          {" · "}{percentileLabel(horizon.targetPercentileRank)}
+        </span>
+      : null}
+    {fingerprint
+      ? <span>
+          Lintas aset: {fingerprint.series.map((series) =>
+            `${MOVE_SERIES_LABELS[series.seriesKey] ?? series.seriesKey} ${series.state === "AVAILABLE_SYNCHRONOUS" ? signedPercent(series.signedPercentChange) : "—"}`
+          ).join(" · ")}
+          {" · "}cakupan {MOVE_COVERAGE_LABELS[fingerprint.coverage] ?? fingerprint.coverage}
+        </span>
+      : null}
+    {item.evidence
+      ? <span>
+          Catalyst dalam window: {item.evidence.scheduledCatalystCount} event terjadwal
+          {" · "}{item.evidence.unscheduledCandidateCount} kandidat berita
+        </span>
+      : null}
+    {spotFlow
+      ? <span>
+          Binance Spot: buy share {spotFlow.takerBuyShare === null ? "—" : plainPercent(spotFlow.takerBuyShare * 100, 1)}
+          {" · "}net taker {spotFlow.netTakerBaseVolumeBtc > 0 ? "+" : ""}
+          {spotFlow.netTakerBaseVolumeBtc.toLocaleString("id-ID", { maximumFractionDigits: 2 })} BTC
+          {" · "}cakupan {MOVE_COVERAGE_LABELS[spotFlow.coverage] ?? spotFlow.coverage}
+        </span>
+      : null}
+    <span>Hubungan sebab-akibat belum dievaluasi.</span>
+  </div>;
+}
+
 function confirmationResolution(value: string): string {
   if (value === "CONFIRMING") return "Evidence independen mengonfirmasi.";
   if (value === "CONTRADICTING") return "Evidence independen bertentangan.";
@@ -140,6 +257,7 @@ function pricingValue(value: number, unit: string | null): string {
 }
 
 export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefing }) {
+  const moves = data.marketMoves;
   const changed = data.whatChanged;
   const baselines = data.eventBaselines;
   const surprises = data.eventSurprises;
@@ -147,33 +265,71 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
   const confirmation = data.confirmation;
   const nextCatalyst = data.nextCatalyst;
 
-  return <section className="panel overview-change-layer" aria-labelledby="briefing-what-changed-title">
+  return <section className="panel overview-change-layer" aria-labelledby="briefing-market-state-title">
     <div className="panel-label">
       <span>MARKET BRIEFING</span>
-      <span>{changed.evidenceStatus === "AVAILABLE" ? "DATA TERSEDIA" : "DATA BELUM CUKUP"}</span>
+      <span>
+        {moves.evidenceStatus === "AVAILABLE"
+          ? `${moves.materialMoveCount} GERAKAN MATERIAL`
+          : changed.evidenceStatus === "AVAILABLE"
+            ? "KONTEKS MAKRO TERSEDIA"
+            : "DATA BELUM CUKUP"}
+      </span>
     </div>
+
     <div className="change-layer-grid">
       <div>
-        <h2 id="briefing-what-changed-title">Apa yang berubah?</h2>
-        <p className="lead-copy">Ringkasan baseline faktual Macro yang sudah tersedia di dashboard. Bagian ini hanya menyatukan data yang sudah ada dan tidak menambah kesimpulan baru.</p>
+        <h2 id="briefing-market-state-title">Apa yang bergerak sekarang?</h2>
+        <p className="lead-copy">
+          BTC dan Gold dinilai lebih dulu terhadap ambang historis 15/30/60/120 menit.
+          Cross-asset, catalyst, dan spot participation hanya ditampilkan dari evidence yang
+          sudah tersedia pada cutoff; tidak ada atribusi sebab-akibat.
+        </p>
       </div>
     </div>
 
-    {changed.evidenceStatus === "AVAILABLE"
-      ? <div className="monitor-list" style={{ marginTop: "1rem" }}>
-          {changed.items.map((item) => <div key={item.seriesId}>
-            <strong>{SERIES_LABELS[item.seriesId] ?? item.subject}</strong>
-            <span>
-              Saat ini {formatMacroDisplayValue(item.currentValue, item.unit)}
-              {" · "}sebelumnya {formatMacroDisplayValue(item.baselineValue, item.unit)}
-              {" · "}{formatMacroDisplayDelta(item.changeValue, item.unit)}
-            </span>
-          </div>)}
+    {moves.evidenceStatus === "AVAILABLE"
+      ? <div style={{ display: "grid", gap: ".75rem", marginTop: "1rem" }}>
+          {moves.items.map((item) => <MarketMoveBriefingItem item={item} key={item.asset} />)}
+          {moves.reason
+            ? <div className="plain-notice">
+                <strong>Cakupan sebagian</strong>
+                <span>{moves.reason}</span>
+              </div>
+            : null}
         </div>
       : <div className="plain-notice" style={{ marginTop: "1rem" }}>
-          <strong>Data belum cukup</strong>
-          <span>{changed.reason}</span>
+          <strong>Assessment market belum cukup</strong>
+          <span>{moves.reason}</span>
         </div>}
+
+    <div className="briefing-analysis-section" style={{ marginTop: "1.25rem" }}>
+      <div className="panel-label">
+        <span>LATAR MAKRO</span>
+        <span>{changed.evidenceStatus === "AVAILABLE" ? "DATA TERSEDIA" : "DATA BELUM CUKUP"}</span>
+      </div>
+      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah di konteks makro?</h3>
+      <p className="lead-copy">
+        Ringkasan baseline faktual Macro yang sudah tersedia. Bagian ini tidak mengubah
+        pergerakan bersama menjadi klaim transmisi atau penyebab.
+      </p>
+
+      {changed.evidenceStatus === "AVAILABLE"
+        ? <div className="monitor-list" style={{ marginTop: "1rem" }}>
+            {changed.items.map((item) => <div key={item.seriesId}>
+              <strong>{SERIES_LABELS[item.seriesId] ?? item.subject}</strong>
+              <span>
+                Saat ini {formatMacroDisplayValue(item.currentValue, item.unit)}
+                {" · "}sebelumnya {formatMacroDisplayValue(item.baselineValue, item.unit)}
+                {" · "}{formatMacroDisplayDelta(item.changeValue, item.unit)}
+              </span>
+            </div>)}
+          </div>
+        : <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>Data makro belum cukup</strong>
+            <span>{changed.reason}</span>
+          </div>}
+    </div>
 
     <details className="briefing-analysis-details">
       <summary>
