@@ -120,7 +120,9 @@
 
 .dashboardLayout :global(.overview-event-details){
   margin:0 0 14px;
+  overflow:hidden;
   border:1px solid var(--line);
+  border-radius:8px;
   background:rgba(255,255,255,.006);
 }
 
@@ -192,6 +194,32 @@
 
 .dashboardLayout :global(.advanced-details){
   margin-top:0;
+  overflow:hidden;
+  border-radius:8px;
+}
+
+.dashboardLayout :global(.advanced-details > summary){
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  min-height:50px;
+  padding:11px 0;
+}
+
+.dashboardLayout :global(.advanced-details > summary::before){
+  content:"MACRO & LIQUIDITY · DETAIL";
+  margin-right:auto;
+  color:var(--muted);
+  font-size:7px;
+  letter-spacing:.08em;
+}
+
+.dashboardLayout :global(.advanced-details[open] > summary){
+  border-bottom:1px solid var(--line-soft);
+}
+
+.dashboardLayout :global(.advanced-details-body){
+  padding-top:12px;
 }
 
 @media(max-width:900px){
