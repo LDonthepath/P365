@@ -304,11 +304,11 @@ function composeBriefingResolution(input: {
       reasoningStatus: "NOT_EVALUATED",
       materialAssets: [],
       evidenceCompleteness: null,
-      statement: "Assessment Bitcoin/Gold belum cukup untuk menyusun resolusi briefing pada cutoff ini.",
-      driverStatement: "Driver pasar belum dievaluasi karena assessment market belum cukup.",
+      statement: "Penilaian Bitcoin/Gold belum cukup untuk menyusun kesimpulan briefing pada batas waktu ini.",
+      driverStatement: "Pendorong pasar belum dievaluasi karena penilaian pasar belum cukup.",
       watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
-        ? "Pantau event HIGH berikutnya yang sudah tercatat dan pembaruan assessment market."
-        : "Pantau pembaruan assessment market dan event HIGH berikutnya saat data durable tersedia.",
+        ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat dan pembaruan penilaian pasar."
+        : "Pantau pembaruan penilaian pasar dan peristiwa berdampak tinggi berikutnya saat data tersimpan tersedia.",
     };
   }
 
@@ -322,11 +322,11 @@ function composeBriefingResolution(input: {
       materialAssets: [],
       evidenceCompleteness: null,
       statement:
-        "Belum ada gerakan material Bitcoin atau Gold pada cutoff ini. Investigation bundle tidak diaktifkan karena tidak ada trigger MOVE yang memenuhi ambang historis.",
-      driverStatement: "Tidak ada driver yang dievaluasi karena belum ada gerakan material yang menjadi target investigasi.",
+        "Belum ada pergerakan material Bitcoin atau Gold pada batas waktu ini. Paket investigasi tidak diaktifkan karena tidak ada pemicu pergerakan yang memenuhi ambang historis.",
+      driverStatement: "Tidak ada pendorong yang dievaluasi karena belum ada pergerakan material yang menjadi target investigasi.",
       watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
-        ? "Pantau event HIGH berikutnya yang sudah tercatat dan apakah muncul gerakan material baru."
-        : "Pantau perubahan Bitcoin/Gold berikutnya dan event HIGH saat tersedia pada data durable.",
+        ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat dan apakah muncul pergerakan material baru."
+        : "Pantau perubahan Bitcoin/Gold berikutnya dan peristiwa berdampak tinggi saat tersedia pada data tersimpan.",
     };
   }
 
@@ -346,13 +346,13 @@ function composeBriefingResolution(input: {
     materialAssets,
     evidenceCompleteness,
     statement: evidenceIncomplete
-      ? `${names} mengalami gerakan material pada cutoff ini. Evidence investigation tersedia, tetapi belum lengkap pada boundary aktif.`
-      : `${names} mengalami gerakan material pada cutoff ini. Evidence investigation lengkap pada boundary aktif.`,
+      ? `${names} mengalami pergerakan material pada batas waktu ini. Bukti investigasi tersedia, tetapi belum lengkap dalam cakupan aktif.`
+      : `${names} mengalami pergerakan material pada batas waktu ini. Bukti investigasi lengkap dalam cakupan aktif.`,
     driverStatement:
-      "Driver pasar belum dapat ditetapkan dari evidence faktual yang tersedia; hubungan sebab-akibat belum dievaluasi.",
+      "Pendorong pasar belum dapat ditetapkan dari bukti faktual yang tersedia; hubungan sebab-akibat belum dievaluasi.",
     watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
-      ? "Pantau event HIGH berikutnya yang sudah tercatat, evidence yang masih hilang, dan perubahan material berikutnya."
-      : "Pantau evidence yang masih hilang serta perubahan material berikutnya.",
+      ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat, bukti yang masih belum tersedia, dan pergerakan material berikutnya."
+      : "Pantau bukti yang masih belum tersedia serta pergerakan material berikutnya.",
   };
 }
 
