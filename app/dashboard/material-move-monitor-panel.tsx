@@ -242,7 +242,7 @@ export function MaterialMoveMonitorPanel({ data }: { data: MaterialMoveMonitorRe
   const materialCount = data.assets.filter((item) => item.hasMaterialMove).length;
 
   return (
-    <section className="panel move-monitor" aria-labelledby="move-monitor-title">
+    <section className={`panel move-monitor${materialCount > 0 ? " has-material" : ""}`} aria-labelledby="move-monitor-title">
       <div className="move-monitor-head">
         <div>
           <span className="move-monitor-kicker">MOVE MONITOR · FAKTUAL</span>
