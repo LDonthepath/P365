@@ -16,6 +16,7 @@ import { IntradayEventResponsePanel } from "./intraday-event-response-panel";
 import { MvpFactualContextPanel } from "./mvp-factual-context-panel";
 import { FactualMarketBriefingPanel } from "./factual-market-briefing-panel";
 import { CatalystWirePanel } from "./catalyst-wire-panel";
+import { MaterialMoveMonitorPanel } from "./material-move-monitor-panel";
 
 type Menu = "overview" | "heatmap" | "macro" | "crypto" | "gold" | "context" | "evidence";
 const menuItems: { id: Menu; label: string }[] = [
@@ -579,6 +580,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
       {activeMenu === "overview" && <>
         <div className="page-intro"><span>DASHBOARD UTAMA</span><h1>Pasar sekarang</h1><p>Mulai dari ringkasan, lalu lihat perubahan terbaru dan event yang berpotensi menggerakkan pasar. Detail teknis disimpan di bagian lanjutan.</p></div>
         <OverviewMarketTape data={data} observations={observations} />
+        <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
         <CatalystWirePanel data={data.catalystWire} />
         <div className="intraday-priority-grid">
           <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
