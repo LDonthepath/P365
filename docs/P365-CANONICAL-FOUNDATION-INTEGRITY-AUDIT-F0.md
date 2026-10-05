@@ -105,7 +105,7 @@ Final Coinalyze live proof returned `READY_FOR_SEMANTIC_REVIEW`: 26 eligible BTC
 | Transmission reasoning | **TRN-001 MERGED / PR #75 / `7a8a3bc60467b1a59a15a48496115adc806b5a51`** | TRN-001 consumes RPR-001 and evaluates only explicit versioned driver→response relationship rules. Both sides must independently satisfy RPR thresholds; degraded/missing inputs fail closed, contamination is preserved, no static cross-asset rule is hardcoded, and causal attribution remains `NOT_EVALUATED`. |
 | Integrated event response | **EVR-001 MERGED / PR #77 / `c7226fcf215a1d27ab2837835361a763a1501ec6`** | Read-only integration of SUR-001 + CMP/RPR/TRN at one Event identity, Event Window and post-event `knowledgeAt = after.capturedAt`. No aggregate market interpretation, threshold default, relationship assumption, persistence owner, State/Regime/Intelligence, UI, or trading logic. |
 | State/Regime/Risk/Intelligence | DEFERRED / PASS boundary | Builder files exist but are not active pipeline owners. |
-| Market Briefing | DEFERRED | Correctly not fabricated. |
+| Market Briefing | **FACTUAL BRIEFING SHELL ACTIVE / BRF-002A MARKET-FIRST COMPOSITION IMPLEMENTED / OWNER MERGE PENDING** | The active factual briefing remains non-causal and now composes existing MOVE-003A/B/C market materiality, synchronous fingerprint, catalyst counts and Binance spot-participation evidence before event-centric detail. Full State/Regime/Risk/Intelligence synthesis remains deferred. |
 | UI/presentation | PASS / PARTIAL | UI mostly presents canonical facts and explicit pending states; several English/internal labels remain presentation debt. |
 | Documentation SSOT | REMEDIATED IN PR #36 | Consolidation completed; this master file is the current operational SSOT. Historical drift remains recorded as FND-005 below. |
 | Test/build governance | PARTIAL | Cache test exists, but foundation contracts lack broad automated tests; package has no explicit test script. |
@@ -142,7 +142,8 @@ MVP Macro+Crypto+Gold       PARTIAL / ACTIVE TARGET
 BTC ETF flow runtime        IMPLEMENTED / LIVE ENTITLEMENT + ACTIVATION PENDING
 Broader multi-asset coverage  POST-MVP / ONTOLOGY-DEFINED
 State / Regime / Risk        DEFERRED
-Intelligence / Briefing      DEFERRED
+Factual Market Briefing     ACTIVE SHELL / BRF-002A market-first composition owner-merge pending
+Intelligence synthesis       DEFERRED
 ```
 
 ### Current factual coverage
@@ -807,6 +808,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 
 | 5 Oct 2026 | NEWS-002A.1 GDELT Gold XAU False-Positive Hardening | Production Catalyst Wire exposed a real Gold-candidate false positive: a Vietnamese article URL containing `tin-xau` was lower-cased and the ordinary-language `xau` fragment was treated as ticker XAU. The Gold filter now accepts XAU/XAUUSD only as an explicit upper-case title token, while generic Gold still requires market context and bullion remains explicit. Focused regression coverage retains a legitimate `XAU/USD` headline while rejecting the reproduced non-market URL. No provider, persistence, scheduler, schema, UI, sentiment, causality, State/Regime/Risk/Intelligence or trading semantics are added. |
 
+| 6 Oct 2026 | BRF-002A Market-First Briefing Composition | Reorients the existing factual Market Briefing from Macro/event-first presentation to market-first composition by consuming the already-production-active Material Move Monitor read model. BTC/Gold materiality, calibrated 15/30/60/120m move context, synchronous BTC/ETH/DXY/Gold/USDJPY/USDCNH fingerprint, exact move-window scheduled/unscheduled catalyst counts and durable Binance Spot participation can now be surfaced before event detail. The composer preserves explicit insufficient/partial states and `causalAttribution=NOT_EVALUATED`; it adds no provider, persistence, scheduler, threshold, State/Regime/Risk/Intelligence, prediction or trading semantics. Status: **IMPLEMENTED / OWNER MERGE PENDING**. |
+
 | 5 Oct 2026 | UI-TERMINAL-001B Premium Market Tape | Reworks only the Overview Market Tape presentation over existing P365 facts into six premium charcoal/gold terminal cards for BTC, Gold, DXY, US 10Y, matured BTC ETF flow and USD stablecoin supply. Responsive density is 6/3/2/1 columns without synthetic sparklines or fabricated metrics. BTC ETF maturity is explicitly labeled MATANG and its provider trading date remains visible; maturity is not represented as freshness. Provider inputs, canonical values, quality/freshness semantics, persistence, scheduler ownership, causality and downstream reasoning remain unchanged. |
 
 | 5 Oct 2026 | UI-TERMINAL-001B.1 Mobile Market Tape Density | Post-merge visual audit found the premium tape became a long single-column stack at common 360–390px phone widths. The correction keeps a two-column tape down to 341px with tighter card typography/padding, falling back to one column only at 340px and below. Desktop/tablet layout, data, provider semantics, freshness/finality meaning, persistence and reasoning are unchanged. || 4 Oct 2026 | SPOT-FLOW-001C Durable Binance Spot-Flow Production Activation | Reuses existing Supabase `p365-market-fast` job id 2 at the unchanged five-minute cadence and appends `binance-spot` to the provider list; no duplicate scheduler is created. Pre-activation durable spot-flow rows were 0. First natural pg_cron run 34105 / pg_net request 34087 returned HTTP 200/SUCCESS and persisted two completed Binance BTCUSDT 5m Evidence windows (12:20Z and 12:25Z). Controlled repeat request 34088 also returned HTTP 200/SUCCESS while Market Memory remained exactly 2 rows / 2 window keys / 2 Evidence IDs, proving deterministic idempotency. Point-in-time cutoff returned 0 rows immediately before `12:27:02.170Z` and 2 at that retrieval timestamp. No post-activation Vercel error/fatal logs were observed in the verification window. Binance BACKFILL, Bybit persistence, MOVE-002B historical spot-flow consumption, market-wide aggregation, UI, causality and trading semantics remain inactive. |
@@ -959,6 +962,7 @@ Intelligence / Briefing
 30D. MOVE-003B Synchronous Market Fingerprint                         ← PRODUCTION ACTIVE / PR #184
 30E. MOVE-003C BTC Spot-Flow Evidence Detail                          ← PRODUCTION ACTIVE / PR #185
 30F. UI-TERMINAL-001C Dashboard UI/UX Hierarchy & Terminal Polish       ← IMPLEMENTED / owner merge pending
+30G. BRF-002A Market-First Briefing Composition                            ← IMPLEMENTED / owner merge pending; reuses MOVE-003A/B/C evidence without new reasoning
 31. MACRO-RATES-001A Intraday Rates/Pricing Source Qualification ← source-qualified; nominal runtime provider open; real-yield intraday unresolved
 31A. MACRO-RATES-001B Rates Access & Proxy Qualification            ← OWNER FREE-ONLY; paid paths rejected; ZT+TN preferred only as risk-bounded future free proxy; no runtime approved
 32. Derived State → Risk/Regime → Intelligence → Briefing        ← remains deferred
