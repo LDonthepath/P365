@@ -13,7 +13,7 @@ import {
   type ContinuousMoveAssessmentStatus,
   type ContinuousMoveHorizonStatus,
 } from "./continuous-move-detector";
-import { buildMoveEvidenceBundle } from "./move-evidence-bundle";
+import { buildMoveEvidenceBundle, type MoveEvidenceBundle } from "./move-evidence-bundle";
 
 type MaterialMoveAsset = "BTC" | "GOLD";
 
@@ -52,6 +52,17 @@ export type MaterialMoveEvidenceSummary = {
     | "COMPLETE"
     | "BOUNDED_QUERY_LIMIT_REACHED"
     | "UNAVAILABLE";
+  scheduledCatalysts: Array<Pick<
+    MoveEvidenceBundle["scheduledCatalysts"]["events"][number],
+    | "eventId"
+    | "eventIdentityKey"
+    | "subject"
+    | "jurisdiction"
+    | "importance"
+    | "scheduledAt"
+    | "retrievedAt"
+    | "sourceId"
+  >>;
   unscheduledCandidateCount: number;
   unscheduledCatalystCoverage:
     | "COMPLETE"
@@ -59,6 +70,17 @@ export type MaterialMoveEvidenceSummary = {
     | "EMPTY"
     | "BOUNDED_QUERY_LIMIT_REACHED"
     | "UNAVAILABLE";
+  unscheduledCandidates: Array<Pick<
+    MoveEvidenceBundle["unscheduledCatalysts"]["candidates"][number],
+    | "url"
+    | "title"
+    | "domain"
+    | "providerDate"
+    | "providerDateSemantics"
+    | "temporalFit"
+    | "firstSeenRetrievedAt"
+    | "firstSnapshotEvidenceId"
+  >>;
   btcSpotFlow: {
     coverage:
       | "COMPLETE"
@@ -205,8 +227,28 @@ async function evidenceSummary(input: {
     })),
     scheduledCatalystCount: result.bundle.scheduledCatalysts.events.length,
     scheduledCatalystCoverage: result.bundle.scheduledCatalysts.coverage,
+    scheduledCatalysts: result.bundle.scheduledCatalysts.events.map((event) => ({
+      eventId: event.eventId,
+      eventIdentityKey: event.eventIdentityKey,
+      subject: event.subject,
+      jurisdiction: event.jurisdiction,
+      importance: event.importance,
+      scheduledAt: event.scheduledAt,
+      retrievedAt: event.retrievedAt,
+      sourceId: event.sourceId,
+    })),
     unscheduledCandidateCount: result.bundle.unscheduledCatalysts.candidates.length,
     unscheduledCatalystCoverage: result.bundle.unscheduledCatalysts.coverage,
+    unscheduledCandidates: result.bundle.unscheduledCatalysts.candidates.map((candidate) => ({
+      url: candidate.url,
+      title: candidate.title,
+      domain: candidate.domain,
+      providerDate: candidate.providerDate,
+      providerDateSemantics: candidate.providerDateSemantics,
+      temporalFit: candidate.temporalFit,
+      firstSeenRetrievedAt: candidate.firstSeenRetrievedAt,
+      firstSnapshotEvidenceId: candidate.firstSnapshotEvidenceId,
+    })),
     btcSpotFlow: spotFlow && spotFlowTotals
       ? {
           coverage: spotFlow.coverage,
