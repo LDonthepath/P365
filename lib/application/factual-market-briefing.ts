@@ -166,6 +166,22 @@ export type BriefingMarketMove = {
   causalAttribution: "NOT_EVALUATED";
 };
 
+export type BriefingResolutionStatus =
+  | "MARKET_DATA_INSUFFICIENT"
+  | "NO_MATERIAL_MOVE"
+  | "MATERIAL_MOVE_EVIDENCE_INCOMPLETE"
+  | "MATERIAL_MOVE_EVIDENCE_COMPLETE";
+
+export type BriefingResolution = {
+  status: BriefingResolutionStatus;
+  reasoningStatus: BriefingReasoningStatus;
+  materialAssets: Array<BriefingMarketMove["asset"]>;
+  evidenceCompleteness: "EVIDENCE_COMPLETE" | "EVIDENCE_INCOMPLETE" | null;
+  statement: string;
+  driverStatement: string;
+  watchStatement: string;
+};
+
 export type FactualMarketBriefing = {
   asOf: string;
   marketMoves: {
@@ -175,6 +191,7 @@ export type FactualMarketBriefing = {
     items: BriefingMarketMove[];
     reason: string | null;
   };
+  resolution: BriefingResolution;
   whatChanged: {
     evidenceStatus: BriefingEvidenceStatus;
     reasoningStatus: BriefingReasoningStatus;
@@ -270,6 +287,72 @@ function composeMarketMoves(
       : result.status === "PARTIAL"
         ? "Sebagian assessment BTC/Gold belum tersedia; briefing mempertahankan gap tersebut secara eksplisit."
         : null,
+  };
+}
+
+function assetNames(assets: Array<BriefingMarketMove["asset"]>): string {
+  return assets.map((asset) => asset === "BTC" ? "Bitcoin" : "Gold").join(" dan ");
+}
+
+function composeBriefingResolution(input: {
+  marketMoves: FactualMarketBriefing["marketMoves"];
+  nextCatalyst: FactualMarketBriefing["nextCatalyst"];
+}): BriefingResolution {
+  if (input.marketMoves.evidenceStatus !== "AVAILABLE") {
+    return {
+      status: "MARKET_DATA_INSUFFICIENT",
+      reasoningStatus: "NOT_EVALUATED",
+      materialAssets: [],
+      evidenceCompleteness: null,
+      statement: "Penilaian Bitcoin/Gold belum cukup untuk menyusun kesimpulan briefing pada batas waktu ini.",
+      driverStatement: "Pendorong pasar belum dievaluasi karena penilaian pasar belum cukup.",
+      watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
+        ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat dan pembaruan penilaian pasar."
+        : "Pantau pembaruan penilaian pasar dan peristiwa berdampak tinggi berikutnya saat data tersimpan tersedia.",
+    };
+  }
+
+  const materialMoves = input.marketMoves.items.filter((item) => item.hasMaterialMove);
+  const materialAssets = materialMoves.map((item) => item.asset);
+
+  if (materialMoves.length === 0) {
+    return {
+      status: "NO_MATERIAL_MOVE",
+      reasoningStatus: "NOT_EVALUATED",
+      materialAssets: [],
+      evidenceCompleteness: null,
+      statement:
+        "Belum ada pergerakan material Bitcoin atau Gold pada batas waktu ini. Paket investigasi tidak diaktifkan karena tidak ada pemicu pergerakan yang memenuhi ambang historis.",
+      driverStatement: "Tidak ada pendorong yang dievaluasi karena belum ada pergerakan material yang menjadi target investigasi.",
+      watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
+        ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat dan apakah muncul pergerakan material baru."
+        : "Pantau perubahan Bitcoin/Gold berikutnya dan peristiwa berdampak tinggi saat tersedia pada data tersimpan.",
+    };
+  }
+
+  const evidenceIncomplete = materialMoves.some((item) =>
+    !item.evidence || item.evidence.evidenceCompleteness !== "EVIDENCE_COMPLETE"
+  );
+  const evidenceCompleteness = evidenceIncomplete
+    ? "EVIDENCE_INCOMPLETE" as const
+    : "EVIDENCE_COMPLETE" as const;
+  const names = assetNames(materialAssets);
+
+  return {
+    status: evidenceIncomplete
+      ? "MATERIAL_MOVE_EVIDENCE_INCOMPLETE"
+      : "MATERIAL_MOVE_EVIDENCE_COMPLETE",
+    reasoningStatus: "NOT_EVALUATED",
+    materialAssets,
+    evidenceCompleteness,
+    statement: evidenceIncomplete
+      ? `${names} mengalami pergerakan material pada batas waktu ini. Bukti investigasi tersedia, tetapi belum lengkap dalam cakupan aktif.`
+      : `${names} mengalami pergerakan material pada batas waktu ini. Bukti investigasi lengkap dalam cakupan aktif.`,
+    driverStatement:
+      "Pendorong pasar belum dapat ditetapkan dari bukti faktual yang tersedia; hubungan sebab-akibat belum dievaluasi.",
+    watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
+      ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat, bukti yang masih belum tersedia, dan pergerakan material berikutnya."
+      : "Pantau bukti yang masih belum tersedia serta pergerakan material berikutnya.",
   };
 }
 
@@ -676,6 +759,8 @@ function composeNextCatalyst(input: {
  * BRF-001A composes already-qualified evidence into briefing sections.
  * BRF-002A makes the briefing market-first by composing the existing
  * MOVE-003A/B/C read model before event-centric detail.
+ * BRF-002D adds a deterministic factual resolution over the already-composed
+ * MOVE evidence without promoting availability into causal attribution.
  *
  * Gate 1: factual Macro changes.
  * Gate 2: point-in-time expectation + PRE pricing baseline evidence.
@@ -727,9 +812,19 @@ export function composeFactualMarketBriefing({
     .sort((a, b) => priorityIndex(a.seriesId) - priorityIndex(b.seriesId))
     .slice(0, MAX_VISIBLE_CHANGES);
 
+  const marketMoves = composeMarketMoves(materialMoveMonitor);
+  const nextCatalyst = composeNextCatalyst({
+    events: upcomingHighImpactEvents,
+    asOf,
+  });
+
   return {
     asOf,
-    marketMoves: composeMarketMoves(materialMoveMonitor),
+    marketMoves,
+    resolution: composeBriefingResolution({
+      marketMoves,
+      nextCatalyst,
+    }),
     whatChanged: {
       evidenceStatus: changes.length > 0 ? "AVAILABLE" : "INSUFFICIENT",
       reasoningStatus: "NOT_EVALUATED",
@@ -742,9 +837,6 @@ export function composeFactualMarketBriefing({
     eventSurprises: composeEventSurprises(intradayEventMonitor),
     eventRepricing: composeEventRepricing(eventRepricing),
     confirmation: composeConfirmation(confirmation),
-    nextCatalyst: composeNextCatalyst({
-      events: upcomingHighImpactEvents,
-      asOf,
-    }),
+    nextCatalyst,
   };
 }
