@@ -64,6 +64,19 @@ const MOVE_SERIES_LABELS: Record<string, string> = {
   "fx.usdcnh.cnh_per_usd": "USD/CNH",
 };
 
+const MOVE_IMPORTANCE_LABELS: Record<string, string> = {
+  HIGH: "dampak tinggi",
+  MEDIUM: "dampak sedang",
+  LOW: "dampak rendah",
+};
+
+const MOVE_TEMPORAL_FIT_LABELS: Record<string, string> = {
+  WITHIN_MOVE_WINDOW: "waktu provider berada dalam window",
+  TIMESTAMP_UNAVAILABLE: "waktu publikasi provider tidak tersedia",
+};
+
+const MAX_MOVE_CATALYST_DETAILS = 3;
+
 function dateTime(value: string): string {
   return new Intl.DateTimeFormat("id-ID", {
     timeZone: "Asia/Jakarta",
@@ -173,6 +186,8 @@ function MarketMoveBriefingItem({
       )
     : null;
   const spotFlow = item.evidence?.btcSpotFlow ?? null;
+  const scheduledCatalysts = item.evidence?.scheduledCatalysts.slice(0, MAX_MOVE_CATALYST_DETAILS) ?? [];
+  const unscheduledCandidates = item.evidence?.unscheduledCandidates.slice(0, MAX_MOVE_CATALYST_DETAILS) ?? [];
 
   return <div className="plain-notice">
     <strong>
@@ -200,10 +215,39 @@ function MarketMoveBriefingItem({
         </span>
       : null}
     {item.evidence
-      ? <span>
-          Catalyst dalam window: {item.evidence.scheduledCatalystCount} event terjadwal
-          {" · "}{item.evidence.unscheduledCandidateCount} kandidat berita
-        </span>
+      ? <>
+          <span>
+            Catalyst dalam window: {item.evidence.scheduledCatalystCount} event terjadwal
+            {" · "}cakupan {MOVE_COVERAGE_LABELS[item.evidence.scheduledCatalystCoverage] ?? "belum diketahui"}
+            {" · "}{item.evidence.unscheduledCandidateCount} kandidat berita
+            {" · "}cakupan berita {MOVE_COVERAGE_LABELS[item.evidence.unscheduledCatalystCoverage] ?? "belum diketahui"}
+          </span>
+          {scheduledCatalysts.map((event) => <span key={`${event.eventIdentityKey ?? event.eventId}:${event.retrievedAt}`}>
+            Event: {event.subject}
+            {" · "}{jurisdictionLabel(event.jurisdiction)}
+            {" · "}{dateTime(event.scheduledAt)} WIB
+            {" · "}{MOVE_IMPORTANCE_LABELS[event.importance] ?? "dampak belum ditetapkan"}
+            {" · "}sumber {event.sourceId}
+          </span>)}
+          {item.evidence.scheduledCatalystCount > scheduledCatalysts.length
+            ? <span>
+                +{item.evidence.scheduledCatalystCount - scheduledCatalysts.length} event terjadwal lain dalam window.
+              </span>
+            : null}
+          {unscheduledCandidates.map((candidate) => <span key={candidate.url}>
+            Kandidat berita: {candidate.title}
+            {" · "}{candidate.domain}
+            {" · "}{candidate.providerDate
+              ? `${dateTime(candidate.providerDate)} WIB`
+              : `pertama diketahui ${dateTime(candidate.firstSeenRetrievedAt)} WIB`}
+            {" · "}{MOVE_TEMPORAL_FIT_LABELS[candidate.temporalFit] ?? "kecocokan waktu belum diketahui"}
+          </span>)}
+          {item.evidence.unscheduledCandidateCount > unscheduledCandidates.length
+            ? <span>
+                +{item.evidence.unscheduledCandidateCount - unscheduledCandidates.length} kandidat berita lain dalam window.
+              </span>
+            : null}
+        </>
       : null}
     {spotFlow
       ? <span>
