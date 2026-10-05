@@ -197,12 +197,6 @@ function marketTapeQualityTone(value: DataQuality | undefined): "current" | "sta
   return "neutral";
 }
 
-function marketTapeRecencyTone(value: "CURRENT" | "STALE" | "UNKNOWN" | undefined): "current" | "stale" | "neutral" {
-  if (value === "CURRENT") return "current";
-  if (value === "STALE") return "stale";
-  return "neutral";
-}
-
 function OverviewMarketTape({ data, observations }: { data: DashboardData; observations: Observation[] }) {
   const bitcoin = observations.find((item) => item.subject === "btc.spot.usd");
   const gold = observations.find((item) => item.subject === "gold.futures.usd");
@@ -211,9 +205,6 @@ function OverviewMarketTape({ data, observations }: { data: DashboardData; obser
   const bitcoinValue = bitcoin ? numberValue(bitcoin.value) : null;
   const goldValue = gold ? numberValue(gold.value) : null;
   const dxyValue = dxy ? numberValue(dxy.value) : null;
-  const stablecoin = data.stablecoinLiquidity.latest;
-  const stablecoinChange = data.stablecoinLiquidity.change1d?.percentChange ?? null;
-  const etfFlow = data.btcEtfFlow.latest;
 
   return <section className="market-terminal-strip" aria-labelledby="market-tape-title">
     <div className="market-terminal-ambient" aria-hidden="true" />
@@ -221,7 +212,7 @@ function OverviewMarketTape({ data, observations }: { data: DashboardData; obser
       <div>
         <span className="market-terminal-kicker">MARKET TAPE · FAKTUAL</span>
         <h2 id="market-tape-title">Snapshot lintas pasar</h2>
-        <p className="market-terminal-subtitle">Harga, yield, flow, dan likuiditas utama dalam satu pandangan. Tidak ada sinyal arah yang ditambahkan.</p>
+        <p className="market-terminal-subtitle">Harga dan yield lintas pasar dalam satu pandangan. Flow ETF dan likuiditas stablecoin tetap berada di bagian Crypto.</p>
       </div>
       <div className="market-terminal-cutoff">
         <span>CUTOFF</span>
@@ -229,7 +220,7 @@ function OverviewMarketTape({ data, observations }: { data: DashboardData; obser
       </div>
     </div>
 
-    <div className="market-terminal-grid">
+    <div className="market-terminal-grid market-terminal-grid-four">
       <article className="market-terminal-card primary">
         <div className="market-terminal-card-head">
           <div><span className="market-terminal-asset">BTC</span><small>SPOT</small></div>
@@ -270,30 +261,11 @@ function OverviewMarketTape({ data, observations }: { data: DashboardData; obser
         <small className="market-terminal-source">{us10y ? `FRED · DGS10 · ${relativeTimeID(us10y.observedAt)}` : "Yield 10Y belum tersedia"}</small>
       </article>
 
-      <article className="market-terminal-card">
-        <div className="market-terminal-card-head">
-          <div><span className="market-terminal-asset">BTC ETF</span><small>NET FLOW</small></div>
-          <span className={`market-terminal-status ${etfFlow ? "mature" : "neutral"}`}>{etfFlow ? "MATANG" : "BELUM ADA"}</span>
-        </div>
-        <strong className="market-terminal-value">{etfFlow ? formatSignedMoney(etfFlow.value) : "—"}</strong>
-        <span className={`terminal-change ${etfFlow ? (etfFlow.value > 0 ? "up" : etfFlow.value < 0 ? "down" : "neutral") : "neutral"}`}>NET FLOW</span>
-        <small className="market-terminal-source">{etfFlow ? `SoSoValue · sesi ${etfFlow.providerTradingDate}` : "Flow matang belum tersedia"}</small>
-      </article>
-
-      <article className="market-terminal-card">
-        <div className="market-terminal-card-head">
-          <div><span className="market-terminal-asset">STABLECOIN</span><small>USD SUPPLY</small></div>
-          <span className={`market-terminal-status ${marketTapeRecencyTone(stablecoin?.recency)}`}>{stablecoin ? recencyLabel(stablecoin.recency) : "BELUM ADA"}</span>
-        </div>
-        <strong className="market-terminal-value">{stablecoin ? formatMoney(stablecoin.value) : "—"}</strong>
-        <TerminalChange value={stablecoinChange} label="1 HARI" />
-        <small className="market-terminal-source">{stablecoin ? `DefiLlama · ${stablecoin.observedAt.slice(0, 10)}` : "Supply USD stablecoin belum tersedia"}</small>
-      </article>
     </div>
 
     <div className="market-terminal-foot">
       <span>FAKTUAL · NON-PRESKRIPTIF</span>
-      <span>ETF: MATANG = lolos kebijakan finalitas P365, bukan status freshness.</span>
+      <span>Detail flow dan likuiditas crypto tersedia di bagian Crypto.</span>
     </div>
   </section>;
 }
@@ -593,51 +565,66 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
 
     <div className="dashboard-content" role="tabpanel">
       {activeMenu === "overview" && <>
-        <div className="page-intro"><span>DASHBOARD UTAMA</span><h1>Pasar sekarang</h1><p>Mulai dari snapshot pasar, cek move yang material, lalu lihat catalyst dan briefing faktual. Event dan detail teknis tetap tersedia sebagai lapisan sekunder.</p></div>
-        <OverviewMarketTape data={data} observations={observations} />
-        <div className="overview-intelligence-grid">
-          <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
-          <CatalystWirePanel data={data.catalystWire} />
+        <div className="page-intro">
+          <span>RINGKASAN</span>
+          <h1>Market Briefing</h1>
+          <p>Ringkasan hanya menampilkan kesimpulan faktual P365. Detail pasar, makro, crypto, Gold, catalyst, dan sumber data tersedia di bagian masing-masing.</p>
         </div>
         <div className="overview-briefing">
           <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
         </div>
-
-        <details className="overview-event-details">
-          <summary>
-            <div>
-              <span>EVENT LAYER · SEKUNDER</span>
-              <strong>Kalender & respons event intraday</strong>
-            </div>
-            <span>Buka detail</span>
-          </summary>
-          <div className="overview-event-details-body">
-            <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
-            <IntradayEventResponsePanel result={data.intradayEventMonitor} />
-          </div>
-        </details>
-
-        <details className="advanced-details">
-          <summary>Lihat detail makro & likuiditas</summary>
-          <div className="advanced-details-body">
-            <MvpFactualContextPanel data={data.mvpFactualContext} />
-            <div className="intraday-secondary-grid">
-              <NetLiquidityPanel data={data.netLiquidity} />
-              <RatesInflationPanel data={data.ratesInflation} />
-            </div>
-          </div>
-        </details>
       </>}
-      {activeMenu === "heatmap" && <MarketHeatmap observations={observations} baselines={baselinePresentations} />}
-      {activeMenu === "macro" && <><div className="page-intro"><span>MAKRO</span><h1>Faktor makro yang perlu dipantau</h1><p>Mulai dari rates, inflasi, likuiditas, tenaga kerja, USD, dan pertumbuhan. Buka kartu hanya jika ingin detail indikator.</p></div><div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar macro-theme-panel"><div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div><h2>Indikator utama</h2>{macroObservations.length ? macroContexts.map((context) => <MacroThemeCard context={context} observations={macroObservations} baselines={baselinesBySeries} expanded={expandedMacroTheme === context.id} onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)} key={context.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div></>}
+      {activeMenu === "heatmap" && <>
+        <div className="page-intro">
+          <span>PASAR</span>
+          <h1>Harga dan pergerakan material</h1>
+          <p>Bagian Pasar menampung snapshot lintas pasar, deteksi pergerakan material, dan heatmap faktual. Tidak ada sinyal trading yang ditambahkan.</p>
+        </div>
+        <OverviewMarketTape data={data} observations={observations} />
+        <div style={{ marginTop: "1rem" }}>
+          <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <MarketHeatmap observations={observations} baselines={baselinePresentations} />
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <CrossAssetMarketPanel observations={observations} />
+        </div>
+      </>}
+      {activeMenu === "macro" && <>
+        <div className="page-intro">
+          <span>MAKRO</span>
+          <h1>Lingkungan makro</h1>
+          <p>Suku bunga, inflasi, likuiditas, tenaga kerja, USD, dan pertumbuhan ditempatkan di bagian ini. Jadwal event dan berita berada di Konteks.</p>
+        </div>
+        <div className="intraday-secondary-grid">
+          <NetLiquidityPanel data={data.netLiquidity} />
+          <RatesInflationPanel data={data.ratesInflation} />
+        </div>
+        <div className="menu-grid" style={{ marginTop: "1rem" }}>
+          <section className="panel calendar macro-theme-panel">
+            <div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div>
+            <h2>Indikator utama</h2>
+            {macroObservations.length
+              ? macroContexts.map((context) => <MacroThemeCard
+                  context={context}
+                  observations={macroObservations}
+                  baselines={baselinesBySeries}
+                  expanded={expandedMacroTheme === context.id}
+                  onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)}
+                  key={context.id}
+                />)
+              : <EmptyPanelNote label="observasi makro" />}
+          </section>
+        </div>
+      </>}
       {activeMenu === "crypto" && <>
-        <div className="page-intro"><span>CRYPTO</span><h1>Harga, likuiditas, dan arus modal</h1><p>Urutannya sederhana: lihat harga pasar, lalu ukuran likuiditas stablecoin, lalu arus ETF Bitcoin. Berita ditempatkan setelah data utama.</p></div>
+        <div className="page-intro"><span>CRYPTO</span><h1>Harga, likuiditas, dan arus modal</h1><p>Urutannya sederhana: lihat harga pasar, lalu ukuran likuiditas stablecoin, lalu arus ETF Bitcoin. Berita Crypto tersedia di Konteks.</p></div>
         <CryptoMarketPanel observations={observations} providerHealth={providerHealth} />
         <div className="decision-grid">
           <StablecoinLiquidityPanel data={data.stablecoinLiquidity} />
           <BtcEtfFlowPanel data={data.btcEtfFlow} />
         </div>
-        {showNews(cryptoNews, "BERITA CRYPTO")}
       </>}
       {activeMenu === "gold" && <>
         <div className="page-intro"><span>GOLD</span><h1>Harga dan posisi trader</h1><p>Harga menjawab apa yang diperdagangkan sekarang. CFTC menjawab bagaimana kelompok Managed Money memegang kontrak pada laporan mingguan terakhir.</p></div>
@@ -646,7 +633,64 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
           <GoldPositioningPanel data={data.goldPositioning} />
         </div>
       </>}
-      {activeMenu === "context" && <div className="menu-grid context-menu"><section className="panel intelligence-panel"><div className="panel-label"><span>MARKET CONTEXT</span><span>{contexts.length} CONTEXT</span></div><h2>Konteks pasar</h2><p className="lead-copy">Bagian ini mengelompokkan data dan event yang saling terkait. Gunakan jika ingin menelusuri detail di balik ringkasan.</p><div className="context-groups">{contextGroups.length ? contextGroups.map((group) => { const isExpanded = expandedGroup === group.id; return <section className={`context-group${isExpanded ? " expanded" : ""}`} key={group.id}><button type="button" className="context-group-button" aria-expanded={isExpanded} onClick={() => setExpandedGroup(isExpanded ? null : group.id)}><span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span><span>{group.contexts.length} CONTEXT {isExpanded ? "↑" : "→"}</span></button>{isExpanded && <div className="context-list">{group.contexts.map((context) => { const label = context.scope === "CRYPTO_MARKET" ? context.id.replace("context-crypto-", "").toUpperCase() : context.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " "); return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => setSelectedContextId(selectedContextId === context.id ? null : context.id)} key={context.id} />; })}</div>}</section>; }) : <EmptyPanelNote label="context" />}</div></section>{selectedContext ? <ContextDetail context={selectedContext} label={selectedLabel} /> : <section className="panel context-detail-empty"><div className="panel-label"><span>RINCIAN KONTEKS</span><span>PILIH KONTEKS</span></div><h2>Pilih context</h2><p className="lead-copy">Klik salah satu konteks untuk melihat data dan event yang terkait.</p></section>}</div>}
+      {activeMenu === "context" && <>
+        <div className="page-intro">
+          <span>KONTEKS</span>
+          <h1>Catalyst dan investigasi bukti</h1>
+          <p>Bagian Konteks menampung catalyst, kalender event, berita, konteks faktual lintas Makro → BTC + Gold, dan respons pasar setelah event. Kedekatan waktu tidak dipromosikan menjadi sebab-akibat.</p>
+        </div>
+        <CatalystWirePanel data={data.catalystWire} />
+        <div style={{ marginTop: "1rem" }}>
+          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
+        </div>
+        <div className="menu-grid" style={{ marginTop: "1rem" }}>
+          {showNews(macroNews, "BERITA MAKRO")}
+          {showNews(cryptoNews, "BERITA CRYPTO")}
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <MvpFactualContextPanel data={data.mvpFactualContext} />
+        </div>
+        <div className="menu-grid context-menu" style={{ marginTop: "1rem" }}>
+          <section className="panel intelligence-panel">
+            <div className="panel-label"><span>MARKET CONTEXT</span><span>{contexts.length} CONTEXT</span></div>
+            <h2>Konteks pasar</h2>
+            <p className="lead-copy">Bagian ini mengelompokkan data dan event yang saling terkait. Gunakan jika ingin menelusuri detail di balik briefing.</p>
+            <div className="context-groups">
+              {contextGroups.length
+                ? contextGroups.map((group) => {
+                    const isExpanded = expandedGroup === group.id;
+                    return <section className={`context-group${isExpanded ? " expanded" : ""}`} key={group.id}>
+                      <button type="button" className="context-group-button" aria-expanded={isExpanded} onClick={() => setExpandedGroup(isExpanded ? null : group.id)}>
+                        <span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span>
+                        <span>{group.contexts.length} CONTEXT {isExpanded ? "↑" : "→"}</span>
+                      </button>
+                      {isExpanded && <div className="context-list">
+                        {group.contexts.map((context) => {
+                          const label = context.scope === "CRYPTO_MARKET"
+                            ? context.id.replace("context-crypto-", "").toUpperCase()
+                            : context.scope === "ECONOMIC_EVENTS"
+                              ? "Scheduled Events"
+                              : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " ");
+                          return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => setSelectedContextId(selectedContextId === context.id ? null : context.id)} key={context.id} />;
+                        })}
+                      </div>}
+                    </section>;
+                  })
+                : <EmptyPanelNote label="context" />}
+            </div>
+          </section>
+          {selectedContext
+            ? <ContextDetail context={selectedContext} label={selectedLabel} />
+            : <section className="panel context-detail-empty">
+                <div className="panel-label"><span>RINCIAN KONTEKS</span><span>PILIH KONTEKS</span></div>
+                <h2>Pilih konteks</h2>
+                <p className="lead-copy">Klik salah satu konteks untuk melihat data dan event yang terkait.</p>
+              </section>}
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <IntradayEventResponsePanel result={data.intradayEventMonitor} />
+        </div>
+      </>}
       {activeMenu === "evidence" && <div className="menu-grid"><section className="panel intelligence-panel evidence-browser"><div className="panel-label"><span>EVIDENCE</span><span>{evidence.length} ITEM</span></div><h2>Jejak sumber data</h2><p className="lead-copy">Daftar sumber data yang dipakai P365. Bagian ini untuk audit dan penelusuran, bukan tampilan utama untuk mengambil keputusan.</p>{evidence.length ? <><div className="monitor-list evidence-list">{evidence.slice(0, 12).map((item: Evidence) => <div key={item.id}><strong>{item.kind}</strong><span>{item.subject} · {item.sourceId} · {relativeTimeID(item.capturedAt)}</span></div>)}</div>{evidence.slice(12, 24).length > 0 ? <details className="evidence-more"><summary><span>{Math.min(12, evidence.length - 12)} evidence lainnya</span><strong>LIHAT LANJUTAN</strong></summary><div className="monitor-list evidence-list">{evidence.slice(12, 24).map((item: Evidence) => <div key={item.id}><strong>{item.kind}</strong><span>{item.subject} · {item.sourceId} · {relativeTimeID(item.capturedAt)}</span></div>)}</div></details> : null}</> : <EmptyPanelNote label="evidence" />}</section></div>}
     </div>
   </main>;
