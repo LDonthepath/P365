@@ -206,13 +206,6 @@
   padding:11px 0;
 }
 
-.dashboardLayout :global(.advanced-details > summary::before){
-  content:"MACRO & LIQUIDITY · DETAIL";
-  margin-right:auto;
-  color:var(--muted);
-  font-size:7px;
-  letter-spacing:.08em;
-}
 
 .dashboardLayout :global(.advanced-details[open] > summary){
   border-bottom:1px solid var(--line-soft);
