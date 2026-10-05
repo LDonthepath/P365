@@ -23,6 +23,7 @@ import {
   type FactualMarketBriefing,
 } from "./factual-market-briefing";
 import { buildCatalystWireReadModel, type CatalystWireReadModel } from "./catalyst-wire";
+import { buildMaterialMoveMonitor, type MaterialMoveMonitorReadModel } from "./material-move-monitor";
 
 export type DashboardData = NormalizedDashboardData & {
   macroBaselines: Record<string, FactualBaseline>;
@@ -36,6 +37,7 @@ export type DashboardData = NormalizedDashboardData & {
   goldPositioning: GoldPositioningReadModel;
   factualMarketBriefing: FactualMarketBriefing;
   catalystWire: CatalystWireReadModel;
+  materialMoveMonitor: MaterialMoveMonitorReadModel;
 };
 
 type DurableHighImpactEventBundle = {
@@ -160,6 +162,12 @@ export async function getDashboardData(): Promise<DashboardData> {
   const btcEtfFlowPromise = buildBtcEtfFlowReadModel(dashboardHistoricalObservationRepository, asOf);
   const goldPositioningPromise = buildGoldPositioningReadModel(dashboardHistoricalObservationRepository, asOf);
   const recentGdeltEvidencePromise = getRecentGdeltEvidence(asOf);
+  const materialMoveMonitorPromise = buildMaterialMoveMonitor({
+    observations: dashboardHistoricalObservationRepository,
+    events: historicalEventRepository,
+    evidence: historicalEvidenceRepository,
+    asOf: asOf.toISOString(),
+  });
   const ingestion = await ingestDashboardData();
   const normalized = normalizeDashboardData(ingestion);
 
@@ -174,6 +182,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     btcEtfFlow,
     goldPositioning,
     recentGdeltEvidence,
+    materialMoveMonitor,
   ] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
@@ -188,6 +197,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     btcEtfFlowPromise,
     goldPositioningPromise,
     recentGdeltEvidencePromise,
+    materialMoveMonitorPromise,
   ]);
 
   const eventRepricing = buildBriefingEventRepricing({
@@ -234,5 +244,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     goldPositioning,
     factualMarketBriefing,
     catalystWire,
+    materialMoveMonitor,
   };
 }
