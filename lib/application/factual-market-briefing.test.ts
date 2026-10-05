@@ -670,10 +670,30 @@ test("BRF-002A composes the existing material MOVE evidence into a market-first 
                 },
               ],
             }],
-            scheduledCatalystCount: 0,
+            scheduledCatalystCount: 1,
             scheduledCatalystCoverage: "COMPLETE",
-            unscheduledCandidateCount: 2,
+            scheduledCatalysts: [{
+              eventId: "event-cpi",
+              eventIdentityKey: "event:v1:US:2026-10-01T23:30:00.000Z:cpi",
+              subject: "US CPI",
+              jurisdiction: "US",
+              importance: "HIGH",
+              scheduledAt: "2026-10-01T23:30:00.000Z",
+              retrievedAt: "2026-10-01T20:00:00.000Z",
+              sourceId: "biquote-economic-event",
+            }],
+            unscheduledCandidateCount: 1,
             unscheduledCatalystCoverage: "COMPLETE",
+            unscheduledCandidates: [{
+              url: "https://example.com/btc-move",
+              title: "Bitcoin headline inside MOVE window",
+              domain: "example.com",
+              providerDate: "2026-10-01T23:40:00.000Z",
+              providerDateSemantics: "PUBLICATION_OR_FIRST_SEEN",
+              temporalFit: "WITHIN_MOVE_WINDOW",
+              firstSeenRetrievedAt: "2026-10-01T23:45:00.000Z",
+              firstSnapshotEvidenceId: "gdelt-snapshot-1",
+            }],
             btcSpotFlow: {
               coverage: "COMPLETE",
               venue: "BINANCE",
@@ -718,8 +738,18 @@ test("BRF-002A composes the existing material MOVE evidence into a market-first 
   assert.equal(result.marketMoves.materialMoveCount, 1);
   assert.equal(result.marketMoves.items[0]?.asset, "BTC");
   assert.equal(result.marketMoves.items[0]?.horizons[0]?.signedPercentChange, 1.82);
-  assert.equal(result.marketMoves.items[0]?.evidence?.scheduledCatalystCount, 0);
-  assert.equal(result.marketMoves.items[0]?.evidence?.unscheduledCandidateCount, 2);
+  assert.equal(result.marketMoves.items[0]?.evidence?.scheduledCatalystCount, 1);
+  assert.equal(result.marketMoves.items[0]?.evidence?.scheduledCatalysts[0]?.subject, "US CPI");
+  assert.equal(result.marketMoves.items[0]?.evidence?.scheduledCatalysts[0]?.sourceId, "biquote-economic-event");
+  assert.equal(result.marketMoves.items[0]?.evidence?.unscheduledCandidateCount, 1);
+  assert.equal(
+    result.marketMoves.items[0]?.evidence?.unscheduledCandidates[0]?.title,
+    "Bitcoin headline inside MOVE window",
+  );
+  assert.equal(
+    result.marketMoves.items[0]?.evidence?.unscheduledCandidates[0]?.temporalFit,
+    "WITHIN_MOVE_WINDOW",
+  );
   assert.equal(result.marketMoves.items[0]?.evidence?.btcSpotFlow?.takerBuyShare, 0.58);
   assert.equal(result.marketMoves.items[0]?.causalAttribution, "NOT_EVALUATED");
 });
@@ -741,4 +771,60 @@ test("BRF-002A fails closed when the MOVE monitor is unavailable", () => {
   assert.equal(result.marketMoves.materialMoveCount, 0);
   assert.deepEqual(result.marketMoves.items, []);
   assert.match(result.marketMoves.reason ?? "", /Belum ada assessment durable BTC\/Gold/);
+});
+
+
+test("BRF-002B preserves missing catalyst detail without inventing a driver", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    materialMoveMonitor: {
+      asOf: AS_OF,
+      status: "OK",
+      causalAttribution: "NOT_EVALUATED",
+      assets: [{
+        asset: "BTC",
+        seriesKey: "btc.spot.usd",
+        sourceId: "coingecko-market",
+        observedAt: "2026-10-01T23:55:00.000Z",
+        status: "MATERIAL_MOVE",
+        hasMaterialMove: true,
+        horizons: [{
+          horizonMinutes: 60,
+          status: "MATERIAL_MOVE",
+          signedPercentChange: 1.5,
+          materialityThresholdPercent: 1.1,
+          targetPercentileRank: 97.8,
+          historicalSampleSize: 400,
+        }],
+        evidence: {
+          evidenceCompleteness: "EVIDENCE_INCOMPLETE",
+          investigationWindow: {
+            startAt: "2026-10-01T22:55:00.000Z",
+            endAt: "2026-10-01T23:55:00.000Z",
+          },
+          synchronousCoverage: "PARTIAL",
+          synchronousFingerprint: [],
+          scheduledCatalystCount: 0,
+          scheduledCatalystCoverage: "COMPLETE",
+          scheduledCatalysts: [],
+          unscheduledCandidateCount: 0,
+          unscheduledCatalystCoverage: "PARTIAL",
+          unscheduledCandidates: [],
+          btcSpotFlow: null,
+        },
+        causalAttribution: "NOT_EVALUATED",
+      }],
+    },
+  });
+
+  const move = result.marketMoves.items[0];
+  assert.equal(move?.hasMaterialMove, true);
+  assert.equal(move?.evidence?.scheduledCatalystCount, 0);
+  assert.deepEqual(move?.evidence?.scheduledCatalysts, []);
+  assert.equal(move?.evidence?.unscheduledCandidateCount, 0);
+  assert.deepEqual(move?.evidence?.unscheduledCandidates, []);
+  assert.equal(move?.causalAttribution, "NOT_EVALUATED");
+  assert.equal(JSON.stringify(move).toLowerCase().includes("caused"), false);
 });
