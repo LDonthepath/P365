@@ -4,6 +4,10 @@ import { ingestDashboardData } from "../ingestion/dashboard-ingestion";
 import { normalizeDashboardData, type NormalizedDashboardData } from "../normalization/dashboard-normalization";
 import { historicalEventRepository, historicalEvidenceRepository, historicalObservationRepository } from "../repositories/dashboard-repository";
 import type { Event, Evidence } from "../domain/types";
+import {
+  BTC_ETF_NET_FLOW_SERIES_KEY,
+  USD_STABLECOIN_MARKET_CAP_SERIES_KEY,
+} from "../domain/observation-semantics";
 import { buildRepositoryBackedMacroFactualBaselines } from "./factual-baseline";
 import { getIntradayEventMonitor, type IntradayEventMonitorResult } from "./intraday-event-monitor";
 import { buildBriefingEventRepricing } from "./briefing-event-repricing";
@@ -142,13 +146,71 @@ const dashboardHistoricalObservationRepository = withHistoricalObservationConcur
   4,
 );
 
+function dashboardReadError(label: string, error: unknown): void {
+  console.error(
+    `${label} failed closed:`,
+    error instanceof Error ? error.message : "unknown error",
+  );
+}
+
+async function buildDashboardNetLiquidity(asOf: Date): Promise<NetLiquidityReadModel> {
+  try {
+    return await buildNetLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
+  } catch (error) {
+    dashboardReadError("Dashboard net liquidity durable read", error);
+    return {
+      status: "UNAVAILABLE",
+      reason: "Data likuiditas sedang tidak dapat dibaca.",
+    };
+  }
+}
+
+async function buildDashboardStablecoinLiquidity(
+  asOf: Date,
+): Promise<StablecoinLiquidityReadModel> {
+  try {
+    return await buildStablecoinLiquidityReadModel(
+      dashboardHistoricalObservationRepository,
+      asOf,
+    );
+  } catch (error) {
+    dashboardReadError("Dashboard stablecoin liquidity durable read", error);
+    return {
+      asOf: asOf.toISOString(),
+      seriesKey: USD_STABLECOIN_MARKET_CAP_SERIES_KEY,
+      latest: null,
+      change1d: null,
+      change1w: null,
+      change4w: null,
+    };
+  }
+}
+
+async function buildDashboardBtcEtfFlow(asOf: Date): Promise<BtcEtfFlowReadModel> {
+  try {
+    return await buildBtcEtfFlowReadModel(
+      dashboardHistoricalObservationRepository,
+      asOf,
+    );
+  } catch (error) {
+    dashboardReadError("Dashboard BTC ETF flow durable read", error);
+    return {
+      asOf: asOf.toISOString(),
+      seriesKey: BTC_ETF_NET_FLOW_SERIES_KEY,
+      latest: null,
+      previous: null,
+      recent: [],
+    };
+  }
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
   const asOf = new Date();
   // Start the independent durable event-response read immediately so it runs
   // alongside provider ingestion/normalization and baseline work.
   const intradayEventMonitorPromise = getIntradayEventMonitor();
   const durableHighImpactEventBundlePromise = getDurableHighImpactEventBundle(asOf);
-  const netLiquidityPromise = buildNetLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
+  const netLiquidityPromise = buildDashboardNetLiquidity(asOf);
   const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf);
   const mvpFactualContextPromise = buildMacroCryptoGoldFactualContext(
     dashboardHistoricalObservationRepository,
@@ -158,8 +220,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       ratesInflation: ratesInflationPromise,
     },
   );
-  const stablecoinLiquidityPromise = buildStablecoinLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
-  const btcEtfFlowPromise = buildBtcEtfFlowReadModel(dashboardHistoricalObservationRepository, asOf);
+  const stablecoinLiquidityPromise = buildDashboardStablecoinLiquidity(asOf);
+  const btcEtfFlowPromise = buildDashboardBtcEtfFlow(asOf);
   const goldPositioningPromise = buildGoldPositioningReadModel(dashboardHistoricalObservationRepository, asOf);
   const recentGdeltEvidencePromise = getRecentGdeltEvidence(asOf);
   const materialMoveMonitorPromise = buildMaterialMoveMonitor({
