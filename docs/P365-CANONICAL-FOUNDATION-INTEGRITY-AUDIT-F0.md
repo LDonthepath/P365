@@ -816,6 +816,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 
 | 4 Oct 2026 | ORDER-BOOK-001C Durable BTC Order-Book Geometry History Runtime | Adds compact forward-only canonical Evidence builders for Binance Spot BTCUSDT and Hyperliquid BTC perpetual order-book geometry. Existing qualified current snapshots are reduced to best bid/ask, spread, 5/10/25/50 bps depth/imbalance/coverage and provider lineage; raw depth levels are not persisted. Binance Spot remains retrieval-time sampled because the REST source has no provider timestamp; Hyperliquid uses provider-native book time. Authenticated historical-ingestion accepts `binance-book` and `hyperliquid-book` in FORWARD mode only. No cron activation, BACKFILL, production write proof, MOVE replay, liquidity deterioration scoring, causal attribution or UI is introduced. |
 
+| 5 Oct 2026 | HOUSEKEEP-001A Daily Storage Capacity Monitoring Runtime | Implements an activation-ready Supabase `pg_cron` SQL contract without production mutation before owner merge. It reuses the existing RLS-enabled `public.p365_operational_metrics` table and records one idempotent `STORAGE_CAPACITY` row per UTC day: database bytes, Market Memory total/heap/index bytes and row counts, Evidence/Observation counts, `cron.job_run_details` bytes, Free-plan 500 MiB planning ceiling, estimated headroom and utilization percentage. Read-only baseline at 12:55 UTC measured 269,388,947 database bytes (51.38% of the planning ceiling), 231,768,064 Market Memory bytes, 25,116,672 cron-history bytes and 254,899,053 bytes estimated headroom. EXPLAIN validation passed without executing the INSERT. No deletion, retention, VACUUM, REINDEX, alert threshold, order-book sampling or scheduler activation is authorized by this branch. ORDER-BOOK-001C activation is gated until monitoring is merged/activated and initial storage growth is observed. |
+
 ## Foundation Exit Gate — 24 Sep 2026
 
 **Verdict: PASS for foundation hardening.**
@@ -966,10 +968,28 @@ footprint, the legacy Observation-Evidence duplication defect already fixed by P
 current post-fix idempotency, index-usage findings, runway scenarios, and the deferred
 housekeeping sequence.
 
-No housekeeping implementation is active from this record. In particular, canonical Market
-Memory must not receive automatic age-based deletion. The deferred order is storage
-monitoring → operational `cron.job_run_details` retention → index review → owner capacity
-decision → formal hot/cold archival design only if needed.
+HOUSEKEEP-001A now prepares the first implementation checkpoint: one UTC-daily storage-capacity
+snapshot into the existing RLS-enabled `public.p365_operational_metrics` table. Production
+activation is still pending owner merge; the SQL contract is
+`docs/P365-HOUSEKEEP-001A-STORAGE-MONITORING.sql`.
+
+The 5 Oct 2026 read-only baseline is:
+
+- database: 269,388,947 bytes (~257 MiB);
+- Market Memory: 231,768,064 bytes (~221 MiB);
+- `cron.job_run_details`: 25,116,672 bytes (~24 MiB);
+- Free-plan database utilization: 51.38%;
+- estimated remaining headroom: 254,899,053 bytes (~243 MiB).
+
+The last 24-hour sample added 5,596 Market Memory rows and roughly 5.4 MiB of raw payload
+before tuple/index overhead. Because ORDER-BOOK-001C would add two recurring snapshot lanes,
+its production activation is now gated behind HOUSEKEEP-001A monitoring activation and an
+initial measured growth sample.
+
+Canonical Market Memory must not receive automatic age-based deletion. The operational order is
+storage monitoring → operational `cron.job_run_details` retention decision → measured
+order-book capacity decision → index review → owner capacity decision → formal hot/cold
+archival design only if needed.
 
 ## 22. Final audit conclusion
 

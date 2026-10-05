@@ -42,7 +42,7 @@ The matrix is provider-neutral. Provider names are candidates, not architecture.
 | BTC funding | Is perpetual positioning becoming expensive/crowded? | P0 | SYNC/NEAR | **LIVE-QUALIFIED / DURABLE-USE GATE** | Coinalyze free-first |
 | BTC liquidations | Is forced deleveraging consistent with the move? | P0 | SYNC | **TECHNICAL LIVE PASS — SPARSE WINDOW / DURABLE-USE GATE** | Coinalyze free-first; ChainVector validation |
 | BTC spot trade flow | Is spot participation confirming the move? | P0 | SYNC | **SPOT-FLOW-001A/B/C PRODUCTION ACTIVE + MOVE-002C REPLAY IMPLEMENTED / BYBIT VERCEL-EGRESS UNAVAILABLE** | Binance Spot completed 5m taker-flow persists via existing `p365-market-fast` and is point-in-time consumable by BTC MATERIAL_MOVE bundles |
-| BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **ORDER-BOOK-001A/B LIVE + ORDER-BOOK-001C DURABLE SUMMARY RUNTIME IMPLEMENTED / ACTIVATION + MOVE REPLAY PENDING** | Binance Spot + Hyperliquid BTC perp geometry can now persist as compact forward-only Evidence; no production cron or historical MOVE replay yet |
+| BTC order-book liquidity | Did depth/spread deteriorate or imbalance around the move? | P0 | SYNC | **ORDER-BOOK-001A/B LIVE + ORDER-BOOK-001C DURABLE SUMMARY RUNTIME IMPLEMENTED / ACTIVATION CAPACITY-GATED / MOVE REPLAY PENDING** | Binance Spot + Hyperliquid BTC perp compact geometry is implementation-ready; production sampling waits for HOUSEKEEP-001A daily capacity monitoring and an initial measured storage-growth sample |
 | Unscheduled news/catalysts | Was there a non-calendar information shock? | P0 | EVENT/NEAR | **NEWS-001B/C/D PRODUCTION ACTIVE + MOVE-002D REPLAY IMPLEMENTED** | Durable GDELT GAL BTC+Gold snapshots are point-in-time consumable by MATERIAL_MOVE bundles; no pre-activation backfill is claimed |
 | Intraday rates / policy pricing | Did rates/real-yield/policy pricing reprice with BTC/Gold? | P0 | SYNC | **MACRO-RATES-001A/001B FREE-ONLY / PAID PATHS REJECTED / ZT+TN PROXY RISK-QUALIFIED ONLY / NO RUNTIME / REAL-YIELD INTRADAY UNRESOLVED** | Daily FRED remains canonical background; if any future free lawful proxy is found, ZT+TN is preferred over ZT+ZN after tenor-fidelity review |
 | BTC basis | Is futures pricing rich/cheap vs spot/index? | P1 | SYNC | **MISSING / VENUE FALLBACK AVAILABLE** | Official exchange basis where qualified |
@@ -574,7 +574,7 @@ available and exposes unresolved temporal gaps explicitly:
 
 - Coinalyze derivatives: technically live-qualified, durable replay not approved;
 - Binance spot-flow: durable FORWARD acquisition is production-active and MOVE-002C consumes point-in-time historical Evidence for BTC MATERIAL_MOVE bundles;
-- spot/perp order books: durable summary runtime exists in ORDER-BOOK-001C, but production sampling and MOVE replay are not yet active;
+- spot/perp order books: durable summary runtime exists in ORDER-BOOK-001C; production sampling is capacity-gated behind HOUSEKEEP-001A monitoring, and MOVE replay remains inactive;
 - GDELT GAL: durable forward snapshot acquisition is production-active and MOVE-002D consumes point-in-time historical Evidence; pre-activation history remains unavailable;
 - intraday rates: FREE_ONLY / no approved runtime.
 
