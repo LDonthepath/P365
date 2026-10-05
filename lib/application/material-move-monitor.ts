@@ -26,6 +26,19 @@ export type MaterialMoveHorizonReadModel = {
   historicalSampleSize: number;
 };
 
+export type MaterialMoveSynchronousFingerprintSeries = {
+  seriesKey: string;
+  sourceId: string;
+  state: "AVAILABLE_SYNCHRONOUS" | "INSUFFICIENT_DATA" | "UNKNOWN";
+  signedPercentChange: number | null;
+};
+
+export type MaterialMoveSynchronousFingerprintHorizon = {
+  horizonMinutes: number;
+  coverage: "COMPLETE" | "PARTIAL" | "EMPTY";
+  series: MaterialMoveSynchronousFingerprintSeries[];
+};
+
 export type MaterialMoveEvidenceSummary = {
   evidenceCompleteness: "EVIDENCE_COMPLETE" | "EVIDENCE_INCOMPLETE";
   investigationWindow: {
@@ -33,6 +46,7 @@ export type MaterialMoveEvidenceSummary = {
     endAt: string;
   };
   synchronousCoverage: "COMPLETE" | "PARTIAL" | "EMPTY";
+  synchronousFingerprint: MaterialMoveSynchronousFingerprintHorizon[];
   scheduledCatalystCount: number;
   scheduledCatalystCoverage:
     | "COMPLETE"
@@ -150,6 +164,16 @@ async function evidenceSummary(input: {
       endAt: result.bundle.investigationWindow.endAt,
     },
     synchronousCoverage: result.bundle.synchronousMarket.coverage,
+    synchronousFingerprint: result.bundle.synchronousMarket.horizons.map((horizon) => ({
+      horizonMinutes: Math.round(horizon.horizonMs / 60_000),
+      coverage: horizon.coverage,
+      series: horizon.series.map((series) => ({
+        seriesKey: series.seriesKey,
+        sourceId: series.sourceId,
+        state: series.state,
+        signedPercentChange: series.signedPercentChange ?? null,
+      })),
+    })),
     scheduledCatalystCount: result.bundle.scheduledCatalysts.events.length,
     scheduledCatalystCoverage: result.bundle.scheduledCatalysts.coverage,
     unscheduledCandidateCount: result.bundle.unscheduledCatalysts.candidates.length,

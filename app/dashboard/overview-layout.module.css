@@ -860,6 +860,7 @@
 .overviewLayout :global(.move-monitor-time),
 .overviewLayout :global(.move-monitor-horizon),
 .overviewLayout :global(.move-monitor-evidence),
+.overviewLayout :global(.move-monitor-fingerprint),
 .overviewLayout :global(.move-monitor-foot){
   font-family:'DM Mono',monospace;
 }
@@ -1079,6 +1080,76 @@
   line-height:1.45;
 }
 
+.overviewLayout :global(.move-monitor-fingerprint){
+  margin-top:12px;
+  padding:11px;
+  border:1px solid rgba(211,178,112,.16);
+  background:rgba(211,178,112,.025);
+}
+
+.overviewLayout :global(.move-monitor-fingerprint-head){
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:var(--muted);
+  font-size:7px;
+  letter-spacing:.05em;
+}
+
+.overviewLayout :global(.move-monitor-fingerprint-head strong){
+  color:#ead7ad;
+  font-size:8px;
+}
+
+.overviewLayout :global(.move-monitor-fingerprint-grid){
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+  margin-top:9px;
+}
+
+.overviewLayout :global(.move-monitor-fingerprint-item){
+  min-width:0;
+  padding:8px;
+  border:1px solid var(--line-soft);
+  background:rgba(255,255,255,.012);
+}
+
+.overviewLayout :global(.move-monitor-fingerprint-item > div){
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+}
+
+.overviewLayout :global(.move-monitor-fingerprint-item span){
+  color:var(--text);
+  font-size:7px;
+  font-weight:700;
+}
+
+.overviewLayout :global(.move-monitor-fingerprint-item small){
+  color:var(--muted);
+  font-size:5.8px;
+  text-align:right;
+}
+
+.overviewLayout :global(.move-monitor-fingerprint-item > strong){
+  display:block;
+  margin-top:7px;
+  color:var(--text);
+  font-size:10px;
+  font-variant-numeric:tabular-nums;
+}
+
+.overviewLayout :global(.move-monitor-fingerprint > p){
+  margin:8px 0 0;
+  color:var(--muted);
+  font-size:6.5px;
+  line-height:1.45;
+}
+
 .overviewLayout :global(.move-monitor-foot){
   display:flex;
   justify-content:space-between;
@@ -1117,7 +1188,8 @@
   }
 
   .overviewLayout :global(.move-monitor-horizons),
-  .overviewLayout :global(.move-monitor-evidence-grid){
+  .overviewLayout :global(.move-monitor-evidence-grid),
+  .overviewLayout :global(.move-monitor-fingerprint-grid){
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
@@ -1134,7 +1206,8 @@
   }
 
   .overviewLayout :global(.move-monitor-horizons),
-  .overviewLayout :global(.move-monitor-evidence-grid){
+  .overviewLayout :global(.move-monitor-evidence-grid),
+  .overviewLayout :global(.move-monitor-fingerprint-grid){
     grid-template-columns:1fr;
   }
 }
