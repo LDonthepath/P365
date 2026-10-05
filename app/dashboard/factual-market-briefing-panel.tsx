@@ -175,9 +175,18 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           <span>{changed.reason}</span>
         </div>}
 
-    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
-      <div className="panel-label">
-        <span>SEBELUM RILIS EVENT TERBARU</span>
+    <details className="briefing-analysis-details">
+      <summary>
+        <div>
+          <span>ANALISIS EVENT · DETAIL</span>
+          <strong>Baseline, surprise, repricing & konfirmasi</strong>
+        </div>
+        <span>Buka detail</span>
+      </summary>
+      <div className="briefing-analysis-body">
+        <div className="briefing-analysis-section">
+          <div className="panel-label">
+            <span>SEBELUM RILIS EVENT TERBARU</span>
         <span>{baselines.evidenceStatus === "AVAILABLE" ? "BASELINE TERSEDIA" : "BASELINE BELUM CUKUP"}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apa yang sudah diketahui sebelum rilis?</h3>
@@ -209,9 +218,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
-      <div className="panel-label">
-        <span>HASIL VS EKSPEKTASI</span>
+        <div className="briefing-analysis-section">
+          <div className="panel-label">
+            <span>HASIL VS EKSPEKTASI</span>
         <span>{surprises.evidenceStatus === "AVAILABLE" ? "PERBANDINGAN TERSEDIA" : "DATA BELUM CUKUP"}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Bagaimana hasil rilis dibanding perkiraan?</h3>
@@ -235,9 +244,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
-      <div className="panel-label">
-        <span>REPRICING PASCA-RILIS</span>
+        <div className="briefing-analysis-section">
+          <div className="panel-label">
+            <span>REPRICING PASCA-RILIS</span>
         <span>{repricing.evidenceStatus === "AVAILABLE" ? "EVIDENCE TERSEDIA" : "DATA BELUM CUKUP"}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apakah move pasar cukup besar dibanding riwayat?</h3>
@@ -272,9 +281,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
-      <div className="panel-label">
-        <span>KONFIRMASI / KONTRADIKSI</span>
+        <div className="briefing-analysis-section">
+          <div className="panel-label">
+            <span>KONFIRMASI / KONTRADIKSI</span>
         <span>
           {confirmation.item
             ? confirmationStatus(confirmation.item.resolution)
@@ -314,7 +323,10 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
+      </div>
+    </details>
+
+    <div className="briefing-next-catalyst">
       <div className="panel-label">
         <span>BERIKUTNYA DIPANTAU</span>
         <span>{nextCatalyst.evidenceStatus === "AVAILABLE" ? "EVENT BERIKUTNYA" : "BELUM ADA EVENT"}</span>
@@ -342,9 +354,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div className="plain-notice" style={{ marginTop: "1rem" }}>
-      <strong>Penalaran lanjutan masih dibatasi</strong>
-      <span>Briefing sekarang menilai factual change, baseline, surprise faktual, repricing historis, confirmation evidence yang sudah qualified, dan event berikutnya yang perlu dipantau. Transmisi lintas aset, regime, invalidation, prediksi, dan arah trading belum disimpulkan.</span>
+    <div className="briefing-boundary-note">
+      <strong>Boundary</strong>
+      <span>Briefing tetap faktual. Transmisi lintas aset, regime, invalidation, prediksi, dan arah trading belum disimpulkan.</span>
     </div>
     <p className="decision-meta">Cutoff briefing {dateTime(data.asOf)} WIB</p>
   </section>;

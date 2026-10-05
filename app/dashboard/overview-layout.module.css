@@ -1301,3 +1301,567 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* UI-TERMINAL-001C — overview hierarchy cleanup */
+.overviewLayout :global(.overview-intelligence-grid){
+  display:grid;
+  grid-template-columns:minmax(0,1.55fr) minmax(340px,.85fr);
+  gap:14px;
+  align-items:start;
+  margin-bottom:20px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid > .move-monitor),
+.overviewLayout :global(.overview-intelligence-grid > .catalyst-wire){
+  margin-bottom:0;
+  min-width:0;
+  overflow:hidden;
+  border-radius:10px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor-head){
+  padding:16px 16px 14px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor-grid){
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1px;
+  background:var(--line-soft);
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor.has-material .move-monitor-grid){
+  grid-template-columns:1fr;
+  gap:0;
+  background:transparent;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor-card){
+  padding:14px 16px 15px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor.has-material .move-monitor-card + .move-monitor-card){
+  border-top:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor-horizons){
+  gap:6px;
+  margin-top:12px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor:not(.has-material) .move-monitor-horizons){
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor-horizon){
+  padding:9px 9px 8px;
+  border-color:rgba(255,255,255,.055);
+  background:rgba(255,255,255,.008);
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor-evidence){
+  margin-top:12px;
+  padding-top:11px;
+}
+
+.overviewLayout :global(.move-monitor-evidence-head > div){
+  min-width:0;
+}
+
+.overviewLayout :global(.move-monitor-evidence-head > div > strong),
+.overviewLayout :global(.move-monitor-evidence-head > div > span){
+  display:block;
+}
+
+.overviewLayout :global(.move-monitor-evidence-head > div > span){
+  margin-top:4px;
+  color:#d8b878;
+  font-size:6.5px;
+}
+
+.overviewLayout :global(.move-monitor-evidence-head > small){
+  color:var(--muted);
+  font-size:6.5px;
+  text-align:right;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor-evidence-grid){
+  gap:6px;
+  margin-top:8px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor-evidence-grid > div){
+  padding:8px;
+  background:rgba(255,255,255,.008);
+}
+
+.overviewLayout :global(.move-monitor-investigation){
+  margin-top:9px;
+  border:1px solid rgba(211,178,112,.14);
+  background:rgba(211,178,112,.018);
+}
+
+.overviewLayout :global(.move-monitor-investigation > summary){
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 11px;
+  cursor:pointer;
+  list-style:none;
+  color:var(--muted);
+  font:600 7px/1.2 'DM Mono',monospace;
+  letter-spacing:.06em;
+}
+
+.overviewLayout :global(.move-monitor-investigation > summary::-webkit-details-marker){
+  display:none;
+}
+
+.overviewLayout :global(.move-monitor-investigation > summary span){
+  color:#ead7ad;
+}
+
+.overviewLayout :global(.move-monitor-investigation > summary strong){
+  color:var(--muted);
+  font-size:6.5px;
+}
+
+.overviewLayout :global(.move-monitor-investigation[open] > summary){
+  border-bottom:1px solid rgba(211,178,112,.12);
+}
+
+.overviewLayout :global(.move-monitor-investigation[open] > summary strong){
+  color:#ead7ad;
+}
+
+.overviewLayout :global(.move-monitor-investigation-body){
+  padding:0 10px 10px;
+}
+
+.overviewLayout :global(.move-monitor-investigation .move-monitor-fingerprint),
+.overviewLayout :global(.move-monitor-investigation .move-monitor-spot-flow){
+  margin-top:10px;
+  border-color:var(--line-soft);
+  background:rgba(255,255,255,.008);
+}
+
+.overviewLayout :global(.move-monitor-investigation-note){
+  margin:9px 1px 0;
+  color:var(--muted);
+  font:400 6.5px/1.5 'DM Mono',monospace;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor-foot){
+  padding:9px 16px 10px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire){
+  border-color:rgba(211,178,112,.14);
+  background:linear-gradient(180deg,rgba(12,16,14,.99),rgba(9,12,10,.99));
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-head){
+  flex-direction:column;
+  gap:10px;
+  padding:16px 15px 13px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-head h2){
+  margin-top:6px;
+  font-size:1.1rem;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-head p){
+  font-size:.74rem;
+  line-height:1.45;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-status){
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  width:100%;
+  min-width:0;
+  text-align:left;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-status span){
+  margin-top:0;
+  text-align:right;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-legend){
+  gap:5px;
+  padding:7px 15px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-legend span){
+  padding:4px 6px;
+  font-size:7px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-list){
+  grid-template-columns:1fr;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-item){
+  padding:12px 15px 11px;
+  border-right:0;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-item:nth-child(odd)){
+  border-right:0;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-item > a){
+  display:-webkit-box;
+  margin-top:8px;
+  overflow:hidden;
+  font-size:.82rem;
+  line-height:1.35;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-source span){
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-source){
+  margin-top:7px;
+  font-size:7px;
+}
+
+.overviewLayout :global(.catalyst-wire-more){
+  border-top:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.catalyst-wire-more > summary){
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 15px;
+  cursor:pointer;
+  list-style:none;
+  color:var(--muted);
+  font:600 7px/1.2 'DM Mono',monospace;
+  letter-spacing:.06em;
+}
+
+.overviewLayout :global(.catalyst-wire-more > summary::-webkit-details-marker){
+  display:none;
+}
+
+.overviewLayout :global(.catalyst-wire-more > summary strong){
+  color:#d8b878;
+  font-size:6.5px;
+}
+
+.overviewLayout :global(.catalyst-wire-list-more){
+  border-top:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-foot){
+  padding:9px 15px 10px;
+  font-size:7px;
+}
+
+@media(max-width:1080px){
+  .overviewLayout :global(.overview-intelligence-grid){
+    grid-template-columns:1fr;
+  }
+
+  .overviewLayout :global(.overview-intelligence-grid .catalyst-wire-list){
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .overviewLayout :global(.overview-intelligence-grid .catalyst-wire-item:nth-child(odd)){
+    border-right:1px solid var(--line-soft);
+  }
+}
+
+@media(max-width:760px){
+  .overviewLayout :global(.overview-intelligence-grid){
+    gap:12px;
+    margin-bottom:12px;
+  }
+
+  .overviewLayout :global(.overview-intelligence-grid .move-monitor-grid),
+  .overviewLayout :global(.overview-intelligence-grid .move-monitor.has-material .move-monitor-grid){
+    grid-template-columns:1fr;
+    gap:0;
+    background:transparent;
+  }
+
+  .overviewLayout :global(.overview-intelligence-grid .move-monitor-card + .move-monitor-card){
+    border-top:1px solid var(--line-soft);
+  }
+
+  .overviewLayout :global(.overview-intelligence-grid .move-monitor-card){
+    padding:13px 14px 14px;
+  }
+
+  .overviewLayout :global(.move-monitor-evidence-head){
+    align-items:flex-start;
+  }
+
+  .overviewLayout :global(.move-monitor-evidence-head > small){
+    max-width:44%;
+  }
+
+  .overviewLayout :global(.overview-intelligence-grid .catalyst-wire-list){
+    grid-template-columns:1fr;
+  }
+
+  .overviewLayout :global(.overview-intelligence-grid .catalyst-wire-item:nth-child(odd)){
+    border-right:0;
+  }
+}
+
+@media(max-width:430px){
+  .overviewLayout :global(.move-monitor-evidence-head){
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .overviewLayout :global(.move-monitor-evidence-head > small){
+    max-width:none;
+    text-align:left;
+  }
+}
+
+
+/* UI-TERMINAL-001C — briefing information density */
+.overviewLayout :global(.overview-briefing .overview-change-layer){
+  margin:0;
+  padding:18px;
+  overflow:hidden;
+  border:1px solid rgba(211,178,112,.14);
+  border-radius:10px;
+  background:linear-gradient(180deg,rgba(14,17,15,.96),rgba(10,13,11,.98));
+}
+
+.overviewLayout :global(.overview-briefing .overview-change-layer > .panel-label){
+  padding-bottom:10px;
+  border-bottom:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.overview-briefing .change-layer-grid){
+  margin-top:14px;
+}
+
+.overviewLayout :global(.overview-briefing .change-layer-grid h2){
+  margin:0 0 5px;
+  font-size:1.15rem;
+}
+
+.overviewLayout :global(.overview-briefing .monitor-list){
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1px;
+  margin-top:14px !important;
+  border:1px solid var(--line-soft);
+  background:var(--line-soft);
+}
+
+.overviewLayout :global(.overview-briefing .monitor-list > div){
+  min-width:0;
+  padding:11px 12px;
+  border:0;
+  background:#0b0f0d;
+}
+
+.overviewLayout :global(.overview-briefing .monitor-list > div strong){
+  font-size:8px;
+  letter-spacing:.035em;
+}
+
+.overviewLayout :global(.overview-briefing .monitor-list > div span){
+  display:block;
+  margin-top:5px;
+  font-size:8px;
+  line-height:1.45;
+}
+
+.overviewLayout :global(.briefing-analysis-details){
+  margin-top:14px;
+  border:1px solid rgba(211,178,112,.14);
+  background:rgba(211,178,112,.016);
+}
+
+.overviewLayout :global(.briefing-analysis-details > summary){
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:11px 12px;
+  cursor:pointer;
+  list-style:none;
+  font-family:'DM Mono',monospace;
+}
+
+.overviewLayout :global(.briefing-analysis-details > summary::-webkit-details-marker){
+  display:none;
+}
+
+.overviewLayout :global(.briefing-analysis-details > summary > div span),
+.overviewLayout :global(.briefing-analysis-details > summary > div strong){
+  display:block;
+}
+
+.overviewLayout :global(.briefing-analysis-details > summary > div span){
+  color:#d8b878;
+  font-size:6.5px;
+  font-weight:700;
+  letter-spacing:.08em;
+}
+
+.overviewLayout :global(.briefing-analysis-details > summary > div strong){
+  margin-top:4px;
+  color:var(--text);
+  font-size:8px;
+  letter-spacing:.025em;
+}
+
+.overviewLayout :global(.briefing-analysis-details > summary > span){
+  flex:0 0 auto;
+  color:var(--muted);
+  font-size:7px;
+  letter-spacing:.04em;
+}
+
+.overviewLayout :global(.briefing-analysis-details > summary > span::after){
+  content:" ↓";
+  color:#d8b878;
+}
+
+.overviewLayout :global(.briefing-analysis-details[open] > summary){
+  border-bottom:1px solid rgba(211,178,112,.12);
+}
+
+.overviewLayout :global(.briefing-analysis-details[open] > summary > span::after){
+  content:" ↑";
+}
+
+.overviewLayout :global(.briefing-analysis-body){
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  padding:10px;
+}
+
+.overviewLayout :global(.briefing-analysis-section){
+  min-width:0;
+  padding:12px;
+  border:1px solid var(--line-soft);
+  background:rgba(255,255,255,.008);
+}
+
+.overviewLayout :global(.briefing-analysis-section .panel-label){
+  gap:8px;
+  font-size:7px;
+}
+
+.overviewLayout :global(.briefing-analysis-section h3){
+  font-size:.9rem;
+  line-height:1.3;
+}
+
+.overviewLayout :global(.briefing-analysis-section .lead-copy){
+  margin-top:6px;
+  font-size:.72rem;
+  line-height:1.45;
+}
+
+.overviewLayout :global(.briefing-analysis-section .plain-notice){
+  align-items:flex-start;
+  flex-direction:column;
+  gap:5px;
+  padding-top:10px;
+}
+
+.overviewLayout :global(.briefing-analysis-section .plain-notice span){
+  text-align:left;
+}
+
+.overviewLayout :global(.briefing-next-catalyst){
+  margin-top:14px;
+  padding-top:13px;
+  border-top:1px solid var(--line-soft);
+}
+
+.overviewLayout :global(.briefing-next-catalyst h3){
+  font-size:.95rem;
+}
+
+.overviewLayout :global(.briefing-next-catalyst .plain-notice){
+  margin-top:10px !important;
+}
+
+.overviewLayout :global(.briefing-boundary-note){
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-top:12px;
+  padding:9px 0 0;
+  border-top:1px solid var(--line-soft);
+  color:var(--muted);
+  font:500 7px/1.45 'DM Mono',monospace;
+}
+
+.overviewLayout :global(.briefing-boundary-note strong){
+  flex:0 0 auto;
+  color:#cdbb98;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+.overviewLayout :global(.briefing-boundary-note span){
+  max-width:760px;
+  text-align:right;
+}
+
+@media(max-width:900px){
+  .overviewLayout :global(.briefing-analysis-body){
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:760px){
+  .overviewLayout :global(.overview-briefing .overview-change-layer){
+    padding:14px;
+  }
+
+  .overviewLayout :global(.overview-briefing .monitor-list){
+    grid-template-columns:1fr;
+  }
+
+  .overviewLayout :global(.briefing-analysis-details > summary){
+    align-items:flex-start;
+    padding:10px;
+  }
+
+  .overviewLayout :global(.briefing-analysis-body){
+    padding:8px;
+  }
+
+  .overviewLayout :global(.briefing-analysis-section){
+    padding:10px;
+  }
+
+  .overviewLayout :global(.briefing-boundary-note){
+    flex-direction:column;
+    gap:5px;
+  }
+
+  .overviewLayout :global(.briefing-boundary-note span){
+    text-align:left;
+  }
+}

@@ -428,7 +428,7 @@ function CrossAssetMarketPanel({ observations }: { observations: Observation[] }
     <div className="panel-label"><span>CROSS-ASSET MARKET</span><StatusBadge value={observationStatus(metrics.map((metric) => metric.quality))} /></div>
     <h2 id="cross-asset-title">Gold, Russell 2000 & Dollar Index</h2>
     <p className="lead-copy">Market observations are shown as distinct instruments. DXY is the ICE U.S. Dollar Index and is not the Federal Reserve broad trade-weighted dollar index.</p>
-    {metrics.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "0.75rem", marginTop: "1rem" }}>{metrics.map((metric) => <article className="panel" style={{ margin: 0 }} key={metric.id}><div className="panel-label"><span>{metric.label}</span><span>{metric.quality}</span></div><strong style={{ display: "block", fontSize: "clamp(1.45rem, 3vw, 2.2rem)", lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: "0.45rem" }}>{metric.unit === "USD" ? formatMoney(metric.value) : metric.value.toFixed(2)}</strong><p className="muted" style={{ marginBottom: 0 }}>{metric.providerLabel} · {relativeTimeID(metric.observedAt)}</p></article>)}</div> : <EmptyPanelNote label="Gold, Russell 2000, dan DXY" />}
+    {metrics.length ? <div className="metric-card-grid">{metrics.map((metric) => <article className="compact-metric-card" key={metric.id}><div className="compact-metric-head"><span>{metric.label}</span><small>{metric.quality}</small></div><strong>{metric.unit === "USD" ? formatMoney(metric.value) : metric.value.toFixed(2)}</strong><p>{metric.providerLabel} · {relativeTimeID(metric.observedAt)}</p></article>)}</div> : <EmptyPanelNote label="Gold, Russell 2000, dan DXY" />}
     <div className="monitor-list" style={{ marginTop: "1rem" }}><div><strong>USD INDEX SEMANTICS</strong><span>DXY / ICE U.S. Dollar Index = DX-Y.NYB · Fed Broad Trade-Weighted USD = DTWEXBGS{broadUsd ? " · keduanya tersedia sebagai metric berbeda" : ""}.</span></div></div>
   </section>;
 }
@@ -489,7 +489,7 @@ function MarketHeatmap({ observations, baselines }: { observations: Observation[
 }
 
 function CryptoMetricCard({ metric }: { metric: CryptoMetric }) {
-  return <article className="panel" style={{ margin: 0 }}><div className="panel-label"><span>{metric.label}</span><span>{metric.quality}</span></div><strong style={{ display: "block", fontSize: "clamp(1.45rem, 3vw, 2.2rem)", lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: "0.45rem" }}>{metric.unit === "USD" ? formatMoney(metric.value) : formatPercent(metric.value)}</strong><p className="muted" style={{ marginBottom: 0 }}>CoinGecko · {relativeTimeID(metric.observedAt)}</p></article>;
+  return <article className="compact-metric-card"><div className="compact-metric-head"><span>{metric.label}</span><small>{metric.quality}</small></div><strong>{metric.unit === "USD" ? formatMoney(metric.value) : formatPercent(metric.value)}</strong><p>CoinGecko · {relativeTimeID(metric.observedAt)}</p></article>;
 }
 
 function CryptoMarketPanel({ observations, providerHealth }: { observations: Observation[]; providerHealth: ProviderHealth[] }) {
@@ -569,24 +569,53 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
   const contextGroups: ContextGroup[] = [{ id: "crypto", label: "CRYPTO MARKET", contexts: cryptoContexts }, { id: "macro", label: "MACRO", contexts: macroContexts }, { id: "events", label: "ECONOMIC EVENTS", contexts: economicEventContexts }].filter((group) => group.contexts.length > 0);
   const selectedContext = contexts.find((context) => context.id === selectedContextId) ?? null;
   const selectedLabel = selectedContext ? selectedContext.scope === "CRYPTO_MARKET" ? selectedContext.id.replace("context-crypto-", "").toUpperCase() : selectedContext.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[selectedContext.scope] ?? selectedContext.scope.replaceAll("MACRO_", "").replaceAll("_", " ") : "";
-  const showNews = (items: NewsItem[], label: string) => <section className="panel news-panel"><div className="panel-label"><span>{label}</span><span>{items.length} ITEM</span></div><h2>Evidence berita terbaru</h2><div className="news-list">{items.length ? items.map((item) => <NewsCard item={item} key={item.id} />) : <EmptyPanelNote label={label.toLowerCase()} />}</div></section>;
+  const showNews = (items: NewsItem[], label: string) => {
+    const visible = items.slice(0, 6);
+    const overflow = items.slice(6);
+    return <section className="panel news-panel">
+      <div className="panel-label"><span>{label}</span><span>{items.length} ITEM</span></div>
+      <h2>Evidence berita terbaru</h2>
+      <div className="news-list">{visible.length ? visible.map((item) => <NewsCard item={item} key={item.id} />) : <EmptyPanelNote label={label.toLowerCase()} />}</div>
+      {overflow.length > 0
+        ? <details className="news-more">
+            <summary><span>{overflow.length} berita lainnya</span><strong>LIHAT SEMUA</strong></summary>
+            <div className="news-list">{overflow.map((item) => <NewsCard item={item} key={item.id} />)}</div>
+          </details>
+        : null}
+    </section>;
+  };
 
   return <main className="dashboard-shell">
-    <header className="topbar"><div className="topbar-brand-group"><button className="nav-toggle" type="button" aria-label={navOpen ? "Tutup navigasi" : "Buka navigasi"} aria-expanded={navOpen} aria-controls="dashboard-navigation" onClick={() => setNavOpen((open) => !open)}><span /><span /><span /></button><div className="brand-lockup"><img className="brand-logo" src="/project365-logo.svg" alt="PROJECT365" style={{ width: "clamp(1.05rem, 2.2vw, 1.45rem)", height: "clamp(1.05rem, 2.2vw, 1.45rem)", objectFit: "contain", flexShrink: 0 }} /><p className="eyebrow" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", lineHeight: 1, letterSpacing: "-0.02em", margin: 0 }}>PROJECT365</p></div></div><div className="topbar-actions">{lastRefreshedAt && <p className="muted refresh-note">Refresh manual terakhir: {relativeTimeID(lastRefreshedAt)}</p>}<button className="refresh-btn" type="button" onClick={handleManualRefresh} disabled={isRefreshing} aria-busy={isRefreshing}>{isRefreshing ? "Memuat ulang…" : "Muat ulang manual"}</button><div style={{ position: "relative" }}><button type="button" aria-label="Buka menu akun" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)} style={{ width: 36, height: 36, display: "grid", placeItems: "center", padding: 0, border: "1px solid var(--line)", borderRadius: 4, background: accountOpen ? "#151d19" : "transparent", color: accountOpen ? "var(--lime)" : "var(--text)" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-3.5 3-5.3 6.5-5.3s5.8 1.8 6.5 5.3" /></svg></button>{accountOpen && <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 220, padding: 8, border: "1px solid var(--line)", borderRadius: 5, background: "#101513", boxShadow: "0 12px 30px rgba(0,0,0,.35)", zIndex: 60 }}><div style={{ padding: "8px 10px 10px", borderBottom: "1px solid var(--line)" }}><span style={{ display: "block", color: "var(--muted)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: ".08em" }}>AKUN</span><strong style={{ display: "block", marginTop: 5, fontSize: 12, overflowWrap: "anywhere" }}>{sessionEmail}</strong></div><form action={logout}><button type="submit" style={{ width: "100%", marginTop: 8, padding: "9px 10px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 4, background: "transparent", color: "var(--text)", fontFamily: "'DM Mono', monospace", fontSize: 11 }}>Keluar</button></form></div>}</div></div></header>
+    <header className="topbar"><div className="topbar-brand-group"><button className="nav-toggle" type="button" aria-label={navOpen ? "Tutup navigasi" : "Buka navigasi"} aria-expanded={navOpen} aria-controls="dashboard-navigation" onClick={() => setNavOpen((open) => !open)}><span /><span /><span /></button><div className="brand-lockup"><img className="brand-logo" src="/project365-logo.svg" alt="PROJECT365" /><p className="eyebrow">PROJECT365</p></div></div><div className="topbar-actions">{lastRefreshedAt && <p className="muted refresh-note">Refresh manual terakhir: {relativeTimeID(lastRefreshedAt)}</p>}<button className="refresh-btn" type="button" onClick={handleManualRefresh} disabled={isRefreshing} aria-busy={isRefreshing}>{isRefreshing ? "Memuat ulang…" : "Muat ulang manual"}</button><div className="account-menu"><button className={`account-menu-trigger${accountOpen ? " active" : ""}`} type="button" aria-label="Buka menu akun" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-3.5 3-5.3 6.5-5.3s5.8 1.8 6.5 5.3" /></svg></button>{accountOpen && <div className="account-popover" role="menu"><div className="account-popover-identity"><span>AKUN</span><strong>{sessionEmail}</strong></div><form action={logout}><button className="account-signout" type="submit">Keluar</button></form></div>}</div></div></header>
     {navOpen && <button className="nav-backdrop" type="button" aria-label="Tutup navigasi" onClick={() => setNavOpen(false)} />}
     <nav id="dashboard-navigation" className={`filters${navOpen ? " open" : ""}`} aria-label="Bagian dashboard" role="tablist">{menuItems.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeMenu === item.id} className={activeMenu === item.id ? "active" : ""} onClick={() => { setActiveMenu(item.id); setNavOpen(false); }}>{item.label}</button>)}<span>WIB / ASIA-JAKARTA</span></nav>
 
     <div className="dashboard-content" role="tabpanel">
       {activeMenu === "overview" && <>
-        <div className="page-intro"><span>DASHBOARD UTAMA</span><h1>Pasar sekarang</h1><p>Mulai dari ringkasan, lalu lihat perubahan terbaru dan event yang berpotensi menggerakkan pasar. Detail teknis disimpan di bagian lanjutan.</p></div>
+        <div className="page-intro"><span>DASHBOARD UTAMA</span><h1>Pasar sekarang</h1><p>Mulai dari snapshot pasar, cek move yang material, lalu lihat catalyst dan briefing faktual. Event dan detail teknis tetap tersedia sebagai lapisan sekunder.</p></div>
         <OverviewMarketTape data={data} observations={observations} />
-        <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
-        <CatalystWirePanel data={data.catalystWire} />
-        <div className="intraday-priority-grid">
-          <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
-          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
+        <div className="overview-intelligence-grid">
+          <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
+          <CatalystWirePanel data={data.catalystWire} />
         </div>
-        <IntradayEventResponsePanel result={data.intradayEventMonitor} />
+        <div className="overview-briefing">
+          <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
+        </div>
+
+        <details className="overview-event-details">
+          <summary>
+            <div>
+              <span>EVENT LAYER · SEKUNDER</span>
+              <strong>Kalender & respons event intraday</strong>
+            </div>
+            <span>Buka detail</span>
+          </summary>
+          <div className="overview-event-details-body">
+            <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
+            <IntradayEventResponsePanel result={data.intradayEventMonitor} />
+          </div>
+        </details>
+
         <details className="advanced-details">
           <summary>Lihat detail makro & likuiditas</summary>
           <div className="advanced-details-body">
@@ -599,7 +628,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         </details>
       </>}
       {activeMenu === "heatmap" && <MarketHeatmap observations={observations} baselines={baselinePresentations} />}
-      {activeMenu === "macro" && <><div className="page-intro"><span>MAKRO</span><h1>Faktor makro yang perlu dipantau</h1><p>Mulai dari rates, inflasi, likuiditas, tenaga kerja, USD, dan pertumbuhan. Buka kartu hanya jika ingin detail indikator.</p></div><div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar"><div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div><h2>Indikator utama</h2>{macroObservations.length ? macroContexts.map((context) => <MacroThemeCard context={context} observations={macroObservations} baselines={baselinesBySeries} expanded={expandedMacroTheme === context.id} onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)} key={context.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div></>}
+      {activeMenu === "macro" && <><div className="page-intro"><span>MAKRO</span><h1>Faktor makro yang perlu dipantau</h1><p>Mulai dari rates, inflasi, likuiditas, tenaga kerja, USD, dan pertumbuhan. Buka kartu hanya jika ingin detail indikator.</p></div><div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar macro-theme-panel"><div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div><h2>Indikator utama</h2>{macroObservations.length ? macroContexts.map((context) => <MacroThemeCard context={context} observations={macroObservations} baselines={baselinesBySeries} expanded={expandedMacroTheme === context.id} onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)} key={context.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div></>}
       {activeMenu === "crypto" && <>
         <div className="page-intro"><span>CRYPTO</span><h1>Harga, likuiditas, dan arus modal</h1><p>Urutannya sederhana: lihat harga pasar, lalu ukuran likuiditas stablecoin, lalu arus ETF Bitcoin. Berita ditempatkan setelah data utama.</p></div>
         <CryptoMarketPanel observations={observations} providerHealth={providerHealth} />
@@ -617,7 +646,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         </div>
       </>}
       {activeMenu === "context" && <div className="menu-grid context-menu"><section className="panel intelligence-panel"><div className="panel-label"><span>MARKET CONTEXT</span><span>{contexts.length} CONTEXT</span></div><h2>Konteks pasar</h2><p className="lead-copy">Bagian ini mengelompokkan data dan event yang saling terkait. Gunakan jika ingin menelusuri detail di balik ringkasan.</p><div className="context-groups">{contextGroups.length ? contextGroups.map((group) => { const isExpanded = expandedGroup === group.id; return <section className={`context-group${isExpanded ? " expanded" : ""}`} key={group.id}><button type="button" className="context-group-button" aria-expanded={isExpanded} onClick={() => setExpandedGroup(isExpanded ? null : group.id)}><span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span><span>{group.contexts.length} CONTEXT {isExpanded ? "↑" : "→"}</span></button>{isExpanded && <div className="context-list">{group.contexts.map((context) => { const label = context.scope === "CRYPTO_MARKET" ? context.id.replace("context-crypto-", "").toUpperCase() : context.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " "); return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => setSelectedContextId(selectedContextId === context.id ? null : context.id)} key={context.id} />; })}</div>}</section>; }) : <EmptyPanelNote label="context" />}</div></section>{selectedContext ? <ContextDetail context={selectedContext} label={selectedLabel} /> : <section className="panel context-detail-empty"><div className="panel-label"><span>RINCIAN KONTEKS</span><span>PILIH KONTEKS</span></div><h2>Pilih context</h2><p className="lead-copy">Klik salah satu konteks untuk melihat data dan event yang terkait.</p></section>}</div>}
-      {activeMenu === "evidence" && <div className="menu-grid"><section className="panel intelligence-panel"><div className="panel-label"><span>EVIDENCE</span><span>{evidence.length} ITEM</span></div><h2>Jejak sumber data</h2><p className="lead-copy">Daftar sumber data yang dipakai P365. Bagian ini untuk audit dan penelusuran, bukan tampilan utama untuk mengambil keputusan.</p><div className="monitor-list">{evidence.length ? evidence.slice(0, 24).map((item: Evidence) => <div key={item.id}><strong>{item.kind}</strong><span>{item.subject} · {item.sourceId} · {relativeTimeID(item.capturedAt)}</span></div>) : <EmptyPanelNote label="evidence" />}</div></section></div>}
+      {activeMenu === "evidence" && <div className="menu-grid"><section className="panel intelligence-panel evidence-browser"><div className="panel-label"><span>EVIDENCE</span><span>{evidence.length} ITEM</span></div><h2>Jejak sumber data</h2><p className="lead-copy">Daftar sumber data yang dipakai P365. Bagian ini untuk audit dan penelusuran, bukan tampilan utama untuk mengambil keputusan.</p>{evidence.length ? <><div className="monitor-list evidence-list">{evidence.slice(0, 12).map((item: Evidence) => <div key={item.id}><strong>{item.kind}</strong><span>{item.subject} · {item.sourceId} · {relativeTimeID(item.capturedAt)}</span></div>)}</div>{evidence.slice(12, 24).length > 0 ? <details className="evidence-more"><summary><span>{Math.min(12, evidence.length - 12)} evidence lainnya</span><strong>LIHAT LANJUTAN</strong></summary><div className="monitor-list evidence-list">{evidence.slice(12, 24).map((item: Evidence) => <div key={item.id}><strong>{item.kind}</strong><span>{item.subject} · {item.sourceId} · {relativeTimeID(item.capturedAt)}</span></div>)}</div></details> : null}</> : <EmptyPanelNote label="evidence" />}</section></div>}
     </div>
   </main>;
 }

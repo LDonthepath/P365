@@ -114,110 +114,124 @@ function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
       {item.evidence
         ? <div className="move-monitor-evidence">
             <div className="move-monitor-evidence-head">
-              <strong>Evidence window</strong>
-              <span>
-                {item.evidence.evidenceCompleteness === "EVIDENCE_COMPLETE"
-                  ? "CAKUPAN LENGKAP"
-                  : "CAKUPAN BELUM LENGKAP"}
-              </span>
+              <div>
+                <strong>Evidence snapshot</strong>
+                <span>
+                  {item.evidence.evidenceCompleteness === "EVIDENCE_COMPLETE"
+                    ? "CAKUPAN LENGKAP"
+                    : "CAKUPAN BELUM LENGKAP"}
+                </span>
+              </div>
+              <small>
+                {relativeTimeID(item.evidence.investigationWindow.startAt)} → {relativeTimeID(item.evidence.investigationWindow.endAt)}
+              </small>
             </div>
+
             <div className="move-monitor-evidence-grid">
               <div>
                 <span>Lintas aset</span>
                 <strong>{COVERAGE_LABEL[item.evidence.synchronousCoverage]}</strong>
               </div>
               <div>
-                <span>Event terjadwal</span>
+                <span>Event</span>
                 <strong>{item.evidence.scheduledCatalystCount}</strong>
               </div>
               <div>
-                <span>Kandidat berita</span>
+                <span>Berita</span>
                 <strong>{item.evidence.unscheduledCandidateCount}</strong>
               </div>
               {item.evidence.btcSpotFlow
                 ? <div>
-                    <span>Spot flow BTC</span>
+                    <span>Spot flow</span>
                     <strong>
                       {item.evidence.btcSpotFlow.observedWindowCount}/{item.evidence.btcSpotFlow.expectedWindowCount}
                     </strong>
                   </div>
-                : null}
+                : <div>
+                    <span>Spot flow</span>
+                    <strong>—</strong>
+                  </div>}
             </div>
 
-            {item.evidence.synchronousFingerprint.map((fingerprint) => (
-              <div className="move-monitor-fingerprint" key={fingerprint.horizonMinutes}>
-                <div className="move-monitor-fingerprint-head">
-                  <strong>Fingerprint lintas aset</strong>
-                  <span>{fingerprint.horizonMinutes}M · {COVERAGE_LABEL[fingerprint.coverage]}</span>
-                </div>
-                <div className="move-monitor-fingerprint-grid">
-                  {fingerprint.series.map((series) => (
-                    <div className="move-monitor-fingerprint-item" key={series.seriesKey}>
-                      <div>
-                        <span>{SYNCHRONOUS_SERIES_LABEL[series.seriesKey] ?? series.seriesKey}</span>
-                        <small>{SYNCHRONOUS_STATE_LABEL[series.state]}</small>
-                      </div>
-                      <strong>{series.state === "AVAILABLE_SYNCHRONOUS" ? percent(series.signedPercentChange) : "—"}</strong>
+            <details className="move-monitor-investigation">
+              <summary>
+                <span>Investigasi evidence</span>
+                <strong>BUKA DETAIL</strong>
+              </summary>
+              <div className="move-monitor-investigation-body">
+                {item.evidence.synchronousFingerprint.map((fingerprint) => (
+                  <div className="move-monitor-fingerprint" key={fingerprint.horizonMinutes}>
+                    <div className="move-monitor-fingerprint-head">
+                      <strong>Fingerprint lintas aset</strong>
+                      <span>{fingerprint.horizonMinutes}M · {COVERAGE_LABEL[fingerprint.coverage]}</span>
                     </div>
-                  ))}
-                </div>
-                <p>
-                  Perubahan dihitung dari titik point-in-time pada window MOVE yang sama. Gerak bersama tidak membuktikan hubungan sebab-akibat.
+                    <div className="move-monitor-fingerprint-grid">
+                      {fingerprint.series.map((series) => (
+                        <div className="move-monitor-fingerprint-item" key={series.seriesKey}>
+                          <div>
+                            <span>{SYNCHRONOUS_SERIES_LABEL[series.seriesKey] ?? series.seriesKey}</span>
+                            <small>{SYNCHRONOUS_STATE_LABEL[series.state]}</small>
+                          </div>
+                          <strong>{series.state === "AVAILABLE_SYNCHRONOUS" ? percent(series.signedPercentChange) : "—"}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {item.evidence.btcSpotFlow
+                  ? <div className="move-monitor-spot-flow">
+                      <div className="move-monitor-spot-flow-head">
+                        <div>
+                          <strong>Partisipasi spot BTC</strong>
+                          <span>{item.evidence.btcSpotFlow.venue} SPOT · {item.evidence.btcSpotFlow.pair}</span>
+                        </div>
+                        <span>
+                          {item.evidence.btcSpotFlow.windowMinutes !== null
+                            ? `${item.evidence.btcSpotFlow.windowMinutes}M · `
+                            : ""}
+                          {COVERAGE_LABEL[item.evidence.btcSpotFlow.coverage]}
+                        </span>
+                      </div>
+                      <div className="move-monitor-spot-flow-grid">
+                        <div>
+                          <span>Volume</span>
+                          <strong>{btcAmount(item.evidence.btcSpotFlow.totalBaseVolumeBtc)}</strong>
+                        </div>
+                        <div>
+                          <span>Taker buy</span>
+                          <strong>{btcAmount(item.evidence.btcSpotFlow.takerBuyBaseVolumeBtc)}</strong>
+                        </div>
+                        <div>
+                          <span>Taker sell</span>
+                          <strong>{btcAmount(item.evidence.btcSpotFlow.takerSellBaseVolumeBtc)}</strong>
+                        </div>
+                        <div>
+                          <span>Net taker</span>
+                          <strong>{btcAmount(item.evidence.btcSpotFlow.netTakerBaseVolumeBtc, true)}</strong>
+                        </div>
+                        <div>
+                          <span>Buy share</span>
+                          <strong>{item.evidence.btcSpotFlow.takerBuyShare === null
+                            ? "—"
+                            : percent(item.evidence.btcSpotFlow.takerBuyShare * 100, 1)}</strong>
+                        </div>
+                        <div>
+                          <span>Trades</span>
+                          <strong>{integer(item.evidence.btcSpotFlow.tradeCount)}</strong>
+                        </div>
+                      </div>
+                      <p>
+                        Binance Spot adalah evidence venue-specific, bukan representasi seluruh pasar BTC.
+                      </p>
+                    </div>
+                  : null}
+
+                <p className="move-monitor-investigation-note">
+                  Evidence menunjukkan fakta yang tersedia pada cutoff. Gerak bersama, headline, atau taker flow tidak membuktikan penyebab.
                 </p>
               </div>
-            ))}
-
-            {item.evidence.btcSpotFlow
-              ? <div className="move-monitor-spot-flow">
-                  <div className="move-monitor-spot-flow-head">
-                    <div>
-                      <strong>Partisipasi spot BTC</strong>
-                      <span>{item.evidence.btcSpotFlow.venue} SPOT · {item.evidence.btcSpotFlow.pair}</span>
-                    </div>
-                    <span>
-                      {item.evidence.btcSpotFlow.windowMinutes !== null
-                        ? `${item.evidence.btcSpotFlow.windowMinutes}M · `
-                        : ""}
-                      {COVERAGE_LABEL[item.evidence.btcSpotFlow.coverage]} · {item.evidence.btcSpotFlow.observedWindowCount}/{item.evidence.btcSpotFlow.expectedWindowCount}
-                    </span>
-                  </div>
-                  <div className="move-monitor-spot-flow-grid">
-                    <div>
-                      <span>Volume total</span>
-                      <strong>{btcAmount(item.evidence.btcSpotFlow.totalBaseVolumeBtc)}</strong>
-                    </div>
-                    <div>
-                      <span>Taker buy</span>
-                      <strong>{btcAmount(item.evidence.btcSpotFlow.takerBuyBaseVolumeBtc)}</strong>
-                    </div>
-                    <div>
-                      <span>Taker sell</span>
-                      <strong>{btcAmount(item.evidence.btcSpotFlow.takerSellBaseVolumeBtc)}</strong>
-                    </div>
-                    <div>
-                      <span>Net taker</span>
-                      <strong>{btcAmount(item.evidence.btcSpotFlow.netTakerBaseVolumeBtc, true)}</strong>
-                    </div>
-                    <div>
-                      <span>Buy share</span>
-                      <strong>{item.evidence.btcSpotFlow.takerBuyShare === null
-                        ? "—"
-                        : percent(item.evidence.btcSpotFlow.takerBuyShare * 100, 1)}</strong>
-                    </div>
-                    <div>
-                      <span>Trade count</span>
-                      <strong>{integer(item.evidence.btcSpotFlow.tradeCount)}</strong>
-                    </div>
-                  </div>
-                  <p>
-                    Evidence venue-specific Binance Spot. Tidak mewakili seluruh pasar BTC dan tidak membuktikan penyebab pergerakan.
-                  </p>
-                </div>
-              : null}
-            <p>
-              Window {relativeTimeID(item.evidence.investigationWindow.startAt)} → {relativeTimeID(item.evidence.investigationWindow.endAt)}.
-              Evidence hanya menunjukkan fakta yang tersedia pada cutoff tersebut.
-            </p>
+            </details>
           </div>
         : null}
     </article>
@@ -228,14 +242,13 @@ export function MaterialMoveMonitorPanel({ data }: { data: MaterialMoveMonitorRe
   const materialCount = data.assets.filter((item) => item.hasMaterialMove).length;
 
   return (
-    <section className="panel move-monitor" aria-labelledby="move-monitor-title">
+    <section className={`panel move-monitor${materialCount > 0 ? " has-material" : ""}`} aria-labelledby="move-monitor-title">
       <div className="move-monitor-head">
         <div>
           <span className="move-monitor-kicker">MOVE MONITOR · FAKTUAL</span>
           <h2 id="move-monitor-title">Pergerakan material BTC & Gold</h2>
           <p>
-            Membandingkan perubahan 15/30/60/120 menit dengan distribusi historis rolling yang sudah dikalibrasi.
-            Status material berarti pergerakan melewati ambang historis, bukan sinyal trading.
+            Deteksi 15/30/60/120 menit terhadap ambang historis terkalibrasi. Material berarti tidak biasa secara historis, bukan sinyal trading.
           </p>
         </div>
         <div className="move-monitor-summary">
