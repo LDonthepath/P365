@@ -20,6 +20,7 @@ import type {
 } from "./intraday-event-monitor";
 import type { BriefingEventRepricingResult } from "./briefing-event-repricing";
 import type { BriefingConfirmationResult } from "./briefing-confirmation";
+import type { MaterialMoveMonitorReadModel } from "./material-move-monitor";
 
 const CHANGE_PRIORITY = ["DGS2", "DGS10", "DFII10", "T10YIE", "T10Y2Y"] as const;
 const MAX_VISIBLE_CHANGES = 4;
@@ -153,8 +154,27 @@ export type BriefingNextCatalystSlot = {
   events: BriefingNextCatalystEvent[];
 };
 
+export type BriefingMarketMove = {
+  asset: MaterialMoveMonitorReadModel["assets"][number]["asset"];
+  seriesKey: MaterialMoveMonitorReadModel["assets"][number]["seriesKey"];
+  sourceId: string;
+  observedAt: string | null;
+  status: MaterialMoveMonitorReadModel["assets"][number]["status"];
+  hasMaterialMove: boolean;
+  horizons: MaterialMoveMonitorReadModel["assets"][number]["horizons"];
+  evidence: MaterialMoveMonitorReadModel["assets"][number]["evidence"];
+  causalAttribution: "NOT_EVALUATED";
+};
+
 export type FactualMarketBriefing = {
   asOf: string;
+  marketMoves: {
+    evidenceStatus: BriefingEvidenceStatus;
+    reasoningStatus: BriefingReasoningStatus;
+    materialMoveCount: number;
+    items: BriefingMarketMove[];
+    reason: string | null;
+  };
   whatChanged: {
     evidenceStatus: BriefingEvidenceStatus;
     reasoningStatus: BriefingReasoningStatus;
@@ -201,6 +221,7 @@ type ComposeFactualMarketBriefingInput = {
   eventRepricing?: BriefingEventRepricingResult;
   confirmation?: BriefingConfirmationResult;
   upcomingHighImpactEvents?: Event[];
+  materialMoveMonitor?: MaterialMoveMonitorReadModel;
 };
 
 function observationSeriesId(observation: Observation): string | null {
@@ -211,6 +232,45 @@ function observationSeriesId(observation: Observation): string | null {
 function priorityIndex(seriesId: string): number {
   const index = CHANGE_PRIORITY.indexOf(seriesId as (typeof CHANGE_PRIORITY)[number]);
   return index === -1 ? 999 : index;
+}
+
+function composeMarketMoves(
+  result: MaterialMoveMonitorReadModel | undefined,
+): FactualMarketBriefing["marketMoves"] {
+  if (!result || result.status === "UNAVAILABLE") {
+    return {
+      evidenceStatus: "INSUFFICIENT",
+      reasoningStatus: "NOT_EVALUATED",
+      materialMoveCount: 0,
+      items: [],
+      reason: "Belum ada assessment durable BTC/Gold yang cukup untuk market-first briefing.",
+    };
+  }
+
+  const items: BriefingMarketMove[] = result.assets.map((item) => ({
+    asset: item.asset,
+    seriesKey: item.seriesKey,
+    sourceId: item.sourceId,
+    observedAt: item.observedAt,
+    status: item.status,
+    hasMaterialMove: item.hasMaterialMove,
+    horizons: item.horizons,
+    evidence: item.evidence,
+    causalAttribution: item.causalAttribution,
+  }));
+  const materialMoveCount = items.filter((item) => item.hasMaterialMove).length;
+
+  return {
+    evidenceStatus: items.length > 0 ? "AVAILABLE" : "INSUFFICIENT",
+    reasoningStatus: "NOT_EVALUATED",
+    materialMoveCount,
+    items,
+    reason: items.length === 0
+      ? "Belum ada assessment durable BTC/Gold pada cutoff briefing."
+      : result.status === "PARTIAL"
+        ? "Sebagian assessment BTC/Gold belum tersedia; briefing mempertahankan gap tersebut secara eksplisit."
+        : null,
+  };
 }
 
 function qualifiedPricing(
@@ -614,6 +674,8 @@ function composeNextCatalyst(input: {
 
 /**
  * BRF-001A composes already-qualified evidence into briefing sections.
+ * BRF-002A makes the briefing market-first by composing the existing
+ * MOVE-003A/B/C read model before event-centric detail.
  *
  * Gate 1: factual Macro changes.
  * Gate 2: point-in-time expectation + PRE pricing baseline evidence.
@@ -633,6 +695,7 @@ export function composeFactualMarketBriefing({
   eventRepricing,
   confirmation,
   upcomingHighImpactEvents,
+  materialMoveMonitor,
 }: ComposeFactualMarketBriefingInput): FactualMarketBriefing {
   const changes = Object.entries(baselines)
     .flatMap(([seriesId, baseline]) => {
@@ -666,6 +729,7 @@ export function composeFactualMarketBriefing({
 
   return {
     asOf,
+    marketMoves: composeMarketMoves(materialMoveMonitor),
     whatChanged: {
       evidenceStatus: changes.length > 0 ? "AVAILABLE" : "INSUFFICIENT",
       reasoningStatus: "NOT_EVALUATED",
