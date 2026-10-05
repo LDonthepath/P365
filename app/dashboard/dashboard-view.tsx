@@ -584,11 +584,24 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
           <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
           <CatalystWirePanel data={data.catalystWire} />
         </div>
-        <div className="intraday-priority-grid">
+        <div className="overview-briefing">
           <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
-          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
         </div>
-        <IntradayEventResponsePanel result={data.intradayEventMonitor} />
+
+        <details className="overview-event-details">
+          <summary>
+            <div>
+              <span>EVENT LAYER · SEKUNDER</span>
+              <strong>Kalender & respons event intraday</strong>
+            </div>
+            <span>Buka detail</span>
+          </summary>
+          <div className="overview-event-details-body">
+            <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
+            <IntradayEventResponsePanel result={data.intradayEventMonitor} />
+          </div>
+        </details>
+
         <details className="advanced-details">
           <summary>Lihat detail makro & likuiditas</summary>
           <div className="advanced-details-body">
