@@ -75,6 +75,33 @@ const MOVE_TEMPORAL_FIT_LABELS: Record<string, string> = {
   TIMESTAMP_UNAVAILABLE: "waktu publikasi provider tidak tersedia",
 };
 
+const MOVE_EVIDENCE_STATE_LABELS: Record<string, string> = {
+  AVAILABLE_SYNCHRONOUS: "TERSEDIA",
+  AVAILABLE_BACKGROUND: "LATAR BELAKANG",
+  AVAILABLE_CATALYST: "TERSEDIA",
+  MISSING_HIGH_VALUE_EVIDENCE: "BELUM TERSEDIA",
+  INSUFFICIENT_DATA: "DATA BELUM CUKUP",
+  UNKNOWN: "STATUS BELUM PASTI",
+};
+
+const MOVE_BACKGROUND_LABELS: Record<string, string> = {
+  USD_STABLECOIN_LIQUIDITY: "Likuiditas stablecoin USD",
+  BTC_ETF_NET_FLOW: "Arus ETF Bitcoin AS",
+  GOLD_CFTC_POSITIONING: "Posisi CFTC Gold",
+};
+
+const MOVE_STRUCTURE_LABELS: Record<string, string> = {
+  BTC_DERIVATIVES: "Derivatives BTC",
+  BTC_SPOT_FLOW: "Partisipasi spot BTC",
+  BTC_SPOT_ORDER_BOOK: "Order book spot BTC",
+  BTC_PERP_ORDER_BOOK: "Order book perpetual BTC",
+};
+
+const MOVE_COMPLETENESS_LABELS: Record<string, string> = {
+  EVIDENCE_COMPLETE: "LENGKAP",
+  EVIDENCE_INCOMPLETE: "BELUM LENGKAP",
+};
+
 const MAX_MOVE_CATALYST_DETAILS = 3;
 
 function dateTime(value: string): string {
@@ -170,6 +197,30 @@ function percentileLabel(value: number | null): string {
   return `P${value.toFixed(1)}`;
 }
 
+function synchronousCoverageLabel(value: string): string {
+  if (value === "COMPLETE") return "TERSEDIA LENGKAP";
+  if (value === "PARTIAL") return "TERSEDIA SEBAGIAN";
+  return "DATA BELUM CUKUP";
+}
+
+function scheduledCatalystEvidenceLabel(coverage: string, count: number): string {
+  if (coverage === "COMPLETE") {
+    return count > 0 ? "TERSEDIA" : "TIDAK ADA DALAM WINDOW";
+  }
+  if (coverage === "BOUNDED_QUERY_LIMIT_REACHED") return "CAKUPAN TERBATAS";
+  return "TIDAK TERSEDIA";
+}
+
+function unscheduledCatalystEvidenceLabel(coverage: string, count: number): string {
+  if (coverage === "COMPLETE") {
+    return count > 0 ? "TERSEDIA" : "TIDAK ADA KANDIDAT";
+  }
+  if (coverage === "PARTIAL") return "TERSEDIA SEBAGIAN";
+  if (coverage === "BOUNDED_QUERY_LIMIT_REACHED") return "CAKUPAN TERBATAS";
+  if (coverage === "EMPTY") return "BELUM ADA CAKUPAN DURABLE";
+  return "TIDAK TERSEDIA";
+}
+
 function MarketMoveBriefingItem({
   item,
 }: {
@@ -254,8 +305,43 @@ function MarketMoveBriefingItem({
           Binance Spot: buy share {spotFlow.takerBuyShare === null ? "—" : plainPercent(spotFlow.takerBuyShare * 100, 1)}
           {" · "}net taker {spotFlow.netTakerBaseVolumeBtc > 0 ? "+" : ""}
           {spotFlow.netTakerBaseVolumeBtc.toLocaleString("id-ID", { maximumFractionDigits: 2 })} BTC
-          {" · "}cakupan {MOVE_COVERAGE_LABELS[spotFlow.coverage] ?? spotFlow.coverage}
+          {" · "}cakupan {MOVE_COVERAGE_LABELS[spotFlow.coverage] ?? "belum diketahui"}
         </span>
+      : null}
+    {item.evidence
+      ? <>
+          <span><strong>STATUS EVIDENCE</strong></span>
+          <span>
+            Lintas pasar: {synchronousCoverageLabel(item.evidence.synchronousCoverage)}
+          </span>
+          <span>
+            Catalyst terjadwal: {scheduledCatalystEvidenceLabel(
+              item.evidence.scheduledCatalystCoverage,
+              item.evidence.scheduledCatalystCount,
+            )}
+          </span>
+          <span>
+            Catalyst berita: {unscheduledCatalystEvidenceLabel(
+              item.evidence.unscheduledCatalystCoverage,
+              item.evidence.unscheduledCandidateCount,
+            )}
+          </span>
+          {item.evidence.slowBackground.items.map((background) => <span key={background.kind}>
+            {MOVE_BACKGROUND_LABELS[background.kind] ?? "Evidence latar belakang"}:{" "}
+            {MOVE_EVIDENCE_STATE_LABELS[background.state] ?? "STATUS BELUM PASTI"}
+          </span>)}
+          {item.evidence.cryptoMarketStructure?.components.map((component) => <span key={component.component}>
+            {MOVE_STRUCTURE_LABELS[component.component] ?? "Struktur pasar"}:{" "}
+            {MOVE_EVIDENCE_STATE_LABELS[component.state] ?? "STATUS BELUM PASTI"}
+          </span>)}
+          <span>
+            Rates intraday: {MOVE_EVIDENCE_STATE_LABELS[item.evidence.intradayRatesPricing.state] ?? "STATUS BELUM PASTI"}
+            {" · "}kebijakan sumber gratis
+          </span>
+          <span>
+            Keseluruhan evidence: {MOVE_COMPLETENESS_LABELS[item.evidence.evidenceCompleteness] ?? "BELUM DINILAI"}
+          </span>
+        </>
       : null}
     <span>Hubungan sebab-akibat belum dievaluasi.</span>
   </div>;
