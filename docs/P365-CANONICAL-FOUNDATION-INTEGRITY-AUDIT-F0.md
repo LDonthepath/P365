@@ -818,6 +818,8 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 
 | 5 Oct 2026 | HOUSEKEEP-001A Daily Storage Capacity Monitoring Runtime | Implements an activation-ready Supabase `pg_cron` SQL contract without production mutation before owner merge. It reuses the existing RLS-enabled `public.p365_operational_metrics` table and records one idempotent `STORAGE_CAPACITY` row per UTC day: database bytes, Market Memory total/heap/index bytes and row counts, Evidence/Observation counts, `cron.job_run_details` bytes, Free-plan 500 MiB planning ceiling, estimated headroom and utilization percentage. Read-only baseline at 12:55 UTC measured 269,388,947 database bytes (51.38% of the planning ceiling), 231,768,064 Market Memory bytes, 25,116,672 cron-history bytes and 254,899,053 bytes estimated headroom. EXPLAIN validation passed without executing the INSERT. No deletion, retention, VACUUM, REINDEX, alert threshold, order-book sampling or scheduler activation is authorized by this branch. ORDER-BOOK-001C activation is gated until monitoring is merged/activated and initial storage growth is observed. |
 
+| 5 Oct 2026 | HOUSEKEEP-001A.1 Storage Metric-Type Constraint Correction | Post-merge activation of HOUSEKEEP-001A created `p365-storage-daily` but the first manual snapshot was rejected by `p365_operational_metrics_metric_type_check` with PostgreSQL error 23514 because production allowed only `CACHE_INVALIDATION` and `PROVIDER_FETCH`. The scheduler was immediately unscheduled; verification confirmed no `p365-storage-daily` job remained and zero `STORAGE_CAPACITY`/daily-storage rows were written. Correction broadens the existing check constraint additively to permit `STORAGE_CAPACITY` while retaining both existing values, then keeps scheduler activation behind owner merge. No Market Memory mutation, retention, delete, VACUUM, REINDEX, order-book activation or provider change is introduced. |
+
 ## Foundation Exit Gate — 24 Sep 2026
 
 **Verdict: PASS for foundation hardening.**
@@ -968,9 +970,13 @@ footprint, the legacy Observation-Evidence duplication defect already fixed by P
 current post-fix idempotency, index-usage findings, runway scenarios, and the deferred
 housekeeping sequence.
 
-HOUSEKEEP-001A now prepares the first implementation checkpoint: one UTC-daily storage-capacity
-snapshot into the existing RLS-enabled `public.p365_operational_metrics` table. Production
-activation is still pending owner merge; the SQL contract is
+HOUSEKEEP-001A is merged, but its first post-merge activation proof exposed a blocking
+schema-contract mismatch: `p365_operational_metrics_metric_type_check` permits only
+`CACHE_INVALIDATION` and `PROVIDER_FETCH`, so `STORAGE_CAPACITY` was rejected with PostgreSQL
+error `23514`. The newly created `p365-storage-daily` job was immediately unscheduled and no
+monitoring row was written. HOUSEKEEP-001A.1 broadens that existing check constraint to include
+`STORAGE_CAPACITY`; production activation remains paused until the correction is owner-merged.
+The corrected SQL contract remains
 `docs/P365-HOUSEKEEP-001A-STORAGE-MONITORING.sql`.
 
 The 5 Oct 2026 read-only baseline is:
