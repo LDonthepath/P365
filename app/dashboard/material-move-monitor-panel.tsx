@@ -60,6 +60,21 @@ function percentile(value: number | null): string {
   return `P${value.toFixed(1)}`;
 }
 
+
+function btcAmount(value: number, signed = false): string {
+  if (!Number.isFinite(value)) return "—";
+  const prefix = signed && value > 0 ? "+" : "";
+  return `${prefix}${value.toLocaleString("id-ID", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })} BTC`;
+}
+
+function integer(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  return Math.round(value).toLocaleString("id-ID");
+}
+
 function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
   const material = item.hasMaterialMove;
 
@@ -151,6 +166,54 @@ function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
                 </p>
               </div>
             ))}
+
+            {item.evidence.btcSpotFlow
+              ? <div className="move-monitor-spot-flow">
+                  <div className="move-monitor-spot-flow-head">
+                    <div>
+                      <strong>Partisipasi spot BTC</strong>
+                      <span>{item.evidence.btcSpotFlow.venue} SPOT · {item.evidence.btcSpotFlow.pair}</span>
+                    </div>
+                    <span>
+                      {item.evidence.btcSpotFlow.windowMinutes !== null
+                        ? `${item.evidence.btcSpotFlow.windowMinutes}M · `
+                        : ""}
+                      {COVERAGE_LABEL[item.evidence.btcSpotFlow.coverage]} · {item.evidence.btcSpotFlow.observedWindowCount}/{item.evidence.btcSpotFlow.expectedWindowCount}
+                    </span>
+                  </div>
+                  <div className="move-monitor-spot-flow-grid">
+                    <div>
+                      <span>Volume total</span>
+                      <strong>{btcAmount(item.evidence.btcSpotFlow.totalBaseVolumeBtc)}</strong>
+                    </div>
+                    <div>
+                      <span>Taker buy</span>
+                      <strong>{btcAmount(item.evidence.btcSpotFlow.takerBuyBaseVolumeBtc)}</strong>
+                    </div>
+                    <div>
+                      <span>Taker sell</span>
+                      <strong>{btcAmount(item.evidence.btcSpotFlow.takerSellBaseVolumeBtc)}</strong>
+                    </div>
+                    <div>
+                      <span>Net taker</span>
+                      <strong>{btcAmount(item.evidence.btcSpotFlow.netTakerBaseVolumeBtc, true)}</strong>
+                    </div>
+                    <div>
+                      <span>Buy share</span>
+                      <strong>{item.evidence.btcSpotFlow.takerBuyShare === null
+                        ? "—"
+                        : percent(item.evidence.btcSpotFlow.takerBuyShare * 100, 1)}</strong>
+                    </div>
+                    <div>
+                      <span>Trade count</span>
+                      <strong>{integer(item.evidence.btcSpotFlow.tradeCount)}</strong>
+                    </div>
+                  </div>
+                  <p>
+                    Evidence venue-specific Binance Spot. Tidak mewakili seluruh pasar BTC dan tidak membuktikan penyebab pergerakan.
+                  </p>
+                </div>
+              : null}
             <p>
               Window {relativeTimeID(item.evidence.investigationWindow.startAt)} → {relativeTimeID(item.evidence.investigationWindow.endAt)}.
               Evidence hanya menunjukkan fakta yang tersedia pada cutoff tersebut.
