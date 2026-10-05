@@ -81,6 +81,32 @@ export type MaterialMoveEvidenceSummary = {
     | "firstSeenRetrievedAt"
     | "firstSnapshotEvidenceId"
   >>;
+  slowBackground: {
+    state: MoveEvidenceBundle["slowBackground"]["state"];
+    items: Array<{
+      kind: MoveEvidenceBundle["slowBackground"]["items"][number]["kind"];
+      state: MoveEvidenceBundle["slowBackground"]["items"][number]["state"];
+      reason: string | null;
+    }>;
+  };
+  cryptoMarketStructure: {
+    state: NonNullable<MoveEvidenceBundle["cryptoMarketStructure"]>["state"];
+    components: Array<{
+      component: NonNullable<
+        MoveEvidenceBundle["cryptoMarketStructure"]
+      >["components"][number]["component"];
+      state: NonNullable<
+        MoveEvidenceBundle["cryptoMarketStructure"]
+      >["components"][number]["state"];
+      reason: string;
+    }>;
+    reason: string;
+  } | null;
+  intradayRatesPricing: {
+    state: MoveEvidenceBundle["intradayRatesPricing"]["state"];
+    reason: string;
+    policy: MoveEvidenceBundle["intradayRatesPricing"]["policy"];
+  };
   btcSpotFlow: {
     coverage:
       | "COMPLETE"
@@ -249,6 +275,30 @@ async function evidenceSummary(input: {
       firstSeenRetrievedAt: candidate.firstSeenRetrievedAt,
       firstSnapshotEvidenceId: candidate.firstSnapshotEvidenceId,
     })),
+    slowBackground: {
+      state: result.bundle.slowBackground.state,
+      items: result.bundle.slowBackground.items.map((item) => ({
+        kind: item.kind,
+        state: item.state,
+        reason: item.reason ?? null,
+      })),
+    },
+    cryptoMarketStructure: result.bundle.cryptoMarketStructure
+      ? {
+          state: result.bundle.cryptoMarketStructure.state,
+          components: result.bundle.cryptoMarketStructure.components.map((component) => ({
+            component: component.component,
+            state: component.state,
+            reason: component.reason,
+          })),
+          reason: result.bundle.cryptoMarketStructure.reason,
+        }
+      : null,
+    intradayRatesPricing: {
+      state: result.bundle.intradayRatesPricing.state,
+      reason: result.bundle.intradayRatesPricing.reason,
+      policy: result.bundle.intradayRatesPricing.policy,
+    },
     btcSpotFlow: spotFlow && spotFlowTotals
       ? {
           coverage: spotFlow.coverage,
