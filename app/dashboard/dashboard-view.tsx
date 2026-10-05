@@ -593,43 +593,63 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
 
     <div className="dashboard-content" role="tabpanel">
       {activeMenu === "overview" && <>
-        <div className="page-intro"><span>DASHBOARD UTAMA</span><h1>Pasar sekarang</h1><p>Mulai dari snapshot pasar, cek move yang material, lalu lihat catalyst dan briefing faktual. Event dan detail teknis tetap tersedia sebagai lapisan sekunder.</p></div>
-        <OverviewMarketTape data={data} observations={observations} />
-        <div className="overview-intelligence-grid">
-          <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
-          <CatalystWirePanel data={data.catalystWire} />
+        <div className="page-intro">
+          <span>RINGKASAN</span>
+          <h1>Market Briefing</h1>
+          <p>Ringkasan hanya menampilkan kesimpulan faktual P365. Detail pasar, makro, crypto, Gold, catalyst, dan sumber data tersedia di layer masing-masing.</p>
         </div>
         <div className="overview-briefing">
           <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
         </div>
-
-        <details className="overview-event-details">
-          <summary>
-            <div>
-              <span>EVENT LAYER · SEKUNDER</span>
-              <strong>Kalender & respons event intraday</strong>
-            </div>
-            <span>Buka detail</span>
-          </summary>
-          <div className="overview-event-details-body">
-            <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
-            <IntradayEventResponsePanel result={data.intradayEventMonitor} />
-          </div>
-        </details>
-
-        <details className="advanced-details">
-          <summary>Lihat detail makro & likuiditas</summary>
-          <div className="advanced-details-body">
-            <MvpFactualContextPanel data={data.mvpFactualContext} />
-            <div className="intraday-secondary-grid">
-              <NetLiquidityPanel data={data.netLiquidity} />
-              <RatesInflationPanel data={data.ratesInflation} />
-            </div>
-          </div>
-        </details>
       </>}
-      {activeMenu === "heatmap" && <MarketHeatmap observations={observations} baselines={baselinePresentations} />}
-      {activeMenu === "macro" && <><div className="page-intro"><span>MAKRO</span><h1>Faktor makro yang perlu dipantau</h1><p>Mulai dari rates, inflasi, likuiditas, tenaga kerja, USD, dan pertumbuhan. Buka kartu hanya jika ingin detail indikator.</p></div><div className="menu-grid"><CrossAssetMarketPanel observations={observations} />{showNews(macroNews, "BERITA MAKRO")}<section className="panel calendar macro-theme-panel"><div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div><h2>Indikator utama</h2>{macroObservations.length ? macroContexts.map((context) => <MacroThemeCard context={context} observations={macroObservations} baselines={baselinesBySeries} expanded={expandedMacroTheme === context.id} onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)} key={context.id} />) : <EmptyPanelNote label="observasi makro" />}</section></div></>}
+      {activeMenu === "heatmap" && <>
+        <div className="page-intro">
+          <span>PASAR</span>
+          <h1>Harga dan pergerakan material</h1>
+          <p>Layer pasar menampung snapshot lintas pasar, deteksi pergerakan material, dan heatmap faktual. Tidak ada sinyal trading yang ditambahkan.</p>
+        </div>
+        <OverviewMarketTape data={data} observations={observations} />
+        <div style={{ marginTop: "1rem" }}>
+          <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <MarketHeatmap observations={observations} baselines={baselinePresentations} />
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <CrossAssetMarketPanel observations={observations} />
+        </div>
+      </>}
+      {activeMenu === "macro" && <>
+        <div className="page-intro">
+          <span>MAKRO</span>
+          <h1>Lingkungan makro</h1>
+          <p>Rates, inflasi, likuiditas, tenaga kerja, USD, pertumbuhan, dan jadwal event berdampak tinggi ditempatkan di layer ini.</p>
+        </div>
+        <div className="intraday-secondary-grid">
+          <NetLiquidityPanel data={data.netLiquidity} />
+          <RatesInflationPanel data={data.ratesInflation} />
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
+        </div>
+        <div className="menu-grid" style={{ marginTop: "1rem" }}>
+          {showNews(macroNews, "BERITA MAKRO")}
+          <section className="panel calendar macro-theme-panel">
+            <div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div>
+            <h2>Indikator utama</h2>
+            {macroObservations.length
+              ? macroContexts.map((context) => <MacroThemeCard
+                  context={context}
+                  observations={macroObservations}
+                  baselines={baselinesBySeries}
+                  expanded={expandedMacroTheme === context.id}
+                  onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)}
+                  key={context.id}
+                />)
+              : <EmptyPanelNote label="observasi makro" />}
+          </section>
+        </div>
+      </>}
       {activeMenu === "crypto" && <>
         <div className="page-intro"><span>CRYPTO</span><h1>Harga, likuiditas, dan arus modal</h1><p>Urutannya sederhana: lihat harga pasar, lalu ukuran likuiditas stablecoin, lalu arus ETF Bitcoin. Berita ditempatkan setelah data utama.</p></div>
         <CryptoMarketPanel observations={observations} providerHealth={providerHealth} />
@@ -646,7 +666,57 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
           <GoldPositioningPanel data={data.goldPositioning} />
         </div>
       </>}
-      {activeMenu === "context" && <div className="menu-grid context-menu"><section className="panel intelligence-panel"><div className="panel-label"><span>MARKET CONTEXT</span><span>{contexts.length} CONTEXT</span></div><h2>Konteks pasar</h2><p className="lead-copy">Bagian ini mengelompokkan data dan event yang saling terkait. Gunakan jika ingin menelusuri detail di balik ringkasan.</p><div className="context-groups">{contextGroups.length ? contextGroups.map((group) => { const isExpanded = expandedGroup === group.id; return <section className={`context-group${isExpanded ? " expanded" : ""}`} key={group.id}><button type="button" className="context-group-button" aria-expanded={isExpanded} onClick={() => setExpandedGroup(isExpanded ? null : group.id)}><span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span><span>{group.contexts.length} CONTEXT {isExpanded ? "↑" : "→"}</span></button>{isExpanded && <div className="context-list">{group.contexts.map((context) => { const label = context.scope === "CRYPTO_MARKET" ? context.id.replace("context-crypto-", "").toUpperCase() : context.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " "); return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => setSelectedContextId(selectedContextId === context.id ? null : context.id)} key={context.id} />; })}</div>}</section>; }) : <EmptyPanelNote label="context" />}</div></section>{selectedContext ? <ContextDetail context={selectedContext} label={selectedLabel} /> : <section className="panel context-detail-empty"><div className="panel-label"><span>RINCIAN KONTEKS</span><span>PILIH KONTEKS</span></div><h2>Pilih context</h2><p className="lead-copy">Klik salah satu konteks untuk melihat data dan event yang terkait.</p></section>}</div>}
+      {activeMenu === "context" && <>
+        <div className="page-intro">
+          <span>KONTEKS</span>
+          <h1>Catalyst dan evidence investigation</h1>
+          <p>Layer ini menampung catalyst, konteks faktual lintas Macro → BTC + Gold, dan respons pasar setelah event. Kedekatan waktu tidak dipromosikan menjadi sebab-akibat.</p>
+        </div>
+        <CatalystWirePanel data={data.catalystWire} />
+        <div style={{ marginTop: "1rem" }}>
+          <MvpFactualContextPanel data={data.mvpFactualContext} />
+        </div>
+        <div className="menu-grid context-menu" style={{ marginTop: "1rem" }}>
+          <section className="panel intelligence-panel">
+            <div className="panel-label"><span>MARKET CONTEXT</span><span>{contexts.length} CONTEXT</span></div>
+            <h2>Konteks pasar</h2>
+            <p className="lead-copy">Bagian ini mengelompokkan data dan event yang saling terkait. Gunakan jika ingin menelusuri detail di balik briefing.</p>
+            <div className="context-groups">
+              {contextGroups.length
+                ? contextGroups.map((group) => {
+                    const isExpanded = expandedGroup === group.id;
+                    return <section className={`context-group${isExpanded ? " expanded" : ""}`} key={group.id}>
+                      <button type="button" className="context-group-button" aria-expanded={isExpanded} onClick={() => setExpandedGroup(isExpanded ? null : group.id)}>
+                        <span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span>
+                        <span>{group.contexts.length} CONTEXT {isExpanded ? "↑" : "→"}</span>
+                      </button>
+                      {isExpanded && <div className="context-list">
+                        {group.contexts.map((context) => {
+                          const label = context.scope === "CRYPTO_MARKET"
+                            ? context.id.replace("context-crypto-", "").toUpperCase()
+                            : context.scope === "ECONOMIC_EVENTS"
+                              ? "Scheduled Events"
+                              : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " ");
+                          return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => setSelectedContextId(selectedContextId === context.id ? null : context.id)} key={context.id} />;
+                        })}
+                      </div>}
+                    </section>;
+                  })
+                : <EmptyPanelNote label="context" />}
+            </div>
+          </section>
+          {selectedContext
+            ? <ContextDetail context={selectedContext} label={selectedLabel} />
+            : <section className="panel context-detail-empty">
+                <div className="panel-label"><span>RINCIAN KONTEKS</span><span>PILIH KONTEKS</span></div>
+                <h2>Pilih konteks</h2>
+                <p className="lead-copy">Klik salah satu konteks untuk melihat data dan event yang terkait.</p>
+              </section>}
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <IntradayEventResponsePanel result={data.intradayEventMonitor} />
+        </div>
+      </>}
       {activeMenu === "evidence" && <div className="menu-grid"><section className="panel intelligence-panel evidence-browser"><div className="panel-label"><span>EVIDENCE</span><span>{evidence.length} ITEM</span></div><h2>Jejak sumber data</h2><p className="lead-copy">Daftar sumber data yang dipakai P365. Bagian ini untuk audit dan penelusuran, bukan tampilan utama untuk mengambil keputusan.</p>{evidence.length ? <><div className="monitor-list evidence-list">{evidence.slice(0, 12).map((item: Evidence) => <div key={item.id}><strong>{item.kind}</strong><span>{item.subject} · {item.sourceId} · {relativeTimeID(item.capturedAt)}</span></div>)}</div>{evidence.slice(12, 24).length > 0 ? <details className="evidence-more"><summary><span>{Math.min(12, evidence.length - 12)} evidence lainnya</span><strong>LIHAT LANJUTAN</strong></summary><div className="monitor-list evidence-list">{evidence.slice(12, 24).map((item: Evidence) => <div key={item.id}><strong>{item.kind}</strong><span>{item.subject} · {item.sourceId} · {relativeTimeID(item.capturedAt)}</span></div>)}</div></details> : null}</> : <EmptyPanelNote label="evidence" />}</section></div>}
     </div>
   </main>;
