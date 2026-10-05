@@ -421,3 +421,8 @@
     padding:12px;
   }
 }
+
+
+.dashboardLayout :global(.menu-grid > .macro-theme-panel){
+  grid-column:1 / -1;
+}
