@@ -861,6 +861,7 @@
 .overviewLayout :global(.move-monitor-horizon),
 .overviewLayout :global(.move-monitor-evidence),
 .overviewLayout :global(.move-monitor-fingerprint),
+.overviewLayout :global(.move-monitor-spot-flow),
 .overviewLayout :global(.move-monitor-foot){
   font-family:'DM Mono',monospace;
 }
@@ -1150,6 +1151,84 @@
   line-height:1.45;
 }
 
+.overviewLayout :global(.move-monitor-spot-flow){
+  margin-top:12px;
+  padding:11px;
+  border:1px solid rgba(179,255,125,.14);
+  background:rgba(179,255,125,.018);
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-head){
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  color:var(--muted);
+  font-size:7px;
+  letter-spacing:.05em;
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-head > div > strong),
+.overviewLayout :global(.move-monitor-spot-flow-head > div > span){
+  display:block;
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-head > div > strong){
+  color:var(--lime);
+  font-size:8px;
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-head > div > span){
+  margin-top:4px;
+  font-size:6.5px;
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-head > span){
+  text-align:right;
+  white-space:nowrap;
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-grid){
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+  margin-top:9px;
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-grid > div){
+  min-width:0;
+  padding:8px;
+  border:1px solid var(--line-soft);
+  background:rgba(255,255,255,.012);
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-grid span),
+.overviewLayout :global(.move-monitor-spot-flow-grid strong){
+  display:block;
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-grid span){
+  color:var(--muted);
+  font-size:6.5px;
+}
+
+.overviewLayout :global(.move-monitor-spot-flow-grid strong){
+  margin-top:6px;
+  overflow:hidden;
+  color:var(--text);
+  font-size:9px;
+  font-variant-numeric:tabular-nums;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.overviewLayout :global(.move-monitor-spot-flow > p){
+  margin:8px 0 0;
+  color:var(--muted);
+  font-size:6.5px;
+  line-height:1.45;
+}
+
 .overviewLayout :global(.move-monitor-foot){
   display:flex;
   justify-content:space-between;
@@ -1189,8 +1268,18 @@
 
   .overviewLayout :global(.move-monitor-horizons),
   .overviewLayout :global(.move-monitor-evidence-grid),
-  .overviewLayout :global(.move-monitor-fingerprint-grid){
+  .overviewLayout :global(.move-monitor-fingerprint-grid),
+  .overviewLayout :global(.move-monitor-spot-flow-grid){
     grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .overviewLayout :global(.move-monitor-spot-flow-head){
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .overviewLayout :global(.move-monitor-spot-flow-head > span){
+    text-align:left;
   }
 
   .overviewLayout :global(.move-monitor-foot){
@@ -1207,7 +1296,8 @@
 
   .overviewLayout :global(.move-monitor-horizons),
   .overviewLayout :global(.move-monitor-evidence-grid),
-  .overviewLayout :global(.move-monitor-fingerprint-grid){
+  .overviewLayout :global(.move-monitor-fingerprint-grid),
+  .overviewLayout :global(.move-monitor-spot-flow-grid){
     grid-template-columns:1fr;
   }
 }
