@@ -80,10 +80,15 @@ broad crypto term admits unrelated altcoin/product pages into the BTC catalyst s
 
 Gold candidates require:
 
-- Gold / XAU / bullion;
+- Gold / bullion, or an explicit upper-case `XAU` / `XAUUSD` ticker token in the article title;
 - plus market context for generic `gold` titles, such as price, market, futures, ETF,
   rates, dollar, yield, trading, investors, central bank, safe haven, or common price-move
   language.
+
+Lower-case `xau` URL fragments alone do not qualify as Gold evidence. Production Catalyst
+Wire exposed a real multilingual collision where Vietnamese `tin-xau` was incorrectly
+interpreted as the XAU ticker after URL lower-casing. The correction deliberately fails
+closed rather than treating arbitrary lower-case URL text as a market symbol.
 
 Obvious non-market phrases such as `gold medal` are excluded.
 
