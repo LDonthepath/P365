@@ -107,9 +107,9 @@ const BRIEFING_RESOLUTION_LABELS: Record<
   string
 > = {
   MARKET_DATA_INSUFFICIENT: "DATA BELUM CUKUP",
-  NO_MATERIAL_MOVE: "BELUM ADA MOVE MATERIAL",
-  MATERIAL_MOVE_EVIDENCE_INCOMPLETE: "EVIDENCE BELUM LENGKAP",
-  MATERIAL_MOVE_EVIDENCE_COMPLETE: "EVIDENCE LENGKAP",
+  NO_MATERIAL_MOVE: "BELUM ADA PERGERAKAN MATERIAL",
+  MATERIAL_MOVE_EVIDENCE_INCOMPLETE: "BUKTI BELUM LENGKAP",
+  MATERIAL_MOVE_EVIDENCE_COMPLETE: "BUKTI LENGKAP",
 };
 
 const MAX_MOVE_CATALYST_DETAILS = 3;
@@ -653,12 +653,12 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
 
     <div className="briefing-next-catalyst">
       <div className="panel-label">
-        <span>RESOLUSI BRIEFING</span>
+        <span>KESIMPULAN BRIEFING</span>
         <span>{BRIEFING_RESOLUTION_LABELS[resolution.status]}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apa kesimpulan faktual saat ini?</h3>
       <p className="lead-copy">
-        Resolusi ini hanya merangkum status MOVE dan kelengkapan evidence yang sudah tersedia.
+        Kesimpulan ini hanya merangkum status pergerakan dan kelengkapan bukti yang sudah tersedia.
         Ia tidak menetapkan penyebab, regime, atau tindakan trading.
       </p>
       <div className="plain-notice" style={{ marginTop: "1rem" }}>
