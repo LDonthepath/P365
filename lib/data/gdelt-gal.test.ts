@@ -77,6 +77,23 @@ test("GDELT GAL requires market context for generic gold titles", async () => {
   assert.match(result.data[0].candidates[0].title, /Gold price/);
 });
 
+test("GDELT GAL does not treat lowercase xau URL fragments as Gold ticker evidence", async () => {
+  const result = await fetchGdeltGalCandidateSnapshot(
+    { asset: "GOLD" },
+    {
+      now: () => NOW,
+      fetch: async () => new Response(rss(`
+        <item><title>Phương Tây báo tin xấu cho Thủ tướng Đức Merz</title><link>https://kevesko.vn/20261005/phuong-tay-bao-tin-xau-cho-thu-tuong-duc-merz-44401810.html</link><pubDate>4 Oct 2026 11:58:00 +0000</pubDate></item>
+        <item><title>XAU/USD climbs as dollar falls</title><link>https://example.com/markets/xauusd</link><pubDate>4 Oct 2026 11:57:00 +0000</pubDate></item>
+      `), { status: 200 }),
+    },
+  );
+
+  assert.equal(result.status, "SUCCESS");
+  assert.equal(result.data[0].candidates.length, 1);
+  assert.match(result.data[0].candidates[0].title, /XAU\/USD/);
+});
+
 test("GDELT GAL allows missing item pubDate but marks date semantics unavailable", async () => {
   const result = await fetchGdeltGalCandidateSnapshot(
     { asset: "BTC" },
