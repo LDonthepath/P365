@@ -102,6 +102,16 @@ const MOVE_COMPLETENESS_LABELS: Record<string, string> = {
   EVIDENCE_INCOMPLETE: "BELUM LENGKAP",
 };
 
+const BRIEFING_RESOLUTION_LABELS: Record<
+  FactualMarketBriefing["resolution"]["status"],
+  string
+> = {
+  MARKET_DATA_INSUFFICIENT: "DATA BELUM CUKUP",
+  NO_MATERIAL_MOVE: "BELUM ADA MOVE MATERIAL",
+  MATERIAL_MOVE_EVIDENCE_INCOMPLETE: "EVIDENCE BELUM LENGKAP",
+  MATERIAL_MOVE_EVIDENCE_COMPLETE: "EVIDENCE LENGKAP",
+};
+
 const MAX_MOVE_CATALYST_DETAILS = 3;
 
 function dateTime(value: string): string {
@@ -394,6 +404,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
   const repricing = data.eventRepricing;
   const confirmation = data.confirmation;
   const nextCatalyst = data.nextCatalyst;
+  const resolution = data.resolution;
 
   return <section className="panel overview-change-layer" aria-labelledby="briefing-market-state-title">
     <div className="panel-label">
@@ -638,6 +649,24 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
             <strong>Belum ada event berikutnya</strong>
             <span>{nextCatalyst.reason}</span>
           </div>}
+    </div>
+
+    <div className="briefing-next-catalyst">
+      <div className="panel-label">
+        <span>RESOLUSI BRIEFING</span>
+        <span>{BRIEFING_RESOLUTION_LABELS[resolution.status]}</span>
+      </div>
+      <h3 style={{ margin: ".45rem 0 0" }}>Apa kesimpulan faktual saat ini?</h3>
+      <p className="lead-copy">
+        Resolusi ini hanya merangkum status MOVE dan kelengkapan evidence yang sudah tersedia.
+        Ia tidak menetapkan penyebab, regime, atau tindakan trading.
+      </p>
+      <div className="plain-notice" style={{ marginTop: "1rem" }}>
+        <strong>{BRIEFING_RESOLUTION_LABELS[resolution.status]}</strong>
+        <span>{resolution.statement}</span>
+        <span>{resolution.driverStatement}</span>
+        <span>{resolution.watchStatement}</span>
+      </div>
     </div>
 
     <div className="briefing-boundary-note">
