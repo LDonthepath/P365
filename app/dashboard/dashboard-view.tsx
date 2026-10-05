@@ -6,7 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { relativeTimeID } from "@/lib/data/format";
 import type { DashboardData } from "@/lib/data/dashboard-data";
-import type { CalendarEvent, NewsItem } from "@/lib/data/types";
+import type { NewsItem } from "@/lib/data/types";
 import type { Context, DataQuality, Evidence, Observation, ProviderHealth } from "@/lib/domain/types";
 import { buildBaselinePresentations, type BaselinePresentation } from "@/lib/presentation/baseline";
 import { formatMacroDisplayDelta, formatMacroDisplayValue } from "@/lib/presentation/macro-display";
@@ -85,10 +85,6 @@ function EmptyPanelNote({ label }: { label: string }) {
 
 function NewsCard({ item }: { item: NewsItem }) {
   return <article className="evidence-item"><div className="card-meta"><span>{item.category}</span><span>{item.source} · {relativeTimeID(item.publishedAt)}</span></div><h3>{item.title}</h3><p>{item.summary}</p><a className="text-link" href={item.url} target="_blank" rel="noreferrer">Baca sumber ↗</a></article>;
-}
-
-function CalendarRow({ item }: { item: CalendarEvent }) {
-  return <article className="calendar-row"><time dateTime={item.dateISO} aria-label={`${item.event}, ${item.status}, ${item.time} WIB`}>{item.time}<small>WIB</small></time><div><h3>{item.event}</h3><p>{item.country} · {item.status}</p></div><span className={`impact ${item.impact.toLowerCase()}`}>{item.impact}</span></article>;
 }
 
 function macroThemeItems(context: Context, observations: Observation[]): Observation[] {
@@ -485,26 +481,6 @@ function CryptoMarketPanel({ observations, providerHealth }: { observations: Obs
   </section>;
 }
 
-function OverviewContext({ contextGroups, selectedContextId, selectedContext, onSelect }: { contextGroups: ContextGroup[]; selectedContextId: string | null; selectedContext: Context | null; onSelect: (id: string) => void }) {
-  return <section className="panel intelligence-panel" aria-labelledby="overview-context-title" style={{ marginTop: "20px" }}>
-    <div className="panel-label"><span>03 / CONTEXT</span><span>{contextGroups.reduce((total, group) => total + group.contexts.length, 0)} CONTEXT</span></div>
-    <h2 id="overview-context-title">Why this context matters</h2>
-    <p className="lead-copy">Context menghubungkan observasi dan event yang sudah tersedia tanpa membuat kesimpulan pasar. Gunakan layer ini untuk memahami relevansi sebelum membuka evidence atau detail.</p>
-    <div className="context-groups">
-      {contextGroups.length ? contextGroups.map((group) => <section className="context-group expanded" key={group.id}>
-        <div className="context-group-button" aria-label={`${group.label} context group`}><span><small>CONTEXT GROUP</small><strong>{group.label}</strong></span><span>{group.contexts.length} CONTEXT</span></div>
-        <div className="context-list">
-          {group.contexts.map((context) => {
-            const label = context.scope === "CRYPTO_MARKET" ? context.id.replace("context-crypto-", "").toUpperCase() : context.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[context.scope] ?? context.scope.replaceAll("MACRO_", "").replaceAll("_", " ");
-            return <ContextCard context={context} label={label} selected={selectedContextId === context.id} onClick={() => onSelect(context.id)} key={context.id} />;
-          })}
-        </div>
-      </section>) : <EmptyPanelNote label="context" />}
-    </div>
-    {selectedContext ? <ContextDetail context={selectedContext} label={selectedContext.scope === "CRYPTO_MARKET" ? selectedContext.id.replace("context-crypto-", "").toUpperCase() : selectedContext.scope === "ECONOMIC_EVENTS" ? "Scheduled Events" : MACRO_CONTEXT_LABELS[selectedContext.scope] ?? selectedContext.scope.replaceAll("MACRO_", "").replaceAll("_", " ")} /> : <div className="context-detail-empty"><div className="panel-label"><span>RINCIAN KONTEKS</span><span>PILIH KONTEKS</span></div><h3>Pilih konteks</h3><p className="lead-copy">Pilih konteks untuk melihat data dan event yang terkait.</p></div>}
-  </section>;
-}
-
 export function DashboardView({ data, sessionEmail }: { data: DashboardData; sessionEmail: string }) {
   const router = useRouter();
   const [activeMenu, setActiveMenu] = useState<Menu>("overview");
@@ -515,7 +491,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
   const [expandedMacroTheme, setExpandedMacroTheme] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const { macroNews, cryptoNews, calendarEvents, events, observations, macroObservations, macroBaselines, contexts, evidence, providerHealth } = data;
+  const { macroNews, cryptoNews, events, observations, macroObservations, macroBaselines, contexts, evidence, providerHealth } = data;
   const baselinePresentations = buildBaselinePresentations(macroBaselines);
   const baselinesBySeries = new Map(baselinePresentations.map((item) => [item.seriesId, item]));
 
