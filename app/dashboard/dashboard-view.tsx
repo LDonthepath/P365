@@ -623,32 +623,26 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         <div className="page-intro">
           <span>MAKRO</span>
           <h1>Lingkungan makro</h1>
-          <p>Suku bunga, inflasi, likuiditas, tenaga kerja, USD, pertumbuhan, dan jadwal event berdampak tinggi ditempatkan di bagian ini.</p>
+          <p>Suku bunga, inflasi, likuiditas, tenaga kerja, USD, dan pertumbuhan ditempatkan di bagian ini. Jadwal event dan berita berada di Konteks.</p>
         </div>
         <div className="intraday-secondary-grid">
           <NetLiquidityPanel data={data.netLiquidity} />
           <RatesInflationPanel data={data.ratesInflation} />
         </div>
-        <div style={{ marginTop: "1rem" }}>
-          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
-        </div>
-        <div className="menu-grid" style={{ marginTop: "1rem" }}>
-          {showNews(macroNews, "BERITA MAKRO")}
-          <section className="panel calendar macro-theme-panel">
-            <div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div>
-            <h2>Indikator utama</h2>
-            {macroObservations.length
-              ? macroContexts.map((context) => <MacroThemeCard
-                  context={context}
-                  observations={macroObservations}
-                  baselines={baselinesBySeries}
-                  expanded={expandedMacroTheme === context.id}
-                  onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)}
-                  key={context.id}
-                />)
-              : <EmptyPanelNote label="observasi makro" />}
-          </section>
-        </div>
+        <section className="panel calendar macro-theme-panel" style={{ marginTop: "1rem" }}>
+          <div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div>
+          <h2>Indikator utama</h2>
+          {macroObservations.length
+            ? macroContexts.map((context) => <MacroThemeCard
+                context={context}
+                observations={macroObservations}
+                baselines={baselinesBySeries}
+                expanded={expandedMacroTheme === context.id}
+                onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)}
+                key={context.id}
+              />)
+            : <EmptyPanelNote label="observasi makro" />}
+        </section>
       </>}
       {activeMenu === "crypto" && <>
         <div className="page-intro"><span>CRYPTO</span><h1>Harga, likuiditas, dan arus modal</h1><p>Urutannya sederhana: lihat harga pasar, lalu ukuran likuiditas stablecoin, lalu arus ETF Bitcoin. Berita ditempatkan setelah data utama.</p></div>
@@ -657,7 +651,6 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
           <StablecoinLiquidityPanel data={data.stablecoinLiquidity} />
           <BtcEtfFlowPanel data={data.btcEtfFlow} />
         </div>
-        {showNews(cryptoNews, "BERITA CRYPTO")}
       </>}
       {activeMenu === "gold" && <>
         <div className="page-intro"><span>GOLD</span><h1>Harga dan posisi trader</h1><p>Harga menjawab apa yang diperdagangkan sekarang. CFTC menjawab bagaimana kelompok Managed Money memegang kontrak pada laporan mingguan terakhir.</p></div>
@@ -670,9 +663,16 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         <div className="page-intro">
           <span>KONTEKS</span>
           <h1>Catalyst dan investigasi bukti</h1>
-          <p>Bagian Konteks menampung catalyst, konteks faktual lintas Makro → BTC + Gold, dan respons pasar setelah event. Kedekatan waktu tidak dipromosikan menjadi sebab-akibat.</p>
+          <p>Bagian Konteks menampung catalyst, kalender event, berita, konteks faktual lintas Makro → BTC + Gold, dan respons pasar setelah event. Kedekatan waktu tidak dipromosikan menjadi sebab-akibat.</p>
         </div>
         <CatalystWirePanel data={data.catalystWire} />
+        <div style={{ marginTop: "1rem" }}>
+          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
+        </div>
+        <div className="menu-grid" style={{ marginTop: "1rem" }}>
+          {showNews(macroNews, "BERITA MAKRO")}
+          {showNews(cryptoNews, "BERITA CRYPTO")}
+        </div>
         <div style={{ marginTop: "1rem" }}>
           <MvpFactualContextPanel data={data.mvpFactualContext} />
         </div>
