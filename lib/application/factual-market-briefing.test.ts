@@ -1022,7 +1022,7 @@ test("BRF-002D resolves a quiet market without inventing an investigation", () =
   assert.equal(result.resolution.reasoningStatus, "NOT_EVALUATED");
 });
 
-test("BRF-002D can report complete MOVE evidence without promoting it to causality", () => {
+test("BRF-002D treats a material MOVE with no investigation bundle as incomplete", () => {
   const result = composeFactualMarketBriefing({
     baselines: {},
     observations: [],
@@ -1046,44 +1046,15 @@ test("BRF-002D can report complete MOVE evidence without promoting it to causali
           targetPercentileRank: 99,
           historicalSampleSize: 390,
         }],
-        evidence: {
-          evidenceCompleteness: "EVIDENCE_COMPLETE",
-          investigationWindow: {
-            startAt: "2026-10-01T22:55:00.000Z",
-            endAt: "2026-10-01T23:55:00.000Z",
-          },
-          synchronousCoverage: "COMPLETE",
-          synchronousFingerprint: [],
-          scheduledCatalystCount: 0,
-          scheduledCatalystCoverage: "COMPLETE",
-          scheduledCatalysts: [],
-          unscheduledCandidateCount: 0,
-          unscheduledCatalystCoverage: "COMPLETE",
-          unscheduledCandidates: [],
-          slowBackground: {
-            state: "AVAILABLE_BACKGROUND",
-            items: [{
-              kind: "GOLD_CFTC_POSITIONING",
-              state: "AVAILABLE_BACKGROUND",
-              reason: null,
-            }],
-          },
-          cryptoMarketStructure: null,
-          intradayRatesPricing: {
-            state: "AVAILABLE_SYNCHRONOUS",
-            reason: "Qualified runtime available for test fixture.",
-            policy: "FREE_ONLY_NO_APPROVED_RUNTIME",
-          },
-          btcSpotFlow: null,
-        },
+        evidence: null,
         causalAttribution: "NOT_EVALUATED",
       }],
     },
   });
 
-  assert.equal(result.resolution.status, "MATERIAL_MOVE_EVIDENCE_COMPLETE");
+  assert.equal(result.resolution.status, "MATERIAL_MOVE_EVIDENCE_INCOMPLETE");
   assert.deepEqual(result.resolution.materialAssets, ["GOLD"]);
-  assert.equal(result.resolution.evidenceCompleteness, "EVIDENCE_COMPLETE");
+  assert.equal(result.resolution.evidenceCompleteness, "EVIDENCE_INCOMPLETE");
   assert.match(result.resolution.statement, /Gold mengalami gerakan material/);
   assert.match(result.resolution.driverStatement, /hubungan sebab-akibat belum dievaluasi/);
   assert.equal(result.resolution.reasoningStatus, "NOT_EVALUATED");
