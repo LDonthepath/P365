@@ -2,9 +2,13 @@
 --
 -- Activation boundary:
 --   * Commit/review first.
---   * Do not execute this file against production until the owner merges the checkpoint.
+--   * Do not execute this file against production until the owner merges HOUSEKEEP-001A.1.
 --   * This job only records operational capacity telemetry.
 --   * It never deletes, vacuums, reindexes, downsamples, or mutates canonical Market Memory.
+--
+-- HOUSEKEEP-001A.1 correction:
+--   The existing table check originally allowed only CACHE_INVALIDATION and PROVIDER_FETCH.
+--   STORAGE_CAPACITY must be explicitly added to that enum-like check before scheduling.
 --
 -- Cadence:
 --   00:15 UTC daily.
@@ -12,6 +16,25 @@
 -- Idempotency:
 --   At most one STORAGE_CAPACITY row per UTC day. Re-running the body on the same day
 --   is a no-op at the logical row level.
+
+begin;
+
+alter table public.p365_operational_metrics
+  drop constraint p365_operational_metrics_metric_type_check;
+
+alter table public.p365_operational_metrics
+  add constraint p365_operational_metrics_metric_type_check
+  check (
+    metric_type = any (
+      array[
+        'CACHE_INVALIDATION'::text,
+        'PROVIDER_FETCH'::text,
+        'STORAGE_CAPACITY'::text
+      ]
+    )
+  );
+
+commit;
 
 select cron.schedule(
   'p365-storage-daily',
