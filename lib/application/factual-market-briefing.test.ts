@@ -821,7 +821,7 @@ test("BRF-002A composes the existing material MOVE evidence into a market-first 
   assert.equal(result.resolution.status, "MATERIAL_MOVE_EVIDENCE_INCOMPLETE");
   assert.deepEqual(result.resolution.materialAssets, ["BTC"]);
   assert.equal(result.resolution.evidenceCompleteness, "EVIDENCE_INCOMPLETE");
-  assert.match(result.resolution.statement, /Bitcoin mengalami gerakan material/);
+  assert.match(result.resolution.statement, /Bitcoin mengalami pergerakan material/);
   assert.match(result.resolution.driverStatement, /belum dapat ditetapkan/);
   assert.equal(result.resolution.reasoningStatus, "NOT_EVALUATED");
 });
@@ -1016,9 +1016,9 @@ test("BRF-002D resolves a quiet market without inventing an investigation", () =
   assert.equal(result.resolution.status, "NO_MATERIAL_MOVE");
   assert.deepEqual(result.resolution.materialAssets, []);
   assert.equal(result.resolution.evidenceCompleteness, null);
-  assert.match(result.resolution.statement, /Belum ada gerakan material Bitcoin atau Gold/);
-  assert.match(result.resolution.statement, /Investigation bundle tidak diaktifkan/);
-  assert.match(result.resolution.driverStatement, /Tidak ada driver yang dievaluasi/);
+  assert.match(result.resolution.statement, /Belum ada pergerakan material Bitcoin atau Gold/);
+  assert.match(result.resolution.statement, /Paket investigasi tidak diaktifkan/);
+  assert.match(result.resolution.driverStatement, /Tidak ada pendorong yang dievaluasi/);
   assert.equal(result.resolution.reasoningStatus, "NOT_EVALUATED");
 });
 
@@ -1055,7 +1055,7 @@ test("BRF-002D treats a material MOVE with no investigation bundle as incomplete
   assert.equal(result.resolution.status, "MATERIAL_MOVE_EVIDENCE_INCOMPLETE");
   assert.deepEqual(result.resolution.materialAssets, ["GOLD"]);
   assert.equal(result.resolution.evidenceCompleteness, "EVIDENCE_INCOMPLETE");
-  assert.match(result.resolution.statement, /Gold mengalami gerakan material/);
+  assert.match(result.resolution.statement, /Gold mengalami pergerakan material/);
   assert.match(result.resolution.driverStatement, /hubungan sebab-akibat belum dievaluasi/);
   assert.equal(result.resolution.reasoningStatus, "NOT_EVALUATED");
 });
