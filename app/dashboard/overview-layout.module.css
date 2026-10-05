@@ -1516,9 +1516,20 @@
 }
 
 .overviewLayout :global(.overview-intelligence-grid .catalyst-wire-item > a){
+  display:-webkit-box;
   margin-top:8px;
+  overflow:hidden;
   font-size:.82rem;
   line-height:1.35;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .catalyst-wire-source span){
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
 .overviewLayout :global(.overview-intelligence-grid .catalyst-wire-source){
