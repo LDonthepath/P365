@@ -428,7 +428,7 @@ function CrossAssetMarketPanel({ observations }: { observations: Observation[] }
     <div className="panel-label"><span>CROSS-ASSET MARKET</span><StatusBadge value={observationStatus(metrics.map((metric) => metric.quality))} /></div>
     <h2 id="cross-asset-title">Gold, Russell 2000 & Dollar Index</h2>
     <p className="lead-copy">Market observations are shown as distinct instruments. DXY is the ICE U.S. Dollar Index and is not the Federal Reserve broad trade-weighted dollar index.</p>
-    {metrics.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "0.75rem", marginTop: "1rem" }}>{metrics.map((metric) => <article className="panel" style={{ margin: 0 }} key={metric.id}><div className="panel-label"><span>{metric.label}</span><span>{metric.quality}</span></div><strong style={{ display: "block", fontSize: "clamp(1.45rem, 3vw, 2.2rem)", lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: "0.45rem" }}>{metric.unit === "USD" ? formatMoney(metric.value) : metric.value.toFixed(2)}</strong><p className="muted" style={{ marginBottom: 0 }}>{metric.providerLabel} · {relativeTimeID(metric.observedAt)}</p></article>)}</div> : <EmptyPanelNote label="Gold, Russell 2000, dan DXY" />}
+    {metrics.length ? <div className="metric-card-grid">{metrics.map((metric) => <article className="compact-metric-card" key={metric.id}><div className="compact-metric-head"><span>{metric.label}</span><small>{metric.quality}</small></div><strong>{metric.unit === "USD" ? formatMoney(metric.value) : metric.value.toFixed(2)}</strong><p>{metric.providerLabel} · {relativeTimeID(metric.observedAt)}</p></article>)}</div> : <EmptyPanelNote label="Gold, Russell 2000, dan DXY" />}
     <div className="monitor-list" style={{ marginTop: "1rem" }}><div><strong>USD INDEX SEMANTICS</strong><span>DXY / ICE U.S. Dollar Index = DX-Y.NYB · Fed Broad Trade-Weighted USD = DTWEXBGS{broadUsd ? " · keduanya tersedia sebagai metric berbeda" : ""}.</span></div></div>
   </section>;
 }
@@ -489,7 +489,7 @@ function MarketHeatmap({ observations, baselines }: { observations: Observation[
 }
 
 function CryptoMetricCard({ metric }: { metric: CryptoMetric }) {
-  return <article className="panel" style={{ margin: 0 }}><div className="panel-label"><span>{metric.label}</span><span>{metric.quality}</span></div><strong style={{ display: "block", fontSize: "clamp(1.45rem, 3vw, 2.2rem)", lineHeight: 1.05, letterSpacing: "-0.03em", marginTop: "0.45rem" }}>{metric.unit === "USD" ? formatMoney(metric.value) : formatPercent(metric.value)}</strong><p className="muted" style={{ marginBottom: 0 }}>CoinGecko · {relativeTimeID(metric.observedAt)}</p></article>;
+  return <article className="compact-metric-card"><div className="compact-metric-head"><span>{metric.label}</span><small>{metric.quality}</small></div><strong>{metric.unit === "USD" ? formatMoney(metric.value) : formatPercent(metric.value)}</strong><p>CoinGecko · {relativeTimeID(metric.observedAt)}</p></article>;
 }
 
 function CryptoMarketPanel({ observations, providerHealth }: { observations: Observation[]; providerHealth: ProviderHealth[] }) {
