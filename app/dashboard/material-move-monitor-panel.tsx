@@ -34,6 +34,22 @@ const COVERAGE_LABEL = {
   UNAVAILABLE: "TIDAK TERSEDIA",
 } as const;
 
+
+const SYNCHRONOUS_SERIES_LABEL: Record<string, string> = {
+  "btc.spot.usd": "BTC",
+  "eth.spot.usd": "ETH",
+  "dxy.index.usd": "DXY",
+  "gold.futures.usd": "GOLD",
+  "fx.usdjpy.jpy_per_usd": "USD/JPY",
+  "fx.usdcnh.cnh_per_usd": "USD/CNH",
+};
+
+const SYNCHRONOUS_STATE_LABEL = {
+  AVAILABLE_SYNCHRONOUS: "TERSEDIA",
+  INSUFFICIENT_DATA: "DATA KURANG",
+  UNKNOWN: "BELUM PASTI",
+} as const;
+
 function percent(value: number | null, digits = 2): string {
   if (value === null || !Number.isFinite(value)) return "—";
   return `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
@@ -112,6 +128,29 @@ function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
                   </div>
                 : null}
             </div>
+
+            {item.evidence.synchronousFingerprint.map((fingerprint) => (
+              <div className="move-monitor-fingerprint" key={fingerprint.horizonMinutes}>
+                <div className="move-monitor-fingerprint-head">
+                  <strong>Fingerprint lintas aset</strong>
+                  <span>{fingerprint.horizonMinutes}M · {COVERAGE_LABEL[fingerprint.coverage]}</span>
+                </div>
+                <div className="move-monitor-fingerprint-grid">
+                  {fingerprint.series.map((series) => (
+                    <div className="move-monitor-fingerprint-item" key={series.seriesKey}>
+                      <div>
+                        <span>{SYNCHRONOUS_SERIES_LABEL[series.seriesKey] ?? series.seriesKey}</span>
+                        <small>{SYNCHRONOUS_STATE_LABEL[series.state]}</small>
+                      </div>
+                      <strong>{series.state === "AVAILABLE_SYNCHRONOUS" ? percent(series.signedPercentChange) : "—"}</strong>
+                    </div>
+                  ))}
+                </div>
+                <p>
+                  Perubahan dihitung dari titik point-in-time pada window MOVE yang sama. Gerak bersama tidak membuktikan hubungan sebab-akibat.
+                </p>
+              </div>
+            ))}
             <p>
               Window {relativeTimeID(item.evidence.investigationWindow.startAt)} → {relativeTimeID(item.evidence.investigationWindow.endAt)}.
               Evidence hanya menunjukkan fakta yang tersedia pada cutoff tersebut.
