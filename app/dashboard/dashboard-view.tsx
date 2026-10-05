@@ -190,6 +190,18 @@ function TerminalChange({ value, label = "PERUBAHAN" }: { value: number | null; 
   return <span className={`terminal-change ${direction}`}>{label} {value === null ? "—" : formatSignedPercentValue(value)}</span>;
 }
 
+function marketTapeQualityTone(value: DataQuality | undefined): "current" | "stale" | "neutral" {
+  if (value === "FRESH") return "current";
+  if (value === "STALE") return "stale";
+  return "neutral";
+}
+
+function marketTapeRecencyTone(value: "CURRENT" | "STALE" | "UNKNOWN" | undefined): "current" | "stale" | "neutral" {
+  if (value === "CURRENT") return "current";
+  if (value === "STALE") return "stale";
+  return "neutral";
+}
+
 function OverviewMarketTape({ data, observations }: { data: DashboardData; observations: Observation[] }) {
   const bitcoin = observations.find((item) => item.subject === "btc.spot.usd");
   const gold = observations.find((item) => item.subject === "gold.futures.usd");
@@ -203,51 +215,84 @@ function OverviewMarketTape({ data, observations }: { data: DashboardData; obser
   const etfFlow = data.btcEtfFlow.latest;
 
   return <section className="market-terminal-strip" aria-labelledby="market-tape-title">
+    <div className="market-terminal-ambient" aria-hidden="true" />
     <div className="market-terminal-head">
       <div>
         <span className="market-terminal-kicker">MARKET TAPE · FAKTUAL</span>
         <h2 id="market-tape-title">Snapshot lintas pasar</h2>
+        <p className="market-terminal-subtitle">Harga, yield, flow, dan likuiditas utama dalam satu pandangan. Tidak ada sinyal arah yang ditambahkan.</p>
       </div>
-      <div className="market-terminal-cutoff">CUTOFF · {relativeTimeID(data.mvpFactualContext.asOf)}</div>
+      <div className="market-terminal-cutoff">
+        <span>CUTOFF</span>
+        <strong>{relativeTimeID(data.mvpFactualContext.asOf)}</strong>
+      </div>
     </div>
-    <p className="market-terminal-note">Data existing P365 dalam satu tampilan cepat. Perubahan mengikuti basis masing-masing provider/seri dan bukan sinyal arah.</p>
+
     <div className="market-terminal-grid">
-      <article className="market-terminal-cell">
-        <div className="market-terminal-label"><span>BTC</span><span>{bitcoin ? qualityLabel(bitcoin.quality) : "BELUM ADA"}</span></div>
-        <strong>{bitcoinValue !== null ? formatMoney(bitcoinValue) : "—"}</strong>
+      <article className="market-terminal-card primary">
+        <div className="market-terminal-card-head">
+          <div><span className="market-terminal-asset">BTC</span><small>SPOT</small></div>
+          <span className={`market-terminal-status ${marketTapeQualityTone(bitcoin?.quality)}`}>{bitcoin ? qualityLabel(bitcoin.quality) : "BELUM ADA"}</span>
+        </div>
+        <strong className="market-terminal-value">{bitcoinValue !== null ? formatMoney(bitcoinValue) : "—"}</strong>
         <TerminalChange value={observationChangePercent(bitcoin)} />
-        <small>{bitcoin ? `CoinGecko · ${relativeTimeID(bitcoin.observedAt)}` : "Harga spot belum tersedia"}</small>
+        <small className="market-terminal-source">{bitcoin ? `CoinGecko · ${relativeTimeID(bitcoin.observedAt)}` : "Harga spot belum tersedia"}</small>
       </article>
-      <article className="market-terminal-cell">
-        <div className="market-terminal-label"><span>GOLD</span><span>{gold ? qualityLabel(gold.quality) : "BELUM ADA"}</span></div>
-        <strong>{goldValue !== null ? formatMoney(goldValue) : "—"}</strong>
+
+      <article className="market-terminal-card">
+        <div className="market-terminal-card-head">
+          <div><span className="market-terminal-asset">GOLD</span><small>FUTURES</small></div>
+          <span className={`market-terminal-status ${marketTapeQualityTone(gold?.quality)}`}>{gold ? qualityLabel(gold.quality) : "BELUM ADA"}</span>
+        </div>
+        <strong className="market-terminal-value">{goldValue !== null ? formatMoney(goldValue) : "—"}</strong>
         <TerminalChange value={observationChangePercent(gold)} />
-        <small>{gold ? `Yahoo · GC=F · ${relativeTimeID(gold.observedAt)}` : "Gold futures belum tersedia"}</small>
+        <small className="market-terminal-source">{gold ? `Yahoo · GC=F · ${relativeTimeID(gold.observedAt)}` : "Gold futures belum tersedia"}</small>
       </article>
-      <article className="market-terminal-cell">
-        <div className="market-terminal-label"><span>DXY</span><span>{dxy ? qualityLabel(dxy.quality) : "BELUM ADA"}</span></div>
-        <strong>{dxyValue !== null ? dxyValue.toFixed(2) : "—"}</strong>
+
+      <article className="market-terminal-card">
+        <div className="market-terminal-card-head">
+          <div><span className="market-terminal-asset">DXY</span><small>USD INDEX</small></div>
+          <span className={`market-terminal-status ${marketTapeQualityTone(dxy?.quality)}`}>{dxy ? qualityLabel(dxy.quality) : "BELUM ADA"}</span>
+        </div>
+        <strong className="market-terminal-value">{dxyValue !== null ? dxyValue.toFixed(2) : "—"}</strong>
         <TerminalChange value={observationChangePercent(dxy)} />
-        <small>{dxy ? `Yahoo · DX-Y.NYB · ${relativeTimeID(dxy.observedAt)}` : "Dollar Index belum tersedia"}</small>
+        <small className="market-terminal-source">{dxy ? `Yahoo · DX-Y.NYB · ${relativeTimeID(dxy.observedAt)}` : "Dollar Index belum tersedia"}</small>
       </article>
-      <article className="market-terminal-cell">
-        <div className="market-terminal-label"><span>US 10Y</span><span>{us10y ? qualityLabel(us10y.quality) : "BELUM ADA"}</span></div>
-        <strong>{us10y ? formatMacroDisplayValue(us10y.value, String(us10y.metadata?.unit ?? "")) : "—"}</strong>
+
+      <article className="market-terminal-card">
+        <div className="market-terminal-card-head">
+          <div><span className="market-terminal-asset">US 10Y</span><small>YIELD</small></div>
+          <span className={`market-terminal-status ${marketTapeQualityTone(us10y?.quality)}`}>{us10y ? qualityLabel(us10y.quality) : "BELUM ADA"}</span>
+        </div>
+        <strong className="market-terminal-value">{us10y ? formatMacroDisplayValue(us10y.value, String(us10y.metadata?.unit ?? "")) : "—"}</strong>
         <span className="terminal-change neutral">TREASURY YIELD</span>
-        <small>{us10y ? `FRED · DGS10 · ${relativeTimeID(us10y.observedAt)}` : "Yield 10Y belum tersedia"}</small>
+        <small className="market-terminal-source">{us10y ? `FRED · DGS10 · ${relativeTimeID(us10y.observedAt)}` : "Yield 10Y belum tersedia"}</small>
       </article>
-      <article className="market-terminal-cell">
-        <div className="market-terminal-label"><span>BTC ETF</span><span>{etfFlow ? "TERKONFIRMASI" : "BELUM ADA"}</span></div>
-        <strong>{etfFlow ? formatSignedMoney(etfFlow.value) : "—"}</strong>
+
+      <article className="market-terminal-card">
+        <div className="market-terminal-card-head">
+          <div><span className="market-terminal-asset">BTC ETF</span><small>NET FLOW</small></div>
+          <span className={`market-terminal-status ${etfFlow ? "mature" : "neutral"}`}>{etfFlow ? "MATANG" : "BELUM ADA"}</span>
+        </div>
+        <strong className="market-terminal-value">{etfFlow ? formatSignedMoney(etfFlow.value) : "—"}</strong>
         <span className={`terminal-change ${etfFlow ? (etfFlow.value > 0 ? "up" : etfFlow.value < 0 ? "down" : "neutral") : "neutral"}`}>NET FLOW</span>
-        <small>{etfFlow ? `SoSoValue · ${etfFlow.providerTradingDate}` : "Flow matang belum tersedia"}</small>
+        <small className="market-terminal-source">{etfFlow ? `SoSoValue · sesi ${etfFlow.providerTradingDate}` : "Flow matang belum tersedia"}</small>
       </article>
-      <article className="market-terminal-cell">
-        <div className="market-terminal-label"><span>STABLECOIN</span><span>{stablecoin ? recencyLabel(stablecoin.recency) : "BELUM ADA"}</span></div>
-        <strong>{stablecoin ? formatMoney(stablecoin.value) : "—"}</strong>
+
+      <article className="market-terminal-card">
+        <div className="market-terminal-card-head">
+          <div><span className="market-terminal-asset">STABLECOIN</span><small>USD SUPPLY</small></div>
+          <span className={`market-terminal-status ${marketTapeRecencyTone(stablecoin?.recency)}`}>{stablecoin ? recencyLabel(stablecoin.recency) : "BELUM ADA"}</span>
+        </div>
+        <strong className="market-terminal-value">{stablecoin ? formatMoney(stablecoin.value) : "—"}</strong>
         <TerminalChange value={stablecoinChange} label="1 HARI" />
-        <small>{stablecoin ? `DefiLlama · ${stablecoin.observedAt.slice(0, 10)}` : "Supply USD stablecoin belum tersedia"}</small>
+        <small className="market-terminal-source">{stablecoin ? `DefiLlama · ${stablecoin.observedAt.slice(0, 10)}` : "Supply USD stablecoin belum tersedia"}</small>
       </article>
+    </div>
+
+    <div className="market-terminal-foot">
+      <span>FAKTUAL · NON-PRESKRIPTIF</span>
+      <span>ETF: MATANG = lolos kebijakan finalitas P365, bukan status freshness.</span>
     </div>
   </section>;
 }
