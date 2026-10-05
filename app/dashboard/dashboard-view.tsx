@@ -197,12 +197,6 @@ function marketTapeQualityTone(value: DataQuality | undefined): "current" | "sta
   return "neutral";
 }
 
-function marketTapeRecencyTone(value: "CURRENT" | "STALE" | "UNKNOWN" | undefined): "current" | "stale" | "neutral" {
-  if (value === "CURRENT") return "current";
-  if (value === "STALE") return "stale";
-  return "neutral";
-}
-
 function OverviewMarketTape({ data, observations }: { data: DashboardData; observations: Observation[] }) {
   const bitcoin = observations.find((item) => item.subject === "btc.spot.usd");
   const gold = observations.find((item) => item.subject === "gold.futures.usd");
@@ -211,9 +205,6 @@ function OverviewMarketTape({ data, observations }: { data: DashboardData; obser
   const bitcoinValue = bitcoin ? numberValue(bitcoin.value) : null;
   const goldValue = gold ? numberValue(gold.value) : null;
   const dxyValue = dxy ? numberValue(dxy.value) : null;
-  const stablecoin = data.stablecoinLiquidity.latest;
-  const stablecoinChange = data.stablecoinLiquidity.change1d?.percentChange ?? null;
-  const etfFlow = data.btcEtfFlow.latest;
 
   return <section className="market-terminal-strip" aria-labelledby="market-tape-title">
     <div className="market-terminal-ambient" aria-hidden="true" />
@@ -221,7 +212,7 @@ function OverviewMarketTape({ data, observations }: { data: DashboardData; obser
       <div>
         <span className="market-terminal-kicker">MARKET TAPE · FAKTUAL</span>
         <h2 id="market-tape-title">Snapshot lintas pasar</h2>
-        <p className="market-terminal-subtitle">Harga, yield, flow, dan likuiditas utama dalam satu pandangan. Tidak ada sinyal arah yang ditambahkan.</p>
+        <p className="market-terminal-subtitle">Harga dan yield lintas pasar dalam satu pandangan. Flow ETF dan likuiditas stablecoin tetap berada di bagian Crypto.</p>
       </div>
       <div className="market-terminal-cutoff">
         <span>CUTOFF</span>
@@ -229,7 +220,7 @@ function OverviewMarketTape({ data, observations }: { data: DashboardData; obser
       </div>
     </div>
 
-    <div className="market-terminal-grid">
+    <div className="market-terminal-grid market-terminal-grid-four">
       <article className="market-terminal-card primary">
         <div className="market-terminal-card-head">
           <div><span className="market-terminal-asset">BTC</span><small>SPOT</small></div>
@@ -270,30 +261,11 @@ function OverviewMarketTape({ data, observations }: { data: DashboardData; obser
         <small className="market-terminal-source">{us10y ? `FRED · DGS10 · ${relativeTimeID(us10y.observedAt)}` : "Yield 10Y belum tersedia"}</small>
       </article>
 
-      <article className="market-terminal-card">
-        <div className="market-terminal-card-head">
-          <div><span className="market-terminal-asset">BTC ETF</span><small>NET FLOW</small></div>
-          <span className={`market-terminal-status ${etfFlow ? "mature" : "neutral"}`}>{etfFlow ? "MATANG" : "BELUM ADA"}</span>
-        </div>
-        <strong className="market-terminal-value">{etfFlow ? formatSignedMoney(etfFlow.value) : "—"}</strong>
-        <span className={`terminal-change ${etfFlow ? (etfFlow.value > 0 ? "up" : etfFlow.value < 0 ? "down" : "neutral") : "neutral"}`}>NET FLOW</span>
-        <small className="market-terminal-source">{etfFlow ? `SoSoValue · sesi ${etfFlow.providerTradingDate}` : "Flow matang belum tersedia"}</small>
-      </article>
-
-      <article className="market-terminal-card">
-        <div className="market-terminal-card-head">
-          <div><span className="market-terminal-asset">STABLECOIN</span><small>USD SUPPLY</small></div>
-          <span className={`market-terminal-status ${marketTapeRecencyTone(stablecoin?.recency)}`}>{stablecoin ? recencyLabel(stablecoin.recency) : "BELUM ADA"}</span>
-        </div>
-        <strong className="market-terminal-value">{stablecoin ? formatMoney(stablecoin.value) : "—"}</strong>
-        <TerminalChange value={stablecoinChange} label="1 HARI" />
-        <small className="market-terminal-source">{stablecoin ? `DefiLlama · ${stablecoin.observedAt.slice(0, 10)}` : "Supply USD stablecoin belum tersedia"}</small>
-      </article>
     </div>
 
     <div className="market-terminal-foot">
       <span>FAKTUAL · NON-PRESKRIPTIF</span>
-      <span>ETF: MATANG = lolos kebijakan finalitas P365, bukan status freshness.</span>
+      <span>Detail flow dan likuiditas crypto tersedia di bagian Crypto.</span>
     </div>
   </section>;
 }
@@ -629,23 +601,25 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
           <NetLiquidityPanel data={data.netLiquidity} />
           <RatesInflationPanel data={data.ratesInflation} />
         </div>
-        <section className="panel calendar macro-theme-panel" style={{ marginTop: "1rem" }}>
-          <div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div>
-          <h2>Indikator utama</h2>
-          {macroObservations.length
-            ? macroContexts.map((context) => <MacroThemeCard
-                context={context}
-                observations={macroObservations}
-                baselines={baselinesBySeries}
-                expanded={expandedMacroTheme === context.id}
-                onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)}
-                key={context.id}
-              />)
-            : <EmptyPanelNote label="observasi makro" />}
-        </section>
+        <div className="menu-grid" style={{ marginTop: "1rem" }}>
+          <section className="panel calendar macro-theme-panel">
+            <div className="panel-label"><span>DATA MAKRO</span><span>{macroContexts.length} TEMA · {macroObservations.length} INDIKATOR</span></div>
+            <h2>Indikator utama</h2>
+            {macroObservations.length
+              ? macroContexts.map((context) => <MacroThemeCard
+                  context={context}
+                  observations={macroObservations}
+                  baselines={baselinesBySeries}
+                  expanded={expandedMacroTheme === context.id}
+                  onToggle={() => setExpandedMacroTheme(expandedMacroTheme === context.id ? null : context.id)}
+                  key={context.id}
+                />)
+              : <EmptyPanelNote label="observasi makro" />}
+          </section>
+        </div>
       </>}
       {activeMenu === "crypto" && <>
-        <div className="page-intro"><span>CRYPTO</span><h1>Harga, likuiditas, dan arus modal</h1><p>Urutannya sederhana: lihat harga pasar, lalu ukuran likuiditas stablecoin, lalu arus ETF Bitcoin. Berita ditempatkan setelah data utama.</p></div>
+        <div className="page-intro"><span>CRYPTO</span><h1>Harga, likuiditas, dan arus modal</h1><p>Urutannya sederhana: lihat harga pasar, lalu ukuran likuiditas stablecoin, lalu arus ETF Bitcoin. Berita Crypto tersedia di Konteks.</p></div>
         <CryptoMarketPanel observations={observations} providerHealth={providerHealth} />
         <div className="decision-grid">
           <StablecoinLiquidityPanel data={data.stablecoinLiquidity} />
