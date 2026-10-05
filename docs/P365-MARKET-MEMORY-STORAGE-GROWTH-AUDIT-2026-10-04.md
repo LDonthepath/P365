@@ -300,6 +300,8 @@ The following are recorded for later checkpoints and are **not part of current p
 
 ### HOUSEKEEP-001 — Storage monitoring
 
+**HOUSEKEEP-001A implementation prepared / production activation pending.**
+
 Preferred first checkpoint.
 
 Use the existing `public.p365_operational_metrics` table rather than create a new table,
@@ -316,6 +318,32 @@ Candidate daily metrics:
 - estimated remaining Free-plan headroom.
 
 Daily cadence is sufficient. Five-minute storage telemetry is unnecessary.
+
+HOUSEKEEP-001A now freezes the implementation-ready SQL contract in:
+
+`docs/P365-HOUSEKEEP-001A-STORAGE-MONITORING.sql`
+
+It reuses the existing RLS-enabled `public.p365_operational_metrics` table and proposes one
+UTC-daily `STORAGE_CAPACITY` row at 00:15 UTC.
+
+Frozen payload fields:
+
+- database bytes;
+- Market Memory total / heap / index bytes;
+- Market Memory row count;
+- Evidence row count;
+- Observation row count;
+- `cron.job_run_details` bytes;
+- Free-plan database limit bytes;
+- estimated remaining headroom bytes;
+- database utilization percentage;
+- exact measurement timestamp.
+
+Idempotency is day-scoped: repeated execution for the same UTC day must not create another
+logical capacity snapshot.
+
+The monitoring job does **not** authorize deletion, retention, VACUUM, REINDEX, canonical
+downsampling, or alert thresholds.
 
 ### HOUSEKEEP-002 — `cron.job_run_details` retention
 
@@ -413,9 +441,25 @@ Until a later owner-approved checkpoint changes this document:
 
 ## 14. Current recommendation
 
-Deferred implementation order:
+Current 5 Oct 2026 read-only capacity measurement:
 
-1. **HOUSEKEEP-001 storage monitoring**;
+- database: **269,388,947 bytes** (~257 MiB);
+- Market Memory total: **231,768,064 bytes** (~221 MiB);
+- Market Memory heap: **168,534,016 bytes** (~161 MiB);
+- Market Memory indexes: **62,783,488 bytes** (~59.9 MiB);
+- `cron.job_run_details`: **25,116,672 bytes** (~24.0 MiB);
+- Market Memory rows: **152,806**;
+- Free-plan utilization: **51.38%**;
+- estimated remaining database headroom: **254,899,053 bytes** (~243 MiB).
+
+The last 24-hour sample contained 5,596 new Market Memory rows and roughly 5.4 MiB of raw
+canonical payload before tuple/index overhead. Because order-book activation would add two new
+steady-state snapshot lanes, HOUSEKEEP-001A monitoring should be merged and activated before
+ORDER-BOOK-001C production sampling.
+
+Updated implementation order:
+
+1. **HOUSEKEEP-001A storage monitoring — implementation prepared / activation pending**;
 2. **HOUSEKEEP-002 operational cron-history retention**;
 3. observe real growth with all active lanes;
 4. **HOUSEKEEP-003 index review**;
