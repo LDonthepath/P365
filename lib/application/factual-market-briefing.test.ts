@@ -618,3 +618,127 @@ test("BRF-001D stays insufficient when no future HIGH event is qualified", () =>
   assert.equal(result.nextCatalyst.slot, null);
   assert.match(result.nextCatalyst.reason ?? "", /Belum ada event HIGH mendatang/);
 });
+
+
+test("BRF-002A composes the existing material MOVE evidence into a market-first briefing", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    materialMoveMonitor: {
+      asOf: AS_OF,
+      status: "OK",
+      causalAttribution: "NOT_EVALUATED",
+      assets: [
+        {
+          asset: "BTC",
+          seriesKey: "btc.spot.usd",
+          sourceId: "coingecko-market",
+          observedAt: "2026-10-01T23:55:00.000Z",
+          status: "MATERIAL_MOVE",
+          hasMaterialMove: true,
+          horizons: [{
+            horizonMinutes: 60,
+            status: "MATERIAL_MOVE",
+            signedPercentChange: 1.82,
+            materialityThresholdPercent: 1.2,
+            targetPercentileRank: 98.1,
+            historicalSampleSize: 420,
+          }],
+          evidence: {
+            evidenceCompleteness: "EVIDENCE_INCOMPLETE",
+            investigationWindow: {
+              startAt: "2026-10-01T22:55:00.000Z",
+              endAt: "2026-10-01T23:55:00.000Z",
+            },
+            synchronousCoverage: "COMPLETE",
+            synchronousFingerprint: [{
+              horizonMinutes: 60,
+              coverage: "COMPLETE",
+              series: [
+                {
+                  seriesKey: "btc.spot.usd",
+                  sourceId: "coingecko-market",
+                  state: "AVAILABLE_SYNCHRONOUS",
+                  signedPercentChange: 1.82,
+                },
+                {
+                  seriesKey: "dxy.index.usd",
+                  sourceId: "yahoo-finance",
+                  state: "AVAILABLE_SYNCHRONOUS",
+                  signedPercentChange: -0.21,
+                },
+              ],
+            }],
+            scheduledCatalystCount: 0,
+            scheduledCatalystCoverage: "COMPLETE",
+            unscheduledCandidateCount: 2,
+            unscheduledCatalystCoverage: "COMPLETE",
+            btcSpotFlow: {
+              coverage: "COMPLETE",
+              venue: "BINANCE",
+              pair: "BTCUSDT",
+              windowMinutes: 60,
+              observedWindowCount: 12,
+              expectedWindowCount: 12,
+              totalBaseVolumeBtc: 100,
+              takerBuyBaseVolumeBtc: 58,
+              takerSellBaseVolumeBtc: 42,
+              netTakerBaseVolumeBtc: 16,
+              takerBuyShare: 0.58,
+              tradeCount: 1200,
+            },
+          },
+          causalAttribution: "NOT_EVALUATED",
+        },
+        {
+          asset: "GOLD",
+          seriesKey: "gold.futures.usd",
+          sourceId: "yahoo-finance",
+          observedAt: "2026-10-01T23:55:00.000Z",
+          status: "BELOW_MATERIALITY_THRESHOLD",
+          hasMaterialMove: false,
+          horizons: [{
+            horizonMinutes: 60,
+            status: "BELOW_MATERIALITY_THRESHOLD",
+            signedPercentChange: 0.31,
+            materialityThresholdPercent: 0.8,
+            targetPercentileRank: 62,
+            historicalSampleSize: 410,
+          }],
+          evidence: null,
+          causalAttribution: "NOT_EVALUATED",
+        },
+      ],
+    },
+  });
+
+  assert.equal(result.marketMoves.evidenceStatus, "AVAILABLE");
+  assert.equal(result.marketMoves.reasoningStatus, "NOT_EVALUATED");
+  assert.equal(result.marketMoves.materialMoveCount, 1);
+  assert.equal(result.marketMoves.items[0]?.asset, "BTC");
+  assert.equal(result.marketMoves.items[0]?.horizons[0]?.signedPercentChange, 1.82);
+  assert.equal(result.marketMoves.items[0]?.evidence?.scheduledCatalystCount, 0);
+  assert.equal(result.marketMoves.items[0]?.evidence?.unscheduledCandidateCount, 2);
+  assert.equal(result.marketMoves.items[0]?.evidence?.btcSpotFlow?.takerBuyShare, 0.58);
+  assert.equal(result.marketMoves.items[0]?.causalAttribution, "NOT_EVALUATED");
+});
+
+test("BRF-002A fails closed when the MOVE monitor is unavailable", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    materialMoveMonitor: {
+      asOf: AS_OF,
+      status: "UNAVAILABLE",
+      assets: [],
+      causalAttribution: "NOT_EVALUATED",
+    },
+  });
+
+  assert.equal(result.marketMoves.evidenceStatus, "INSUFFICIENT");
+  assert.equal(result.marketMoves.materialMoveCount, 0);
+  assert.deepEqual(result.marketMoves.items, []);
+  assert.match(result.marketMoves.reason ?? "", /Belum ada assessment durable BTC\/Gold/);
+});
