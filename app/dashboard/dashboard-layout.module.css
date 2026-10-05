@@ -347,3 +347,77 @@
     padding-bottom:8px;
   }
 }
+
+
+.dashboardLayout :global(.metric-card-grid){
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:10px;
+  margin-top:16px;
+}
+
+.dashboardLayout :global(.compact-metric-card){
+  min-width:0;
+  padding:14px;
+  border:1px solid var(--line-soft);
+  border-radius:5px;
+  background:rgba(255,255,255,.01);
+}
+
+.dashboardLayout :global(.compact-metric-head){
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  color:var(--muted);
+  font:600 8px/1.35 'DM Mono',monospace;
+  letter-spacing:.055em;
+}
+
+.dashboardLayout :global(.compact-metric-head span){
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.dashboardLayout :global(.compact-metric-head small){
+  flex:0 0 auto;
+  color:var(--muted);
+  font-size:7px;
+}
+
+.dashboardLayout :global(.compact-metric-card > strong){
+  display:block;
+  margin-top:10px;
+  overflow:hidden;
+  color:var(--text);
+  font:600 clamp(1.25rem,2vw,1.7rem)/1 'DM Mono',monospace;
+  letter-spacing:-.035em;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+
+.dashboardLayout :global(.compact-metric-card > p){
+  margin:8px 0 0;
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+
+.dashboardLayout :global(.secondary-metric-grid .compact-metric-card){
+  padding:12px;
+}
+
+@media(max-width:760px){
+  .dashboardLayout :global(.metric-card-grid){
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  .dashboardLayout :global(.compact-metric-card){
+    padding:12px;
+  }
+}
