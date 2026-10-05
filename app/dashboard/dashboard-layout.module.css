@@ -426,3 +426,16 @@
 .dashboardLayout :global(.menu-grid > .macro-theme-panel){
   grid-column:1 / -1;
 }
+
+
+.dashboardLayout :global(.context-menu > .context-detail),
+.dashboardLayout :global(.context-menu > .context-detail-empty){
+  top:82px;
+}
+
+@media(max-width:900px){
+  .dashboardLayout :global(.context-menu > .context-detail),
+  .dashboardLayout :global(.context-menu > .context-detail-empty){
+    top:auto;
+  }
+}
