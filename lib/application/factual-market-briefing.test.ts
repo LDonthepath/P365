@@ -818,6 +818,12 @@ test("BRF-002A composes the existing material MOVE evidence into a market-first 
     "EVIDENCE_INCOMPLETE",
   );
   assert.equal(result.marketMoves.items[0]?.causalAttribution, "NOT_EVALUATED");
+  assert.equal(result.resolution.status, "MATERIAL_MOVE_EVIDENCE_INCOMPLETE");
+  assert.deepEqual(result.resolution.materialAssets, ["BTC"]);
+  assert.equal(result.resolution.evidenceCompleteness, "EVIDENCE_INCOMPLETE");
+  assert.match(result.resolution.statement, /Bitcoin mengalami gerakan material/);
+  assert.match(result.resolution.driverStatement, /belum dapat ditetapkan/);
+  assert.equal(result.resolution.reasoningStatus, "NOT_EVALUATED");
 });
 
 test("BRF-002A fails closed when the MOVE monitor is unavailable", () => {
@@ -837,6 +843,9 @@ test("BRF-002A fails closed when the MOVE monitor is unavailable", () => {
   assert.equal(result.marketMoves.materialMoveCount, 0);
   assert.deepEqual(result.marketMoves.items, []);
   assert.match(result.marketMoves.reason ?? "", /Belum ada assessment durable BTC\/Gold/);
+  assert.equal(result.resolution.status, "MARKET_DATA_INSUFFICIENT");
+  assert.equal(result.resolution.evidenceCompleteness, null);
+  assert.match(result.resolution.driverStatement, /belum dievaluasi/);
 });
 
 
@@ -950,4 +959,132 @@ test("BRF-002B preserves missing catalyst detail without inventing a driver", ()
   assert.equal(move?.evidence?.evidenceCompleteness, "EVIDENCE_INCOMPLETE");
   assert.equal(move?.causalAttribution, "NOT_EVALUATED");
   assert.equal(JSON.stringify(move).toLowerCase().includes("caused"), false);
+});
+
+
+test("BRF-002D resolves a quiet market without inventing an investigation", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    materialMoveMonitor: {
+      asOf: AS_OF,
+      status: "OK",
+      causalAttribution: "NOT_EVALUATED",
+      assets: [
+        {
+          asset: "BTC",
+          seriesKey: "btc.spot.usd",
+          sourceId: "coingecko-market",
+          observedAt: "2026-10-01T23:55:00.000Z",
+          status: "BELOW_MATERIALITY_THRESHOLD",
+          hasMaterialMove: false,
+          horizons: [{
+            horizonMinutes: 60,
+            status: "BELOW_MATERIALITY_THRESHOLD",
+            signedPercentChange: 0.2,
+            materialityThresholdPercent: 0.8,
+            targetPercentileRank: 55,
+            historicalSampleSize: 400,
+          }],
+          evidence: null,
+          causalAttribution: "NOT_EVALUATED",
+        },
+        {
+          asset: "GOLD",
+          seriesKey: "gold.futures.usd",
+          sourceId: "yahoo-finance",
+          observedAt: "2026-10-01T23:55:00.000Z",
+          status: "BELOW_MATERIALITY_THRESHOLD",
+          hasMaterialMove: false,
+          horizons: [{
+            horizonMinutes: 60,
+            status: "BELOW_MATERIALITY_THRESHOLD",
+            signedPercentChange: -0.1,
+            materialityThresholdPercent: 0.5,
+            targetPercentileRank: 40,
+            historicalSampleSize: 390,
+          }],
+          evidence: null,
+          causalAttribution: "NOT_EVALUATED",
+        },
+      ],
+    },
+  });
+
+  assert.equal(result.marketMoves.materialMoveCount, 0);
+  assert.equal(result.resolution.status, "NO_MATERIAL_MOVE");
+  assert.deepEqual(result.resolution.materialAssets, []);
+  assert.equal(result.resolution.evidenceCompleteness, null);
+  assert.match(result.resolution.statement, /Belum ada gerakan material Bitcoin atau Gold/);
+  assert.match(result.resolution.statement, /Investigation bundle tidak diaktifkan/);
+  assert.match(result.resolution.driverStatement, /Tidak ada driver yang dievaluasi/);
+  assert.equal(result.resolution.reasoningStatus, "NOT_EVALUATED");
+});
+
+test("BRF-002D can report complete MOVE evidence without promoting it to causality", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    materialMoveMonitor: {
+      asOf: AS_OF,
+      status: "OK",
+      causalAttribution: "NOT_EVALUATED",
+      assets: [{
+        asset: "GOLD",
+        seriesKey: "gold.futures.usd",
+        sourceId: "yahoo-finance",
+        observedAt: "2026-10-01T23:55:00.000Z",
+        status: "MATERIAL_MOVE",
+        hasMaterialMove: true,
+        horizons: [{
+          horizonMinutes: 60,
+          status: "MATERIAL_MOVE",
+          signedPercentChange: 1.1,
+          materialityThresholdPercent: 0.5,
+          targetPercentileRank: 99,
+          historicalSampleSize: 390,
+        }],
+        evidence: {
+          evidenceCompleteness: "EVIDENCE_COMPLETE",
+          investigationWindow: {
+            startAt: "2026-10-01T22:55:00.000Z",
+            endAt: "2026-10-01T23:55:00.000Z",
+          },
+          synchronousCoverage: "COMPLETE",
+          synchronousFingerprint: [],
+          scheduledCatalystCount: 0,
+          scheduledCatalystCoverage: "COMPLETE",
+          scheduledCatalysts: [],
+          unscheduledCandidateCount: 0,
+          unscheduledCatalystCoverage: "COMPLETE",
+          unscheduledCandidates: [],
+          slowBackground: {
+            state: "AVAILABLE_BACKGROUND",
+            items: [{
+              kind: "GOLD_CFTC_POSITIONING",
+              state: "AVAILABLE_BACKGROUND",
+              reason: null,
+            }],
+          },
+          cryptoMarketStructure: null,
+          intradayRatesPricing: {
+            state: "AVAILABLE_SYNCHRONOUS",
+            reason: "Qualified runtime available for test fixture.",
+            policy: "FREE_ONLY_NO_APPROVED_RUNTIME",
+          },
+          btcSpotFlow: null,
+        },
+        causalAttribution: "NOT_EVALUATED",
+      }],
+    },
+  });
+
+  assert.equal(result.resolution.status, "MATERIAL_MOVE_EVIDENCE_COMPLETE");
+  assert.deepEqual(result.resolution.materialAssets, ["GOLD"]);
+  assert.equal(result.resolution.evidenceCompleteness, "EVIDENCE_COMPLETE");
+  assert.match(result.resolution.statement, /Gold mengalami gerakan material/);
+  assert.match(result.resolution.driverStatement, /hubungan sebab-akibat belum dievaluasi/);
+  assert.equal(result.resolution.reasoningStatus, "NOT_EVALUATED");
 });
