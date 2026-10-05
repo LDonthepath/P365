@@ -224,7 +224,7 @@ function MarketMoveBriefingItem({
           </span>
           {scheduledCatalysts.map((event) => <span key={`${event.eventIdentityKey ?? event.eventId}:${event.retrievedAt}`}>
             Event: {event.subject}
-            {" · "}{jurisdictionLabel(event.jurisdiction)}
+            {" · "}{jurisdictionLabel(event.jurisdiction ?? null)}
             {" · "}{dateTime(event.scheduledAt)} WIB
             {" · "}{MOVE_IMPORTANCE_LABELS[event.importance] ?? "dampak belum ditetapkan"}
             {" · "}sumber {event.sourceId}
