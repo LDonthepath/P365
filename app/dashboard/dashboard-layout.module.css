@@ -439,3 +439,23 @@
     top:auto;
   }
 }
+
+
+.dashboardLayout :global(.heatmap-heading h2){
+  font-size:clamp(1.8rem,3vw,2.5rem);
+  line-height:1.05;
+}
+
+.dashboardLayout :global(.heatmap-group){
+  overflow:hidden;
+  border-radius:6px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.015);
+}
+
+.dashboardLayout :global(.heatmap-tile){
+  border-radius:3px;
+}
+
+.dashboardLayout :global(.heatmap-semantic-note){
+  border-radius:5px;
+}
