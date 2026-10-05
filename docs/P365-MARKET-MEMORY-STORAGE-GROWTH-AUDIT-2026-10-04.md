@@ -300,7 +300,7 @@ The following are recorded for later checkpoints and are **not part of current p
 
 ### HOUSEKEEP-001 — Storage monitoring
 
-**HOUSEKEEP-001A implementation prepared / production activation pending.**
+**HOUSEKEEP-001A merged / HOUSEKEEP-001A.1 correction pending before production activation.**
 
 Preferred first checkpoint.
 
@@ -325,6 +325,15 @@ HOUSEKEEP-001A now freezes the implementation-ready SQL contract in:
 
 It reuses the existing RLS-enabled `public.p365_operational_metrics` table and proposes one
 UTC-daily `STORAGE_CAPACITY` row at 00:15 UTC.
+
+Post-merge activation proof on 5 Oct 2026 exposed one blocking schema-contract defect:
+`p365_operational_metrics_metric_type_check` allowed only `CACHE_INVALIDATION` and
+`PROVIDER_FETCH`. The first manual `STORAGE_CAPACITY` insert failed with PostgreSQL check-
+constraint error `23514`. The just-created `p365-storage-daily` cron was immediately
+unscheduled; no monitoring row was written and Market Memory was untouched.
+
+HOUSEKEEP-001A.1 corrects this by broadening the existing check constraint to also allow
+`STORAGE_CAPACITY`. It does not rename or remove either existing allowed value.
 
 Frozen payload fields:
 
@@ -459,7 +468,7 @@ ORDER-BOOK-001C production sampling.
 
 Updated implementation order:
 
-1. **HOUSEKEEP-001A storage monitoring — implementation prepared / activation pending**;
+1. **HOUSEKEEP-001A.1 metric-type correction — pending owner merge; monitoring activation rolled back until corrected**;
 2. **HOUSEKEEP-002 operational cron-history retention**;
 3. observe real growth with all active lanes;
 4. **HOUSEKEEP-003 index review**;
