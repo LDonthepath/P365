@@ -1316,6 +1316,8 @@
 .overviewLayout :global(.overview-intelligence-grid > .catalyst-wire){
   margin-bottom:0;
   min-width:0;
+  overflow:hidden;
+  border-radius:10px;
 }
 
 .overviewLayout :global(.overview-intelligence-grid .move-monitor-head){
@@ -1323,6 +1325,12 @@
 }
 
 .overviewLayout :global(.overview-intelligence-grid .move-monitor-grid){
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1px;
+  background:var(--line-soft);
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor.has-material .move-monitor-grid){
   grid-template-columns:1fr;
   gap:0;
   background:transparent;
@@ -1332,13 +1340,17 @@
   padding:14px 16px 15px;
 }
 
-.overviewLayout :global(.overview-intelligence-grid .move-monitor-card + .move-monitor-card){
+.overviewLayout :global(.overview-intelligence-grid .move-monitor.has-material .move-monitor-card + .move-monitor-card){
   border-top:1px solid var(--line-soft);
 }
 
 .overviewLayout :global(.overview-intelligence-grid .move-monitor-horizons){
   gap:6px;
   margin-top:12px;
+}
+
+.overviewLayout :global(.overview-intelligence-grid .move-monitor:not(.has-material) .move-monitor-horizons){
+  grid-template-columns:repeat(2,minmax(0,1fr));
 }
 
 .overviewLayout :global(.overview-intelligence-grid .move-monitor-horizon){
@@ -1569,6 +1581,17 @@
     margin-bottom:12px;
   }
 
+  .overviewLayout :global(.overview-intelligence-grid .move-monitor-grid),
+  .overviewLayout :global(.overview-intelligence-grid .move-monitor.has-material .move-monitor-grid){
+    grid-template-columns:1fr;
+    gap:0;
+    background:transparent;
+  }
+
+  .overviewLayout :global(.overview-intelligence-grid .move-monitor-card + .move-monitor-card){
+    border-top:1px solid var(--line-soft);
+  }
+
   .overviewLayout :global(.overview-intelligence-grid .move-monitor-card){
     padding:13px 14px 14px;
   }
@@ -1607,7 +1630,9 @@
 .overviewLayout :global(.overview-briefing .overview-change-layer){
   margin:0;
   padding:18px;
+  overflow:hidden;
   border:1px solid rgba(211,178,112,.14);
+  border-radius:10px;
   background:linear-gradient(180deg,rgba(14,17,15,.96),rgba(10,13,11,.98));
 }
 
