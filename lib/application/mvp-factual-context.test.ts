@@ -12,6 +12,7 @@ const AS_OF = "2026-09-20T13:14:58.000Z";
 const ratesInflation: RatesInflationReadModel = {
   status: "UNAVAILABLE",
   reason: "fixture",
+  sep: { status: "UNAVAILABLE", reason: "fixture" },
 };
 const netLiquidity: NetLiquidityReadModel = {
   status: "UNAVAILABLE",

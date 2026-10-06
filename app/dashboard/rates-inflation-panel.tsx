@@ -59,6 +59,25 @@ function date(value: string | null): string {
   }).format(new Date(value));
 }
 
+function dateTime(value: string | null): string {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+}
+
+function sepHorizonLabel(horizon: string): string {
+  if (horizon === "LONGER_RUN") return "Jangka panjang";
+  const match = horizon.match(/^YEAR_END_(20\d{2})$/);
+  return match ? `Akhir ${match[1]}` : horizon;
+}
+
 function signed(value: number, digits = 1): string {
   return new Intl.NumberFormat("id-ID", {
     minimumFractionDigits: digits,
@@ -136,6 +155,46 @@ function SeriesCard({ point }: { point: RatesSeriesPoint }) {
   </article>;
 }
 
+function SepPolicyExpectation({ data }: { data: RatesInflationReadModel["sep"] }) {
+  if (data.status === "UNAVAILABLE") {
+    return <section style={{ marginTop: "1rem" }}>
+      <div className="panel-label"><span>EKSPEKTASI KEBIJAKAN · SEP</span><span>BELUM TERSEDIA</span></div>
+      <p className="muted" style={{ marginTop: ".4rem" }}>{data.reason}</p>
+    </section>;
+  }
+
+  const meeting = data.meetingStartDate && data.meetingEndDate
+    ? `FOMC ${date(data.meetingStartDate)}–${date(data.meetingEndDate)}`
+    : null;
+
+  return <section style={{ marginTop: "1rem" }}>
+    <div className="panel-label">
+      <span>EKSPEKTASI KEBIJAKAN · SEP</span>
+      <span>{data.points.length} HORIZON · RILIS RESMI</span>
+    </div>
+    <p className="muted" style={{ marginTop: ".4rem" }}>
+      Median suku bunga kebijakan yang dipublikasikan peserta FOMC. Ini adalah ekspektasi resmi SEP,
+      bukan probabilitas pasar dan bukan sinyal arah kebijakan.
+    </p>
+    <p className="muted" style={{ marginTop: ".35rem" }}>
+      Rilis {dateTime(data.observedAt)} UTC · diperoleh {dateTime(data.retrievedAt)} UTC
+      {meeting ? ` · ${meeting}` : ""}
+    </p>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: ".75rem", marginTop: ".75rem" }}>
+      {data.points.map((point) => <article className="panel" style={{ margin: 0 }} key={point.seriesKey}>
+        <div className="panel-label">
+          <span>{sepHorizonLabel(point.horizon)}</span>
+          <span>{QUALITY_LABELS[point.quality]}</span>
+        </div>
+        <strong style={{ display: "block", fontSize: "1.45rem" }}>
+          {new Intl.NumberFormat("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(point.valuePct)}%
+        </strong>
+        <small className="muted">Median resmi Federal Reserve</small>
+      </article>)}
+    </div>
+  </section>;
+}
+
 export function RatesInflationPanel({ data }: { data: RatesInflationReadModel }) {
   const byKey = new Map(data.status === "OK" ? data.series.map((point) => [point.seriesKey, point]) : []);
 
@@ -164,9 +223,12 @@ export function RatesInflationPanel({ data }: { data: RatesInflationReadModel })
           </section>;
         })}
 
+    <SepPolicyExpectation data={data.sep} />
+
     <p className="muted" style={{ marginBottom: 0, marginTop: "1rem" }}>
-      P365 hanya menampilkan fakta rates & policy yang sudah durable. Dot plot SEP, Fed funds futures/OIS,
-      MOVE Index, dan aturan perubahan regime belum diaktifkan pada irisan ini.
+      P365 hanya menampilkan fakta rates & policy serta ekspektasi SEP yang sudah durable. Distribusi dot lengkap
+      sudah tersimpan tetapi belum divisualisasikan pada irisan tipis ini. Fed funds futures/OIS, selisih SEP dengan harga pasar,
+      MOVE Index, dan aturan perubahan regime belum diaktifkan.
     </p>
   </section>;
 }
