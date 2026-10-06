@@ -1,6 +1,6 @@
 # P365 US Policy-Implied Pricing Contract v0.1
 
-**Status:** CONTRACT FROZEN / CME FEDWATCH SEMANTICALLY QUALIFIED / RUNTIME LICENSING OPEN
+**Status:** CONTRACT FROZEN / FREE-ONLY RE-EVALUATED / NO RUNTIME-APPROVED MEETING-LEVEL SOURCE
 
 **Checkpoint:** MACRO-PRICING-001A contract and source qualification
 
@@ -410,3 +410,221 @@ A future runtime must prove at minimum:
 - UI;
 - State/Regime/Risk/Intelligence;
 - trading signal/recommendation.
+
+
+## 17. MACRO-PRICING-001A.1 — Free / Legal Source Re-evaluation
+
+**Audit date:** 6 October 2026
+
+**Implementation effect:** documentation/source qualification only. No provider runtime,
+credential, dependency, persistence, scheduler, backfill, UI, comparator, reasoning, or trading
+logic is activated.
+
+This continuation re-evaluates the source gate after the owner reaffirmed a **FREE_ONLY**
+boundary for the current MVP.
+
+The required evidence class remains unchanged:
+
+> meeting-specific market-implied FOMC policy pricing with qualified quote/as-of time,
+> point-in-time history, and legally compatible automated internal use.
+
+The audit does not weaken the contract merely to obtain a free source.
+
+### 17.1 CME FedWatch API — semantic PASS, FREE_ONLY FAIL
+
+Official source:
+
+- https://www.cmegroup.com/market-data/market-data-api/fedwatch-api.html
+- https://www.cmegroup.com/market-data/files/interface-connection-agreement-apis.pdf
+
+The official FedWatch API remains the strongest semantic match to the canonical requirement.
+CME now explicitly advertises:
+
+- FedWatch End-of-Day REST API at **USD 25/month/API ID** for 0–1,000 hits/month;
+- FedWatch Intraday REST API at **USD 75/month/API ID** for 1,001–50,000 hits/month;
+- JSON REST delivery;
+- probability data derived from 30-Day Fed Funds futures;
+- history dating back to 2015.
+
+Therefore the previous `RUNTIME LICENSING OPEN` description is no longer the most precise
+project status under the owner-approved FREE_ONLY boundary.
+
+Verdict:
+
+> **CME FEDWATCH: SEMANTICALLY QUALIFIED / PAID PATH / REJECTED FOR CURRENT FREE_ONLY MVP**
+
+This does not reject CME permanently. It rejects activation under the current owner constraint.
+
+Website scraping remains prohibited.
+
+### 17.2 Federal Reserve Bank of Atlanta Market Probability Tracker — useful supporting source,
+not a FedWatch substitute
+
+Official sources:
+
+- https://www.atlantafed.org/research-and-data/data/market-probability-tracker
+- https://www.atlantafed.org/terms-of-use
+
+The Atlanta Fed Market Probability Tracker (MPT):
+
+- is a first-party Federal Reserve Bank research/data product;
+- updates daily using the most recently available data, typically from the prior day;
+- estimates market-implied distributions from CME options referencing three-month compounded
+  average SOFR;
+- exposes the four nearest-expiring quarterly contracts;
+- lets users compare expected three-month average SOFR paths, percentile regions, future
+  target-range probabilities over quarterly intervals, and full model distributions;
+- explicitly provides downloadable source code and historical data.
+
+However two boundaries prevent it from replacing MACRO-PRICING-001A.
+
+#### Semantic boundary
+
+MPT is a **quarterly distribution of average short-rate outcomes**, not a provider-native
+probability grid for each scheduled FOMC meeting.
+
+Therefore:
+
+`Atlanta MPT quarterly distribution != FedWatch meeting probability grid`
+
+It cannot be used directly for the MACRO-SEP-001A rule that aligns a year-end SEP point to the
+final officially scheduled FOMC meeting of that year.
+
+Any future use must have its own series identity/horizon and must not be relabeled as an exact
+meeting probability.
+
+#### Rights boundary
+
+The MPT page states that CME Group market data are used **with permission from CME**.
+Atlanta Fed terms permit non-commercial reproduction of **Bank-owned** material with
+attribution, but explicitly state that use of third-party copyrighted/proprietary content
+requires permission from the applicable owner.
+
+P365 must not assume that CME's permission to the Atlanta Fed transfers downstream to automated
+durable ingestion by P365.
+
+The fact that source code and historical data are downloadable is positive evidence of intended
+research access, but it does not by itself prove that P365 may automatically archive and reuse
+all CME-derived data in Market Memory.
+
+Verdict:
+
+> **ATLANTA FED MPT: OFFICIAL / FREE / HIGH-VALUE SUPPORTING POLICY-DISTRIBUTION CANDIDATE —
+> NOT A MEETING-LEVEL SUBSTITUTE — DURABLE-RIGHTS CLARIFICATION REQUIRED BEFORE RUNTIME**
+
+No website scraping or undocumented endpoint discovery is authorized.
+
+### 17.3 Kalshi Fed Decision markets — strong meeting semantics, rights gate FAIL for P365
+
+Official sources:
+
+- https://docs.kalshi.com/llms.txt
+- https://help.kalshi.com/en/articles/13823854-kalshi-api
+- https://kalshi.com/markets/kxfeddecision/fed-meeting/kxfeddecision-26oct
+- https://kalshi-public-docs.s3.amazonaws.com/kalshi-data-terms-of-service.pdf
+
+Kalshi is CFTC-regulated as a Designated Contract Market and lists `KXFEDDECISION` events for
+specific FOMC meetings. Current markets expose mutually exclusive outcomes such as:
+
+- maintain rate;
+- cut 25 bp;
+- cut more than 25 bp;
+- hike 25 bp;
+- hike more than 25 bp.
+
+Kalshi's official API documentation also states that real-time market data can be accessed
+without authentication and documents historical exchange-data access.
+
+This is a useful semantic discovery: a prediction-market venue can provide **meeting-specific
+decision probabilities** without CME FedWatch.
+
+It is nevertheless a different evidence class from Fed Funds-futures-derived policy pricing.
+A future approved use would require explicit `PREDICTION_MARKET / EVENT_CONTRACT` semantics
+rather than silently reusing `FUTURE`.
+
+More importantly, Kalshi's published Data Terms prohibit, absent prior written authorization,
+uses including:
+
+- development of software programs using Kalshi Data;
+- archived or cached datasets containing Kalshi Data;
+- systematic retrieval / compilation / databases;
+- derivative works;
+- bulk automated collection;
+- machine-learning / artificial-intelligence use of Kalshi Data.
+
+The public API documentation establishes technical access; it does **not** provide P365 with
+an explicit durable-use license overriding those restrictions.
+
+Verdict:
+
+> **KALSHI FED DECISION: MEETING-SEMANTICALLY USEFUL / PUBLIC API TECHNICALLY ACCESSIBLE /
+> NOT RUNTIME-APPROVED FOR P365 WITHOUT WRITTEN DATA AUTHORIZATION**
+
+No Kalshi provider/runtime should be implemented under the current evidence.
+
+### 17.4 Other official/factual sources remain non-substitutes
+
+New York Fed/FRED factual EFFR/SOFR and Treasury/FRED rates remain valid factual anchors but do
+not contain the required meeting-level probability distribution.
+
+Survey expectations are also not market pricing.
+
+P365 must not manufacture a probability grid from spot rates or a single yield without a
+separately approved methodology and qualified futures/OIS input.
+
+### 17.5 Re-evaluation verdict
+
+The free-source search did not produce a source that simultaneously passes:
+
+1. exact FOMC meeting-level probability semantics;
+2. qualified quote/as-of timestamp;
+3. historical/point-in-time availability;
+4. automated programmatic access;
+5. durable internal storage/use rights compatible with P365;
+6. the current FREE_ONLY boundary.
+
+Current decision matrix:
+
+| Source | Meeting-level fit | Free technical access | Durable/legal fit for P365 | Verdict |
+|---|---|---|---|---|
+| CME FedWatch API | PASS | FAIL — paid | Can be licensed | Reject under FREE_ONLY |
+| Atlanta Fed MPT | FAIL for exact meeting; useful quarterly distribution | PASS | Unresolved because CME-derived third-party rights do not clearly transfer | Supporting candidate only |
+| Kalshi KXFEDDECISION | PASS for decision-event semantics, but different market class | PASS | FAIL/unresolved absent written authorization under published Data Terms | Do not implement |
+| NY Fed / FRED factual rates | FAIL | PASS | PASS at existing qualified boundaries | Supporting factual anchors only |
+
+Therefore:
+
+> **MACRO-PRICING-001A.1: NO FREE / LEGALLY COMPATIBLE / MEETING-LEVEL RUNTIME SOURCE
+> QUALIFIED. KEEP THE GAP EXPLICIT.**
+
+### 17.6 Product consequence
+
+This result does **not** block the existing factual Rates & Policy or SEP surfaces.
+
+It does block:
+
+- live SEP-versus-market gap;
+- meeting-level policy probability repricing;
+- deterministic expected year-end market midpoint under the frozen SEP comparison contract;
+- any policy-expectations regime label.
+
+The correct UI behavior remains to show the official SEP path and factual rates evidence while
+leaving market-implied meeting pricing unavailable.
+
+P365 must not substitute Atlanta MPT, Kalshi, Treasury yields, SOFR spot, or EFFR spot into the
+FedWatch probability slot.
+
+### 17.7 Next allowed actions
+
+Under FREE_ONLY, the next allowed pricing actions are research-only:
+
+1. periodically re-check for an official free source or an explicit license change;
+2. if the owner is interested, qualify Atlanta MPT as a **separate quarterly
+   policy-distribution supporting series**, not as meeting-level FedWatch replacement;
+3. if written Kalshi data authorization is ever obtained, open a separate semantic/source
+   checkpoint before runtime because event contracts are not Fed Funds futures;
+4. if the owner later approves paid data, re-open CME FedWatch API entitlement as the primary
+   meeting-level path.
+
+Do not implement MACRO-PRICING-001B while FREE_ONLY remains active and no source passes all
+runtime gates.
