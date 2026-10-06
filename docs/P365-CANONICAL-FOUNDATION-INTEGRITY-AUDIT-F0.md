@@ -780,6 +780,7 @@ Because this PR is documentation-only, the meaningful acceptance criterion is **
 | 6 Oct 2026 | MACRO-SEP-001C Production Closure | PR #199 merged as `01cad0b5c2b61f449c85ed7f381fcb9791d9f115`. Exact production deployment `dpl_DTvpqbBFBT1stGxNZTY16P91gpsi` is READY and owns alias `p365-kappa.vercel.app`. Production `/dashboard` returned HTTP 200 with zero error/fatal runtime logs. Browser smoke on Makro confirmed all five durable SEP medians and release/retrieval/FOMC context; 390×844 mobile geometry stayed within viewport with no horizontal overflow and SEP cards rendered as a two-column grid. No runtime, provider, scheduler, persistence, pricing, regime, causality or trading semantics changed in this closure. |
 | 1 Oct 2026 | MACRO-PRICING-001A US Policy-Implied Pricing Contract / Source Qualification | Freezes the missing US market-implied FOMC policy-path evidence as `RATES / PRICING / US`, distinct from factual EFFR/SOFR, Treasury yields, real yield, breakeven, official Dot Plot and survey expectations. Under current FND-018A identity, each provider-native meeting/target-rate probability bucket is uniquely keyed by FOMC meeting date + target-rate bounds while `observedAt` remains the qualified quote/as-of timestamp. CME FedWatch is the strongest audited semantic source: it publishes FOMC outcome probabilities implied by 30-Day Fed Funds futures, documents the probability-tree methodology, current/historical views and a dedicated FedWatch API. Current official CME website/data terms continue to prohibit unlicensed automated website extraction and software/archive use, while CME separately offers API access and non-display licensing for system-based research/analysis. New York Fed/FRED factual rates remain supporting sources, not substitutes for the policy path. Status is **CONTRACT FROZEN / CME FEDWATCH SEMANTICALLY QUALIFIED / RUNTIME LICENSING OPEN**; no runtime, API credential, scheduler, backfill, derived terminal-rate/cut-count metric, UI or reasoning is added. |
 | 6 Oct 2026 | MACRO-PRICING-001A.1 Free / Legal Source Re-evaluation | Re-audits market-implied US policy pricing under the owner FREE_ONLY boundary. Official CME FedWatch API is now explicitly a paid path and remains the semantic benchmark, not an implementation option. Atlanta Fed MPT is source-qualified only as a possible separate quarterly policy-distribution support family: it updates daily and publishes downloadable source/history but is not meeting-level and CME-derived downstream durable-use rights remain unresolved. Kalshi KXFEDDECISION is technically/publicly accessible and meeting-specific, but its published Data Terms prohibit the software/archive/systematic-retrieval/AI usage pattern P365 requires without written authorization. Verdict: no free, legally compatible meeting-level runtime source is qualified; preserve the evidence gap and keep MACRO-PRICING-001B blocked. |
+| 6 Oct 2026 | EVIDENCE-EFF-001A Production Evidence Utility Audit | Read-only production audit classifies durable evidence by real consumer, temporal need and storage cost. Live baseline measured 286,346,387 database bytes / 248,299,520 Market Memory bytes / 159,694 Market Memory rows and ~237.9 MB planning headroom. Last 24h wrote 6,387 rows / ~6.39 MB logical payload. BTC/ETH spot, Gold, DXY, USDJPY, USDCNH and Binance spot-flow remain KEEP_FAST; GDELT remains source-native. CoinGecko market-cap/dominance/total-market/24h-volume are dashboard/context-only and classified KEEP_SLOW, currently ~2,296 rows/day / ~2.10 MB logical payload. Biquote produced 1,593 Evidence rows for 20 canonical Evidence IDs over 7d, proving retrieval-version persistence waste. Legacy same-canonical-ID version density is also large, led by ~39.98 MB logical FRED Evidence after the first physical version, but no deletion/compaction is authorized until point-in-time/vintage/lineage equivalence is proven. ORDER-BOOK production sampling remains blocked until write-rate remediation is production-proven. Status: **AUDIT IMPLEMENTED / OWNER MERGE PENDING**. |
 | 6 Oct 2026 | MACRO-SEP-001A US SEP / Dot Plot Source Qualification & Comparison Boundary | Qualifies the Federal Reserve official accessible SEP HTML as the primary free structured source for the policy dot plot, with Table 1 published medians and Figure 2 participant-count distributions retained as distinct raw facts. Freezes point-in-time release/retrieval semantics and a bounded SEP-versus-market comparison: only aligned YEAR_END horizons may use the final officially scheduled FOMC meeting for that calendar year; a complete qualified target-rate probability grid may be reduced to a deterministic probability-weighted expected midpoint and compared with the source-published SEP median as gapBps. LONGER_RUN remains non-comparable to a meeting. CME/FedWatch governance is unchanged and no paid source is authorized. Status: **MERGED / PR #197 / `7160b00cb7df7313396bc323c8f6fab29336597e`**. |
 | 6 Oct 2026 | MACRO-SEP-001B Federal Reserve SEP Factual Runtime | Adds the free official-source runtime over Federal Reserve accessible SEP HTML. Discovery starts from the official FOMC calendar and selects the latest published accessible projection-material link rather than guessing a URL. The parser requires official release timestamp, Table 1 federal-funds-rate medians, Figure 2 midpoint-by-horizon participant counts, and the source 1/8-percentage-point rounding note; schema drift fails closed. Canonical writes preserve source release as observedAt, P365 retrieval separately, dynamic policy.us.sep.ffr.* identity, POLICY / EXPECTATION semantics, official-resource provenance, and append-only Market Memory idempotency. FORWARD ingestion is available through the existing authenticated historical-ingestion endpoint as provider `federal-reserve-sep`; scheduler activation, historical backfill, UI, market-pricing runtime, regime and trading semantics remain out of scope. Status: **PR #198 / OWNER MERGE PENDING**. |
 | 1 Oct 2026 | HIST-001A Point-in-Time Historical Baseline Contract | Defines single-series point-in-time historical distribution evidence using explicit LEVEL, ABSOLUTE_CHANGE, PERCENT_CHANGE or ABSOLUTE_PERCENT_CHANGE transforms; historical windows end strictly before the target, repository reads remain `retrievedAt <= asOf`, later-known revisions cannot leak backward, STALE historical facts retain FND-002Q fitness, change samples require exact matching horizons with no interpolation/fill, and VALID output exposes deterministic median plus empirical mid-rank percentile without labeling normal/unusual or introducing State/Regime/Risk/Intelligence/trading semantics. Status is **CONTRACT MERGED / PR #130 / HIST-001B MERGED / PR #131**. |
@@ -990,7 +991,8 @@ Intelligence / Briefing
 31C. MACRO-SEP-001A US SEP / Dot Plot Source & Comparison Contract      ← MERGED / PR #197 / `7160b00cb7df7313396bc323c8f6fab29336597e`
 31D. MACRO-SEP-001B Federal Reserve SEP Factual Runtime                    ← PRODUCTION ACTIVE / PR #198 / `f573476953f9958d25971498a90d22d74f41f1e2`
 31E. MACRO-SEP-001C Rates & Policy SEP Median Path UI                       ← PRODUCTION ACTIVE / PR #199 / `01cad0b5c2b61f449c85ed7f381fcb9791d9f115`
-31F. MACRO-PRICING-001A.1 Free / Legal Policy-Pricing Re-evaluation          ← PR #202 / owner merge pending
+31F. MACRO-PRICING-001A.1 Free / Legal Policy-Pricing Re-evaluation          ← MERGED / PR #202 / `a521a60bdd48ded94193e0bd5d98ebdf85007d82`
+31G. EVIDENCE-EFF-001A Production Evidence Utility Audit                      ← IMPLEMENTED / owner merge pending
 32. Derived State → Risk/Regime → Intelligence → Briefing        ← remains deferred
 ```
 
@@ -998,41 +1000,63 @@ One logical remediation = one PR = one verification checkpoint. This sequence ma
 
 ## Deferred operational backlog — Market Memory storage
 
-The 4 Oct 2026 read-only storage audit is recorded in:
+The 4 Oct 2026 storage audit remains authoritative for the no-blind-deletion boundary:
 
 `docs/P365-MARKET-MEMORY-STORAGE-GROWTH-AUDIT-2026-10-04.md`
 
-It records the verified Free-plan storage boundary, current database/Market Memory/cron
-footprint, the legacy Observation-Evidence duplication defect already fixed by PR #110,
-current post-fix idempotency, index-usage findings, runway scenarios, and the deferred
-housekeeping sequence.
+HOUSEKEEP-001A/001A.1 are now production-active. Supabase job `p365-storage-daily`
+(job id 23) runs at `15 0 * * *` and has durable `STORAGE_CAPACITY` snapshots for
+5 and 6 Oct 2026.
 
-HOUSEKEEP-001A is merged, but its first post-merge activation proof exposed a blocking
-schema-contract mismatch: `p365_operational_metrics_metric_type_check` permits only
-`CACHE_INVALIDATION` and `PROVIDER_FETCH`, so `STORAGE_CAPACITY` was rejected with PostgreSQL
-error `23514`. The newly created `p365-storage-daily` job was immediately unscheduled and no
-monitoring row was written. HOUSEKEEP-001A.1 broadens that existing check constraint to include
-`STORAGE_CAPACITY`; production activation remains paused until the correction is owner-merged.
-The corrected SQL contract remains
-`docs/P365-HOUSEKEEP-001A-STORAGE-MONITORING.sql`.
+The 6 Oct 2026 live capacity measurement used by EVIDENCE-EFF-001A is:
 
-The 5 Oct 2026 read-only baseline is:
+- database: **286,346,387 bytes**;
+- Market Memory total: **248,299,520 bytes**;
+- Market Memory heap: **181,387,264 bytes**;
+- Market Memory indexes: **66,428,928 bytes**;
+- `cron.job_run_details`: **25,624,576 bytes**;
+- Market Memory rows: **159,694**;
+- Free-plan planning utilization: **54.62%**;
+- estimated remaining headroom: **237,941,613 bytes** (~227 MiB).
 
-- database: 269,388,947 bytes (~257 MiB);
-- Market Memory: 231,768,064 bytes (~221 MiB);
-- `cron.job_run_details`: 25,116,672 bytes (~24 MiB);
-- Free-plan database utilization: 51.38%;
-- estimated remaining headroom: 254,899,053 bytes (~243 MiB).
+From the 00:15 UTC storage snapshot to approximately 14:35 UTC, database size increased
+9,568,256 bytes and Market Memory increased 9,289,728 bytes over 14.33 hours. If that
+short-window rate persisted unchanged, planning runway would be roughly 14.8 days. This is a
+sensitivity estimate, not a long-run forecast.
 
-The last 24-hour sample added 5,596 Market Memory rows and roughly 5.4 MiB of raw payload
-before tuple/index overhead. Because ORDER-BOOK-001C would add two recurring snapshot lanes,
-its production activation is now gated behind HOUSEKEEP-001A monitoring activation and an
-initial measured growth sample.
+EVIDENCE-EFF-001A is recorded in:
 
-Canonical Market Memory must not receive automatic age-based deletion. The operational order is
-storage monitoring → operational `cron.job_run_details` retention decision → measured
-order-book capacity decision → index review → owner capacity decision → formal hot/cold
-archival design only if needed.
+`docs/P365-PRODUCTION-EVIDENCE-UTILITY-AUDIT-2026-10-06.md`
+
+The audit separates production evidence by consumer and temporal need. BTC/ETH spot,
+Gold, DXY, USDJPY, USDCNH and Binance spot-flow retain fast durable history; GDELT retains
+source-native durable cadence. CoinGecko market-cap/dominance/total-market/24h-volume series
+are useful context but have no MOVE/event-horizon consumer and are classified `KEEP_SLOW`.
+They currently account for about 2,296 rows/day and ~2.10 MB/day logical payload before
+tuple/index overhead.
+
+The audit also proves Event Evidence retrieval-version waste: over seven days Biquote wrote
+1,593 physical Evidence rows for only 20 canonical Evidence IDs. Federal Reserve calendar and
+Forex Factory show the same pattern at smaller scale. Polling should remain, but unchanged
+provider content should not create another durable physical Evidence version.
+
+Legacy duplicate-version density is also material. FRED Evidence alone contains 75,418
+physical rows for 804 canonical Evidence IDs; rows after the first physical version represent
+~39.98 MB logical payload. This is **not** deletion authorization: point-in-time retrieval,
+vintage/provenance, Snapshot lineage and HIST/MOVE/REL equivalence must be proven before any
+compaction or archival.
+
+Canonical Market Memory still must not receive generic age-based deletion.
+
+Updated operational sequence:
+
+1. EVIDENCE-EFF-001B — split fast intraday pricing from slower context persistence; polling and persistence cadence are explicitly separate, and release-based facts persist only on new effective facts/revisions;
+2. EVIDENCE-EFF-001C — content-idempotent Event Evidence persistence;
+3. observe new storage growth;
+4. HOUSEKEEP-002 — bounded operational cron-history retention;
+5. EVIDENCE-EFF-001D — read-only legacy compaction feasibility;
+6. reconsider ORDER-BOOK-001D only after measured storage runway improves;
+7. formal hot/cold archive or capacity-plan decision only if still required.
 
 ## 22. Final audit conclusion
 
