@@ -990,7 +990,7 @@ Intelligence / Briefing
 31C. MACRO-SEP-001A US SEP / Dot Plot Source & Comparison Contract      ← MERGED / PR #197 / `7160b00cb7df7313396bc323c8f6fab29336597e`
 31D. MACRO-SEP-001B Federal Reserve SEP Factual Runtime                    ← PRODUCTION ACTIVE / PR #198 / `f573476953f9958d25971498a90d22d74f41f1e2`
 31E. MACRO-SEP-001C Rates & Policy SEP Median Path UI                       ← PRODUCTION ACTIVE / PR #199 / `01cad0b5c2b61f449c85ed7f381fcb9791d9f115`
-31F. MACRO-PRICING-001A.1 Free / Legal Policy-Pricing Re-evaluation          ← DOCUMENTED / owner merge pending
+31F. MACRO-PRICING-001A.1 Free / Legal Policy-Pricing Re-evaluation          ← PR #202 / owner merge pending
 32. Derived State → Risk/Regime → Intelligence → Briefing        ← remains deferred
 ```
 
