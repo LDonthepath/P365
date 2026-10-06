@@ -92,10 +92,28 @@ const SEMANTICS_BY_KEY: Readonly<Record<string, ObservationSemantics>> = {
   "crypto.eth_dominance.pct": { ontologyVersion: V, marketDomain: "CRYPTO", informationClass: "DERIVED_METRIC", jurisdiction: "GLOBAL", asset: "ETH" },
 };
 
+function federalReserveSepSemantics(seriesKey: string): ObservationSemantics | null {
+  const median = seriesKey.match(/^policy\.us\.sep\.ffr\.(year_end_(20\d{2})|longer_run)\.median_pct$/);
+  const participant = seriesKey.match(
+    /^policy\.us\.sep\.ffr\.(year_end_(20\d{2})|longer_run)\.midpoint_\d+_millipct\.participant_count$/,
+  );
+  const match = median ?? participant;
+  if (!match) return null;
+  const horizon = match[1] === "longer_run" ? "LONGER_RUN" : `YEAR_END_${match[2]}`;
+  return {
+    ontologyVersion: V,
+    marketDomain: "POLICY",
+    informationClass: "EXPECTATION",
+    jurisdiction: "US",
+    instrument: "POLICY_RATE",
+    tenor: horizon,
+  };
+}
+
 export function observationSemanticsForSeriesKey(seriesKey: string): ObservationSemantics | null {
   const normalized = seriesKey.trim();
   if (!normalized) return null;
-  return SEMANTICS_BY_KEY[normalized] ?? null;
+  return SEMANTICS_BY_KEY[normalized] ?? federalReserveSepSemantics(normalized);
 }
 
 export function requireObservationSemantics(seriesKey: string): ObservationSemantics {
