@@ -1121,6 +1121,36 @@ confirms the filtered headline and count; lint has zero errors/four existing war
 Next.js 15.5.26 production build passes. Production/visual verification remains pending
 owner merge/deployment.
 
+### NEWS-QUALITY-002 — MOVE catalyst display screening (7 Oct 2026 WIB)
+
+Status: **IMPLEMENTED / OWNER REVIEW & MERGE PENDING**. Baseline main is
+`463f268b32bb9b0c4ccd1e7336ed1069029dd498` (6 Oct 2026 20:53:06 UTC), with zero
+open PRs at preflight. The owner-merged NEWS-QUALITY-001 / PR #210 is production-active:
+deployment `dpl_7f74pVdiJ8uaCsGyumx5iEgPnLSx` is READY and owns the production alias;
+dashboard HTTP 200 and browser Konteks smoke confirmed the new wire wording and six
+displayed items. That live feed had zero screened titles, so it did not prove the
+positive-count UI branch live. No error/fatal logs were returned for this deployment
+in the bounded 20:45:55–20:55:55 UTC verification window.
+
+Concrete downstream gap: the MOVE briefing detail still displayed raw replay titles
+after the current wire had gained bounded title screening. NEWS-QUALITY-002 reuses
+the same rules through a pure presentation projection, scoped to the target BTC/Gold
+asset and applied before the three-title detail limit. Screened titles no longer
+occupy detail slots or inflate the eligible overflow count. Both Briefing and Pasar
+identify the original total as recorded candidates and disclose the screened count.
+An all-screened list explicitly says no titles are displayed while retaining the
+original feed coverage and raw candidate availability.
+
+No change to durable Evidence, candidate lineage/timestamps/order, MOVE bundle identity,
+repository query/cutoff, coverage, completeness, provider, acquisition, persistence,
+cron, scoring, State/Regime/Risk/Intelligence or `causalAttribution=NOT_EVALUATED`.
+Validation: 16 title/wire/presentation tests and three MOVE bundle regressions pass;
+lint has zero errors/four existing warnings; Next.js 15.5.26 production build passes.
+The broader factual-market-briefing suite has 20 pass/two fail on both the unchanged
+baseline and this branch: strict `0.1` floating-point equality and CPI/Core CPI sort
+expectation. Those pre-existing failures are recorded, not repaired in this checkpoint.
+Production/visual verification of NEWS-QUALITY-002 remains pending owner merge/deployment.
+
 ## 22. Final audit conclusion
 
 P365 should **not** restart its architecture and should **not** add a reasoning engine yet.

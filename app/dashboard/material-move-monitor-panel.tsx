@@ -3,6 +3,7 @@ import type {
   MaterialMoveMonitorReadModel,
 } from "@/lib/application/material-move-monitor";
 import { relativeTimeID } from "@/lib/data/format";
+import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
 
 const ASSET_LABEL: Record<MaterialMoveAssetReadModel["asset"], string> = {
   BTC: "Bitcoin",
@@ -77,6 +78,7 @@ function integer(value: number): string {
 
 function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
   const material = item.hasMaterialMove;
+  const screenedNews = screenMoveCatalystTitles(item.evidence?.unscheduledCandidates ?? [], item.asset);
 
   return (
     <article className={`move-monitor-card${material ? " material" : ""}`}>
@@ -137,8 +139,11 @@ function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
                 <strong>{item.evidence.scheduledCatalystCount}</strong>
               </div>
               <div>
-                <span>Berita</span>
+                <span>Kandidat berita tercatat</span>
                 <strong>{item.evidence.unscheduledCandidateCount}</strong>
+                {screenedNews.excludedTitleCount > 0
+                  ? <small>{screenedNews.excludedTitleCount} judul promosi/topik lain tersaring dari tampilan briefing.</small>
+                  : null}
               </div>
               {item.evidence.btcSpotFlow
                 ? <div>

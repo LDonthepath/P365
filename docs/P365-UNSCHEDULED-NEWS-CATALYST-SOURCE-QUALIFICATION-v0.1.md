@@ -572,3 +572,24 @@ list contains the most relevant headlines.
 Raw durable Evidence, source snapshots, candidate counts, acquisition methodology,
 scheduler and historical MOVE replay remain unchanged. This checkpoint improves the
 current wire only; it does not silently rewrite historical candidate evidence.
+
+## 17. NEWS-QUALITY-002 MOVE display projection
+
+Status: **IMPLEMENTED / OWNER REVIEW & MERGE PENDING**.
+
+The existing title rules now also screen the MOVE briefing's displayed candidate
+details, using the target BTC/Gold asset. The pure presentation projection runs after
+the unchanged point-in-time MOVE replay and before the three-title display limit.
+Eligible order, timestamp uncertainty and Evidence lineage remain intact.
+
+The original candidate count remains visible as recorded candidates; a separate count
+discloses screened titles. Overflow counts use only eligible undisplayed titles.
+If all titles are screened, the UI states that no titles are displayed, without
+turning recorded candidates into zero, feed coverage into missing acquisition, or
+raw candidate availability into a claim of relevance. The Pasar monitor discloses
+the same screening count for the briefing.
+
+This changes presentation only. Raw durable Evidence, the historical MOVE bundle,
+bundle identity, repository/cutoff, feed coverage, completeness and causal boundary
+remain unchanged. The same bounded English-pattern limitations from section 16 apply;
+no new scoring, source, body scraping or acquisition is introduced.
