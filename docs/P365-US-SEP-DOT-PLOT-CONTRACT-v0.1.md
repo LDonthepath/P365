@@ -1,6 +1,6 @@
 # P365 US SEP / Dot Plot Contract v0.1
 
-**Status:** SOURCE QUALIFIED / COMPARISON METHODOLOGY FROZEN / MACRO-SEP-001B PR #198 — OWNER MERGE PENDING
+**Status:** SOURCE QUALIFIED / COMPARISON METHODOLOGY FROZEN / MACRO-SEP-001B PRODUCTION ACTIVE / MACRO-SEP-001C IMPLEMENTED — OWNER MERGE PENDING
 
 **Checkpoint:** MACRO-SEP-001A — US SEP / Dot Plot Source Qualification & Policy-Path Comparison Boundary
 
@@ -411,7 +411,7 @@ MACRO-SEP-001A passes only if:
 
 ### MACRO-SEP-001B — Federal Reserve SEP factual runtime
 
-Implemented on the current feature branch pending owner merge:
+Production active after owner merge of PR #198 at `f573476953f9958d25971498a90d22d74f41f1e2`:
 
 - reuses the existing Federal Reserve source identity and official FOMC calendar;
 - discovers the latest published accessible SEP HTML instead of guessing a future URL;
@@ -420,7 +420,21 @@ Implemented on the current feature branch pending owner merge:
 - preserves official release timestamp separately from P365 retrieval time;
 - persists append-only durable history through the existing authenticated historical-ingestion / Market Memory path;
 - repeated unchanged acquisition remains idempotent;
-- no scheduler, historical backfill, UI, market-pricing runtime or regime reasoning is activated.
+- production activation request 35882 persisted 31 Observations + 31 Evidence rows for the 16 Sep 2026 release;
+- repeat request 35883 left durable counts unchanged at 31/31, proving idempotency;
+- no recurring scheduler or historical backfill is activated.
+
+### MACRO-SEP-001C — Rates & Policy SEP median-path presentation
+
+Implemented pending owner merge:
+
+- extends the existing Rates & Policy panel; no parallel panel is created;
+- reads only source-published SEP median series from durable Observation history at the dashboard cutoff;
+- selects one latest release consistently across horizons;
+- displays year-end/longer-run medians plus release/retrieval/FOMC meeting dates;
+- does not fabricate daily or weekly SEP changes;
+- leaves the full participant-count dot distribution durable but unrendered in this thin slice;
+- does not activate market-pricing runtime, SEP-market gap, hawkish/dovish labels, regime reasoning or trading semantics.
 
 ### MACRO-PRICING-001B — Market policy-pricing runtime
 
