@@ -84,7 +84,7 @@ export function assertCurrentObservationInvariants(observation: Observation): vo
     throw new Error("DefiLlama stablecoin Observation must use its canonical sourceId.");
   }
   if (observation.sourceId === "federal-reserve") {
-    const sepResourcePattern = /^\\/monetarypolicy\\/fomcprojtabl\\d{8}\\.htm$/i;
+    const sepResourcePattern = /^\/monetarypolicy\/fomcprojtabl\d{8}\.htm$/i;
     if (
       observation.domain !== "MACRO"
       || !seriesKey.startsWith("policy.us.sep.ffr.")
