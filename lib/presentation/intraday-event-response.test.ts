@@ -15,6 +15,21 @@ test("event result display hides provider sentinel units", () => {
   assert.equal(formatEventResultValue(3.2, "%"), "3.2 %");
 });
 
+
+test("event result display preserves provider multiplier without rescaling", () => {
+  assert.equal(displayEventResultUnit("job", "thousands"), "ribu pekerjaan");
+  assert.equal(formatEventResultValue(29, "job", "thousands"), "29 ribu pekerjaan");
+  assert.equal(formatEventResultValue(52, "job", "thousands"), "52 ribu pekerjaan");
+  assert.equal(formatEventResultValue(162, "job", "thousands"), "162 ribu pekerjaan");
+  assert.equal(formatEventResultValue(0.922, "barrel", "millions"), "0.92 juta barel");
+});
+
+test("event result display keeps none or missing multipliers visually neutral", () => {
+  assert.equal(displayEventResultUnit("%", "none"), "%");
+  assert.equal(displayEventResultUnit("%"), "%");
+  assert.equal(formatEventResultValue(3.2, "%", "none"), "3.2 %");
+});
+
 test("rounded zero movement is described as flat instead of directional", () => {
   assert.deepEqual(classifyRoundedMove(0.004, 2), {
     verb: "relatif datar",
