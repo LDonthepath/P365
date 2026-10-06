@@ -11,6 +11,7 @@ export const OBSERVATION_PROVIDER_RESOURCES = {
   defiLlamaStablecoinChartsAll: "/stablecoincharts/all",
   soSoValueEtfSummaryHistory: "/etfs/summary-history",
   cftcDisaggregatedFuturesOnly: "/resource/72hh-3qpy.json",
+  federalReserveSepPrefix: "/monetarypolicy/fomcprojtabl",
 } as const;
 
 function assertNonEmpty(value: string | undefined, field: string): void {
@@ -82,6 +83,26 @@ export function assertCurrentObservationInvariants(observation: Observation): vo
   ) {
     throw new Error("DefiLlama stablecoin Observation must use its canonical sourceId.");
   }
+  if (observation.sourceId === "federal-reserve") {
+    const sepResourcePattern = /^\\/monetarypolicy\\/fomcprojtabl\\d{8}\\.htm$/i;
+    if (
+      observation.domain !== "MACRO"
+      || !seriesKey.startsWith("policy.us.sep.ffr.")
+      || !sepResourcePattern.test(provenance.providerResource)
+      || metadataString(observation, "providerResource") !== provenance.providerResource
+      || metadataString(observation, "releaseTimestamp") !== observation.observedAt
+      || metadataString(observation, "releaseDate") !== observation.observedAt.slice(0, 10)
+      || !["PUBLISHED_MEDIAN", "PARTICIPANT_COUNT"].includes(metadataString(observation, "factType") ?? "")
+      || provenance.nativeSeriesId !== undefined
+      || provenance.nativeInstrumentId !== undefined
+      || provenance.nativeSymbol !== undefined
+      || provenance.observationDate !== undefined
+      || provenance.vintageDate !== undefined
+    ) {
+      throw new Error("Federal Reserve SEP Observation provenance is inconsistent with its canonical fact.");
+    }
+  }
+
   if (observation.sourceId === "fred") {
     if (
       provenance.providerResource !== OBSERVATION_PROVIDER_RESOURCES.fredObservations
