@@ -21,6 +21,7 @@ import type {
 import type { BriefingEventRepricingResult } from "./briefing-event-repricing";
 import type { BriefingConfirmationResult } from "./briefing-confirmation";
 import type { MaterialMoveMonitorReadModel } from "./material-move-monitor";
+import type { RatesInflationReadModel, RatesSeriesPoint } from "./rates-inflation";
 
 const CHANGE_PRIORITY = ["DGS2", "DGS10", "DFII10", "T10YIE", "T10Y2Y"] as const;
 const MAX_VISIBLE_CHANGES = 4;
@@ -191,6 +192,13 @@ export type FactualMarketBriefing = {
     items: BriefingMarketMove[];
     reason: string | null;
   };
+  ratesPolicy: {
+    evidenceStatus: BriefingEvidenceStatus;
+    reasoningStatus: BriefingReasoningStatus;
+    gold: RatesSeriesPoint[];
+    bitcoin: RatesSeriesPoint[];
+    reason: string | null;
+  };
   resolution: BriefingResolution;
   whatChanged: {
     evidenceStatus: BriefingEvidenceStatus;
@@ -239,6 +247,7 @@ type ComposeFactualMarketBriefingInput = {
   confirmation?: BriefingConfirmationResult;
   upcomingHighImpactEvents?: Event[];
   materialMoveMonitor?: MaterialMoveMonitorReadModel;
+  ratesPolicy?: RatesInflationReadModel;
 };
 
 function observationSeriesId(observation: Observation): string | null {
@@ -287,6 +296,51 @@ function composeMarketMoves(
       : result.status === "PARTIAL"
         ? "Sebagian assessment BTC/Gold belum tersedia; briefing mempertahankan gap tersebut secara eksplisit."
         : null,
+  };
+}
+
+const BRIEFING_RATES_POLICY_KEYS = {
+  gold: ["DFII10", "DTWEXBGS"],
+  bitcoin: ["WRESBAL", "SOFR_IORB_SPREAD"],
+} as const;
+
+function composeRatesPolicy(
+  result: RatesInflationReadModel | undefined,
+): FactualMarketBriefing["ratesPolicy"] {
+  if (!result || result.status !== "OK") {
+    return {
+      evidenceStatus: "INSUFFICIENT",
+      reasoningStatus: "NOT_EVALUATED",
+      gold: [],
+      bitcoin: [],
+      reason: result?.status === "UNAVAILABLE"
+        ? result.reason
+        : "Fakta Rates & Policy belum tersedia pada cutoff briefing.",
+    };
+  }
+
+  const byKey = new Map(result.series.map((point) => [point.seriesKey, point]));
+  const gold = BRIEFING_RATES_POLICY_KEYS.gold.flatMap((key) => {
+    const point = byKey.get(key);
+    return point ? [point] : [];
+  });
+  const bitcoin = BRIEFING_RATES_POLICY_KEYS.bitcoin.flatMap((key) => {
+    const point = byKey.get(key);
+    return point ? [point] : [];
+  });
+  const expected = BRIEFING_RATES_POLICY_KEYS.gold.length + BRIEFING_RATES_POLICY_KEYS.bitcoin.length;
+  const available = gold.length + bitcoin.length;
+
+  return {
+    evidenceStatus: available > 0 ? "AVAILABLE" : "INSUFFICIENT",
+    reasoningStatus: "NOT_EVALUATED",
+    gold,
+    bitcoin,
+    reason: available === expected
+      ? null
+      : available > 0
+        ? "Sebagian fakta Rates & Policy belum tersedia; briefing mempertahankan gap tersebut."
+        : "Fakta Rates & Policy untuk Gold dan Bitcoin belum tersedia pada cutoff briefing.",
   };
 }
 
@@ -781,6 +835,7 @@ export function composeFactualMarketBriefing({
   confirmation,
   upcomingHighImpactEvents,
   materialMoveMonitor,
+  ratesPolicy,
 }: ComposeFactualMarketBriefingInput): FactualMarketBriefing {
   const changes = Object.entries(baselines)
     .flatMap(([seriesId, baseline]) => {
@@ -821,6 +876,7 @@ export function composeFactualMarketBriefing({
   return {
     asOf,
     marketMoves,
+    ratesPolicy: composeRatesPolicy(ratesPolicy),
     resolution: composeBriefingResolution({
       marketMoves,
       nextCatalyst,
