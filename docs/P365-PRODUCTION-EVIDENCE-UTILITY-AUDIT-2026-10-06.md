@@ -326,6 +326,38 @@ Do not activate the two durable order-book sampling lanes until:
 2. at least one new storage snapshot confirms reduced steady-state growth;
 3. headroom/runway is recalculated.
 
+## 9A. Release-aligned polling vs persistence policy
+
+Owner decision on 6 Oct 2026: scheduler/persistence cadence must follow the information cadence of each data family rather than a uniform database-write interval.
+
+Frozen rule:
+
+- **Polling cadence and persistence cadence are separate controls.**
+- A cron may poll more frequently than the provider's release cadence when timely detection matters.
+- Market Memory must not create another physical canonical fact merely because P365 polled again.
+- Release-based facts persist only when provider effective date/time, value/revision, or qualified factual content changes.
+- Continuously traded pricing used by MOVE/event windows may retain fast durable sampling.
+- Continuously changing market context with no intraday historical consumer must use a slower sampling lane.
+- Source-native feeds such as GDELT should preserve source-native durable cadence even if acquisition is attempted more frequently.
+- Event calendars may be polled near release windows, but unchanged event Evidence must be content-idempotent.
+
+Current target mapping:
+
+| Family | Acquisition policy | Durable persistence policy |
+|---|---|---|
+| BTC/ETH spot, Gold, DXY, USDJPY, USDCNH | 5m where market/session permits | **5m / effective quote timestamp** |
+| Binance BTC spot-flow | 5m | **completed 5m window only** |
+| CoinGecko market cap + global dominance/24h metrics | slower context lane | **context sampling, not 5m** |
+| GDELT GAL | may be checked by fast owner | **source-native ~15m feed build only** |
+| FRED daily/weekly/monthly series | polling may remain hourly for timely detection | **new effective observation/revision only** |
+| stablecoin supply | twice-daily detection currently acceptable | **daily provider-effective fact only** |
+| BTC ETF flow | twice-daily maturity detection | **new maturity-qualified trading-date fact only** |
+| CFTC Gold COT | daily detection currently acceptable, including holiday-delayed publication | **new weekly report/revision only** |
+| SEP | release discovery/recheck | **new official SEP release/revision only** |
+| economic-event calendars | scheduled/fast-window polling as required | **new/changed factual event content only** |
+
+The uploaded liquidity framework also distinguishes daily, weekly, monthly and real-time update families; P365 uses that distinction as a utility input, but preserves its own intraday requirements for MOVE pricing series.
+
 ## 10. Evidence utility rules frozen by this audit
 
 Future data additions should answer all five questions before production persistence:
