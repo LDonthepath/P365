@@ -48,6 +48,13 @@ async function main(): Promise<void> {
   assert.equal(authorized.status, 200);
   assert.equal(executions, 1);
   assert.deepEqual(received, { mode: "FORWARD", providers: ["coingecko"] });
+
+  const slowLane = new Request("https://p365.test/api/cron/historical-ingestion?mode=FORWARD&providers=coingecko-context", {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  assert.equal((await handler(slowLane)).status, 200);
+  assert.deepEqual(received, { mode: "FORWARD", providers: ["coingecko-context"] });
+  assert.equal(executions, 2, "slow lane is independently schedulable through the authenticated endpoint");
 }
 
 void main();

@@ -27,7 +27,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS = 35;
 
-export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "federal-reserve-sep", "defillama", "sosovalue", "cftc", "gdelt", "binance-spot", "binance-book", "hyperliquid-book"] as const;
+export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "coingecko-context", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "federal-reserve-sep", "defillama", "sosovalue", "cftc", "gdelt", "binance-spot", "binance-book", "hyperliquid-book"] as const;
 export type HistoricalIngestionProvider = typeof HISTORICAL_INGESTION_PROVIDERS[number];
 export type HistoricalIngestionMode = "FORWARD" | "BACKFILL";
 
@@ -42,6 +42,7 @@ export type HistoricalIngestionOptions = {
 
 export type HistoricalIngestionAcquisition = {
   coingecko: () => Promise<MarketResult>;
+  "coingecko-context": () => Promise<MarketResult>;
   fred: () => Promise<ProviderResult<MacroObservationInput>>;
   "federal-reserve-sep": () => Promise<ProviderResult<FederalReserveSepObservationInput>>;
   gold: () => Promise<MarketResult>;
@@ -120,6 +121,7 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
       "binance-book": () => binanceBook.fetchBinanceBtcOrderBook({ limit: 500, acquisitionMode: "FRESH" }),
       "hyperliquid-book": () => hyperliquidBook.fetchHyperliquidBtcPerpOrderBook({ acquisitionMode: "FRESH" }),
       coingecko: () => crypto.fetchCryptoMarketObservations(["BTC", "ETH"], "FRESH"),
+      "coingecko-context": () => crypto.fetchCryptoMarketObservations(["BTC", "ETH"], "FRESH"),
       fred: () => fred.fetchFredMacroObservations({
         ...options.fred,
         acquisitionMode: "FRESH",
@@ -156,7 +158,7 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
 }
 
 function providerId(provider: HistoricalIngestionProvider): ProviderId {
-  if (provider === "coingecko") return "coingecko";
+  if (provider === "coingecko" || provider === "coingecko-context") return "coingecko";
   if (provider === "fred") return "fred";
   if (provider === "federal-reserve-sep") return "federal-reserve";
   if (provider === "defillama") return "defillama";
@@ -226,9 +228,23 @@ function canonicalize(
       evidence: snapshots.map(hyperliquidBtcPerpOrderBookSnapshotToEvidence),
     };
   }
+  if (provider === "coingecko" || provider === "coingecko-context") {
+    // Internal persistence lanes share the existing provider and canonical identity.
+    // Filter before normalization so excluded series cannot write Observation or Evidence.
+    const metrics = provider === "coingecko"
+      ? ["btc.spot.usd", "eth.spot.usd"]
+      : [
+        "btc.market_cap.usd", "eth.market_cap.usd",
+        "crypto.total_market_cap.usd", "crypto.total_volume_24h.usd",
+        "crypto.btc_dominance.pct", "crypto.eth_dominance.pct",
+      ];
+    const selected = (result.data as CryptoMarketObservationInput[])
+      .filter((item) => metrics.includes(item.metricId));
+    return cryptoMarketToObservations(selected, P365_SOURCES.coinGeckoMarket.id);
+  }
   return cryptoMarketToObservations(
     result.data as CryptoMarketObservationInput[],
-    provider === "coingecko" ? P365_SOURCES.coinGeckoMarket.id : P365_SOURCES.yahooFinance.id,
+    P365_SOURCES.yahooFinance.id,
   );
 }
 
