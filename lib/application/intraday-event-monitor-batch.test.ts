@@ -1,15 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { EconomicEventResult } from "../domain/event-result";
-import type { Event, Observation } from "../domain/types";
+import type { Event, Evidence, Observation } from "../domain/types";
 import type {
   EventRepository,
   HistoricalEconomicEventResultRepository,
+  HistoricalEvidenceRepository,
   ObservationRepository,
 } from "../repositories/types";
 import {
   resolveIntradayMonitorDependencies,
   resolveIntradayObservations,
+  resolveIntradayResultEvidence,
 } from "./intraday-event-monitor";
 
 function observation(id: string): Observation {
@@ -152,4 +154,125 @@ test("intraday monitor starts independent canonical reads concurrently", async (
   assert.equal(result.event, null);
   assert.deepEqual([...result.observations.keys()], ["obs-a", "obs-b"]);
   assert.deepEqual(result.results, []);
+});
+
+
+test("intraday result evidence respects the same point-in-time cutoff", async () => {
+  const queries: Parameters<HistoricalEvidenceRepository["findHistory"]>[0][] = [];
+  const result: EconomicEventResult = {
+    id: "result-a",
+    eventId: "event-a",
+    eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:nonfarm-payrolls",
+    actual: 29,
+    expected: 52,
+    expectedType: "FORECAST",
+    previous: 162,
+    unit: "job",
+    releasedAt: "2026-10-02T12:30:00.000Z",
+    retrievedAt: "2026-10-02T12:34:00.000Z",
+    sourceId: "biquote",
+    evidenceId: "biquote-economic-event-evidence-mql5:318234",
+  };
+  const evidence: Evidence = {
+    id: result.evidenceId,
+    sourceId: "biquote",
+    kind: "EVENT",
+    subject: "Nonfarm Payrolls",
+    content: "{}",
+    capturedAt: "2026-10-02T12:34:00.000Z",
+    retrievedAt: "2026-10-02T12:34:00.000Z",
+    releasedAt: "2026-10-02T12:30:00.000Z",
+    metadata: {
+      eventIdentityKey: result.eventIdentityKey ?? "",
+      multiplier: "thousands",
+    },
+  };
+  const repository: HistoricalEvidenceRepository = {
+    async findHistory(query) {
+      queries.push(query);
+      return [evidence];
+    },
+  };
+
+  const resolved = await resolveIntradayResultEvidence(
+    repository,
+    result,
+    result.eventIdentityKey ?? "",
+    "2026-10-02T13:30:00.000Z",
+  );
+
+  assert.equal(resolved?.id, result.evidenceId);
+  assert.deepEqual(queries, [{
+    sourceId: "biquote",
+    kind: "EVENT",
+    metadataEquals: {
+      eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:nonfarm-payrolls",
+    },
+    retrievedAtOnOrBefore: "2026-10-02T13:30:00.000Z",
+    order: "DESC",
+    limit: 1,
+  }]);
+});
+
+test("intraday result evidence fails closed when the evidence ID does not match", async () => {
+  const repository: HistoricalEvidenceRepository = {
+    async findHistory() {
+      return [{
+        id: "different-evidence",
+        sourceId: "biquote",
+        kind: "EVENT",
+        subject: "Nonfarm Payrolls",
+        content: "{}",
+        capturedAt: "2026-10-02T12:34:00.000Z",
+        retrievedAt: "2026-10-02T12:34:00.000Z",
+        metadata: {
+          eventIdentityKey: "event:v1:US:2026-10-02T12:30:00.000Z:nonfarm-payrolls",
+          multiplier: "thousands",
+        },
+      }];
+    },
+  };
+  const result: EconomicEventResult = {
+    id: "result-a",
+    eventId: "event-a",
+    actual: 29,
+    retrievedAt: "2026-10-02T12:34:00.000Z",
+    sourceId: "biquote",
+    evidenceId: "expected-evidence",
+  };
+
+  const resolved = await resolveIntradayResultEvidence(
+    repository,
+    result,
+    "event:v1:US:2026-10-02T12:30:00.000Z:nonfarm-payrolls",
+    "2026-10-02T13:30:00.000Z",
+  );
+
+  assert.equal(resolved, null);
+});
+
+
+test("intraday result multiplier evidence failure does not fail the monitor enrichment", async () => {
+  const repository: HistoricalEvidenceRepository = {
+    async findHistory() {
+      throw new Error("optional evidence unavailable");
+    },
+  };
+  const result: EconomicEventResult = {
+    id: "result-a",
+    eventId: "event-a",
+    actual: 29,
+    retrievedAt: "2026-10-02T12:34:00.000Z",
+    sourceId: "biquote",
+    evidenceId: "expected-evidence",
+  };
+
+  const resolved = await resolveIntradayResultEvidence(
+    repository,
+    result,
+    "event:v1:US:2026-10-02T12:30:00.000Z:nonfarm-payrolls",
+    "2026-10-02T13:30:00.000Z",
+  );
+
+  assert.equal(resolved, null);
 });

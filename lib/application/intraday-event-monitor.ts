@@ -12,10 +12,11 @@ import {
   type SnapshotComparison,
 } from "../domain/snapshot-comparison";
 import type { EconomicEventResult } from "../domain/event-result";
-import type { Event, Observation } from "../domain/types";
+import type { Event, Evidence, Observation } from "../domain/types";
 import type {
   EventRepository,
   HistoricalEconomicEventResultRepository,
+  HistoricalEvidenceRepository,
   ObservationRepository,
 } from "../repositories/types";
 import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
@@ -25,6 +26,7 @@ import type { RatesReconstructionPoint } from "./rates-historical-reconstruction
 import {
   canonicalRepositories,
   historicalEconomicEventResultRepository,
+  historicalEvidenceRepository,
   historicalMarketSnapshotRepository,
 } from "../repositories/dashboard-repository";
 
@@ -107,6 +109,7 @@ export type IntradayEventMonitor = {
   expected?: number;
   previous?: number;
   unit?: string;
+  unitMultiplier?: string;
   resultSource?: string;
   surprise?: EventSurpriseAssessment;
   baselineEvidence?: IntradayBaselineEvidence;
@@ -358,6 +361,34 @@ export async function resolveIntradayMonitorDependencies(input: {
   return { event, observations, results };
 }
 
+export async function resolveIntradayResultEvidence(
+  repository: HistoricalEvidenceRepository,
+  result: EconomicEventResult | undefined,
+  eventIdentityKey: string,
+  latestCapturedAt: string,
+): Promise<Evidence | null> {
+  if (!result) return null;
+
+  try {
+    const history = await repository.findHistory({
+      sourceId: result.sourceId,
+      kind: "EVENT",
+      metadataEquals: { eventIdentityKey },
+      retrievedAtOnOrBefore: latestCapturedAt,
+      order: "DESC",
+      limit: 1,
+    });
+    const evidence = history[0] ?? null;
+    return evidence?.id === result.evidenceId ? evidence : null;
+  } catch (error) {
+    console.error(
+      "Intraday event multiplier evidence read failed closed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return null;
+  }
+}
+
 async function buildMonitorForIdentity(
   latestIdentity: string,
   snapshots: MarketSnapshot[],
@@ -418,6 +449,16 @@ async function buildMonitorForIdentity(
 
   const result = results.find((item) =>
     item.actual !== undefined || item.expected !== undefined || item.previous !== undefined);
+  const resultEvidence = await resolveIntradayResultEvidence(
+    historicalEvidenceRepository,
+    result,
+    latestIdentity,
+    latestCapturedAt,
+  );
+  const rawUnitMultiplier = resultEvidence?.metadata?.multiplier;
+  const unitMultiplier = typeof rawUnitMultiplier === "string" && rawUnitMultiplier.trim()
+    ? rawUnitMultiplier.trim()
+    : undefined;
   const t0 = String(ordered[0].snapshot.metadata?.t0 ?? event.releasedAt ?? event.scheduledAt ?? "");
   const surprise = result?.sourceId && t0
     ? (() => {
@@ -455,6 +496,7 @@ async function buildMonitorForIdentity(
     ...(result?.expected !== undefined ? { expected: result.expected } : {}),
     ...(result?.previous !== undefined ? { previous: result.previous } : {}),
     ...(result?.unit ? { unit: result.unit } : {}),
+    ...(unitMultiplier ? { unitMultiplier } : {}),
     ...(result?.sourceId ? { resultSource: result.sourceId } : {}),
     ...(surprise ? { surprise } : {}),
     ...(pre ? { baselineEvidence: resolveIntradayBaselineEvidence(pre, observations, results) } : {}),
