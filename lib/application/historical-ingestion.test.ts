@@ -9,6 +9,7 @@ import {
   type CftcGoldCotObservationInput,
 } from "../data/cftc-gold-cot";
 import type { MacroObservationInput } from "../data/fred";
+import type { FederalReserveSepObservationInput } from "../data/federal-reserve-sep";
 import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
 import { BINANCE_SPOT_FLOW_INTERVAL_MS, type BinanceSpotKline } from "../data/binance-spot-flow";
 import type { BinanceOrderBookSnapshot } from "../data/binance-order-book";
@@ -79,6 +80,44 @@ function macroInput(): MacroObservationInput {
       nativeSeriesId: MACRO_SERIES_REGISTRY[0].seriesId,
       observationDate: "2020-01-01",
       vintageDate: "2020-01-01",
+    },
+  };
+}
+
+function sepInput(): FederalReserveSepObservationInput {
+  const metricId = "policy.us.sep.ffr.year_end_2026.median_pct";
+  const observedAt = "2026-09-16T18:00:00.000Z";
+  const providerResource = "/monetarypolicy/fomcprojtabl20260916.htm";
+  return {
+    metricId,
+    value: 4.1,
+    unit: "PERCENT",
+    observedAt,
+    retrievedAt: "2026-10-06T13:10:00.000Z",
+    releaseDate: "2026-09-16",
+    sourceUrl: "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20260916.htm",
+    providerResource,
+    horizon: "YEAR_END_2026",
+    factType: "PUBLISHED_MEDIAN",
+    meetingStartDate: "2026-09-15",
+    meetingEndDate: "2026-09-16",
+    provenance: { version: "v1", providerResource },
+    metadata: {
+      provider: "Federal Reserve",
+      providerResource,
+      sourceUrl: "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20260916.htm",
+      releaseDate: "2026-09-16",
+      releaseTimestamp: observedAt,
+      sourceTimeZone: "EDT",
+      horizon: "YEAR_END_2026",
+      meetingStartDate: "2026-09-15",
+      meetingEndDate: "2026-09-16",
+      dotRoundingIncrementPct: 0.125,
+      parserVersion: "MACRO_SEP_001B_V0_1",
+      metricId,
+      factType: "PUBLISHED_MEDIAN",
+      unit: "PERCENT",
+      publishedMedianPct: 4.1,
     },
   };
 }
@@ -296,6 +335,7 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
     usdjpy: record("usdjpy", marketResult("yahoo-finance", [])),
     usdcnh: record("usdcnh", marketResult("yahoo-finance", [])),
     fred: record("fred", providerResult("fred", "EMPTY", [])),
+    "federal-reserve-sep": record("federal-reserve-sep", providerResult("federal-reserve", "EMPTY", [])),
     defillama: record("defillama", providerResult("defillama", "EMPTY", [])),
     sosovalue: record("sosovalue", providerResult("sosovalue", "EMPTY", [])),
     cftc: record("cftc", providerResult("cftc", "EMPTY", [])),
@@ -317,6 +357,39 @@ async function main(): Promise<void> {
   assert.equal(selectedReport.status, "SUCCESS");
   assert.equal(selectedReport.providers[0].normalized, 1);
   assert.equal(selectedReport.persistedObservations, 1);
+
+  const sepStore = repositories();
+  const sepAcquisition = acquisition([]);
+  sepAcquisition["federal-reserve-sep"] = async () =>
+    providerResult("federal-reserve", "SUCCESS", [sepInput()], undefined, undefined, "2026-10-06T13:10:00.000Z");
+  const sepReport = await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["federal-reserve-sep"] },
+    { acquisition: sepAcquisition, repositories: sepStore.repositories },
+  );
+  assert.equal(sepReport.status, "SUCCESS");
+  assert.equal(sepReport.persistedObservations, 1);
+  assert.equal(sepReport.persistedEvidence, 1);
+  const sepHistory = await sepStore.observations.findHistory({
+    identity: { domain: "MACRO", seriesKey: "policy.us.sep.ffr.year_end_2026.median_pct" },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(sepHistory.length, 1);
+  assert.equal(sepHistory[0]?.observedAt, "2026-09-16T18:00:00.000Z");
+  assert.equal(sepHistory[0]?.semantics?.marketDomain, "POLICY");
+  assert.equal(sepHistory[0]?.semantics?.informationClass, "EXPECTATION");
+  assert.equal(sepHistory[0]?.semantics?.instrument, "POLICY_RATE");
+  assert.equal(sepHistory[0]?.metadata?.factType, "PUBLISHED_MEDIAN");
+  await runHistoricalIngestion(
+    { mode: "FORWARD", providers: ["federal-reserve-sep"] },
+    { acquisition: sepAcquisition, repositories: sepStore.repositories },
+  );
+  const sepRepeat = await sepStore.observations.findHistory({
+    identity: { domain: "MACRO", seriesKey: "policy.us.sep.ffr.year_end_2026.median_pct" },
+    order: "ASC",
+    limit: 10,
+  });
+  assert.equal(sepRepeat.length, 1, "repeated SEP forward ingestion must remain idempotent");
 
   const asiaFxStore = repositories();
   const asiaFxAcquisition = acquisition([]);
