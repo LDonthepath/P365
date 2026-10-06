@@ -120,9 +120,9 @@ const RATES_POLICY_LABELS: Record<string, string> = {
 };
 
 const RATES_POLICY_QUALITY_LABELS: Record<string, string> = {
-  FRESH: "TERBARU",
-  STALE: "SUDAH LAMA",
-  PARTIAL: "SEBAGIAN",
+  FRESH: "TERBARU SAAT DIPEROLEH",
+  STALE: "SUDAH LAMA SAAT DIPEROLEH",
+  PARTIAL: "DATA SEBAGIAN",
   UNKNOWN: "KUALITAS BELUM PASTI",
 };
 
@@ -447,8 +447,8 @@ function ratesPolicyChange(point: BriefingRatesPolicyPoint, horizon: "1D" | "1W"
 function RatesPolicyBriefingLine({ point }: { point: BriefingRatesPolicyPoint }) {
   return <span>
     {RATES_POLICY_LABELS[point.seriesKey] ?? point.seriesKey}: {ratesPolicyValue(point)}
-    {" · "}1H {ratesPolicyChange(point, "1D")}
-    {" · "}1M {ratesPolicyChange(point, "1W")}
+    {" · "}1 hari {ratesPolicyChange(point, "1D")}
+    {" · "}1 minggu {ratesPolicyChange(point, "1W")}
     {" · "}{RATES_POLICY_QUALITY_LABELS[point.quality] ?? "FRESHNESS BELUM PASTI"}
   </span>;
 }
@@ -470,7 +470,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       <span>
         {moves.evidenceStatus === "AVAILABLE"
           ? `${moves.materialMoveCount} GERAKAN MATERIAL`
-          : changed.evidenceStatus === "AVAILABLE"
+          : ratesPolicy.evidenceStatus === "AVAILABLE" || changed.evidenceStatus === "AVAILABLE"
             ? "KONTEKS MAKRO TERSEDIA"
             : "DATA BELUM CUKUP"}
       </span>
