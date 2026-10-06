@@ -17,8 +17,8 @@ const SERIES: Array<{ key: IntradaySeriesKey; label: string }> = [
 const ROLES: EventWindowRole[] = ["PRE", "T_PLUS_5", "T_PLUS_15", "T_PLUS_30", "T_PLUS_60"];
 const ROLE_LABEL: Record<EventWindowRole, string> = { PRE: "Sebelum rilis", T_PLUS_5: "5 menit", T_PLUS_15: "15 menit", T_PLUS_30: "30 menit", T_PLUS_60: "1 jam" };
 
-function value(v: number | undefined, unit?: string): string {
-  return formatEventResultValue(v, unit);
+function value(v: number | undefined, unit?: string, multiplier?: string): string {
+  return formatEventResultValue(v, unit, multiplier);
 }
 function move(v: number | undefined): string {
   return formatMovePercent(v);
@@ -98,11 +98,11 @@ function IntradayEventResponseCard({ data }: { data: IntradayEventMonitor }) {
       {data.surprise?.status === "VALID"
         ? <>
             <strong style={{ display: "block", fontSize: "1.05rem" }}>Hasil rilis {relationLabel(data.surprise.relation)}.</strong>
-            <p className="muted" style={{ margin: ".45rem 0 0" }}>Hasil aktual {value(data.actual, data.unit)}, dibanding perkiraan {value(data.expected, data.unit)} dan sebelumnya {value(data.previous, data.unit)}.</p>
+            <p className="muted" style={{ margin: ".45rem 0 0" }}>Hasil aktual {value(data.actual, data.unit, data.unitMultiplier)}, dibanding perkiraan {value(data.expected, data.unit, data.unitMultiplier)} dan sebelumnya {value(data.previous, data.unit, data.unitMultiplier)}.</p>
           </>
         : <>
             <strong style={{ display: "block" }}>Hasil rilis tersedia, tetapi perbandingan dengan perkiraan belum dapat diverifikasi.</strong>
-            <p className="muted" style={{ margin: ".45rem 0 0" }}>Aktual {value(data.actual, data.unit)} · perkiraan {value(data.expected, data.unit)} · sebelumnya {value(data.previous, data.unit)}.</p>
+            <p className="muted" style={{ margin: ".45rem 0 0" }}>Aktual {value(data.actual, data.unit, data.unitMultiplier)} · perkiraan {value(data.expected, data.unit, data.unitMultiplier)} · sebelumnya {value(data.previous, data.unit, data.unitMultiplier)}.</p>
           </>}
     </div>
 
