@@ -1050,7 +1050,7 @@ Canonical Market Memory still must not receive generic age-based deletion.
 
 Updated operational sequence:
 
-1. EVIDENCE-EFF-001B — reduce future persistence cadence for context-only crypto metrics while keeping BTC/ETH spot fast;
+1. EVIDENCE-EFF-001B — split fast intraday pricing from slower context persistence; polling and persistence cadence are explicitly separate, and release-based facts persist only on new effective facts/revisions;
 2. EVIDENCE-EFF-001C — content-idempotent Event Evidence persistence;
 3. observe new storage growth;
 4. HOUSEKEEP-002 — bounded operational cron-history retention;
