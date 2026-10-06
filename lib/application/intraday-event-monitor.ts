@@ -369,16 +369,24 @@ export async function resolveIntradayResultEvidence(
 ): Promise<Evidence | null> {
   if (!result) return null;
 
-  const history = await repository.findHistory({
-    sourceId: result.sourceId,
-    kind: "EVENT",
-    metadataEquals: { eventIdentityKey },
-    retrievedAtOnOrBefore: latestCapturedAt,
-    order: "DESC",
-    limit: 1,
-  });
-  const evidence = history[0] ?? null;
-  return evidence?.id === result.evidenceId ? evidence : null;
+  try {
+    const history = await repository.findHistory({
+      sourceId: result.sourceId,
+      kind: "EVENT",
+      metadataEquals: { eventIdentityKey },
+      retrievedAtOnOrBefore: latestCapturedAt,
+      order: "DESC",
+      limit: 1,
+    });
+    const evidence = history[0] ?? null;
+    return evidence?.id === result.evidenceId ? evidence : null;
+  } catch (error) {
+    console.error(
+      "Intraday event multiplier evidence read failed closed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return null;
+  }
 }
 
 async function buildMonitorForIdentity(
