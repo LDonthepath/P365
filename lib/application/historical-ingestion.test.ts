@@ -805,6 +805,14 @@ async function main(): Promise<void> {
     "mixed-provider BACKFILL remains rejected",
   );
   assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=federal-reserve-sep")),
+    { ok: true, options: { mode: "FORWARD", providers: ["federal-reserve-sep"] } },
+  );
+  assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=federal-reserve-sep&from=2026-01-01&to=2026-10-01")),
+    { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" },
+  );
+  assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=FORWARD&providers=cftc")),
     { ok: true, options: { mode: "FORWARD", providers: ["cftc"] } },
   );
