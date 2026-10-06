@@ -1,10 +1,10 @@
 # P365 Macro / Policy News Coverage Contract v0.1
 
 **Checkpoint:** NEWS-MACRO-001A  
-**Status:** PROPOSED CONTRACT / OWNER REVIEW & MERGE PENDING  
+**Status:** CONTRACT MERGED (#212); NEWS-MACRO-001B IMPLEMENTATION / OWNER REVIEW PENDING
 **Scope:** Macro discovery supporting BTC + Gold; documentation/source qualification only  
 **Source:** Existing GDELT GAL RSS, FREE_ONLY  
-**Implementation:** No runtime, provider, persistence, scheduler or presentation activation
+**Implementation:** Preview-only read-only qualification; no production persistence, scheduler or presentation activation
 
 ## 1. Product question and verified baseline
 
@@ -233,3 +233,25 @@ State/Regime/Risk/Intelligence, trading signal, prediction or trade execution.
 
 Current runtime/repository/Supabase/Vercel configuration mutations in NEWS-MACRO-001A:
 **0**. Only this contract and its operational SSOT pointer are proposed for review.
+
+## 10. NEWS-MACRO-001B qualification implementation
+
+The isolated follow-up implements the bounded title matcher, six-topic round-robin
+selection and a shared GAL acquisition helper. Legacy BTC/Gold projections remain
+byte-for-byte equivalent for the same fixture. A preview-only diagnostic reports
+RSS/candidate bytes, latency, length maxima, provider status, feed dates, topic
+counts and bounded samples. It performs no writes and returns 404 in production.
+
+Seventeen focused/legacy tests cover positive policy headlines without asset names,
+negative lexical collisions, scarce-topic fairness, multitopic URL dedupe, pre-cap
+counts, length/UTF-8 byte guards, single-fetch asset equivalence, unknown dates,
+provider failure and production access gating. Lint has zero errors and four
+existing warnings; production build passes. Live exact-head deployment evidence
+belongs to the associated PR and must not be inferred from synthetic tests.
+
+Qualification limits (1024 title / 4096 URL / 255 domain characters, 64 KiB macro
+candidate JSON, default 30 / maximum 100 candidates) are provisional. Input RSS
+and total diagnostic JSON are measured separately and are not covered by the
+candidate-byte limit. This checkpoint does not establish multilingual recall,
+factual truth, full RSS coverage, attribution, causal relevance or a storage-cost
+approval. The next gate remains cadence, row/index bytes and retention runway.
