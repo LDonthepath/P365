@@ -1,59 +1,172 @@
 "use client";
 
-import type { RatesInflationReadModel, RatesSeriesPoint } from "@/lib/application/rates-inflation";
+import type {
+  RatesInflationReadModel,
+  RatesSeriesChangeUnit,
+  RatesSeriesPoint,
+  RatesSeriesValueUnit,
+} from "@/lib/application/rates-inflation";
+import type { DataQuality } from "@/lib/domain/types";
 
 const LABELS: Record<RatesSeriesPoint["seriesKey"], string> = {
+  EFFR: "Effective Fed Funds Rate",
+  IORB: "Interest on Reserve Balances",
+  SOFR: "Secured Overnight Financing Rate",
+  SOFR_IORB_SPREAD: "Spread SOFR−IORB",
+  WRESBAL: "Reserve balances",
   DGS2: "Treasury AS 2 tahun",
-  DGS10: "Treasury AS 10 tahun",
   DFII10: "Real yield AS 10 tahun",
-  T10YIE: "Breakeven inflation 10 tahun",
+  DTWEXBGS: "Broad USD Index",
   T10Y2Y: "Kurva 10Y–2Y",
 };
 
-function percent(value: number): string {
-  return `${new Intl.NumberFormat("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
-}
+const QUALITY_LABELS: Record<DataQuality, string> = {
+  FRESH: "TERBARU SAAT DIPEROLEH",
+  STALE: "SUDAH LAMA SAAT DIPEROLEH",
+  PARTIAL: "DATA SEBAGIAN",
+  UNKNOWN: "KUALITAS TIDAK DIKETAHUI",
+};
+
+const GROUPS: Array<{
+  label: string;
+  description: string;
+  keys: RatesSeriesPoint["seriesKey"][];
+}> = [
+  {
+    label: "KORIDOR KEBIJAKAN & FUNDING",
+    description: "EFFR, IORB, SOFR, dan spread SOFR−IORB.",
+    keys: ["EFFR", "IORB", "SOFR", "SOFR_IORB_SPREAD"],
+  },
+  {
+    label: "LIKUIDITAS RESERVE",
+    description: "Reserve balances Federal Reserve; seri ini berkadensi mingguan.",
+    keys: ["WRESBAL"],
+  },
+  {
+    label: "RANTAI TRANSMISI",
+    description: "Treasury 2Y, real yield 10Y, broad USD, dan kemiringan kurva 10Y−2Y.",
+    keys: ["DGS2", "DFII10", "DTWEXBGS", "T10Y2Y"],
+  },
+];
 
 function date(value: string | null): string {
   if (!value) return "—";
   return new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta",
+    timeZone: "UTC",
     day: "2-digit",
     month: "short",
     year: "numeric",
   }).format(new Date(value));
 }
 
-function bps(value: number | null): string {
-  if (value === null) return "Belum cukup riwayat";
-  const rounded = Math.round(value * 10) / 10;
-  if (Math.abs(rounded) < 0.05) return "tidak berubah";
-  return `${rounded > 0 ? "naik" : "turun"} ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(Math.abs(rounded))} bps`;
+function signed(value: number, digits = 1): string {
+  return new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+    signDisplay: "exceptZero",
+  }).format(value);
+}
+
+function valueLabel(value: number, unit: RatesSeriesValueUnit): string {
+  if (unit === "PERCENT") {
+    return `${new Intl.NumberFormat("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
+  }
+  if (unit === "BPS") {
+    return `${signed(value, 1)} bps`;
+  }
+  if (unit === "USD_BILLIONS") {
+    return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(value)} miliar USD`;
+  }
+  return new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(value);
+}
+
+function changeLabel(value: number | null, unit: RatesSeriesChangeUnit, cadence: RatesSeriesPoint["cadence"], horizon: "1D" | "1W"): string {
+  if (value === null) {
+    if (cadence === "WEEKLY" && horizon === "1D") return "Tidak tersedia untuk data mingguan";
+    return "Belum cukup riwayat";
+  }
+  if (unit === "BPS") return `${signed(value, 1)} bps`;
+  if (unit === "USD_BILLIONS") return `${signed(value, 1)} miliar USD`;
+  return `${signed(value, 2)}%`;
+}
+
+function Horizon({
+  label,
+  value,
+  from,
+  point,
+}: {
+  label: "1 HARI" | "1 MINGGU";
+  value: number | null;
+  from: string | null;
+  point: RatesSeriesPoint;
+}) {
+  const horizon = label === "1 HARI" ? "1D" : "1W";
+  return <div>
+    <strong>{label}</strong>
+    <span>{changeLabel(value, point.changeUnit, point.cadence, horizon)}</span>
+    <small>
+      {from
+        ? `dibanding observasi ${date(from)}`
+        : point.cadence === "WEEKLY" && horizon === "1D"
+          ? "Cadence canonical seri ini mingguan."
+          : "Tidak ada observasi pada atau sebelum target."}
+    </small>
+  </div>;
 }
 
 function SeriesCard({ point }: { point: RatesSeriesPoint }) {
   return <article className="panel" style={{ margin: 0 }}>
-    <div className="panel-label"><span>{point.seriesKey}</span><span>{point.quality === "FRESH" ? "TERBARU" : "PERLU DICEK"}</span></div>
+    <div className="panel-label">
+      <span>{point.seriesKey}</span>
+      <span>{QUALITY_LABELS[point.quality]}</span>
+    </div>
     <h3 style={{ marginBottom: ".35rem" }}>{LABELS[point.seriesKey]}</h3>
-    <strong style={{ display: "block", fontSize: "1.55rem" }}>{percent(point.valuePercent)}</strong>
-    <p className="muted" style={{ marginTop: ".35rem" }}>Observasi {date(point.observedAt)}</p>
+    <strong style={{ display: "block", fontSize: "1.55rem" }}>{valueLabel(point.value, point.valueUnit)}</strong>
+    <p className="muted" style={{ marginTop: ".35rem" }}>
+      Observasi {date(point.observedAt)} · diperoleh {date(point.retrievedAt)}
+    </p>
     <div className="monitor-list" style={{ marginTop: ".75rem" }}>
-      <div><strong>SEKITAR 1 MINGGU</strong><span>{bps(point.change1wBps)}{point.change1wFrom ? ` · dibanding ${date(point.change1wFrom)}` : ""}</span></div>
-      <div><strong>SEKITAR 4 MINGGU</strong><span>{bps(point.change4wBps)}{point.change4wFrom ? ` · dibanding ${date(point.change4wFrom)}` : ""}</span></div>
+      <Horizon label="1 HARI" value={point.change1d} from={point.change1dFrom} point={point} />
+      <Horizon label="1 MINGGU" value={point.change1w} from={point.change1wFrom} point={point} />
     </div>
   </article>;
 }
 
 export function RatesInflationPanel({ data }: { data: RatesInflationReadModel }) {
-  return <section className="panel" aria-labelledby="rates-inflation-title">
-    <div className="panel-label"><span>SUKU BUNGA & EKSPEKTASI INFLASI</span><span>FAKTUAL · HARIAN</span></div>
-    <h2 id="rates-inflation-title">Apa yang berubah di pasar Treasury dan ekspektasi inflasi?</h2>
-    <p className="lead-copy">Perubahan dihitung dari observasi harian FRED yang tersimpan di Market Memory. Angka ini bukan pengukuran repricing intraday setelah event.</p>
+  const byKey = new Map(data.status === "OK" ? data.series.map((point) => [point.seriesKey, point]) : []);
+
+  return <section className="panel" aria-labelledby="rates-policy-title">
+    <div className="panel-label"><span>RATES & POLICY</span><span>FAKTUAL · DURABLE</span></div>
+    <h2 id="rates-policy-title">Apa yang berubah pada rates, policy corridor, dan transmisi?</h2>
+    <p className="lead-copy">
+      Nilai terakhir, perubahan 1 hari dan 1 minggu, serta freshness dibaca dari Market Memory.
+      Spread SOFR−IORB dihitung dari observasi yang sinkron secara tanggal. Tidak ada label bullish,
+      bearish, regime, atau atribusi sebab-akibat.
+    </p>
+
     {data.status === "UNAVAILABLE"
       ? <p className="muted">{data.reason}</p>
-      : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: ".75rem", marginTop: "1rem" }}>
-          {data.series.map((point) => <SeriesCard key={point.seriesKey} point={point} />)}
-        </div>}
-    <p className="muted" style={{ marginBottom: 0 }}>P365 menampilkan perubahan yield, real yield, breakeven, dan kurva sebagai fakta. Panel ini belum menyimpulkan stance Fed, regime, atau implikasi bullish/bearish untuk Bitcoin.</p>
+      : GROUPS.map((group) => {
+          const points = group.keys.flatMap((key) => {
+            const point = byKey.get(key);
+            return point ? [point] : [];
+          });
+          return <section key={group.label} style={{ marginTop: "1rem" }}>
+            <div className="panel-label"><span>{group.label}</span><span>{points.length}/{group.keys.length} SERI</span></div>
+            <p className="muted" style={{ marginTop: ".4rem" }}>{group.description}</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: ".75rem", marginTop: ".75rem" }}>
+              {points.map((point) => <SeriesCard key={point.seriesKey} point={point} />)}
+            </div>
+          </section>;
+        })}
+
+    <p className="muted" style={{ marginBottom: 0, marginTop: "1rem" }}>
+      P365 hanya menampilkan fakta rates & policy yang sudah durable. Dot plot SEP, Fed funds futures/OIS,
+      MOVE Index, dan aturan perubahan regime belum diaktifkan pada irisan ini.
+    </p>
   </section>;
 }

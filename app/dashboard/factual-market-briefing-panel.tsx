@@ -112,6 +112,20 @@ const BRIEFING_RESOLUTION_LABELS: Record<
   MATERIAL_MOVE_EVIDENCE_COMPLETE: "BUKTI LENGKAP",
 };
 
+const RATES_POLICY_LABELS: Record<string, string> = {
+  DFII10: "Real yield AS 10 tahun",
+  DTWEXBGS: "Broad USD Index",
+  WRESBAL: "Reserve balances",
+  SOFR_IORB_SPREAD: "Spread SOFR−IORB",
+};
+
+const RATES_POLICY_QUALITY_LABELS: Record<string, string> = {
+  FRESH: "TERBARU SAAT DIPEROLEH",
+  STALE: "SUDAH LAMA SAAT DIPEROLEH",
+  PARTIAL: "DATA SEBAGIAN",
+  UNKNOWN: "KUALITAS BELUM PASTI",
+};
+
 const MAX_MOVE_CATALYST_DETAILS = 3;
 
 function dateTime(value: string): string {
@@ -396,8 +410,52 @@ function pricingValue(value: number, unit: string | null): string {
   return unit ? `${formatted} ${unit}` : formatted;
 }
 
+type BriefingRatesPolicyPoint = FactualMarketBriefing["ratesPolicy"]["gold"][number];
+
+function ratesPolicySigned(value: number, digits = 1): string {
+  return new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+    signDisplay: "exceptZero",
+  }).format(value);
+}
+
+function ratesPolicyValue(point: BriefingRatesPolicyPoint): string {
+  if (point.valueUnit === "PERCENT") return `${point.value.toFixed(2)}%`;
+  if (point.valueUnit === "BPS") return `${ratesPolicySigned(point.value, 1)} bps`;
+  if (point.valueUnit === "USD_BILLIONS") {
+    return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(point.value)} miliar USD`;
+  }
+  return new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(point.value);
+}
+
+function ratesPolicyChange(point: BriefingRatesPolicyPoint, horizon: "1D" | "1W"): string {
+  const value = horizon === "1D" ? point.change1d : point.change1w;
+  if (value === null) {
+    return point.cadence === "WEEKLY" && horizon === "1D"
+      ? "tidak tersedia (data mingguan)"
+      : "belum cukup riwayat";
+  }
+  if (point.changeUnit === "BPS") return `${ratesPolicySigned(value, 1)} bps`;
+  if (point.changeUnit === "USD_BILLIONS") return `${ratesPolicySigned(value, 1)} miliar USD`;
+  return `${ratesPolicySigned(value, 2)}%`;
+}
+
+function RatesPolicyBriefingLine({ point }: { point: BriefingRatesPolicyPoint }) {
+  return <span>
+    {RATES_POLICY_LABELS[point.seriesKey] ?? point.seriesKey}: {ratesPolicyValue(point)}
+    {" · "}1 hari {ratesPolicyChange(point, "1D")}
+    {" · "}1 minggu {ratesPolicyChange(point, "1W")}
+    {" · "}{RATES_POLICY_QUALITY_LABELS[point.quality] ?? "FRESHNESS BELUM PASTI"}
+  </span>;
+}
+
 export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefing }) {
   const moves = data.marketMoves;
+  const ratesPolicy = data.ratesPolicy;
   const changed = data.whatChanged;
   const baselines = data.eventBaselines;
   const surprises = data.eventSurprises;
@@ -412,7 +470,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       <span>
         {moves.evidenceStatus === "AVAILABLE"
           ? `${moves.materialMoveCount} GERAKAN MATERIAL`
-          : changed.evidenceStatus === "AVAILABLE"
+          : ratesPolicy.evidenceStatus === "AVAILABLE" || changed.evidenceStatus === "AVAILABLE"
             ? "KONTEKS MAKRO TERSEDIA"
             : "DATA BELUM CUKUP"}
       </span>
@@ -443,6 +501,45 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           <strong>Assessment market belum cukup</strong>
           <span>{moves.reason}</span>
         </div>}
+
+    <div className="briefing-analysis-section" style={{ marginTop: "1.25rem" }}>
+      <div className="panel-label">
+        <span>RATES & POLICY</span>
+        <span>{ratesPolicy.evidenceStatus === "AVAILABLE" ? "FAKTA TERSEDIA" : "DATA BELUM CUKUP"}</span>
+      </div>
+      <h3 style={{ margin: ".45rem 0 0" }}>Apa konteks rates & policy untuk Gold dan Bitcoin?</h3>
+      <p className="lead-copy">
+        Gold menampilkan real yield AS 10 tahun dan broad USD. Bitcoin menampilkan reserve balances
+        serta spread SOFR−IORB sebagai konteks likuiditas/funding. Bagian ini hanya menyajikan fakta;
+        tidak menetapkan sebab, regime, atau arah pasar.
+      </p>
+
+      {ratesPolicy.evidenceStatus === "AVAILABLE"
+        ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: ".75rem", marginTop: "1rem" }}>
+            <div className="plain-notice">
+              <strong>Konteks Gold</strong>
+              {ratesPolicy.gold.length
+                ? ratesPolicy.gold.map((point) => <RatesPolicyBriefingLine key={point.seriesKey} point={point} />)
+                : <span>Real yield atau broad USD belum tersedia.</span>}
+            </div>
+            <div className="plain-notice">
+              <strong>Konteks Bitcoin</strong>
+              {ratesPolicy.bitcoin.length
+                ? ratesPolicy.bitcoin.map((point) => <RatesPolicyBriefingLine key={point.seriesKey} point={point} />)
+                : <span>Reserve atau spread funding belum tersedia.</span>}
+            </div>
+            {ratesPolicy.reason
+              ? <div className="plain-notice">
+                  <strong>Cakupan sebagian</strong>
+                  <span>{ratesPolicy.reason}</span>
+                </div>
+              : null}
+          </div>
+        : <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>Rates & Policy belum cukup</strong>
+            <span>{ratesPolicy.reason}</span>
+          </div>}
+    </div>
 
     <div className="briefing-analysis-section" style={{ marginTop: "1.25rem" }}>
       <div className="panel-label">

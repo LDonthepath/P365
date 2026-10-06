@@ -289,6 +289,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     confirmation,
     upcomingHighImpactEvents: durableHighImpactEventBundle.display,
     materialMoveMonitor,
+    ratesPolicy: ratesInflation,
   });
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes
