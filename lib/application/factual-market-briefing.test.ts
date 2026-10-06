@@ -1059,3 +1059,99 @@ test("BRF-002D treats a material MOVE with no investigation bundle as incomplete
   assert.match(result.resolution.driverStatement, /hubungan sebab-akibat belum dievaluasi/);
   assert.equal(result.resolution.reasoningStatus, "NOT_EVALUATED");
 });
+
+
+test("MACRO-RATES-001C puts only Gold and Bitcoin factual Rates & Policy context into briefing", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    ratesPolicy: {
+      status: "OK",
+      series: [
+        {
+          seriesKey: "DGS2",
+          value: 4.83,
+          valueUnit: "PERCENT",
+          observedAt: "2026-10-02",
+          retrievedAt: "2026-10-05T20:31:01.690Z",
+          quality: "FRESH",
+          cadence: "DAILY",
+          change1d: 5,
+          change1dFrom: "2026-10-01",
+          change1w: 2,
+          change1wFrom: "2026-09-25",
+          changeUnit: "BPS",
+        },
+        {
+          seriesKey: "DFII10",
+          value: 2.92,
+          valueUnit: "PERCENT",
+          observedAt: "2026-10-02",
+          retrievedAt: "2026-10-05T20:31:02.139Z",
+          quality: "FRESH",
+          cadence: "DAILY",
+          change1d: 4,
+          change1dFrom: "2026-10-01",
+          change1w: 5,
+          change1wFrom: "2026-09-25",
+          changeUnit: "BPS",
+        },
+        {
+          seriesKey: "DTWEXBGS",
+          value: 121.3848,
+          valueUnit: "INDEX",
+          observedAt: "2026-10-02",
+          retrievedAt: "2026-10-05T20:31:02.577Z",
+          quality: "FRESH",
+          cadence: "DAILY",
+          change1d: -0.33,
+          change1dFrom: "2026-10-01",
+          change1w: 0.73,
+          change1wFrom: "2026-09-25",
+          changeUnit: "PERCENT",
+        },
+        {
+          seriesKey: "WRESBAL",
+          value: 2948.09,
+          valueUnit: "USD_BILLIONS",
+          observedAt: "2026-09-30",
+          retrievedAt: "2026-10-01T21:31:02.868Z",
+          quality: "FRESH",
+          cadence: "WEEKLY",
+          change1d: null,
+          change1dFrom: null,
+          change1w: 48.09,
+          change1wFrom: "2026-09-23",
+          changeUnit: "USD_BILLIONS",
+        },
+        {
+          seriesKey: "SOFR_IORB_SPREAD",
+          value: -2,
+          valueUnit: "BPS",
+          observedAt: "2026-10-02",
+          retrievedAt: "2026-10-05T12:31:02.744Z",
+          quality: "FRESH",
+          cadence: "DAILY",
+          change1d: 1,
+          change1dFrom: "2026-10-01",
+          change1w: -2,
+          change1wFrom: "2026-09-25",
+          changeUnit: "BPS",
+        },
+      ],
+    },
+  });
+
+  assert.equal(result.ratesPolicy.evidenceStatus, "AVAILABLE");
+  assert.equal(result.ratesPolicy.reasoningStatus, "NOT_EVALUATED");
+  assert.deepEqual(result.ratesPolicy.gold.map((item) => item.seriesKey), ["DFII10", "DTWEXBGS"]);
+  assert.deepEqual(result.ratesPolicy.bitcoin.map((item) => item.seriesKey), ["WRESBAL", "SOFR_IORB_SPREAD"]);
+  assert.equal(result.ratesPolicy.gold.some((item) => item.seriesKey === "DGS2"), false);
+  assert.equal(result.ratesPolicy.reason, null);
+
+  const serialized = JSON.stringify(result.ratesPolicy).toLowerCase();
+  for (const forbidden of ["bullish", "bearish", "regime", "caused", "buy", "sell"]) {
+    assert.equal(serialized.includes(forbidden), false, `briefing Rates & Policy must not emit ${forbidden}`);
+  }
+});
