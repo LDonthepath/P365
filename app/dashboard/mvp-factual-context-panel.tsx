@@ -9,12 +9,9 @@ import type { NetLiquidityReadModel } from "@/lib/application/net-liquidity";
 import type { RatesSeriesPoint } from "@/lib/application/rates-inflation";
 import type { DataQuality } from "@/lib/domain/types";
 
-const RATE_LABELS: Record<RatesSeriesPoint["seriesKey"], string> = {
+const RATE_LABELS: Partial<Record<RatesSeriesPoint["seriesKey"], string>> = {
   DGS2: "Treasury 2 tahun",
-  DGS10: "Treasury 10 tahun",
   DFII10: "Real yield 10 tahun",
-  T10YIE: "Breakeven 10 tahun",
-  T10Y2Y: "Kurva 10Y–2Y",
 };
 
 const QUALITY_LABELS: Record<DataQuality, string> = {
@@ -131,12 +128,12 @@ function MarketCard({
 
 function RateCard({ point }: { point: RatesSeriesPoint }) {
   return <article className="factual-metric-card compact">
-    <div className="factual-card-head"><span>{RATE_LABELS[point.seriesKey]}</span><span>{QUALITY_LABELS[point.quality]}</span></div>
-    <strong className="factual-primary-value">{indexValue(point.valuePercent)}%</strong>
+    <div className="factual-card-head"><span>{RATE_LABELS[point.seriesKey] ?? point.seriesKey}</span><span>{QUALITY_LABELS[point.quality]}</span></div>
+    <strong className="factual-primary-value">{indexValue(point.value)}%</strong>
     <p className="factual-trace">Observasi {dateTime(point.observedAt)}</p>
     <div className="factual-horizons two">
-      <div className="factual-horizon"><span>1 MINGGU</span><strong>{bps(point.change1wBps)}</strong><small>{point.change1wFrom ? `dibanding ${date(point.change1wFrom)}` : "Belum cukup riwayat"}</small></div>
-      <div className="factual-horizon"><span>4 MINGGU</span><strong>{bps(point.change4wBps)}</strong><small>{point.change4wFrom ? `dibanding ${date(point.change4wFrom)}` : "Belum cukup riwayat"}</small></div>
+      <div className="factual-horizon"><span>1 HARI</span><strong>{bps(point.change1d)}</strong><small>{point.change1dFrom ? `dibanding ${date(point.change1dFrom)}` : "Belum cukup riwayat"}</small></div>
+      <div className="factual-horizon"><span>1 MINGGU</span><strong>{bps(point.change1w)}</strong><small>{point.change1wFrom ? `dibanding ${date(point.change1wFrom)}` : "Belum cukup riwayat"}</small></div>
     </div>
   </article>;
 }
@@ -166,7 +163,7 @@ function NetLiquidityCard({ data }: { data: NetLiquidityReadModel }) {
 
 export function MvpFactualContextPanel({ data }: { data: MacroCryptoGoldFactualContext }) {
   const rates = data.macro.ratesInflation.status === "OK"
-    ? data.macro.ratesInflation.series.filter((point) => point.seriesKey !== "T10Y2Y")
+    ? data.macro.ratesInflation.series.filter((point) => point.seriesKey === "DGS2" || point.seriesKey === "DFII10")
     : [];
 
   return <section className="panel mvp-factual-context" aria-labelledby="mvp-factual-title">
@@ -175,7 +172,7 @@ export function MvpFactualContextPanel({ data }: { data: MacroCryptoGoldFactualC
     <p className="lead-copy">Macro adalah lingkungan penjelas. Angka di bawah menunjukkan perubahan faktual pada horizon yang jelas, tanpa menyimpulkan sebab, arah pasar, atau keputusan trading.</p>
 
     <section className="factual-group" aria-labelledby="factual-macro-title">
-      <div className="factual-group-head"><div><span>MACRO</span><h3 id="factual-macro-title">Suku bunga, inflasi, dolar, dan likuiditas</h3></div><small>Horizon data lambat: 1 minggu dan 4 minggu</small></div>
+      <div className="factual-group-head"><div><span>MACRO</span><h3 id="factual-macro-title">Suku bunga, dolar, dan likuiditas</h3></div><small>Fakta durable; detail Rates & Policy ada di Makro</small></div>
       {data.macro.ratesInflation.status === "UNAVAILABLE" && <p className="muted">{data.macro.ratesInflation.reason}</p>}
       <div className="factual-card-grid macro">
         {rates.map((point) => <RateCard key={point.seriesKey} point={point} />)}
