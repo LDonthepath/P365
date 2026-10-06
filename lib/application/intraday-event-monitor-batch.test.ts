@@ -250,3 +250,29 @@ test("intraday result evidence fails closed when the evidence ID does not match"
 
   assert.equal(resolved, null);
 });
+
+
+test("intraday result multiplier evidence failure does not fail the monitor enrichment", async () => {
+  const repository: HistoricalEvidenceRepository = {
+    async findHistory() {
+      throw new Error("optional evidence unavailable");
+    },
+  };
+  const result: EconomicEventResult = {
+    id: "result-a",
+    eventId: "event-a",
+    actual: 29,
+    retrievedAt: "2026-10-02T12:34:00.000Z",
+    sourceId: "biquote",
+    evidenceId: "expected-evidence",
+  };
+
+  const resolved = await resolveIntradayResultEvidence(
+    repository,
+    result,
+    "event:v1:US:2026-10-02T12:30:00.000Z:nonfarm-payrolls",
+    "2026-10-02T13:30:00.000Z",
+  );
+
+  assert.equal(resolved, null);
+});
