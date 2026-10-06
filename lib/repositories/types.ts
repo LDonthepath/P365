@@ -48,6 +48,8 @@ export type ObservationHistoryQuery = {
 export type EvidenceHistoryOrder = "ASC" | "DESC";
 
 export type EvidenceHistoryQuery = {
+  /** Exact canonical Evidence ID; preserves point-in-time revision selection. */
+  evidenceId?: string;
   sourceId?: string;
   kind?: Evidence["kind"];
   effectiveAtOnOrAfter?: string;
@@ -117,7 +119,7 @@ export interface EventRepository { save(event: Event): Promise<void>; saveMany(e
 export interface HistoricalEventRepository { findHistory(query: EventHistoryQuery): Promise<Event[]>; }
 export interface EvidenceRepository { save(evidence: Evidence): Promise<void>; saveMany(evidence: Evidence[]): Promise<void>; findById(id: string): Promise<Evidence | null>; }
 /** Point-in-time Evidence reads stay separate from canonical write persistence. */
-export interface HistoricalEvidenceRepository { findHistory(query: EvidenceHistoryQuery): Promise<Evidence[]>; }
+export interface HistoricalEvidenceRepository { findHistory(query: EvidenceHistoryQuery, options?: { signal?: AbortSignal }): Promise<Evidence[]>; }
 export interface ContextRepository { save(context: Context): Promise<void>; saveMany(contexts: Context[]): Promise<void>; findById(id: string): Promise<Context | null>; }
 export interface EconomicEventResultRepository { save(result: EconomicEventResult): Promise<void>; saveMany(results: EconomicEventResult[]): Promise<void>; findById(id: string): Promise<EconomicEventResult | null>; }
 /** Historical EventResult reads stay separate from canonical write persistence. */

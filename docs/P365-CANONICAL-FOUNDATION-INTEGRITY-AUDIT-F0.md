@@ -1067,6 +1067,32 @@ Updated operational sequence:
 6. reconsider ORDER-BOOK-001D only after measured storage runway improves;
 7. formal hot/cold archive or capacity-plan decision only if still required.
 
+### DASH-READ-001 — bounded event-unit Evidence enrichment (7 Oct 2026 WIB)
+
+Status: **IMPLEMENTED / OWNER REVIEW & MERGE PENDING**. Baseline main is
+`88d661004eba8fb7ecb27e144407d8ba35c85c7f` (6 Oct 2026 19:59:22 UTC), with zero
+open PRs at preflight. Two production dashboard requests returned HTTP 200 while
+Intraday Event Monitor exceeded its 4s budget; optional multiplier Evidence reads
+also aborted or hit PostgreSQL 57014. Net Liquidity and SEP reads failed separately,
+so this checkpoint must not be reported as a complete production recovery.
+
+The existing HistoricalEvidenceRepository now supports an optional exact canonical
+Evidence ID filter and caller cancellation. Event-result multiplier lookup uses the
+EventResult evidenceId through the existing canonical_id index, retaining source,
+kind, event identity, revision ordering, and canonical retrievedAt cutoff. Optional
+lookup is capped at 500ms, further limited by the parent 4s deadline with a 50ms
+response reserve. Timeout aborts the Supabase fetch and returns no enrichment;
+canonical result/surprise/baseline/move calculation and the existing unit formatter
+remain unchanged. Non-cooperative test repositories cannot hold up the response.
+
+A read-only production EXPLAIN for a real event Evidence ID selects
+`idx_market_memory_canonical` (estimated cost 7.10); this is planner evidence, not a
+measured production latency claim. No migration, provider, scheduler, durable write,
+market threshold, causal attribution, or trading semantics are added. Production
+runtime/log verification remains pending owner merge and deployment. Local validation:
+24 focused/regression tests pass; lint has zero errors and four existing warnings;
+Next.js 15.5.26 production build passes.
+
 ## 22. Final audit conclusion
 
 P365 should **not** restart its architecture and should **not** add a reasoning engine yet.

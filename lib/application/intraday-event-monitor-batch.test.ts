@@ -203,6 +203,7 @@ test("intraday result evidence respects the same point-in-time cutoff", async ()
 
   assert.equal(resolved?.id, result.evidenceId);
   assert.deepEqual(queries, [{
+    evidenceId: result.evidenceId,
     sourceId: "biquote",
     kind: "EVENT",
     metadataEquals: {
