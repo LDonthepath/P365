@@ -3,7 +3,7 @@ import type { ProviderResult } from "./types";
 import { providerResult } from "./types";
 import type { ProviderAcquisitionMode } from "./provider-fetch-policy";
 import { providerFetchPolicy } from "./provider-fetch-policy";
-const FOMC_CALENDAR_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm";
+export const FOMC_CALENDAR_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm";
 export type FomcEventInput = { scheduledAt: string; label: string; sourceUrl: string };
 function text(value: string): string { return value.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim(); }
 function monthNumber(value: string): number | null { const result = new Date(`${value} 1, 2000`).getUTCMonth(); return Number.isFinite(result) ? result : null; }
