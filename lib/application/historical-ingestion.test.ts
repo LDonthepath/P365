@@ -21,6 +21,7 @@ import {
   SOSOVALUE_ETF_FLOW_PROVIDER_RESOURCE,
   type SoSoValueBtcEtfFlowObservationInput,
 } from "../data/sosovalue-etf-flow";
+import { cryptoMarketToObservations } from "../domain/normalize";
 import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
 import { providerFetchPolicy } from "../data/provider-fetch-policy";
 import { providerResult, type ProviderResult } from "../data/types";
@@ -329,6 +330,7 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
   };
   return {
     coingecko: record("coingecko", marketResult("coingecko", [observationInput("btc.spot.usd")])),
+    "coingecko-context": record("coingecko-context", marketResult("coingecko", [])),
     gold: record("gold", marketResult("yahoo-finance", [])),
     dxy: record("dxy", marketResult("yahoo-finance", [])),
     russell: record("russell", marketResult("yahoo-finance", [])),
@@ -347,6 +349,63 @@ function acquisition(calls: HistoricalIngestionProvider[]): HistoricalIngestionA
 }
 
 async function main(): Promise<void> {
+  const spotMetrics = ["btc.spot.usd", "eth.spot.usd"];
+  const contextMetrics = [
+    "btc.market_cap.usd", "eth.market_cap.usd",
+    "crypto.total_market_cap.usd", "crypto.total_volume_24h.usd",
+    "crypto.btc_dominance.pct", "crypto.eth_dominance.pct",
+  ];
+  const mixedRows = [...spotMetrics, ...contextMetrics].map(observationInput);
+  const originalCanonical = cryptoMarketToObservations(mixedRows, "coingecko-market");
+  for (const lane of ["coingecko", "coingecko-context"] as const) {
+    const calls: HistoricalIngestionProvider[] = [];
+    const store = repositories();
+    const sources = acquisition(calls);
+    sources[lane] = async () => {
+      calls.push(lane);
+      // Include an unapproved metric to prove the persistence boundary fails closed.
+      return marketResult("coingecko", [...mixedRows, observationInput("crypto.unapproved.usd")]);
+    };
+    const report = await runHistoricalIngestion(
+      { mode: "FORWARD", providers: [lane, lane] },
+      { acquisition: sources, repositories: store.repositories },
+    );
+    const allowed = lane === "coingecko" ? spotMetrics : contextMetrics;
+    assert.deepEqual(calls, [lane], "each lane is independently acquired and deduplicated");
+    assert.equal(report.status, "SUCCESS");
+    assert.equal(report.providers[0].provider, lane);
+    assert.equal(report.persistedObservations, allowed.length);
+    assert.equal(report.persistedEvidence, allowed.length);
+    for (const expected of originalCanonical.observations) {
+      const saved = await store.observations.findById(expected.id);
+      const savedEvidence = await store.evidence.findById(expected.evidenceId);
+      if (allowed.includes(String(expected.metadata?.metricId))) {
+        assert.deepEqual(saved, expected, "lane preserves canonical ID/source/series/semantics/provenance");
+        assert.deepEqual(savedEvidence, originalCanonical.evidence.find((row) => row.id === expected.evidenceId));
+      } else {
+        assert.equal(saved, null, "opposite-lane Observation must never persist");
+        assert.equal(savedEvidence, null, "opposite-lane Evidence must never persist");
+      }
+    }
+    assert.deepEqual(
+      parseHistoricalIngestionRequest(new URLSearchParams(`mode=FORWARD&providers=${lane}`)),
+      { ok: true, options: { mode: "FORWARD", providers: [lane] } },
+    );
+    assert.equal(parseHistoricalIngestionRequest(new URLSearchParams(`mode=BACKFILL&providers=${lane}&from=2026-10-01&to=2026-10-02`)).ok, false);
+    await assert.rejects(runHistoricalIngestion(
+      { mode: "BACKFILL", providers: [lane] },
+      { acquisition: sources, repositories: store.repositories },
+    ), /BACKFILL requires exactly one supported provider/);
+    sources[lane] = async () => marketResult("coingecko", mixedRows.filter((row) => !allowed.includes(row.metricId)));
+    const excludedOnly = await runHistoricalIngestion(
+      { mode: "FORWARD", providers: [lane] },
+      { acquisition: sources, repositories: repositories().repositories },
+    );
+    assert.equal(excludedOnly.status, "EMPTY");
+    assert.equal(excludedOnly.persistedObservations, 0);
+    assert.equal(excludedOnly.persistedEvidence, 0);
+  }
+
   const selectedCalls: HistoricalIngestionProvider[] = [];
   const selectedStore = repositories();
   const selectedReport = await runHistoricalIngestion(

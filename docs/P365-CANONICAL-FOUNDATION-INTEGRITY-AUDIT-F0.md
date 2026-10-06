@@ -1048,6 +1048,15 @@ compaction or archival.
 
 Canonical Market Memory still must not receive generic age-based deletion.
 
+EVIDENCE-EFF-001B now implements the CoinGecko fast/context persistence split through
+independently selectable FORWARD ingestion lanes. `coingecko` persists BTC/ETH spot only;
+`coingecko-context` persists the six approved market-cap/volume/dominance context metrics
+only. Both retain canonical source `coingecko-market`, existing series keys and revision
+identity; dashboard live acquisition still includes all eight metrics. Status is
+**RUNTIME IMPLEMENTED / OWNER MERGE & PRODUCTION ACTIVATION PENDING**. The hourly context
+schedule is an operational follow-up after merge; this checkpoint changes no production
+cron, historical data, provider/dependency, Event Evidence idempotency or reasoning semantics.
+
 Updated operational sequence:
 
 1. EVIDENCE-EFF-001B — split fast intraday pricing from slower context persistence; polling and persistence cadence are explicitly separate, and release-based facts persist only on new effective facts/revisions;

@@ -91,6 +91,24 @@ Target slow cadence: **hourly**, subject to post-merge production verification.
 
 No provider expansion, no historical deletion, no backfill, and no semantic change are authorized.
 
+### 001B runtime implementation — owner merge / production activation pending
+
+The authenticated existing `/api/cron/historical-ingestion` endpoint now accepts
+`mode=FORWARD&providers=coingecko-context` independently of the fast `coingecko` selector.
+Both selectors reuse the existing CoinGecko acquisition adapter and normalize with
+canonical source `coingecko-market`; the internal lane name is not a new provider/source.
+An explicit metric allowlist before normalization limits both Observation and associated
+Evidence writes: `coingecko` admits only BTC/ETH spot, while `coingecko-context` admits
+only the six context series above. Unknown metrics are excluded from both durable lanes.
+Dashboard acquisition remains unchanged and continues to expose all eight metrics.
+Both lanes remain FORWARD-only; no historical migration is required.
+
+Production scheduling is unchanged in this checkpoint. After owner merge, the operational
+follow-up should schedule the context selector hourly through the existing bearer-protected
+endpoint, retain the five-minute fast lane and its other providers, and verify actual durable
+cadence plus dashboard stability/storage growth. This document does not activate that schedule.
+EVIDENCE-EFF-001C remains deferred.
+
 ## 5. EVIDENCE-EFF-001C — Event Evidence content idempotency
 
 ### Production proof
