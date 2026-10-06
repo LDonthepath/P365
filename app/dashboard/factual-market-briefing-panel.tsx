@@ -6,6 +6,7 @@ import {
   formatMacroDisplayValue,
 } from "@/lib/presentation/macro-display";
 import { formatEventResultValue } from "@/lib/presentation/intraday-event-response";
+import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
 
 const SERIES_LABELS: Record<string, string> = {
   DGS2: "US Treasury 2Y",
@@ -262,7 +263,8 @@ function MarketMoveBriefingItem({
     : null;
   const spotFlow = item.evidence?.btcSpotFlow ?? null;
   const scheduledCatalysts = item.evidence?.scheduledCatalysts.slice(0, MAX_MOVE_CATALYST_DETAILS) ?? [];
-  const unscheduledCandidates = item.evidence?.unscheduledCandidates.slice(0, MAX_MOVE_CATALYST_DETAILS) ?? [];
+  const screenedNews = screenMoveCatalystTitles(item.evidence?.unscheduledCandidates ?? [], item.asset);
+  const unscheduledCandidates = screenedNews.items.slice(0, MAX_MOVE_CATALYST_DETAILS);
 
   return <div className="plain-notice">
     <strong>
@@ -294,7 +296,7 @@ function MarketMoveBriefingItem({
           <span>
             Catalyst dalam window: {item.evidence.scheduledCatalystCount} event terjadwal
             {" · "}cakupan {MOVE_COVERAGE_LABELS[item.evidence.scheduledCatalystCoverage] ?? "belum diketahui"}
-            {" · "}{item.evidence.unscheduledCandidateCount} kandidat berita
+            {" · "}{item.evidence.unscheduledCandidateCount} kandidat berita tercatat
             {" · "}cakupan berita {MOVE_COVERAGE_LABELS[item.evidence.unscheduledCatalystCoverage] ?? "belum diketahui"}
           </span>
           {scheduledCatalysts.map((event) => <span key={`${event.eventIdentityKey ?? event.eventId}:${event.retrievedAt}`}>
@@ -317,9 +319,15 @@ function MarketMoveBriefingItem({
               : `pertama diketahui ${dateTime(candidate.firstSeenRetrievedAt)} WIB`}
             {" · "}{MOVE_TEMPORAL_FIT_LABELS[candidate.temporalFit] ?? "kecocokan waktu belum diketahui"}
           </span>)}
-          {item.evidence.unscheduledCandidateCount > unscheduledCandidates.length
+          {screenedNews.excludedTitleCount > 0
+            ? <span>{screenedNews.excludedTitleCount} judul promosi/topik lain tersaring dari tampilan.</span>
+            : null}
+          {item.evidence.unscheduledCandidateCount > 0 && screenedNews.items.length === 0
+            ? <span>Tidak ada judul yang ditampilkan setelah penyaringan; cakupan feed tetap seperti tercatat.</span>
+            : null}
+          {screenedNews.items.length > unscheduledCandidates.length
             ? <span>
-                +{item.evidence.unscheduledCandidateCount - unscheduledCandidates.length} kandidat berita lain dalam window.
+                +{screenedNews.items.length - unscheduledCandidates.length} kandidat berita lain untuk ditampilkan dalam window.
               </span>
             : null}
         </>
