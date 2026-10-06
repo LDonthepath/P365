@@ -182,6 +182,31 @@ are explicit. Production writes remain gated on measured bytes/write rate/storag
 runway. Next stage is a read-only matcher/live qualification; this contract activates
 no runtime, provider, persistence, cron, UI or higher-order reasoning.
 
+### NEWS-MACRO-001B — Read-only shared-feed qualification (7 Oct 2026 WIB)
+
+- Base main: `8267f2d7e63b7d94f8a7684e07680618f74f957b` (#212 merged).
+- Implements the six bounded English title topic families from the macro/policy
+  coverage contract. Macro discovery needs no BTC/Gold mention and makes no
+  factual verification, asset relevance, impact or causal inference.
+- One GAL acquisition supplies unchanged BTC/Gold projections plus a separate
+  MACRO qualification projection. Existing durable v1, ingestion and consumers
+  remain unchanged. No database writes, new provider, dependency, key or cron.
+- Default 30 / maximum 100 macro candidates; URL dedupe, all matched topic labels,
+  deterministic topic round robin and RSS ordering within each family. Counts
+  precede candidate caps. Proposed guards: title 1024 / URL 4096 / domain 255
+  characters and 64 KiB serialized candidate JSON; these are qualification limits,
+  not an approved production storage budget or total response/input RSS bound.
+- Preview-only `/api/diagnostics/gdelt-macro-preview` returns read-only telemetry,
+  provider status, RSS bytes, candidate bytes, elapsed time, feed window, length
+  maxima, topic counts and timestamp semantics; production returns 404 without
+  calling the provider. Responses are no-store/noindex and declare writes false.
+- Verification: 17 focused/legacy tests PASS; lint 0 errors / 4 existing warnings;
+  production build PASS. Exact-head preview live measurement recorded in the PR
+  after deployment; fixture coverage is not live source coverage qualification.
+- NEXT: owner review/merge, then NEWS-MACRO-001C storage qualification only after
+  live payload/cadence/index/runway evidence. No production macro persistence,
+  current-wire/MOVE consumption, fake backfill or higher-order activation here.
+
 ## 2. End-to-end runtime path
 
 Current active path:

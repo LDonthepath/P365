@@ -1,5 +1,6 @@
 import "server-only";
 
+import { extractGdeltMacroCandidates } from "./gdelt-macro-topics";
 import { XMLParser } from "fast-xml-parser";
 import { providerFetchPolicy, type ProviderAcquisitionMode } from "./provider-fetch-policy";
 import { providerResult, type ProviderResult } from "./types";
@@ -242,6 +243,24 @@ function snapshotForAsset(input: {
   };
 }
 
+async function acquireGalFeed(acquisitionMode: ProviderAcquisitionMode, dependencies: Dependencies) {
+  const response = await (dependencies.fetch ?? fetch)(GDELT_GAL_RSS_URL, {
+    headers: { accept: "application/rss+xml, application/xml, text/xml" },
+    ...providerFetchPolicy(acquisitionMode, 60),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const detail = (await response.text()).replace(/\s+/g, " ").trim().slice(0, 240);
+    throw new Error(`GDELT GAL HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+  }
+
+  const xml = await response.text();
+  const feed = parseFeed(xml);
+  const normalized = normalizeFeedItems(feed.rawItems);
+  return { feed, normalized, inputRssBytes: new TextEncoder().encode(xml).byteLength };
+}
+
 export async function fetchGdeltGalCandidateSnapshots(
   query: GdeltGalMultiQuery,
   dependencies: Dependencies = {},
@@ -252,20 +271,7 @@ export async function fetchGdeltGalCandidateSnapshots(
   try {
     const assets = validateAssets(query.assets);
     const maxCandidates = validateMaxCandidates(query.maxCandidates);
-    const response = await (dependencies.fetch ?? fetch)(GDELT_GAL_RSS_URL, {
-      headers: { accept: "application/rss+xml, application/xml, text/xml" },
-      ...providerFetchPolicy(query.acquisitionMode ?? "FRESH", 60),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      const detail = (await response.text()).replace(/\s+/g, " ").trim().slice(0, 240);
-      throw new Error(`GDELT GAL HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
-    }
-
-    const xml = await response.text();
-    const feed = parseFeed(xml);
-    const normalized = normalizeFeedItems(feed.rawItems);
+    const { feed, normalized } = await acquireGalFeed(query.acquisitionMode ?? "FRESH", dependencies);
     const snapshots = assets.map((asset) => snapshotForAsset({
       asset,
       feedLastBuildAt: feed.feedLastBuildAt,
@@ -308,4 +314,30 @@ export async function fetchGdeltGalCandidateSnapshot(
     maxCandidates: query.maxCandidates,
     acquisitionMode: query.acquisitionMode,
   }, dependencies);
+}
+
+/** Read-only qualification: one acquisition supplies unchanged asset projections and macro discovery. */
+export async function qualifyGdeltGalSharedFeed(dependencies: Dependencies = {}) {
+  const retrievedAt = (dependencies.now ?? (() => new Date()))().toISOString();
+  const started = performance.now();
+  try {
+    const { feed, normalized, inputRssBytes } = await acquireGalFeed("FRESH", dependencies);
+    const assetSnapshots = (["BTC", "GOLD"] as const).map((asset) => snapshotForAsset({
+      asset, feedLastBuildAt: feed.feedLastBuildAt, totalFeedItems: feed.rawItems.length,
+      invalidItemCount: normalized.invalidItemCount, items: normalized.items, maxCandidates: 30,
+    }));
+    return providerResult(GDELT_GAL_SOURCE_ID, "SUCCESS", [{
+      writesPerformed: false as const, elapsedMs: Math.round(performance.now() - started),
+      inputRssBytes, feedLastBuildAt: feed.feedLastBuildAt,
+      feedWindowStartAt: assetSnapshots[0].feedWindowStartAt,
+      coverage: "ROLLING_15_MINUTES" as const, totalFeedItems: feed.rawItems.length,
+      invalidItemCount: normalized.invalidItemCount,
+      maxInputTitleCharacters: normalized.items.reduce((max, item) => Math.max(max, item.title.length), 0),
+      maxInputUrlCharacters: normalized.items.reduce((max, item) => Math.max(max, item.url.length), 0),
+      assetSnapshots, macro: extractGdeltMacroCandidates(normalized.items),
+    }], undefined, undefined, retrievedAt);
+  } catch (error) {
+    return providerResult<never>(GDELT_GAL_SOURCE_ID, "ERROR", [],
+      error instanceof Error ? error.message : "GDELT GAL qualification failed", undefined, retrievedAt);
+  }
 }
