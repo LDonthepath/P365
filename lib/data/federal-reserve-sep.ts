@@ -131,7 +131,7 @@ function extractTables(html: string): string[][][] {
 function horizonFromLabel(value: string): FederalReserveSepHorizon | null {
   const normalized = value.replace(/\s+/g, " ").trim();
   if (/^longer run$/i.test(normalized)) return "LONGER_RUN";
-  if (/^20\d{2}$/.test(normalized)) return `YEAR_END_${normalized}`;
+  if (/^20\d{2}$/.test(normalized)) return `YEAR_END_${normalized}` as FederalReserveSepHorizon;
   return null;
 }
 
