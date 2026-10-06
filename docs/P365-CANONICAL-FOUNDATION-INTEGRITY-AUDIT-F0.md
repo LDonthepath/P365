@@ -161,6 +161,27 @@ Intelligence synthesis       DEFERRED
 - **Post-MVP ontology gaps:** full Equity, broad Credit, broad Commodities beyond Gold, broader volatility/derivatives, EM and other multi-asset domains remain intentionally outside first-class MVP scope unless used as supporting evidence.
 - **Evidence:** Alpha Vantage and CoinDesk news remain Evidence and are not promoted into Observation/Intelligence.
 
+### NEWS-MACRO-001A — Macro/policy discovery coverage contract (7 Oct 2026 WIB)
+
+Status: **PROPOSED CONTRACT / OWNER REVIEW & MERGE PENDING**. Baseline main is
+`463f268b32bb9b0c4ccd1e7336ed1069029dd498` (6 Oct 20:53:06 UTC), with one open
+PR (#211, NEWS-QUALITY-002, not modified). The owner clarified that BTC/Gold are
+target markets, while policy/macro news must be discoverable without asset mentions.
+Code and a synthetic RSS replay prove existing local GAL filtering drops Fed/BoJ/
+China-tariff headlines unless BTC/Gold lexical criteria also match. A production
+dashboard sample returned HTTP 200, zero macro titles and an Alpha Vantage request-
+spacing diagnostic; this does not prove permanent outage or absence of macro news.
+
+`docs/P365-MACRO-POLICY-NEWS-COVERAGE-CONTRACT-v0.1.md` defines separate MACRO topic
+discovery over the existing shared GDELT RSS acquisition. Official GAL documentation
+and free-use/attribution terms were rechecked. Topic labels remain bounded discovery
+Evidence, not canonical facts or causal drivers. English matcher limits, publication-
+or-first-seen uncertainty, feed versus topic coverage, deterministic cap fairness,
+separate v1-compatible identity/decoder, no fake backfill, and same-cutoff MOVE replay
+are explicit. Production writes remain gated on measured bytes/write rate/storage
+runway. Next stage is a read-only matcher/live qualification; this contract activates
+no runtime, provider, persistence, cron, UI or higher-order reasoning.
+
 ## 2. End-to-end runtime path
 
 Current active path:
