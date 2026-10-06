@@ -134,6 +134,32 @@ function main(): void {
   );
 
   assertEqual(
+    requireObservationSemantics("policy.us.sep.ffr.year_end_2027.median_pct"),
+    {
+      ontologyVersion: "v0.1",
+      marketDomain: "POLICY",
+      informationClass: "EXPECTATION",
+      jurisdiction: "US",
+      instrument: "POLICY_RATE",
+      tenor: "YEAR_END_2027",
+    },
+    "SEP published median semantics",
+  );
+
+  assertEqual(
+    requireObservationSemantics("policy.us.sep.ffr.longer_run.midpoint_3000_millipct.participant_count"),
+    {
+      ontologyVersion: "v0.1",
+      marketDomain: "POLICY",
+      informationClass: "EXPECTATION",
+      jurisdiction: "US",
+      instrument: "POLICY_RATE",
+      tenor: "LONGER_RUN",
+    },
+    "SEP dot-distribution semantics",
+  );
+
+  assertEqual(
     requireObservationSemantics("DFII10"),
     {
       ontologyVersion: "v0.1",

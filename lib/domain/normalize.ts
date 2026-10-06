@@ -5,6 +5,7 @@ import type { SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-
 import type { CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { MacroObservationInput } from "../data/fred";
 import type { FomcEventInput } from "../data/federal-reserve-events";
+import type { FederalReserveSepObservationInput } from "../data/federal-reserve-sep";
 import { forexFactoryJurisdiction } from "../data/event-jurisdiction";
 import type { DataQuality, Evidence, Event, Observation, ObservationSemantics, ProviderHealth, SourceHealthStatus } from "./types";
 import { buildObservationIdentity, observationEvidenceId, observationRevisionId } from "./observation-identity";
@@ -312,6 +313,67 @@ export function cftcGoldCotToCanonicalRecords(
     const observation: Observation = {
       id: observationRevisionId(identity),
       domain: "MARKET",
+      subject: item.metricId,
+      value,
+      observedAt: item.observedAt,
+      retrievedAt: item.retrievedAt,
+      sourceId,
+      quality: "UNKNOWN",
+      evidenceId,
+      identity,
+      provenance: item.provenance,
+      semantics: requireObservationSemantics(item.metricId),
+      metadata,
+    };
+    assertCurrentObservationInvariants(observation);
+    return { evidence, observation };
+  });
+
+  return {
+    observations: normalized.map((item) => item.observation),
+    evidence: normalized.map((item) => item.evidence),
+  };
+}
+
+/** Converts official Federal Reserve SEP medians and dot-count buckets into canonical factual expectations. */
+export function federalReserveSepToCanonicalRecords(
+  items: FederalReserveSepObservationInput[],
+): { observations: Observation[]; evidence: Evidence[] } {
+  const sourceId = P365_SOURCES.federalReserve.id;
+  const normalized = items.map((item) => {
+    const value = String(item.value);
+    const metadata = {
+      ...item.metadata,
+      metricId: item.metricId,
+      unit: item.unit,
+      observationEffectiveAt: item.observedAt,
+    };
+    const identity = buildObservationIdentity({
+      domain: "MACRO",
+      seriesKey: item.metricId,
+      observedAt: item.observedAt,
+      sourceId,
+      value,
+      unit: item.unit,
+      frequency: "SEP_RELEASE",
+    });
+    const evidenceId = observationEvidenceId(identity);
+    const evidence: Evidence = {
+      id: evidenceId,
+      sourceId,
+      kind: "OBSERVATION",
+      subject: item.metricId,
+      content: item.factType === "PUBLISHED_MEDIAN"
+        ? `${item.metricId} = ${item.value}% (${item.releaseDate})`
+        : `${item.metricId} = ${item.value} participants (${item.releaseDate})`,
+      capturedAt: item.retrievedAt,
+      retrievedAt: item.retrievedAt,
+      releasedAt: item.observedAt,
+      metadata,
+    };
+    const observation: Observation = {
+      id: observationRevisionId(identity),
+      domain: "MACRO",
       subject: item.metricId,
       value,
       observedAt: item.observedAt,

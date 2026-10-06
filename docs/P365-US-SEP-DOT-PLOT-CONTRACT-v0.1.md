@@ -1,6 +1,6 @@
 # P365 US SEP / Dot Plot Contract v0.1
 
-**Status:** SOURCE QUALIFIED / COMPARISON METHODOLOGY FROZEN / RUNTIME NOT IMPLEMENTED
+**Status:** SOURCE QUALIFIED / COMPARISON METHODOLOGY FROZEN / MACRO-SEP-001B PR #198 — OWNER MERGE PENDING
 
 **Checkpoint:** MACRO-SEP-001A — US SEP / Dot Plot Source Qualification & Policy-Path Comparison Boundary
 
@@ -411,15 +411,16 @@ MACRO-SEP-001A passes only if:
 
 ### MACRO-SEP-001B — Federal Reserve SEP factual runtime
 
-After owner approval/merge of this contract:
+Implemented on the current feature branch pending owner merge:
 
-- reuse the existing Federal Reserve source boundary where practical;
-- fetch official accessible SEP HTML;
-- parse Table 1 and Figure 2 under strict schema checks;
-- normalize canonical SEP median + dot-count observations;
-- preserve point-in-time release/retrieval semantics;
-- persist append-only durable history;
-- no UI or regime reasoning.
+- reuses the existing Federal Reserve source identity and official FOMC calendar;
+- discovers the latest published accessible SEP HTML instead of guessing a future URL;
+- parses Table 1 published medians and Figure 2 nonzero participant-count buckets under strict schema checks;
+- normalizes canonical SEP median + dot-count Observations as POLICY / EXPECTATION;
+- preserves official release timestamp separately from P365 retrieval time;
+- persists append-only durable history through the existing authenticated historical-ingestion / Market Memory path;
+- repeated unchanged acquisition remains idempotent;
+- no scheduler, historical backfill, UI, market-pricing runtime or regime reasoning is activated.
 
 ### MACRO-PRICING-001B — Market policy-pricing runtime
 

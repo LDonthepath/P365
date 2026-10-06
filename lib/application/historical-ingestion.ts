@@ -1,6 +1,7 @@
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinBackfillRange, DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { FredObservationQuery, MacroObservationInput } from "../data/fred";
+import type { FederalReserveSepObservationInput } from "../data/federal-reserve-sep";
 import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
 import type { BinanceSpotKline } from "../data/binance-spot-flow";
 import type { BinanceOrderBookSnapshot } from "../data/binance-order-book";
@@ -8,7 +9,7 @@ import type { HyperliquidPerpOrderBookSnapshot } from "../data/hyperliquid-perp-
 import { soSoValueBackfillRangeError, type SoSoValueBtcEtfFlowBackfillRange, type SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
 import { cftcGoldCotBackfillRangeError, type CftcGoldCotBackfillRange, type CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { ProviderId, ProviderResult } from "../data/types";
-import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../domain/normalize";
+import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, federalReserveSepToCanonicalRecords, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../domain/normalize";
 import { gdeltGalSnapshotsToEvidence } from "./gdelt-gal-history";
 import { buildBinanceBtcSpotFlowWindow } from "./btc-spot-flow";
 import { btcSpotFlowWindowsToEvidence } from "./btc-spot-flow-history";
@@ -26,7 +27,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS = 35;
 
-export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "defillama", "sosovalue", "cftc", "gdelt", "binance-spot", "binance-book", "hyperliquid-book"] as const;
+export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "federal-reserve-sep", "defillama", "sosovalue", "cftc", "gdelt", "binance-spot", "binance-book", "hyperliquid-book"] as const;
 export type HistoricalIngestionProvider = typeof HISTORICAL_INGESTION_PROVIDERS[number];
 export type HistoricalIngestionMode = "FORWARD" | "BACKFILL";
 
@@ -42,6 +43,7 @@ export type HistoricalIngestionOptions = {
 export type HistoricalIngestionAcquisition = {
   coingecko: () => Promise<MarketResult>;
   fred: () => Promise<ProviderResult<MacroObservationInput>>;
+  "federal-reserve-sep": () => Promise<ProviderResult<FederalReserveSepObservationInput>>;
   gold: () => Promise<MarketResult>;
   russell: () => Promise<MarketResult>;
   dxy: () => Promise<MarketResult>;
@@ -98,7 +100,7 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
   acquisition: HistoricalIngestionAcquisition;
   repositories: CanonicalRepositories;
 }> {
-  const [binanceSpot, binanceBook, hyperliquidBook, crypto, cftc, defillama, fred, gdelt, sosovalue, yahoo, repositories] = await Promise.all([
+  const [binanceSpot, binanceBook, hyperliquidBook, crypto, cftc, defillama, fred, federalReserveSep, gdelt, sosovalue, yahoo, repositories] = await Promise.all([
     import("../data/binance-spot-flow"),
     import("../data/binance-order-book"),
     import("../data/hyperliquid-perp-order-book"),
@@ -106,6 +108,7 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
     import("../data/cftc-gold-cot"),
     import("../data/defillama-stablecoins"),
     import("../data/fred"),
+    import("../data/federal-reserve-sep"),
     import("../data/gdelt-gal"),
     import("../data/sosovalue-etf-flow"),
     import("../data/yahoo-finance-markets"),
@@ -122,6 +125,7 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
         acquisitionMode: "FRESH",
         requireCompleteRange: options.mode === "BACKFILL",
       }),
+      "federal-reserve-sep": () => federalReserveSep.fetchFederalReserveSepObservations("FRESH"),
       gold: () => yahoo.fetchGoldFuturesSpot("FRESH"),
       russell: () => yahoo.fetchRussell2000Index("FRESH"),
       dxy: () => yahoo.fetchDxyIndex("FRESH"),
@@ -154,6 +158,7 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
 function providerId(provider: HistoricalIngestionProvider): ProviderId {
   if (provider === "coingecko") return "coingecko";
   if (provider === "fred") return "fred";
+  if (provider === "federal-reserve-sep") return "federal-reserve";
   if (provider === "defillama") return "defillama";
   if (provider === "sosovalue") return "sosovalue";
   if (provider === "cftc") return "cftc";
@@ -170,6 +175,9 @@ function canonicalize(
 ): { observations: Observation[]; evidence: Evidence[] } {
   if (provider === "fred") {
     return macroToCanonicalRecords(result.data as MacroObservationInput[], P365_SOURCES.fred.id);
+  }
+  if (provider === "federal-reserve-sep") {
+    return federalReserveSepToCanonicalRecords(result.data as FederalReserveSepObservationInput[]);
   }
   if (provider === "defillama") {
     const rows = result.data as DefiLlamaStablecoinObservationInput[];
