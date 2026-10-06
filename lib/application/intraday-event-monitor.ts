@@ -1,3 +1,5 @@
+import { resolveIntradayResultEvidence } from "./intraday-result-evidence";
+export { resolveIntradayResultEvidence } from "./intraday-result-evidence";
 import "server-only";
 import {
   EVENT_WINDOW_POLICY_V1,
@@ -12,11 +14,10 @@ import {
   type SnapshotComparison,
 } from "../domain/snapshot-comparison";
 import type { EconomicEventResult } from "../domain/event-result";
-import type { Event, Evidence, Observation } from "../domain/types";
+import type { Event, Observation } from "../domain/types";
 import type {
   EventRepository,
   HistoricalEconomicEventResultRepository,
-  HistoricalEvidenceRepository,
   ObservationRepository,
 } from "../repositories/types";
 import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
@@ -361,38 +362,11 @@ export async function resolveIntradayMonitorDependencies(input: {
   return { event, observations, results };
 }
 
-export async function resolveIntradayResultEvidence(
-  repository: HistoricalEvidenceRepository,
-  result: EconomicEventResult | undefined,
-  eventIdentityKey: string,
-  latestCapturedAt: string,
-): Promise<Evidence | null> {
-  if (!result) return null;
-
-  try {
-    const history = await repository.findHistory({
-      sourceId: result.sourceId,
-      kind: "EVENT",
-      metadataEquals: { eventIdentityKey },
-      retrievedAtOnOrBefore: latestCapturedAt,
-      order: "DESC",
-      limit: 1,
-    });
-    const evidence = history[0] ?? null;
-    return evidence?.id === result.evidenceId ? evidence : null;
-  } catch (error) {
-    console.error(
-      "Intraday event multiplier evidence read failed closed:",
-      error instanceof Error ? error.message : "Unknown error",
-    );
-    return null;
-  }
-}
-
 async function buildMonitorForIdentity(
   latestIdentity: string,
   snapshots: MarketSnapshot[],
   now: Date,
+  deadline: number,
 ): Promise<IntradayEventMonitor> {
   const sameEvent = snapshots.filter((snapshot) => identityOf(snapshot) === latestIdentity);
   const byRole = selectActiveSnapshotsByRole(sameEvent);
@@ -454,6 +428,7 @@ async function buildMonitorForIdentity(
     result,
     latestIdentity,
     latestCapturedAt,
+    deadline,
   );
   const rawUnitMultiplier = resultEvidence?.metadata?.multiplier;
   const unitMultiplier = typeof rawUnitMultiplier === "string" && rawUnitMultiplier.trim()
@@ -507,7 +482,7 @@ async function buildMonitorForIdentity(
   };
 }
 
-async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitorResult> {
+async function loadIntradayEventMonitor(now: Date, deadline: number): Promise<IntradayEventMonitorResult> {
   const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const snapshots = await historicalMarketSnapshotRepository.findHistory({
     scope: EVENT_WINDOW_POLICY_V1.snapshotScope,
@@ -536,7 +511,7 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
     : identities.slice(0, 1);
 
   const data = await Promise.all(
-    selectedIdentities.map((identity) => buildMonitorForIdentity(identity, snapshots, now)),
+    selectedIdentities.map((identity) => buildMonitorForIdentity(identity, snapshots, now, deadline)),
   );
 
   // Optional historical ZT reconstruction is intentionally excluded from the
@@ -550,12 +525,13 @@ async function loadIntradayEventMonitor(now: Date): Promise<IntradayEventMonitor
 export async function getIntradayEventMonitor(
   now = new Date(),
 ): Promise<IntradayEventMonitorResult> {
+  const deadline = Date.now() + MONITOR_TIMEOUT_MS;
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     const timeoutResult = new Promise<IntradayEventMonitorResult>((resolve) => {
       timeout = setTimeout(() => resolve({ status: "ERROR" }), MONITOR_TIMEOUT_MS);
     });
-    const result = await Promise.race([loadIntradayEventMonitor(now), timeoutResult]);
+    const result = await Promise.race([loadIntradayEventMonitor(now, deadline), timeoutResult]);
     if (result.status === "ERROR") {
       console.error("Intraday event response read timed out after 4000ms.");
     }

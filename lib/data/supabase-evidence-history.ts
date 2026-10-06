@@ -64,7 +64,7 @@ implements HistoricalEvidenceRepository {
     }
   }
 
-  async findHistory(query: EvidenceHistoryQuery): Promise<Evidence[]> {
+  async findHistory(query: EvidenceHistoryQuery, options?: { signal?: AbortSignal }): Promise<Evidence[]> {
     const bounds = validateEvidenceHistoryQuery(query);
     const { url, key } = this.config();
     const direction = query.order.toLowerCase();
@@ -74,6 +74,9 @@ implements HistoricalEvidenceRepository {
       order: `effective_at.${direction},id.${direction}`,
     });
 
+    if (query.evidenceId !== undefined) {
+      baseParams.set("canonical_id", `eq.${query.evidenceId}`);
+    }
     if (query.sourceId !== undefined) {
       baseParams.set("payload->>sourceId", `eq.${query.sourceId}`);
     }
@@ -113,7 +116,9 @@ implements HistoricalEvidenceRepository {
         {
           headers: { apikey: key, Authorization: `Bearer ${key}` },
           cache: "no-store",
-          signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
+          signal: options?.signal
+            ? AbortSignal.any([options.signal, AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS)])
+            : AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
         },
       );
       if (!response.ok) {
@@ -127,6 +132,9 @@ implements HistoricalEvidenceRepository {
       for (const row of rows) {
         if (!isCanonicalEvidence(row.payload)) continue;
         const item = row.payload;
+        if (query.evidenceId !== undefined && item.id !== query.evidenceId) {
+          throw new Error("Supabase Evidence history returned an unexpected Evidence ID.");
+        }
         if (Date.parse(row.effective_at) !== evidenceHistoryEffectiveAt(item)) {
           throw new Error(
             "Supabase Evidence history contains inconsistent effective_at and Evidence semantic time.",

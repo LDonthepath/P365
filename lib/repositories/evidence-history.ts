@@ -22,6 +22,9 @@ export function validateEvidenceHistoryQuery(
   retrievedThrough?: number;
 } {
   if (!query) throw new Error("Evidence history query is required.");
+  if (query.evidenceId !== undefined && !query.evidenceId.trim()) {
+    throw new Error("Evidence history evidenceId must be non-empty when supplied.");
+  }
   if (query.sourceId !== undefined && !query.sourceId.trim()) {
     throw new Error("Evidence history sourceId must be non-empty when supplied.");
   }

@@ -147,6 +147,7 @@ implements EvidenceRepository, HistoricalEvidenceRepository {
   async findHistory(query: EvidenceHistoryQuery): Promise<Evidence[]> {
     const bounds = validateEvidenceHistoryQuery(query);
     const matches = [...this.items.values()].filter((evidence) => {
+      if (query.evidenceId !== undefined && evidence.id !== query.evidenceId) return false;
       if (query.sourceId !== undefined && evidence.sourceId !== query.sourceId) return false;
       if (query.kind !== undefined && evidence.kind !== query.kind) return false;
       for (const [key, value] of Object.entries(query.metadataEquals ?? {})) {
