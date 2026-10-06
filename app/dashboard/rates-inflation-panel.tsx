@@ -69,13 +69,13 @@ function signed(value: number, digits = 1): string {
 
 function valueLabel(value: number, unit: RatesSeriesValueUnit): string {
   if (unit === "PERCENT") {
-    return \`\${new Intl.NumberFormat("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%\`;
+    return `${new Intl.NumberFormat("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
   }
   if (unit === "BPS") {
-    return \`\${signed(value, 1)} bps\`;
+    return `${signed(value, 1)} bps`;
   }
   if (unit === "USD_BILLIONS") {
-    return \`\${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(value)} miliar USD\`;
+    return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(value)} miliar USD`;
   }
   return new Intl.NumberFormat("id-ID", {
     minimumFractionDigits: 2,
@@ -88,9 +88,9 @@ function changeLabel(value: number | null, unit: RatesSeriesChangeUnit, cadence:
     if (cadence === "WEEKLY" && horizon === "1D") return "Tidak tersedia untuk data mingguan";
     return "Belum cukup riwayat";
   }
-  if (unit === "BPS") return \`\${signed(value, 1)} bps\`;
-  if (unit === "USD_BILLIONS") return \`\${signed(value, 1)} miliar USD\`;
-  return \`\${signed(value, 2)}%\`;
+  if (unit === "BPS") return `${signed(value, 1)} bps`;
+  if (unit === "USD_BILLIONS") return `${signed(value, 1)} miliar USD`;
+  return `${signed(value, 2)}%`;
 }
 
 function Horizon({
@@ -110,7 +110,7 @@ function Horizon({
     <span>{changeLabel(value, point.changeUnit, point.cadence, horizon)}</span>
     <small>
       {from
-        ? \`dibanding observasi \${date(from)}\`
+        ? `dibanding observasi ${date(from)}`
         : point.cadence === "WEEKLY" && horizon === "1D"
           ? "Cadence canonical seri ini mingguan."
           : "Tidak ada observasi pada atau sebelum target."}
