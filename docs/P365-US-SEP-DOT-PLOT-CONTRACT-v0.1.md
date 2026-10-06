@@ -1,6 +1,6 @@
 # P365 US SEP / Dot Plot Contract v0.1
 
-**Status:** SOURCE QUALIFIED / COMPARISON METHODOLOGY FROZEN / MACRO-SEP-001B PRODUCTION ACTIVE / MACRO-SEP-001C PR #199 — OWNER MERGE PENDING
+**Status:** SOURCE QUALIFIED / COMPARISON METHODOLOGY FROZEN / MACRO-SEP-001B PRODUCTION ACTIVE / MACRO-SEP-001C PRODUCTION ACTIVE / PR #199 / `01cad0b5c2b61f449c85ed7f381fcb9791d9f115`
 
 **Checkpoint:** MACRO-SEP-001A — US SEP / Dot Plot Source Qualification & Policy-Path Comparison Boundary
 
@@ -426,7 +426,7 @@ Production active after owner merge of PR #198 at `f573476953f9958d25971498a90d2
 
 ### MACRO-SEP-001C — Rates & Policy SEP median-path presentation
 
-Implemented pending owner merge:
+Production active after owner merge of PR #199:
 
 - extends the existing Rates & Policy panel; no parallel panel is created;
 - reads only source-published SEP median series from durable Observation history at the dashboard cutoff;
@@ -434,6 +434,9 @@ Implemented pending owner merge:
 - displays year-end/longer-run medians plus release/retrieval/FOMC meeting dates;
 - does not fabricate daily or weekly SEP changes;
 - leaves the full participant-count dot distribution durable but unrendered in this thin slice;
+- production deployment `dpl_DTvpqbBFBT1stGxNZTY16P91gpsi` is READY on exact merge SHA `01cad0b5c2b61f449c85ed7f381fcb9791d9f115`;
+- production `/dashboard` returned HTTP 200 with zero error/fatal runtime logs;
+- browser verification confirmed five medians (4.10%, 4.10%, 3.90%, 3.60%, 3.20%), official release/retrieval/FOMC context, and no horizontal overflow at 390×844;
 - does not activate market-pricing runtime, SEP-market gap, hawkish/dovish labels, regime reasoning or trading semantics.
 
 ### MACRO-PRICING-001B — Market policy-pricing runtime
