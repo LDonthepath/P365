@@ -1,5 +1,6 @@
 import type { NewsItem } from "../data/types";
 import type { Evidence } from "../domain/types";
+import { catalystTitleExclusion } from "./catalyst-title-screening";
 import {
   gdeltGalSnapshotFromEvidence,
   GDELT_GAL_DURABLE_SNAPSHOT_METHODOLOGY,
@@ -30,6 +31,7 @@ export type CatalystWireReadModel = {
   primaryItemCount: number;
   mediaItemCount: number;
   discoveryItemCount: number;
+  excludedTitleCount: number;
 };
 
 const OFFICIAL_DOMAIN_LABELS: Record<string, string> = {
@@ -265,7 +267,8 @@ export function buildCatalystWireReadModel(input: {
     || rolePriority(b.sourceRole) - rolePriority(a.sourceRole)
   );
 
-  const items = deduped.slice(0, limit);
+  const screened = deduped.filter((item) => catalystTitleExclusion(item.title, item.scope) === null);
+  const items = screened.slice(0, limit);
   return {
     asOf: input.asOf,
     items,
@@ -274,5 +277,6 @@ export function buildCatalystWireReadModel(input: {
     primaryItemCount: items.filter((item) => item.sourceRole === "PRIMARY").length,
     mediaItemCount: items.filter((item) => item.sourceRole === "MEDIA").length,
     discoveryItemCount: items.filter((item) => item.sourceRole === "DISCOVERY").length,
+    excludedTitleCount: deduped.length - screened.length,
   };
 }

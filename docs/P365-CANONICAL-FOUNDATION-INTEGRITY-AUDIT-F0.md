@@ -1093,6 +1093,34 @@ runtime/log verification remains pending owner merge and deployment. Local valid
 24 focused/regression tests pass; lint has zero errors and four existing warnings;
 Next.js 15.5.26 production build passes.
 
+### NEWS-QUALITY-001 — bounded Catalyst Wire title screening (7 Oct 2026 WIB)
+
+Status: **IMPLEMENTED / OWNER REVIEW & MERGE PENDING**. Baseline main is
+`5245aac61ae3413d0c03e125782a1b23c3f998a2` (6 Oct 2026 20:43:04 UTC), with zero
+open PRs at preflight. This main includes owner-merged DASH-READ-001 / PR #209.
+Its production deployment `dpl_7FkZQ2LQF8xNUMWuMcA6dbqCuMLC` was READY and aliased
+to p365-kappa.vercel.app. Post-merge HTTP and browser checks rendered event baseline,
+surprise, Net Liquidity and five SEP medians; no error/fatal logs were returned during
+the bounded verification window. This is sample verification, not a traffic-wide
+reliability guarantee.
+
+The new display-only Catalyst Wire screening removes explicit promotional ROI/
+investment/presale pitches and narrow other-asset/resource-report title collisions.
+Reporting about fraud/regulatory warnings remains eligible; unknown wording/languages
+remain eligible. Screening follows cutoff and deduplication, precedes display limits,
+and exposes a filtered count in Indonesian. The current feed status, timestamps,
+source roles and chronological ordering remain unchanged. The panel no longer claims
+that its chronological headline list is the most relevant set.
+
+A captured production-wire sample of eight titles becomes seven: the Apeing token
+ROI promotion is screened. This proves one observed case, not population-wide filter
+precision. Raw Evidence/snapshots and historical MOVE candidates are unchanged; no
+provider, persistence, cron, body scraping, ranking score, causality or trading semantics
+are introduced. Local validation: 19 focused/regression tests pass; static rendering
+confirms the filtered headline and count; lint has zero errors/four existing warnings;
+Next.js 15.5.26 production build passes. Production/visual verification remains pending
+owner merge/deployment.
+
 ## 22. Final audit conclusion
 
 P365 should **not** restart its architecture and should **not** add a reasoning engine yet.

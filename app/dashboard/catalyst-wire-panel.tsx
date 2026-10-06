@@ -60,7 +60,7 @@ export function CatalystWirePanel({
           <span className="catalyst-wire-kicker">CATALYST WIRE · FAKTUAL</span>
           <h2 id="catalyst-wire-title">Catalyst terbaru</h2>
           <p>
-            Headline paling relevan untuk diperiksa. Kedekatan waktu bukan bukti sebab-akibat.
+            Berita pasar terbaru untuk ditelusuri. Kedekatan waktu bukan bukti sebab-akibat.
           </p>
         </div>
         <div className="catalyst-wire-status">
@@ -99,12 +99,15 @@ export function CatalystWirePanel({
         </>
       ) : (
         <p className="catalyst-wire-empty">
-          Belum ada catalyst terbaru dari sumber yang tersedia pada cutoff ini.
+          Belum ada headline yang ditampilkan dari sumber yang tersedia pada cutoff ini.
         </p>
       )}
 
       <div className="catalyst-wire-foot">
         <span>{data.items.length} ITEM</span>
+        {data.excludedTitleCount > 0
+          ? <span>{data.excludedTitleCount} judul promosi/topik lain tersaring</span>
+          : null}
         <span>
           RESMI {data.primaryItemCount} · MEDIA {data.mediaItemCount} · DISCOVERY {data.discoveryItemCount}
         </span>

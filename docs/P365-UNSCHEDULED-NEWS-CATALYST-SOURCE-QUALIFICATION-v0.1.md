@@ -541,3 +541,34 @@ provider-dated candidates inside the MOVE window plus explicitly untimed candida
 
 No fresh provider call, new scheduler, new write, fake backfill, article scraping,
 tone/ranking, causal attribution or trading semantics are introduced.
+
+## 16. NEWS-QUALITY-001 Catalyst Wire title screening
+
+Status: **IMPLEMENTED / OWNER REVIEW & MERGE PENDING**.
+
+The current Catalyst Wire applies a bounded title-only display heuristic after
+cutoff eligibility and URL/title deduplication, before the display limit:
+
+- explicit investment-sales wording (best/top crypto to buy/invest), potential ROI,
+  guaranteed returns, and presale sales pitches are screened;
+- fraud, warning, enforcement, hack/theft and ban reporting is retained even if it
+  mentions promotional wording;
+- Bitcoin Cash/BCH-only titles are screened from BTC scope, while explicit BTC
+  comparisons and generic CRYPTO scope remain eligible;
+- Gold NI 43-101/resource and drilling-results titles are screened from GOLD scope
+  unless they also explicitly discuss bullion/Gold price/ticker context.
+
+The current patterns cover specific English wording. Unknown wording and languages
+remain eligible. This is not comprehensive relevance classification; false positives
+and false negatives are possible. Eligibility does not mean a headline affected a MOVE.
+No body scraping, sentiment/importance score, or new source-authority ranking is added.
+
+The UI shows the number of distinct candidates screened after existing dedupe.
+An all-screened current feed remains CURRENT with zero displayed items; it must not be
+represented as an unavailable feed or proof of no raw candidates. Item timestamps,
+source roles and chronological ordering remain unchanged. The UI no longer claims the
+list contains the most relevant headlines.
+
+Raw durable Evidence, source snapshots, candidate counts, acquisition methodology,
+scheduler and historical MOVE replay remain unchanged. This checkpoint improves the
+current wire only; it does not silently rewrite historical candidate evidence.
