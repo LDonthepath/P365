@@ -173,8 +173,8 @@ function SepPolicyExpectation({ data }: { data: RatesInflationReadModel["sep"] }
       <span>{data.points.length} HORIZON · RILIS RESMI</span>
     </div>
     <p className="muted" style={{ marginTop: ".4rem" }}>
-      Median suku bunga kebijakan yang dipublikasikan peserta FOMC. Ini adalah expectation resmi SEP,
-      bukan probabilitas pasar dan bukan sinyal hawkish/dovish.
+      Median suku bunga kebijakan yang dipublikasikan peserta FOMC. Ini adalah ekspektasi resmi SEP,
+      bukan probabilitas pasar dan bukan sinyal arah kebijakan.
     </p>
     <p className="muted" style={{ marginTop: ".35rem" }}>
       Rilis {dateTime(data.observedAt)} UTC · diperoleh {dateTime(data.retrievedAt)} UTC
@@ -226,8 +226,8 @@ export function RatesInflationPanel({ data }: { data: RatesInflationReadModel })
     <SepPolicyExpectation data={data.sep} />
 
     <p className="muted" style={{ marginBottom: 0, marginTop: "1rem" }}>
-      P365 hanya menampilkan fakta rates & policy serta expectation SEP yang sudah durable. Distribusi dot lengkap
-      sudah tersimpan tetapi belum divisualisasikan pada irisan tipis ini. Fed funds futures/OIS, gap SEP-versus-market,
+      P365 hanya menampilkan fakta rates & policy serta ekspektasi SEP yang sudah durable. Distribusi dot lengkap
+      sudah tersimpan tetapi belum divisualisasikan pada irisan tipis ini. Fed funds futures/OIS, selisih SEP dengan harga pasar,
       MOVE Index, dan aturan perubahan regime belum diaktifkan.
     </p>
   </section>;
