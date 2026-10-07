@@ -124,7 +124,7 @@ function assessment(
     id: "move-assessment-1",
     version: "v1",
     policy: "continuous-market-move-detector-v1",
-    methodologyId: "continuous-move-historical-distribution-v1",
+    methodologyId: "continuous-market-move-materiality-v1",
     methodologyVersion: "v1",
     seriesKey: "btc.spot.usd",
     sourceId: "coingecko-market",
