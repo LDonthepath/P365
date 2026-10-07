@@ -223,6 +223,31 @@ function plainPercent(value: number | null, digits = 2): string {
   return `${value.toFixed(digits)}%`;
 }
 
+function marketContextPrice(
+  item: FactualMarketBriefing["marketMoves"]["items"][number],
+): string {
+  const value = item.marketContext?.currentValue;
+  if (value === null || value === undefined || !Number.isFinite(value)) return "Harga belum tersedia";
+  const digits = item.asset === "BTC" ? 0 : 2;
+  return `USD ${new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)}`;
+}
+
+function marketContextChange(
+  item: FactualMarketBriefing["marketMoves"]["items"][number],
+): string {
+  const context = item.marketContext;
+  if (!context || context.changePercent === null || !Number.isFinite(context.changePercent)) {
+    return "Perubahan utama belum tersedia";
+  }
+  const change = signedPercent(context.changePercent);
+  if (context.changeBasis === "ROLLING_24H") return `${change} / 24 jam`;
+  if (context.changeBasis === "PREVIOUS_CLOSE") return `${change} vs penutupan sebelumnya`;
+  return `${change} · basis perubahan belum tersedia`;
+}
+
 function percentileLabel(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "—";
   return `P${value.toFixed(1)}`;
@@ -276,21 +301,41 @@ function MarketMoveBriefingItem({
   const unscheduledCandidates = screenedNews.items.slice(0, MAX_MOVE_CATALYST_DETAILS);
 
   return <div className="plain-notice">
-    <strong>
-      {MOVE_ASSET_LABELS[item.asset]} · {MOVE_ASSESSMENT_LABELS[item.status]}
-    </strong>
+    <strong>{MOVE_ASSET_LABELS[item.asset]}</strong>
+    <span>
+      <strong>{marketContextPrice(item)}</strong>
+      {" · "}{marketContextChange(item)}
+    </span>
+    <span>
+      {item.hasMaterialMove
+        ? "Pergerakan intraday tidak biasa terdeteksi."
+        : item.status === "BELOW_MATERIALITY_THRESHOLD"
+          ? "Tidak ada pergerakan intraday material pada cutoff ini."
+          : MOVE_ASSESSMENT_LABELS[item.status]}
+    </span>
     <span>
       {item.observedAt
         ? `Observasi ${dateTime(item.observedAt)} WIB`
         : "Observasi durable belum tersedia."}
     </span>
     {horizon
-      ? <span>
-          {horizon.horizonMinutes} menit · {signedPercent(horizon.signedPercentChange)}
-          {" · "}{MOVE_HORIZON_LABELS[horizon.status] ?? "status belum tersedia"}
-          {" · "}ambang {plainPercent(horizon.materialityThresholdPercent)}
-          {" · "}{percentileLabel(horizon.targetPercentileRank)}
-        </span>
+      ? <details className="briefing-analysis-details">
+          <summary>
+            <div>
+              <span>DETAIL DETEKTOR INTRADAY</span>
+              <strong>{MOVE_ASSESSMENT_LABELS[item.status]}</strong>
+            </div>
+            <span>Buka detail</span>
+          </summary>
+          <div className="briefing-analysis-body">
+            {item.horizons.map((candidate) => <span key={candidate.horizonMinutes}>
+              {candidate.horizonMinutes} menit · {signedPercent(candidate.signedPercentChange)}
+              {" · "}{MOVE_HORIZON_LABELS[candidate.status] ?? "status belum tersedia"}
+              {" · "}ambang {plainPercent(candidate.materialityThresholdPercent)}
+              {" · "}{percentileLabel(candidate.targetPercentileRank)}
+            </span>)}
+          </div>
+        </details>
       : null}
     {fingerprint
       ? <span>
@@ -645,7 +690,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       <span>MARKET BRIEFING</span>
       <span>
         {moves.evidenceStatus === "AVAILABLE"
-          ? `${moves.materialMoveCount} GERAKAN MATERIAL`
+          ? moves.materialMoveCount > 0
+            ? `${moves.materialMoveCount} ALERT INTRADAY`
+            : "TANPA ALERT INTRADAY"
           : ratesPolicy.evidenceStatus === "AVAILABLE" || changed.evidenceStatus === "AVAILABLE"
             ? "KONTEKS MAKRO TERSEDIA"
             : "DATA BELUM CUKUP"}
@@ -656,9 +703,10 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       <div>
         <h2 id="briefing-market-state-title">Apa yang bergerak sekarang?</h2>
         <p className="lead-copy">
-          BTC dan Gold dinilai lebih dulu terhadap ambang historis 15/30/60/120 menit.
-          Cross-asset, catalyst, dan spot participation hanya ditampilkan dari evidence yang
-          sudah tersedia pada cutoff; tidak ada atribusi sebab-akibat.
+          Harga dan perubahan utama Bitcoin/Gold ditampilkan lebih dulu. P365 memberi alert
+          bila detektor intraday menemukan gerakan yang tidak biasa secara historis; detail
+          15/30/60/120 menit tersedia bila dibuka. Cross-asset, catalyst, dan spot participation
+          tetap hanya memakai evidence yang tersedia pada cutoff; tidak ada atribusi sebab-akibat.
         </p>
       </div>
     </div>
