@@ -76,9 +76,10 @@ class MemoryHistory implements HistoricalObservationRepository {
   }
 }
 
-function buildSeries(
+function buildSeriesAtStep(
   series: Series,
   returns: number[],
+  stepMs: number,
 ): Observation[] {
   const rows: Observation[] = [];
   let value = 100;
@@ -92,12 +93,19 @@ function buildSeries(
       observation(
         series,
         index + 1,
-        new Date(START_MS + (index + 1) * HORIZON_MS).toISOString(),
+        new Date(START_MS + (index + 1) * stepMs).toISOString(),
         value,
       ),
     );
   }
   return rows;
+}
+
+function buildSeries(
+  series: Series,
+  returns: number[],
+): Observation[] {
+  return buildSeriesAtStep(series, returns, HORIZON_MS);
 }
 
 function returns(): number[] {
@@ -189,15 +197,21 @@ test("REL-002A measures same-horizon BTC cross-asset calibration without directi
   if (result.status !== "READY") return;
 
   assert.equal(result.calibration.pairs.length, 5);
-  assert.equal(result.calibration.methodology.minimumSampleSize, 120);
+  assert.equal(result.calibration.methodology.moveReferenceMinimumSampleSize, 120);
   assert.equal(result.calibration.methodology.relationshipThreshold, "NOT_DEFINED");
   assert.equal(result.calibration.directionalQualification, "NOT_EVALUATED");
   assert.equal(result.calibration.causalAttribution, "NOT_EVALUATED");
   assert.equal(result.calibration.writesPerformed, false);
 
   for (const pair of result.calibration.pairs) {
-    assert.equal(pair.status, "MEASURED");
+    assert.equal(pair.status, "OBSERVED");
     assert.equal(pair.pairedSampleSize, 120);
+    assert.equal(pair.unpairedSampleSize, 0);
+    assert.equal(pair.pairedCoverageRatio, 1);
+    assert.equal(pair.targetIntervalOverlapCount, 0);
+    assert.equal(pair.targetIntervalOverlapShare, 0);
+    assert.equal(pair.statisticalSufficiency, "NOT_EVALUATED");
+    assert.equal(pair.sampleIndependence, "NOT_EVALUATED");
     assert.equal(pair.sameDirectionCount, 120);
     assert.equal(pair.oppositeDirectionCount, 0);
     assert.equal(pair.sameDirectionShare, 1);
@@ -229,12 +243,95 @@ test("REL-002A fails one companion closed when synchronous history is missing", 
   assert.ok(usdcnh);
   assert.equal(usdcnh.status, "INSUFFICIENT_DATA");
   assert.equal(usdcnh.pairedSampleSize, 0);
+  assert.equal(usdcnh.unpairedSampleSize, 120);
+  assert.equal(usdcnh.pairedCoverageRatio, 0);
   assert.equal(usdcnh.correlation, null);
 
   assert.equal(
-    result.calibration.pairs.filter((pair) => pair.status === "MEASURED").length,
+    result.calibration.pairs.filter((pair) => pair.status === "OBSERVED").length,
     4,
   );
+});
+
+test("REL-002A reports partial pairing coverage without attributing market-session cause", async () => {
+  const targetReturns = returns();
+  const dxy = COMPANIONS.find((series) => series.seriesKey === "dxy.index.usd")!;
+  const dxyRows = buildSeries(dxy, targetReturns.map((value) => value * 0.5))
+    .filter((_, index) => index < 40 || index > 60);
+  const rows = [
+    ...buildSeries(BTC, targetReturns),
+    ...dxyRows,
+  ];
+
+  const result = await calibrateMaterialMoveCrossAssetRelationships({
+    assessment: assessment(BTC, targetReturns),
+    repository: new MemoryHistory(rows),
+  });
+
+  assert.equal(result.status, "READY");
+  if (result.status !== "READY") return;
+
+  const pair = result.calibration.pairs.find(
+    (item) => item.companionSeriesKey === "dxy.index.usd",
+  );
+  assert.ok(pair);
+  assert.equal(pair.status, "OBSERVED");
+  assert.equal(pair.sourceHistoricalSampleSize, 120);
+  assert.equal(pair.pairedSampleSize, 98);
+  assert.equal(pair.unpairedSampleSize, 22);
+  assert.equal(pair.pairedCoverageRatio, 98 / 120);
+  assert.equal(pair.coverageLossAttribution, "NOT_EVALUATED");
+  assert.equal(pair.statisticalSufficiency, "NOT_EVALUATED");
+});
+
+test("REL-002A exposes overlapping target windows instead of treating sample count as independence", async () => {
+  const stepMs = 5 * MINUTE_MS;
+  const pointReturns = Array.from({ length: 122 }, (_, index) => {
+    const magnitude = 0.04 + (index % 7) * 0.01;
+    return index % 4 < 2 ? magnitude : -magnitude;
+  });
+  const dxy: Series = {
+    seriesKey: "dxy.index.usd",
+    sourceId: "yahoo-finance",
+    prefix: "dxy",
+  };
+  const samples: ContinuousMoveHistoricalSample[] = Array.from(
+    { length: 120 },
+    (_, index) => ({
+      startObservationId: `btc-${index}`,
+      endObservationId: `btc-${index + 3}`,
+      endObservedAt: new Date(START_MS + (index + 3) * stepMs).toISOString(),
+      magnitudePercent: 1,
+    }),
+  );
+  const move = assessment(BTC, returns());
+  move.horizons = [{
+    ...move.horizons[0],
+    historicalSampleSize: samples.length,
+    historicalSamples: samples,
+  }];
+
+  const result = await calibrateMaterialMoveCrossAssetRelationships({
+    assessment: move,
+    repository: new MemoryHistory([
+      ...buildSeriesAtStep(BTC, pointReturns, stepMs),
+      ...buildSeriesAtStep(dxy, pointReturns, stepMs),
+    ]),
+  });
+
+  assert.equal(result.status, "READY");
+  if (result.status !== "READY") return;
+
+  const pair = result.calibration.pairs.find(
+    (item) => item.companionSeriesKey === "dxy.index.usd",
+  );
+  assert.ok(pair);
+  assert.equal(pair.status, "OBSERVED");
+  assert.equal(pair.pairedSampleSize, 120);
+  assert.equal(pair.targetIntervalOverlapCount, 119);
+  assert.equal(pair.targetIntervalOverlapShare, 119 / 120);
+  assert.equal(pair.sampleIndependence, "NOT_EVALUATED");
+  assert.equal(pair.statisticalSufficiency, "NOT_EVALUATED");
 });
 
 test("REL-002A calibrates the bounded Gold companion universe separately", async () => {
