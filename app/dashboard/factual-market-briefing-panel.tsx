@@ -262,6 +262,9 @@ function MarketMoveBriefingItem({
       )
     : null;
   const spotFlow = item.evidence?.btcSpotFlow ?? null;
+  const moveConfirmation = item.evidence?.confirmation?.status === "OK"
+    ? item.evidence.confirmation
+    : null;
   const scheduledCatalysts = item.evidence?.scheduledCatalysts.slice(0, MAX_MOVE_CATALYST_DETAILS) ?? [];
   const screenedNews = screenMoveCatalystTitles(item.evidence?.unscheduledCandidates ?? [], item.asset);
   const unscheduledCandidates = screenedNews.items.slice(0, MAX_MOVE_CATALYST_DETAILS);
@@ -340,6 +343,18 @@ function MarketMoveBriefingItem({
           {" · "}cakupan {MOVE_COVERAGE_LABELS[spotFlow.coverage] ?? "belum diketahui"}
         </span>
       : null}
+    {moveConfirmation
+      ? <>
+          <span><strong>KESELARASAN EVIDENCE</strong> · {confirmationStatus(moveConfirmation.assessment.resolution)}</span>
+          <span>
+            {confirmationResolution(moveConfirmation.assessment.resolution)} Arah move: {moveConfirmation.targetDirection === "UP" ? "naik" : "turun"}.
+          </span>
+          {moveConfirmation.evidence.map((evidence) => <span key={`${evidence.evidenceClass}:${evidence.source}`}>
+            {confirmationSource(evidence.source)} · {confirmationJudgement(evidence.judgement)}
+          </span>)}
+          <span>Keselarasan ini bukan atribusi sebab-akibat.</span>
+        </>
+      : null}
     {item.evidence
       ? <>
           <span><strong>STATUS EVIDENCE</strong></span>
@@ -402,6 +417,7 @@ function confirmationJudgement(value: string | null): string {
 
 function confirmationSource(value: string): string {
   if (value === "BTC_ETF_FLOW") return "Arus ETF Bitcoin AS";
+  if (value === "BINANCE_SPOT_TAKER_FLOW") return "Binance Spot taker-flow";
   return value;
 }
 
