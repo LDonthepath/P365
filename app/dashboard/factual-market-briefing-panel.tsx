@@ -318,11 +318,12 @@ function MarketMoveBriefingItem({
         ? `Observasi ${dateTime(item.observedAt)} WIB`
         : "Observasi durable belum tersedia."}
     </span>
-    {horizon
+
+    {item.horizons.length > 0 || item.evidence
       ? <details className="briefing-analysis-details">
           <summary>
             <div>
-              <span>DETAIL DETEKTOR INTRADAY</span>
+              <span>DETAIL PERGERAKAN & EVIDENCE</span>
               <strong>{MOVE_ASSESSMENT_LABELS[item.status]}</strong>
             </div>
             <span>Buka detail</span>
@@ -334,114 +335,120 @@ function MarketMoveBriefingItem({
               {" · "}ambang {plainPercent(candidate.materialityThresholdPercent)}
               {" · "}{percentileLabel(candidate.targetPercentileRank)}
             </span>)}
+
+            {fingerprint
+              ? <span>
+                  Lintas aset: {fingerprint.series.map((series) =>
+                    `${MOVE_SERIES_LABELS[series.seriesKey] ?? series.seriesKey} ${series.state === "AVAILABLE_SYNCHRONOUS" ? signedPercent(series.signedPercentChange) : "—"}`
+                  ).join(" · ")}
+                  {" · "}cakupan {MOVE_COVERAGE_LABELS[fingerprint.coverage] ?? fingerprint.coverage}
+                </span>
+              : null}
+
+            {item.evidence
+              ? <>
+                  <span>
+                    Catalyst dalam window: {item.evidence.scheduledCatalystCount} event terjadwal
+                    {" · "}cakupan {MOVE_COVERAGE_LABELS[item.evidence.scheduledCatalystCoverage] ?? "belum diketahui"}
+                    {" · "}{item.evidence.unscheduledCandidateCount} kandidat berita tercatat
+                    {" · "}cakupan berita {MOVE_COVERAGE_LABELS[item.evidence.unscheduledCatalystCoverage] ?? "belum diketahui"}
+                  </span>
+                  {scheduledCatalysts.map((event) => <span key={`${event.eventIdentityKey ?? event.eventId}:${event.retrievedAt}`}>
+                    Event: {event.subject}
+                    {" · "}{jurisdictionLabel(event.jurisdiction ?? null)}
+                    {" · "}{dateTime(event.scheduledAt)} WIB
+                    {" · "}{MOVE_IMPORTANCE_LABELS[event.importance] ?? "dampak belum ditetapkan"}
+                    {" · "}sumber {event.sourceId}
+                  </span>)}
+                  {item.evidence.scheduledCatalystCount > scheduledCatalysts.length
+                    ? <span>
+                        +{item.evidence.scheduledCatalystCount - scheduledCatalysts.length} event terjadwal lain dalam window.
+                      </span>
+                    : null}
+                  {unscheduledCandidates.map((candidate) => <span key={candidate.url}>
+                    Kandidat berita: {candidate.title}
+                    {" · "}{candidate.domain}
+                    {" · "}{candidate.providerDate
+                      ? `${dateTime(candidate.providerDate)} WIB`
+                      : `pertama diketahui ${dateTime(candidate.firstSeenRetrievedAt)} WIB`}
+                    {" · "}{MOVE_TEMPORAL_FIT_LABELS[candidate.temporalFit] ?? "kecocokan waktu belum diketahui"}
+                  </span>)}
+                  {screenedNews.excludedTitleCount > 0
+                    ? <span>{screenedNews.excludedTitleCount} judul promosi/topik lain tersaring dari tampilan.</span>
+                    : null}
+                  {item.evidence.unscheduledCandidateCount > 0 && screenedNews.items.length === 0
+                    ? <span>Tidak ada judul yang ditampilkan setelah penyaringan; cakupan feed tetap seperti tercatat.</span>
+                    : null}
+                  {screenedNews.items.length > unscheduledCandidates.length
+                    ? <span>
+                        +{screenedNews.items.length - unscheduledCandidates.length} kandidat berita lain untuk ditampilkan dalam window.
+                      </span>
+                    : null}
+                </>
+              : null}
+
+            {spotFlow
+              ? <span>
+                  Binance Spot: buy share {spotFlow.takerBuyShare === null ? "—" : plainPercent(spotFlow.takerBuyShare * 100, 1)}
+                  {" · "}net taker {spotFlow.netTakerBaseVolumeBtc > 0 ? "+" : ""}
+                  {spotFlow.netTakerBaseVolumeBtc.toLocaleString("id-ID", { maximumFractionDigits: 2 })} BTC
+                  {" · "}cakupan {MOVE_COVERAGE_LABELS[spotFlow.coverage] ?? "belum diketahui"}
+                </span>
+              : null}
+
+            {moveConfirmation
+              ? <>
+                  <span><strong>KESELARASAN EVIDENCE</strong> · {confirmationStatus(moveConfirmation.assessment.resolution)}</span>
+                  <span>
+                    {confirmationResolution(moveConfirmation.assessment.resolution)} Arah move: {moveConfirmation.targetDirection === "UP" ? "naik" : "turun"}.
+                  </span>
+                  {moveConfirmation.evidence.map((evidence) => <span key={`${evidence.evidenceClass}:${evidence.source}`}>
+                    {confirmationSource(evidence.source)} · {confirmationJudgement(evidence.judgement)}
+                  </span>)}
+                  <span>Keselarasan ini bukan atribusi sebab-akibat.</span>
+                </>
+              : null}
+
+            {item.evidence
+              ? <>
+                  <span><strong>STATUS EVIDENCE</strong></span>
+                  <span>
+                    Lintas pasar: {synchronousCoverageLabel(item.evidence.synchronousCoverage)}
+                  </span>
+                  <span>
+                    Catalyst terjadwal: {scheduledCatalystEvidenceLabel(
+                      item.evidence.scheduledCatalystCoverage,
+                      item.evidence.scheduledCatalystCount,
+                    )}
+                  </span>
+                  <span>
+                    Catalyst berita: {unscheduledCatalystEvidenceLabel(
+                      item.evidence.unscheduledCatalystCoverage,
+                      item.evidence.unscheduledCandidateCount,
+                    )}
+                  </span>
+                  {item.evidence.slowBackground.items.map((background) => <span key={background.kind}>
+                    {MOVE_BACKGROUND_LABELS[background.kind] ?? "Evidence latar belakang"}:{" "}
+                    {MOVE_EVIDENCE_STATE_LABELS[background.state] ?? "STATUS BELUM PASTI"}
+                  </span>)}
+                  {item.evidence.cryptoMarketStructure?.components.map((component) => <span key={component.component}>
+                    {MOVE_STRUCTURE_LABELS[component.component] ?? "Struktur pasar"}:{" "}
+                    {MOVE_EVIDENCE_STATE_LABELS[component.state] ?? "STATUS BELUM PASTI"}
+                  </span>)}
+                  <span>
+                    Rates intraday: {MOVE_EVIDENCE_STATE_LABELS[item.evidence.intradayRatesPricing.state] ?? "STATUS BELUM PASTI"}
+                    {" · "}kebijakan sumber gratis
+                  </span>
+                  <span>
+                    Keseluruhan evidence: {MOVE_COMPLETENESS_LABELS[item.evidence.evidenceCompleteness] ?? "BELUM DINILAI"}
+                  </span>
+                </>
+              : null}
+
+            <span>Hubungan sebab-akibat belum dievaluasi.</span>
           </div>
         </details>
-      : null}
-    {fingerprint
-      ? <span>
-          Lintas aset: {fingerprint.series.map((series) =>
-            `${MOVE_SERIES_LABELS[series.seriesKey] ?? series.seriesKey} ${series.state === "AVAILABLE_SYNCHRONOUS" ? signedPercent(series.signedPercentChange) : "—"}`
-          ).join(" · ")}
-          {" · "}cakupan {MOVE_COVERAGE_LABELS[fingerprint.coverage] ?? fingerprint.coverage}
-        </span>
-      : null}
-    {item.evidence
-      ? <>
-          <span>
-            Catalyst dalam window: {item.evidence.scheduledCatalystCount} event terjadwal
-            {" · "}cakupan {MOVE_COVERAGE_LABELS[item.evidence.scheduledCatalystCoverage] ?? "belum diketahui"}
-            {" · "}{item.evidence.unscheduledCandidateCount} kandidat berita tercatat
-            {" · "}cakupan berita {MOVE_COVERAGE_LABELS[item.evidence.unscheduledCatalystCoverage] ?? "belum diketahui"}
-          </span>
-          {scheduledCatalysts.map((event) => <span key={`${event.eventIdentityKey ?? event.eventId}:${event.retrievedAt}`}>
-            Event: {event.subject}
-            {" · "}{jurisdictionLabel(event.jurisdiction ?? null)}
-            {" · "}{dateTime(event.scheduledAt)} WIB
-            {" · "}{MOVE_IMPORTANCE_LABELS[event.importance] ?? "dampak belum ditetapkan"}
-            {" · "}sumber {event.sourceId}
-          </span>)}
-          {item.evidence.scheduledCatalystCount > scheduledCatalysts.length
-            ? <span>
-                +{item.evidence.scheduledCatalystCount - scheduledCatalysts.length} event terjadwal lain dalam window.
-              </span>
-            : null}
-          {unscheduledCandidates.map((candidate) => <span key={candidate.url}>
-            Kandidat berita: {candidate.title}
-            {" · "}{candidate.domain}
-            {" · "}{candidate.providerDate
-              ? `${dateTime(candidate.providerDate)} WIB`
-              : `pertama diketahui ${dateTime(candidate.firstSeenRetrievedAt)} WIB`}
-            {" · "}{MOVE_TEMPORAL_FIT_LABELS[candidate.temporalFit] ?? "kecocokan waktu belum diketahui"}
-          </span>)}
-          {screenedNews.excludedTitleCount > 0
-            ? <span>{screenedNews.excludedTitleCount} judul promosi/topik lain tersaring dari tampilan.</span>
-            : null}
-          {item.evidence.unscheduledCandidateCount > 0 && screenedNews.items.length === 0
-            ? <span>Tidak ada judul yang ditampilkan setelah penyaringan; cakupan feed tetap seperti tercatat.</span>
-            : null}
-          {screenedNews.items.length > unscheduledCandidates.length
-            ? <span>
-                +{screenedNews.items.length - unscheduledCandidates.length} kandidat berita lain untuk ditampilkan dalam window.
-              </span>
-            : null}
-        </>
-      : null}
-    {spotFlow
-      ? <span>
-          Binance Spot: buy share {spotFlow.takerBuyShare === null ? "—" : plainPercent(spotFlow.takerBuyShare * 100, 1)}
-          {" · "}net taker {spotFlow.netTakerBaseVolumeBtc > 0 ? "+" : ""}
-          {spotFlow.netTakerBaseVolumeBtc.toLocaleString("id-ID", { maximumFractionDigits: 2 })} BTC
-          {" · "}cakupan {MOVE_COVERAGE_LABELS[spotFlow.coverage] ?? "belum diketahui"}
-        </span>
-      : null}
-    {moveConfirmation
-      ? <>
-          <span><strong>KESELARASAN EVIDENCE</strong> · {confirmationStatus(moveConfirmation.assessment.resolution)}</span>
-          <span>
-            {confirmationResolution(moveConfirmation.assessment.resolution)} Arah move: {moveConfirmation.targetDirection === "UP" ? "naik" : "turun"}.
-          </span>
-          {moveConfirmation.evidence.map((evidence) => <span key={`${evidence.evidenceClass}:${evidence.source}`}>
-            {confirmationSource(evidence.source)} · {confirmationJudgement(evidence.judgement)}
-          </span>)}
-          <span>Keselarasan ini bukan atribusi sebab-akibat.</span>
-        </>
-      : null}
-    {item.evidence
-      ? <>
-          <span><strong>STATUS EVIDENCE</strong></span>
-          <span>
-            Lintas pasar: {synchronousCoverageLabel(item.evidence.synchronousCoverage)}
-          </span>
-          <span>
-            Catalyst terjadwal: {scheduledCatalystEvidenceLabel(
-              item.evidence.scheduledCatalystCoverage,
-              item.evidence.scheduledCatalystCount,
-            )}
-          </span>
-          <span>
-            Catalyst berita: {unscheduledCatalystEvidenceLabel(
-              item.evidence.unscheduledCatalystCoverage,
-              item.evidence.unscheduledCandidateCount,
-            )}
-          </span>
-          {item.evidence.slowBackground.items.map((background) => <span key={background.kind}>
-            {MOVE_BACKGROUND_LABELS[background.kind] ?? "Evidence latar belakang"}:{" "}
-            {MOVE_EVIDENCE_STATE_LABELS[background.state] ?? "STATUS BELUM PASTI"}
-          </span>)}
-          {item.evidence.cryptoMarketStructure?.components.map((component) => <span key={component.component}>
-            {MOVE_STRUCTURE_LABELS[component.component] ?? "Struktur pasar"}:{" "}
-            {MOVE_EVIDENCE_STATE_LABELS[component.state] ?? "STATUS BELUM PASTI"}
-          </span>)}
-          <span>
-            Rates intraday: {MOVE_EVIDENCE_STATE_LABELS[item.evidence.intradayRatesPricing.state] ?? "STATUS BELUM PASTI"}
-            {" · "}kebijakan sumber gratis
-          </span>
-          <span>
-            Keseluruhan evidence: {MOVE_COMPLETENESS_LABELS[item.evidence.evidenceCompleteness] ?? "BELUM DINILAI"}
-          </span>
-        </>
-      : null}
-    <span>Hubungan sebab-akibat belum dievaluasi.</span>
+      : <span>Hubungan sebab-akibat belum dievaluasi.</span>}
   </div>;
 }
 
