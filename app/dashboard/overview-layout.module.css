@@ -977,6 +977,48 @@
   color:#ead7ad;
 }
 
+.overviewLayout :global(.move-monitor-market-context){
+  margin-top:14px;
+  padding:12px 0 2px;
+  font-family:'DM Mono',monospace;
+}
+
+.overviewLayout :global(.move-monitor-market-context strong),
+.overviewLayout :global(.move-monitor-market-context span){
+  display:block;
+}
+
+.overviewLayout :global(.move-monitor-market-context strong){
+  color:var(--text);
+  font-size:1.45rem;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.025em;
+}
+
+.overviewLayout :global(.move-monitor-market-context span){
+  margin-top:5px;
+  color:#d9c08c;
+  font-size:10px;
+  font-weight:700;
+}
+
+.overviewLayout :global(.move-monitor-alert-line){
+  margin:11px 0 0;
+  padding:8px 10px;
+  border:1px solid var(--line-soft);
+  background:rgba(255,255,255,.012);
+  color:var(--muted);
+  font-family:'DM Mono',monospace;
+  font-size:8px;
+  line-height:1.45;
+}
+
+.overviewLayout :global(.move-monitor-alert-line.material){
+  border-color:rgba(216,184,120,.28);
+  background:rgba(216,184,120,.035);
+  color:#ead7ad;
+}
+
 .overviewLayout :global(.move-monitor-time){
   margin:11px 0 0;
   color:var(--muted);
