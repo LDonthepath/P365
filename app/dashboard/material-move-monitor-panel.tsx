@@ -333,9 +333,10 @@ function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
               </div>
             </details>
 
-            {material ? <CrossAssetCalibrationDetails asset={item.asset} /> : null}
           </div>
         : null}
+
+      {material ? <CrossAssetCalibrationDetails asset={item.asset} /> : null}
     </article>
   );
 }
