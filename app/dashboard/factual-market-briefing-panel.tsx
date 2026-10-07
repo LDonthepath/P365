@@ -730,7 +730,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           ? moves.materialMoveCount > 0
             ? `${moves.materialMoveCount} ALERT INTRADAY`
             : "TANPA ALERT INTRADAY"
-          : ratesPolicy.evidenceStatus === "AVAILABLE" || changed.evidenceStatus === "AVAILABLE"
+          : ratesPolicy.evidenceStatus === "AVAILABLE"
+              || netLiquidity.evidenceStatus === "AVAILABLE"
+              || changed.evidenceStatus === "AVAILABLE"
             ? "KONTEKS MAKRO TERSEDIA"
             : "DATA BELUM CUKUP"}
       </span>
