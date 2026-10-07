@@ -147,7 +147,7 @@ const ratesPolicy: RatesInflationReadModel = {
   ],
 };
 
-test("briefing explains factual rates and credit changes using cadence-aware primary comparisons", () => {
+test("briefing explains factual rates and credit changes using release-frequency-aware primary comparisons", () => {
   const result = composeFactualMarketBriefing({
     baselines: {},
     observations: [],
@@ -177,6 +177,7 @@ test("briefing explains factual rates and credit changes using cadence-aware pri
   assert.match(html, /Spread high-yield melebar/);
   assert.match(html, /Real yield AS 10 tahun naik/);
   assert.match(html, /Reserve balances bertambah/);
+  assert.doesNotMatch(html, /cadence/i);
   assert.doesNotMatch(html, /4 minggu/);
   assert.match(html, /diperoleh/);
   assert.match(html, /diperoleh 06 Okt 2026/);
