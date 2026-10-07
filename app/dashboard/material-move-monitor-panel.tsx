@@ -14,8 +14,8 @@ const ASSET_LABEL: Record<MaterialMoveAssetReadModel["asset"], string> = {
 };
 
 const ASSESSMENT_LABEL: Record<MaterialMoveAssetReadModel["status"], string> = {
-  MATERIAL_MOVE: "GERAKAN MATERIAL",
-  BELOW_MATERIALITY_THRESHOLD: "DI BAWAH AMBANG",
+  MATERIAL_MOVE: "INTRADAY TIDAK BIASA",
+  BELOW_MATERIALITY_THRESHOLD: "INTRADAY NORMAL",
   INSUFFICIENT_DATA: "DATA BELUM CUKUP",
   INCOMPATIBLE: "DATA TIDAK KOMPATIBEL",
   UNKNOWN: "STATUS BELUM PASTI",
@@ -57,6 +57,27 @@ const SYNCHRONOUS_STATE_LABEL = {
 function percent(value: number | null, digits = 2): string {
   if (value === null || !Number.isFinite(value)) return "—";
   return `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
+}
+
+function marketPrice(item: MaterialMoveAssetReadModel): string {
+  const value = item.marketContext?.currentValue;
+  if (value === null || value === undefined || !Number.isFinite(value)) return "Harga belum tersedia";
+  const digits = item.asset === "BTC" ? 0 : 2;
+  return `${new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)} USD`;
+}
+
+function primaryMarketChange(item: MaterialMoveAssetReadModel): string {
+  const context = item.marketContext;
+  if (!context || context.changePercent === null || !Number.isFinite(context.changePercent)) {
+    return "Perubahan utama belum tersedia";
+  }
+  const change = percent(context.changePercent);
+  if (context.changeBasis === "ROLLING_24H") return `${change} / 24 jam`;
+  if (context.changeBasis === "PREVIOUS_CLOSE") return `${change} vs penutupan sebelumnya`;
+  return `${change} · basis perubahan belum tersedia`;
 }
 
 function percentile(value: number | null): string {
@@ -187,25 +208,44 @@ function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
         </span>
       </div>
 
+      <div className="move-monitor-market-context">
+        <strong>{marketPrice(item)}</strong>
+        <span>{primaryMarketChange(item)}</span>
+      </div>
+
+      <p className={`move-monitor-alert-line${material ? " material" : ""}`}>
+        {material
+          ? "Pergerakan intraday tidak biasa terdeteksi."
+          : item.status === "BELOW_MATERIALITY_THRESHOLD"
+            ? "Tidak ada pergerakan intraday material pada cutoff ini."
+            : ASSESSMENT_LABEL[item.status]}
+      </p>
+
       {item.observedAt
         ? <p className="move-monitor-time">Observasi terakhir · {relativeTimeID(item.observedAt)}</p>
         : <p className="move-monitor-time">Belum ada observasi durable yang layak.</p>}
 
       {item.horizons.length > 0
-        ? <div className="move-monitor-horizons">
-            {item.horizons.map((horizon) => (
-              <div className={`move-monitor-horizon${horizon.status === "MATERIAL_MOVE" ? " material" : ""}`} key={horizon.horizonMinutes}>
-                <div>
-                  <span>{horizon.horizonMinutes}M</span>
-                  <small>{HORIZON_LABEL[horizon.status]}</small>
+        ? <details className="move-monitor-investigation move-monitor-detector-detail">
+            <summary>
+              <span>Detail detektor intraday</span>
+              <strong>{material ? "ALERT TERDETEKSI" : "BUKA DETAIL"}</strong>
+            </summary>
+            <div className="move-monitor-horizons">
+              {item.horizons.map((horizon) => (
+                <div className={`move-monitor-horizon${horizon.status === "MATERIAL_MOVE" ? " material" : ""}`} key={horizon.horizonMinutes}>
+                  <div>
+                    <span>{horizon.horizonMinutes}M</span>
+                    <small>{HORIZON_LABEL[horizon.status]}</small>
+                  </div>
+                  <strong>{percent(horizon.signedPercentChange)}</strong>
+                  <p>
+                    Ambang {percent(horizon.materialityThresholdPercent)} · {percentile(horizon.targetPercentileRank)}
+                  </p>
                 </div>
-                <strong>{percent(horizon.signedPercentChange)}</strong>
-                <p>
-                  Ambang {percent(horizon.materialityThresholdPercent)} · {percentile(horizon.targetPercentileRank)}
-                </p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </details>
         : null}
 
       {item.evidence
@@ -349,13 +389,14 @@ export function MaterialMoveMonitorPanel({ data }: { data: MaterialMoveMonitorRe
       <div className="move-monitor-head">
         <div>
           <span className="move-monitor-kicker">MOVE MONITOR · FAKTUAL</span>
-          <h2 id="move-monitor-title">Pergerakan material BTC & Gold</h2>
+          <h2 id="move-monitor-title">Kondisi pasar BTC & Gold</h2>
           <p>
-            Deteksi 15/30/60/120 menit terhadap ambang historis terkalibrasi. Material berarti tidak biasa secara historis, bukan sinyal trading.
+            Harga dan perubahan utama ditampilkan lebih dulu. Detektor intraday bekerja sebagai alert
+            ketika gerakan tidak biasa secara historis; horizon 15/30/60/120 menit tersedia di detail.
           </p>
         </div>
         <div className="move-monitor-summary">
-          <strong>{materialCount} MATERIAL</strong>
+          <strong>{materialCount > 0 ? `${materialCount} ALERT INTRADAY` : "TANPA ALERT INTRADAY"}</strong>
           <span>Cutoff {relativeTimeID(data.asOf)}</span>
         </div>
       </div>

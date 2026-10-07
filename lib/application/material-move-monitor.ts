@@ -18,6 +18,10 @@ import {
   buildMaterialMoveConfirmation,
   type MaterialMoveConfirmationResult,
 } from "./material-move-confirmation";
+import {
+  materialMoveMarketContextFromObservation,
+  type MaterialMoveMarketContext,
+} from "./market-context";
 
 type MaterialMoveAsset = "BTC" | "GOLD";
 
@@ -29,6 +33,7 @@ export type MaterialMoveHorizonReadModel = {
   targetPercentileRank: number | null;
   historicalSampleSize: number;
 };
+
 
 export type MaterialMoveSynchronousFingerprintSeries = {
   seriesKey: string;
@@ -137,6 +142,7 @@ export type MaterialMoveAssetReadModel = {
   seriesKey: ContinuousMoveCalibrationSeriesKey;
   sourceId: string;
   observedAt: string | null;
+  marketContext: MaterialMoveMarketContext | null;
   status: ContinuousMoveAssessmentStatus | "UNAVAILABLE";
   hasMaterialMove: boolean;
   horizons: MaterialMoveHorizonReadModel[];
@@ -350,6 +356,7 @@ async function buildAssetReadModel(input: {
         seriesKey: input.seriesKey,
         sourceId: input.sourceId,
         observedAt: null,
+        marketContext: null,
         status: "UNAVAILABLE",
         hasMaterialMove: false,
         horizons: [],
@@ -371,6 +378,7 @@ async function buildAssetReadModel(input: {
       seriesKey: input.seriesKey,
       sourceId: input.sourceId,
       observedAt: assessment.targetEndObservedAt,
+      marketContext: materialMoveMarketContextFromObservation(target),
       status: assessment.status,
       hasMaterialMove: assessment.hasMaterialMove,
       horizons: compactHorizons(assessment.horizons),
@@ -388,6 +396,7 @@ async function buildAssetReadModel(input: {
       seriesKey: input.seriesKey,
       sourceId: input.sourceId,
       observedAt: null,
+      marketContext: null,
       status: "UNAVAILABLE",
       hasMaterialMove: false,
       horizons: [],

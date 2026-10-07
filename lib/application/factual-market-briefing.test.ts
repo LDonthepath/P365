@@ -635,6 +635,7 @@ test("BRF-002A composes the existing material MOVE evidence into a market-first 
           seriesKey: "btc.spot.usd",
           sourceId: "coingecko-market",
           observedAt: "2026-10-01T23:55:00.000Z",
+          marketContext: null,
           status: "MATERIAL_MOVE",
           hasMaterialMove: true,
           horizons: [{
@@ -762,6 +763,7 @@ test("BRF-002A composes the existing material MOVE evidence into a market-first 
           seriesKey: "gold.futures.usd",
           sourceId: "yahoo-finance",
           observedAt: "2026-10-01T23:55:00.000Z",
+          marketContext: null,
           status: "BELOW_MATERIALITY_THRESHOLD",
           hasMaterialMove: false,
           horizons: [{
@@ -977,6 +979,7 @@ test("BRF-002D resolves a quiet market without inventing an investigation", () =
           seriesKey: "btc.spot.usd",
           sourceId: "coingecko-market",
           observedAt: "2026-10-01T23:55:00.000Z",
+          marketContext: null,
           status: "BELOW_MATERIALITY_THRESHOLD",
           hasMaterialMove: false,
           horizons: [{
@@ -995,6 +998,7 @@ test("BRF-002D resolves a quiet market without inventing an investigation", () =
           seriesKey: "gold.futures.usd",
           sourceId: "yahoo-finance",
           observedAt: "2026-10-01T23:55:00.000Z",
+          marketContext: null,
           status: "BELOW_MATERIALITY_THRESHOLD",
           hasMaterialMove: false,
           horizons: [{
