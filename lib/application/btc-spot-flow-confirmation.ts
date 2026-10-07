@@ -28,6 +28,23 @@ function stableHash(value: unknown): string {
     .digest("hex");
 }
 
+function completedBoundaries(startAt: string, endAt: string): string[] | null {
+  const start = Date.parse(startAt);
+  const end = Date.parse(endAt);
+  const windowMs = 5 * 60 * 1000;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+
+  const first = Math.floor(start / windowMs) * windowMs + windowMs;
+  const last = Math.floor(end / windowMs) * windowMs;
+  if (first > last) return [];
+
+  const boundaries: string[] = [];
+  for (let current = first; current <= last; current += windowMs) {
+    boundaries.push(new Date(current).toISOString());
+  }
+  return boundaries;
+}
+
 function judgementFor(
   netTakerBaseVolumeBtc: number,
   direction: ConfirmationTarget["direction"],
@@ -67,11 +84,17 @@ export function buildBtcSpotFlowConfirmationContribution(input: {
     };
   }
 
+  const expectedBoundaries = completedBoundaries(input.spotFlow.startAt, input.spotFlow.endAt);
+  const observedBoundaries = new Set(input.spotFlow.windows.map((window) => window.observedAt));
   if (
     input.spotFlow.state !== "AVAILABLE_SYNCHRONOUS"
     || input.spotFlow.coverage !== "COMPLETE"
-    || input.spotFlow.expectedCompletedWindows < 1
-    || input.spotFlow.windows.length !== input.spotFlow.expectedCompletedWindows
+    || !expectedBoundaries
+    || expectedBoundaries.length < 1
+    || input.spotFlow.expectedCompletedWindows !== expectedBoundaries.length
+    || input.spotFlow.windows.length !== expectedBoundaries.length
+    || observedBoundaries.size !== expectedBoundaries.length
+    || expectedBoundaries.some((boundary) => !observedBoundaries.has(boundary))
   ) {
     return {
       status: "UNRESOLVED",
