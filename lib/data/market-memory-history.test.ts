@@ -90,10 +90,10 @@ function fakePostgrest(rows: StoredRow[]): typeof fetch {
       const payload = stored.payload as Partial<Observation>;
       if (payload.domain !== body.p_domain) return false;
       const metadata = payload.metadata ?? {};
-      const semanticKey = payload.identity?.seriesKey
-        ?? (typeof metadata.seriesId === "string" ? metadata.seriesId : null)
-        ?? (typeof metadata.metricId === "string" ? metadata.metricId : null);
-      if (semanticKey !== body.p_series_key) return false;
+      if (
+        metadata.seriesId !== body.p_series_key
+        && metadata.metricId !== body.p_series_key
+      ) return false;
       if (body.p_source_id !== null && payload.sourceId !== body.p_source_id) return false;
 
       const effective = Date.parse(stored.effective_at);
@@ -131,6 +131,14 @@ async function main(): Promise<void> {
       subject: "alternate label",
     })),
     row(observation("core-cpi", "MACRO", "CPILFESL", "2026-08-01T00:00:00.000Z", "2026-09-02T00:00:00.000Z")),
+    row(observation("identity-conflict", "MACRO", "CPIAUCSL", "2026-08-15T00:00:00.000Z", "2026-09-02T00:00:00.000Z", {
+      identity: {
+        version: "v1",
+        seriesKey: "CPILFESL",
+        measurementId: "measurement-v1-conflict",
+        revisionFingerprint: "b".repeat(64),
+      },
+    })),
     row(observation("btc", "ASSET", "btc.spot.usd", "2026-08-01T00:00:00.000Z", "2026-08-01T00:01:00.000Z")),
     row(observation("btc-other-source", "ASSET", "btc.spot.usd", "2026-08-02T00:00:00.000Z", "2026-08-02T00:01:00.000Z", {
       sourceId: "qualified-crypto-alternate",
@@ -200,6 +208,10 @@ async function main(): Promise<void> {
     ["gold"], "Yahoo semantic history");
   assertEqual(await repository.findHistory(query({ identity: { domain: "MACRO", seriesKey: "MISSING" } })), [], "missing history");
   assertEqual((await repository.findHistory(query({ identity: { domain: "MACRO", seriesKey: "CPILFESL" } }))).map((item) => item.id), ["core-cpi"], "series isolation");
+  await assertRejects(
+    "metadata candidate with conflicting canonical identity fails closed",
+    () => repository.findHistory(query({ observedAtOnOrAfter: "2026-08-15T00:00:00.000Z" })),
+  );
   const offsetIdentity = { domain: "OTHER" as const, seriesKey: "offset-order" };
   assertEqual((await repository.findHistory({ identity: offsetIdentity, order: "ASC", limit: 3 })).map((item) => item.id),
     ["offset-earlier", "tie-a", "tie-z"], "ASC uses timestamp instants then id, not lexical timestamp text");
