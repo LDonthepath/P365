@@ -54,46 +54,57 @@ function row(payload: unknown, recordType = "OBSERVATION", capturedAt = "2026-09
   };
 }
 
-function unquote(value: string): string {
-  return value.startsWith('"') && value.endsWith('"')
-    ? value.slice(1, -1).replaceAll('\\"', '"').replaceAll("\\\\", "\\")
-    : value;
-}
+type ObservationHistoryRpcBody = {
+  p_domain: string;
+  p_series_key: string;
+  p_source_id: string | null;
+  p_observed_at_on_or_after: string | null;
+  p_observed_at_on_or_before: string | null;
+  p_captured_at_on_or_before: string;
+  p_sort_desc: boolean;
+  p_limit: number;
+  p_offset: number;
+};
 
 function fakePostgrest(rows: StoredRow[]): typeof fetch {
-  return (async (input: string | URL | Request) => {
+  return (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
-    const params = url.searchParams;
-    const semanticMatch = params.get("or")?.match(/seriesId\.eq\.([^,]+),payload->metadata->>metricId\.eq\.([^\)]+)/);
-    const seriesKey = semanticMatch ? unquote(semanticMatch[1]) : "";
-    const domain = params.get("payload->>domain")?.replace(/^eq\./, "");
-    const sourceFilter = params.get("payload->>sourceId");
-    const sourceId = sourceFilter?.replace(/^eq\./, "");
-    const effectiveBounds = params.getAll("effective_at");
-    const direction = params.get("order")?.includes(".desc") ? -1 : 1;
-    const limit = Number(params.get("limit"));
-    const offset = Number(params.get("offset"));
+    if (!url.pathname.endsWith("/rest/v1/rpc/p365_observation_history_candidates_v1")) {
+      return new Response("unknown test endpoint", { status: 404 });
+    }
+
+    const body = JSON.parse(String(init?.body ?? "{}")) as ObservationHistoryRpcBody;
+    const direction = body.p_sort_desc ? -1 : 1;
+    const capturedThrough = Date.parse(body.p_captured_at_on_or_before);
+    const observedAfter = body.p_observed_at_on_or_after
+      ? Date.parse(body.p_observed_at_on_or_after)
+      : Number.NEGATIVE_INFINITY;
+    const observedBefore = body.p_observed_at_on_or_before
+      ? Date.parse(body.p_observed_at_on_or_before)
+      : Number.POSITIVE_INFINITY;
 
     const result = rows.filter((stored) => {
       if (stored.record_type !== "OBSERVATION") return false;
+      if (Date.parse(stored.captured_at) > capturedThrough) return false;
+
       const payload = stored.payload as Partial<Observation>;
-      if (payload.domain !== domain) return false;
+      if (payload.domain !== body.p_domain) return false;
       const metadata = payload.metadata ?? {};
-      if (metadata.seriesId !== seriesKey && metadata.metricId !== seriesKey) return false;
-      if (sourceFilter?.startsWith("eq.") && payload.sourceId !== unquote(sourceId ?? "")) return false;
-      for (const bound of effectiveBounds) {
-        const boundary = Date.parse(bound.slice(4));
-        const effective = Date.parse(stored.effective_at);
-        if (bound.startsWith("gte.") && effective < boundary) return false;
-        if (bound.startsWith("lte.") && effective > boundary) return false;
-      }
-      return true;
+      if (
+        metadata.seriesId !== body.p_series_key
+        && metadata.metricId !== body.p_series_key
+      ) return false;
+      if (body.p_source_id !== null && payload.sourceId !== body.p_source_id) return false;
+
+      const effective = Date.parse(stored.effective_at);
+      return effective >= observedAfter && effective <= observedBefore;
     }).sort((left, right) => {
       return direction * (
         Date.parse(left.effective_at) - Date.parse(right.effective_at)
         || left.id.localeCompare(right.id)
       );
-    }).slice(offset, offset + limit).map(({ id, effective_at, payload }) => ({ id, effective_at, payload }));
+    }).slice(body.p_offset, body.p_offset + body.p_limit)
+      .map(({ id, effective_at, payload }) => ({ id, effective_at, payload }));
 
     return new Response(JSON.stringify(result), { status: 200, headers: { "Content-Type": "application/json" } });
   }) as typeof fetch;
@@ -135,11 +146,11 @@ async function main(): Promise<void> {
     row(observation("tie-z", "OTHER", "offset-order", "2026-08-01T09:00:00+09:00", "2026-09-01T00:45:00+01:00")),
     row(observation("not-observation", "MACRO", "CPIAUCSL", "2026-09-01T00:00:00.000Z", "2026-09-01T00:01:00.000Z"), "EVIDENCE"),
   ];
-  const requests: string[] = [];
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
   const fakeFetch = fakePostgrest(rows);
   const repository = new SupabaseHistoricalObservationRepository({
     fetch: (async (input: string | URL | Request, init?: RequestInit) => {
-      requests.push(String(input));
+      requests.push({ url: String(input), init });
       return fakeFetch(input, init);
     }) as typeof fetch,
     config: () => ({ url: "https://example.supabase.co", key: "server-only-test-key" }),
@@ -155,13 +166,20 @@ async function main(): Promise<void> {
     "FRED history retains subject/id/source changes and excludes malformed/non-Observation rows");
   assertEqual((await repository.findHistory(query({ sourceId: "fred" }))).map((item) => item.id),
     ["fred-old", "fred-original", "fred-correction"], "optional provenance filter");
-  const sourceQuery = new URL(requests.at(-1)!).searchParams;
-  assertEqual(sourceQuery.get("payload->>sourceId"), "eq.fred", "sourceId uses raw PostgREST equality value");
+  const sourceRequest = requests.at(-1)!;
+  const sourceUrl = new URL(sourceRequest.url);
+  const sourceBody = JSON.parse(String(sourceRequest.init?.body ?? "{}")) as ObservationHistoryRpcBody;
+  assertEqual(sourceRequest.init?.method, "POST", "history adapter uses RPC POST");
   assertEqual(
-    sourceQuery.get("or"),
-    "(payload->metadata->>seriesId.eq.CPIAUCSL,payload->metadata->>metricId.eq.CPIAUCSL)",
-    "semantic series filter uses raw PostgREST equality values",
+    sourceUrl.pathname,
+    "/rest/v1/rpc/p365_observation_history_candidates_v1",
+    "history adapter uses indexed semantic-history RPC",
   );
+  assertEqual(sourceBody.p_domain, "MACRO", "RPC domain");
+  assertEqual(sourceBody.p_series_key, "CPIAUCSL", "RPC semantic series key");
+  assertEqual(sourceBody.p_source_id, "fred", "RPC optional provenance filter");
+  assertEqual(sourceBody.p_sort_desc, false, "RPC ascending transport order");
+  assertEqual(sourceBody.p_limit, 2, "RPC retains bounded candidate batching");
   assertEqual((await repository.findHistory(query({ sourceId: "fred" })))[2]?.identity?.version,
     "v1", "versioned and legacy Observation payloads remain readable together");
   assertEqual((await repository.findHistory(query({ sourceId: "fred" })))[1]?.quality,
