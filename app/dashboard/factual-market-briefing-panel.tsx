@@ -120,6 +120,13 @@ const RATES_POLICY_LABELS: Record<string, string> = {
   SOFR_IORB_SPREAD: "Spread SOFR−IORB",
 };
 
+const CREDIT_CONDITIONS_LABELS: Record<string, string> = {
+  BAMLH0A0HYM2: "US High Yield OAS",
+  BAMLC0A0CM: "US Investment Grade OAS",
+  VIXCLS: "VIX",
+  T10Y2Y: "Kurva Treasury 10Y−2Y",
+};
+
 const RATES_POLICY_QUALITY_LABELS: Record<string, string> = {
   FRESH: "TERBARU SAAT DIPEROLEH",
   STALE: "SUDAH LAMA SAAT DIPEROLEH",
@@ -477,9 +484,53 @@ function RatesPolicyBriefingLine({ point }: { point: BriefingRatesPolicyPoint })
   </span>;
 }
 
+type BriefingCreditConditionsPoint =
+  FactualMarketBriefing["creditConditions"]["items"][number];
+
+function creditConditionsValue(point: BriefingCreditConditionsPoint): string {
+  if (point.valueUnit === "PERCENT") return `${point.value.toFixed(2)}%`;
+  return new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(point.value);
+}
+
+function creditConditionsChange(
+  point: BriefingCreditConditionsPoint,
+  horizon: "1D" | "1W",
+): string {
+  const value = horizon === "1D" ? point.change1d : point.change1w;
+  if (value === null) return "belum cukup riwayat";
+  if (point.changeUnit === "BPS") {
+    return `${ratesPolicySigned(value, 1)} bps`;
+  }
+  return `${ratesPolicySigned(value, 2)} poin`;
+}
+
+function CreditConditionsBriefingItem({
+  point,
+}: {
+  point: BriefingCreditConditionsPoint;
+}) {
+  return <div className="plain-notice">
+    <strong>{CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}</strong>
+    <span>
+      {creditConditionsValue(point)}
+      {" · "}1 hari {creditConditionsChange(point, "1D")}
+      {" · "}1 minggu {creditConditionsChange(point, "1W")}
+    </span>
+    <span>
+      Observasi {dateOnly(point.observedAt)}
+      {" · "}{RATES_POLICY_QUALITY_LABELS[point.quality] ?? "FRESHNESS BELUM PASTI"}
+      {" · "}sumber {point.sourceId}
+    </span>
+  </div>;
+}
+
 export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefing }) {
   const moves = data.marketMoves;
   const ratesPolicy = data.ratesPolicy;
+  const creditConditions = data.creditConditions;
   const changed = data.whatChanged;
   const baselines = data.eventBaselines;
   const surprises = data.eventSurprises;
@@ -562,6 +613,35 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
             <strong>Rates & Policy belum cukup</strong>
             <span>{ratesPolicy.reason}</span>
+          </div>}
+    </div>
+
+    <div className="briefing-analysis-section" style={{ marginTop: "1.25rem" }}>
+      <div className="panel-label">
+        <span>CREDIT & FINANCIAL CONDITIONS</span>
+        <span>{creditConditions.evidenceStatus === "AVAILABLE" ? "FAKTA TERSEDIA" : "DATA BELUM CUKUP"}</span>
+      </div>
+      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada spread kredit, volatilitas, dan kurva?</h3>
+      <p className="lead-copy">
+        HY OAS, IG OAS, VIX, dan kurva Treasury 10Y−2Y dibaca sebagai kondisi finansial faktual.
+        Perubahan ditampilkan tanpa skor gabungan, label regime, atau kesimpulan arah Bitcoin/Gold.
+      </p>
+
+      {creditConditions.evidenceStatus === "AVAILABLE"
+        ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(245px,1fr))", gap: ".75rem", marginTop: "1rem" }}>
+            {creditConditions.items.map((point) =>
+              <CreditConditionsBriefingItem key={point.seriesKey} point={point} />
+            )}
+            {creditConditions.reason
+              ? <div className="plain-notice">
+                  <strong>Cakupan sebagian</strong>
+                  <span>{creditConditions.reason}</span>
+                </div>
+              : null}
+          </div>
+        : <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>Credit & Financial Conditions belum cukup</strong>
+            <span>{creditConditions.reason}</span>
           </div>}
     </div>
 

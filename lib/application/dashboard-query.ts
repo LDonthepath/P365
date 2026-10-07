@@ -15,6 +15,10 @@ import { buildBriefingConfirmation } from "./briefing-confirmation";
 import { buildNetLiquidityReadModel, type NetLiquidityReadModel } from "./net-liquidity";
 import { buildRatesInflationReadModel, type RatesInflationReadModel } from "./rates-inflation";
 import {
+  buildCreditFinancialConditionsReadModel,
+  type CreditFinancialConditionsReadModel,
+} from "./credit-financial-conditions";
+import {
   buildMacroCryptoGoldFactualContext,
   type MacroCryptoGoldFactualContext,
 } from "./mvp-factual-context";
@@ -35,6 +39,7 @@ export type DashboardData = NormalizedDashboardData & {
   durableHighImpactEvents: Event[];
   netLiquidity: NetLiquidityReadModel;
   ratesInflation: RatesInflationReadModel;
+  creditFinancialConditions: CreditFinancialConditionsReadModel;
   mvpFactualContext: MacroCryptoGoldFactualContext;
   stablecoinLiquidity: StablecoinLiquidityReadModel;
   btcEtfFlow: BtcEtfFlowReadModel;
@@ -212,6 +217,10 @@ export async function getDashboardData(): Promise<DashboardData> {
   const durableHighImpactEventBundlePromise = getDurableHighImpactEventBundle(asOf);
   const netLiquidityPromise = buildDashboardNetLiquidity(asOf);
   const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf);
+  const creditFinancialConditionsPromise = buildCreditFinancialConditionsReadModel(
+    dashboardHistoricalObservationRepository,
+    asOf,
+  );
   const mvpFactualContextPromise = buildMacroCryptoGoldFactualContext(
     dashboardHistoricalObservationRepository,
     asOf,
@@ -239,6 +248,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     durableHighImpactEventBundle,
     netLiquidity,
     ratesInflation,
+    creditFinancialConditions,
     mvpFactualContext,
     stablecoinLiquidity,
     btcEtfFlow,
@@ -254,6 +264,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     durableHighImpactEventBundlePromise,
     netLiquidityPromise,
     ratesInflationPromise,
+    creditFinancialConditionsPromise,
     mvpFactualContextPromise,
     stablecoinLiquidityPromise,
     btcEtfFlowPromise,
@@ -290,6 +301,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     upcomingHighImpactEvents: durableHighImpactEventBundle.display,
     materialMoveMonitor,
     ratesPolicy: ratesInflation,
+    creditConditions: creditFinancialConditions,
   });
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes
@@ -302,6 +314,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     durableHighImpactEvents: durableHighImpactEventBundle.display,
     netLiquidity,
     ratesInflation,
+    creditFinancialConditions,
     mvpFactualContext,
     stablecoinLiquidity,
     btcEtfFlow,
