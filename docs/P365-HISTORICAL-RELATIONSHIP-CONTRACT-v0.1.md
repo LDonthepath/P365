@@ -57,7 +57,7 @@ REL-002A reuses the exact historical samples already carried by the material MOV
 - existing MOVE-001B 36-hour historical window;
 - existing MOVE-001B minimum sample size of 120.
 
-The wrapper does not invent a second materiality threshold and does not resample a different target-history universe.
+The value 120 is retained only as **source MOVE calibration lineage**. REL-002A does not reuse it as proof of relationship statistical sufficiency. The wrapper does not invent a second materiality or relationship threshold and does not resample a different target-history universe.
 
 ### Cross-asset synchronization
 
@@ -84,19 +84,28 @@ Per target/companion/horizon calibration reports:
 
 - source MOVE historical sample count;
 - successfully paired sample count;
+- unpaired sample count;
+- paired coverage ratio;
+- count/share of target intervals that overlap another historical target interval;
 - same-direction count;
 - opposite-direction count;
 - flat count;
 - same-direction share among non-flat pairs;
 - Pearson correlation of signed percent changes.
 
-Pearson is the same shared numeric primitive used by REL-001. A pair is `MEASURED` only when the paired sample count meets the existing MOVE-001B minimum sample size and both transformed series have non-zero variance.
+Pearson is the same shared numeric primitive used by REL-001. A pair is `OBSERVED` when at least two paired signed changes exist and both transformed series have non-zero variance. `OBSERVED` means only that the descriptive statistic can be calculated; it does **not** mean the relationship is statistically sufficient, stable, independent, predictive, or qualified for directional use.
 
 ### Explicit non-decision
 
 REL-002A intentionally defines:
 
 `relationshipThreshold = NOT_DEFINED`
+
+`statisticalSufficiency = NOT_EVALUATED`
+
+`sampleIndependence = NOT_EVALUATED`
+
+`coverageLossAttribution = NOT_EVALUATED`
 
 and:
 
@@ -111,7 +120,9 @@ Therefore REL-002A does **not** convert a correlation or directional share into:
 - bullish / bearish interpretation;
 - continuation / reversal prediction.
 
-A later REL-002B checkpoint may qualify a directional relationship only after production calibration results are reviewed and an explicit non-guessed methodology is approved.
+REL-002A is currently a library primitive only. No dashboard, route, scheduler, job, or production runtime path invokes it, so this checkpoint does **not** claim that production calibration results exist.
+
+The next permitted step is a read-only diagnostic/presentation caller that exposes real point-in-time results, including pairing coverage and overlap diagnostics. A later REL-002B checkpoint may qualify a directional relationship only after those production observations are reviewed and an explicit non-guessed methodology for dependence, coverage, stability, and relationship qualification is approved.
 
 Every output retains:
 
@@ -125,7 +136,10 @@ and:
 
 REL-001 / REL-002A do not:
 
-- define a correlation-strength threshold;
+- define a correlation-strength threshold or statistical-significance threshold;
+- treat the MOVE-001B 120-sample requirement as relationship sufficiency;
+- claim overlapping historical windows are independent samples;
+- attribute missing cross-asset pairs to weekends, exchange sessions, outages, or provider behavior without separate evidence;
 - promote raw cross-asset co-movement into causality;
 - compute beta, lead/lag, regime, State, Risk, Intelligence, signals or execution;
 - add providers, persistence owners, schedulers, database schema or UI;
