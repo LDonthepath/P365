@@ -1,7 +1,7 @@
 # P365 Historical Relationship Evidence Contract v0.1
 
 **Checkpoint:** REL-001 + REL-002A  
-**Status:** REL-001 MERGED / REL-002A IMPLEMENTED — OWNER REVIEW PENDING  
+**Status:** REL-001 MERGED / REL-002A MERGED / REL-002A READ-ONLY PRESENTATION IMPLEMENTED — OWNER REVIEW PENDING  
 **Scope:** read-only, point-in-time historical relationship measurement and material-MOVE cross-asset calibration
 
 REL-001 measures reproducible historical association between two canonical Observation series. It does not infer causality, regime, expected direction, or trading meaning.
@@ -120,9 +120,11 @@ Therefore REL-002A does **not** convert a correlation or directional share into:
 - bullish / bearish interpretation;
 - continuation / reversal prediction.
 
-REL-002A is currently a library primitive only. No dashboard, route, scheduler, job, or production runtime path invokes it, so this checkpoint does **not** claim that production calibration results exist.
+REL-002A is invoked from the Material Move Monitor through a **lazy read-only server action** only when the user opens the historical cross-asset calibration detail for an asset that is already marked as a material move. Normal dashboard rendering does not execute REL-002A.
 
-The next permitted step is a read-only diagnostic/presentation caller that exposes real point-in-time results, including pairing coverage and overlap diagnostics. A later REL-002B checkpoint may qualify a directional relationship only after those production observations are reviewed and an explicit non-guessed methodology for dependence, coverage, stability, and relationship qualification is approved.
+The on-demand presentation exposes only compact descriptive statistics: correlation, paired/source sample counts, paired coverage, same-direction share, and target-window overlap share. Exact historical sample arrays remain server-side and are not serialized into the dashboard payload.
+
+This caller creates the first production-observable REL-002A output but does not change any qualification semantics. A later REL-002B checkpoint may qualify a directional relationship only after real production observations are reviewed and an explicit non-guessed methodology for dependence, coverage, stability, and relationship qualification is approved.
 
 Every output retains:
 
