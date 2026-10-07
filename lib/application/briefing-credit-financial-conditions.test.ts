@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as React from "react";
 import { createElement } from "react";
+
+(globalThis as typeof globalThis & { React?: typeof React }).React = React;
 import { renderToStaticMarkup } from "react-dom/server";
 import { FactualMarketBriefingPanel } from "../../app/dashboard/factual-market-briefing-panel";
 import type { CreditFinancialConditionsReadModel } from "./credit-financial-conditions";
