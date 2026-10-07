@@ -121,6 +121,8 @@ export function buildBtcSpotFlowConfirmationContribution(input: {
     if (
       !Number.isFinite(observed)
       || !Number.isFinite(retrieved)
+      || observed > cutoff
+      || retrieved < observed
       || retrieved > cutoff
       || !Number.isFinite(window.netTakerBaseVolumeBtc)
     ) {
