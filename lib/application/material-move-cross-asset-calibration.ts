@@ -61,10 +61,17 @@ export type MaterialMoveCrossAssetCalibrationPair = {
   targetSeriesKey: ContinuousMoveAssessment["seriesKey"];
   companionSeriesKey: string;
   horizonMs: number;
-  status: "MEASURED" | "INSUFFICIENT_DATA" | "UNKNOWN";
-  minimumSampleSize: typeof CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize;
+  status: "OBSERVED" | "INSUFFICIENT_DATA" | "UNKNOWN";
+  moveReferenceMinimumSampleSize: typeof CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize;
   sourceHistoricalSampleSize: number;
   pairedSampleSize: number;
+  unpairedSampleSize: number;
+  pairedCoverageRatio: number | null;
+  targetIntervalOverlapCount: number;
+  targetIntervalOverlapShare: number | null;
+  statisticalSufficiency: "NOT_EVALUATED";
+  sampleIndependence: "NOT_EVALUATED";
+  coverageLossAttribution: "NOT_EVALUATED";
   sameDirectionCount: number;
   oppositeDirectionCount: number;
   flatCount: number;
@@ -86,9 +93,11 @@ export type MaterialMoveCrossAssetCalibration = {
   methodology: {
     transformation: "SIGNED_PERCENT_CHANGE";
     historicalWindowMs: typeof CONTINUOUS_MOVE_CALIBRATION_V1.lookbackMs;
-    minimumSampleSize: typeof CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize;
+    moveReferenceMinimumSampleSize: typeof CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize;
     alignmentToleranceMs: typeof CROSS_ASSET_ALIGNMENT_TOLERANCE_MS;
     relationshipThreshold: "NOT_DEFINED";
+    statisticalSufficiency: "NOT_EVALUATED";
+    sampleIndependence: "NOT_EVALUATED";
   };
   pairs: MaterialMoveCrossAssetCalibrationPair[];
   causalAttribution: "NOT_EVALUATED";
@@ -332,6 +341,31 @@ function buildSamples(input: {
     || a.companionEndObservationId.localeCompare(b.companionEndObservationId));
 }
 
+function targetIntervalOverlapStats(
+  samples: MaterialMoveCrossAssetCalibrationSample[],
+): { count: number; share: number | null } {
+  if (!samples.length) return { count: 0, share: null };
+
+  const ordered = [...samples].sort((a, b) =>
+    a.targetStartObservedAt.localeCompare(b.targetStartObservedAt)
+    || a.targetEndObservedAt.localeCompare(b.targetEndObservedAt));
+
+  let latestEnd = Number.NEGATIVE_INFINITY;
+  let count = 0;
+  for (const sample of ordered) {
+    const start = timestamp(sample.targetStartObservedAt);
+    const end = timestamp(sample.targetEndObservedAt);
+    if (start === undefined || end === undefined) continue;
+    if (start < latestEnd) count += 1;
+    latestEnd = Math.max(latestEnd, end);
+  }
+
+  return {
+    count,
+    share: ordered.length ? count / ordered.length : null,
+  };
+}
+
 function measuredPair(input: {
   assessment: ContinuousMoveAssessment;
   horizon: ContinuousMoveHorizonAssessment;
@@ -352,20 +386,31 @@ function measuredPair(input: {
       rightValue: sample.companionSignedPercentChange,
     })),
   );
-  const enoughSamples =
-    input.samples.length >= CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize;
-  const status = enoughSamples && correlation !== undefined
-    ? "MEASURED" as const
+  const status = input.samples.length >= 2 && correlation !== undefined
+    ? "OBSERVED" as const
     : "INSUFFICIENT_DATA" as const;
+  const sourceHistoricalSampleSize = input.horizon.historicalSamples.length;
+  const pairedSampleSize = input.samples.length;
+  const unpairedSampleSize = Math.max(0, sourceHistoricalSampleSize - pairedSampleSize);
+  const overlap = targetIntervalOverlapStats(input.samples);
 
   return {
     targetSeriesKey: input.assessment.seriesKey,
     companionSeriesKey: input.companion.seriesKey,
     horizonMs: input.horizon.horizonMs,
     status,
-    minimumSampleSize: CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize,
-    sourceHistoricalSampleSize: input.horizon.historicalSamples.length,
-    pairedSampleSize: input.samples.length,
+    moveReferenceMinimumSampleSize: CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize,
+    sourceHistoricalSampleSize,
+    pairedSampleSize,
+    unpairedSampleSize,
+    pairedCoverageRatio: sourceHistoricalSampleSize
+      ? pairedSampleSize / sourceHistoricalSampleSize
+      : null,
+    targetIntervalOverlapCount: overlap.count,
+    targetIntervalOverlapShare: overlap.share,
+    statisticalSufficiency: "NOT_EVALUATED",
+    sampleIndependence: "NOT_EVALUATED",
+    coverageLossAttribution: "NOT_EVALUATED",
     sameDirectionCount,
     oppositeDirectionCount,
     flatCount,
@@ -375,11 +420,11 @@ function measuredPair(input: {
     correlation: correlation ?? null,
     alignmentToleranceMs: CROSS_ASSET_ALIGNMENT_TOLERANCE_MS,
     samples: input.samples,
-    reason: status === "MEASURED"
+    reason: status === "OBSERVED"
       ? null
-      : enoughSamples
-        ? "Paired signed changes do not have enough non-zero variance for Pearson correlation."
-        : "Paired cross-asset samples are below the existing MOVE-001B minimumSampleSize.",
+      : input.samples.length < 2
+        ? "Fewer than two paired cross-asset samples are available for factual relationship measurement."
+        : "Paired signed changes do not have enough non-zero variance for Pearson correlation.",
     causalAttribution: "NOT_EVALUATED",
   };
 }
@@ -395,9 +440,12 @@ async function calibratePair(input: {
     targetSeriesKey: input.assessment.seriesKey,
     companionSeriesKey: input.companion.seriesKey,
     horizonMs: input.horizon.horizonMs,
-    minimumSampleSize: CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize,
+    moveReferenceMinimumSampleSize: CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize,
     sourceHistoricalSampleSize: input.horizon.historicalSamples.length,
     alignmentToleranceMs: CROSS_ASSET_ALIGNMENT_TOLERANCE_MS,
+    statisticalSufficiency: "NOT_EVALUATED" as const,
+    sampleIndependence: "NOT_EVALUATED" as const,
+    coverageLossAttribution: "NOT_EVALUATED" as const,
     causalAttribution: "NOT_EVALUATED" as const,
   };
 
@@ -409,6 +457,10 @@ async function calibratePair(input: {
       ...base,
       status: "INSUFFICIENT_DATA",
       pairedSampleSize: 0,
+      unpairedSampleSize: input.horizon.historicalSamples.length,
+      pairedCoverageRatio: input.horizon.historicalSamples.length ? 0 : null,
+      targetIntervalOverlapCount: 0,
+      targetIntervalOverlapShare: null,
       sameDirectionCount: 0,
       oppositeDirectionCount: 0,
       flatCount: 0,
@@ -426,6 +478,10 @@ async function calibratePair(input: {
       ...base,
       status: "UNKNOWN",
       pairedSampleSize: 0,
+      unpairedSampleSize: input.horizon.historicalSamples.length,
+      pairedCoverageRatio: input.horizon.historicalSamples.length ? 0 : null,
+      targetIntervalOverlapCount: 0,
+      targetIntervalOverlapShare: null,
       sameDirectionCount: 0,
       oppositeDirectionCount: 0,
       flatCount: 0,
@@ -458,6 +514,10 @@ async function calibratePair(input: {
       ...base,
       status: "UNKNOWN",
       pairedSampleSize: 0,
+      unpairedSampleSize: input.horizon.historicalSamples.length,
+      pairedCoverageRatio: input.horizon.historicalSamples.length ? 0 : null,
+      targetIntervalOverlapCount: 0,
+      targetIntervalOverlapShare: null,
       sameDirectionCount: 0,
       oppositeDirectionCount: 0,
       flatCount: 0,
@@ -544,9 +604,11 @@ export async function calibrateMaterialMoveCrossAssetRelationships(input: {
     methodology: {
       transformation: "SIGNED_PERCENT_CHANGE" as const,
       historicalWindowMs: CONTINUOUS_MOVE_CALIBRATION_V1.lookbackMs,
-      minimumSampleSize: CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize,
+      moveReferenceMinimumSampleSize: CONTINUOUS_MOVE_CALIBRATION_V1.minimumSampleSize,
       alignmentToleranceMs: CROSS_ASSET_ALIGNMENT_TOLERANCE_MS,
       relationshipThreshold: "NOT_DEFINED" as const,
+      statisticalSufficiency: "NOT_EVALUATED" as const,
+      sampleIndependence: "NOT_EVALUATED" as const,
     },
     pairs,
     causalAttribution: "NOT_EVALUATED" as const,
