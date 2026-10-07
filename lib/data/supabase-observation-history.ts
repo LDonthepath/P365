@@ -7,6 +7,7 @@ type MarketMemoryPayloadRow = { id: string; effective_at: string; payload: Obser
 const DEFAULT_CANDIDATE_BATCH_SIZE = 250;
 const DEFAULT_MAX_CANDIDATE_SCAN = 5_000;
 const SUPABASE_REQUEST_TIMEOUT_MS = 10_000;
+const OBSERVATION_HISTORY_RPC = "p365_observation_history_candidates_v1";
 
 export type SupabaseHistoricalObservationRepositoryOptions = {
   fetch?: typeof fetch;
@@ -53,35 +54,42 @@ export class SupabaseHistoricalObservationRepository implements HistoricalObserv
   async findHistory(query: ObservationHistoryQuery): Promise<Observation[]> {
     const { retrievedThrough } = validateObservationHistoryQuery(query);
     const { url, key } = this.config();
-    const direction = query.order.toLowerCase();
     const capturedAtOnOrBefore = new Date().toISOString();
-    const baseParams = new URLSearchParams({
-      select: "id,effective_at,payload",
-      record_type: "eq.OBSERVATION",
-      "payload->>domain": `eq.${query.identity.domain}`,
-      or: `(payload->metadata->>seriesId.eq.${query.identity.seriesKey},payload->metadata->>metricId.eq.${query.identity.seriesKey})`,
-      captured_at: `lte.${capturedAtOnOrBefore}`,
-      // Transport pagination only: effective_at mirrors the authoritative
-      // observedAt instant and row id makes the immutable candidate order
-      // stable. Canonical retrievedAt/id ordering is applied below in JS.
-      order: `effective_at.${direction},id.${direction}`,
-    });
-    if (query.sourceId !== undefined) baseParams.set("payload->>sourceId", `eq.${query.sourceId}`);
-    if (query.observedAtOnOrAfter !== undefined) baseParams.set("effective_at", `gte.${new Date(query.observedAtOnOrAfter).toISOString()}`);
-    if (query.observedAtOnOrBefore !== undefined) baseParams.append("effective_at", `lte.${new Date(query.observedAtOnOrBefore).toISOString()}`);
+    const observedAtOnOrAfter = query.observedAtOnOrAfter === undefined
+      ? null
+      : new Date(query.observedAtOnOrAfter).toISOString();
+    const observedAtOnOrBefore = query.observedAtOnOrBefore === undefined
+      ? null
+      : new Date(query.observedAtOnOrBefore).toISOString();
 
     const observations: Observation[] = [];
     let offset = 0;
     while (offset < this.maxCandidateScan) {
       const batchSize = Math.min(this.candidateBatchSize, this.maxCandidateScan - offset);
-      const params = new URLSearchParams(baseParams);
-      params.set("limit", String(batchSize));
-      params.set("offset", String(offset));
-      const response = await this.fetcher(`${url}/rest/v1/market_memory?${params.toString()}`, {
-        headers: { apikey: key, Authorization: `Bearer ${key}` },
-        cache: "no-store",
-        signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
-      });
+      const response = await this.fetcher(
+        `${url}/rest/v1/rpc/${OBSERVATION_HISTORY_RPC}`,
+        {
+          method: "POST",
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            p_domain: query.identity.domain,
+            p_series_key: query.identity.seriesKey,
+            p_source_id: query.sourceId ?? null,
+            p_observed_at_on_or_after: observedAtOnOrAfter,
+            p_observed_at_on_or_before: observedAtOnOrBefore,
+            p_captured_at_on_or_before: capturedAtOnOrBefore,
+            p_sort_desc: query.order === "DESC",
+            p_limit: batchSize,
+            p_offset: offset,
+          }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
+        },
+      );
       if (!response.ok) {
         const detail = await response.text();
         throw new Error(`Supabase Observation history read failed (${response.status}): ${detail}`);
