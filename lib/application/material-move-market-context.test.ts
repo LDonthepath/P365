@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Observation } from "../domain/types";
-import { materialMoveMarketContextFromObservation } from "./material-move-monitor";
+import { materialMoveMarketContextFromObservation } from "./market-context";
 
 function observation(input: {
   id: string;
