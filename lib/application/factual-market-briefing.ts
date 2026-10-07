@@ -164,6 +164,7 @@ export type BriefingMarketMove = {
   seriesKey: MaterialMoveMonitorReadModel["assets"][number]["seriesKey"];
   sourceId: string;
   observedAt: string | null;
+  marketContext: MaterialMoveMonitorReadModel["assets"][number]["marketContext"];
   status: MaterialMoveMonitorReadModel["assets"][number]["status"];
   hasMaterialMove: boolean;
   horizons: MaterialMoveMonitorReadModel["assets"][number]["horizons"];
@@ -289,6 +290,7 @@ function composeMarketMoves(
     seriesKey: item.seriesKey,
     sourceId: item.sourceId,
     observedAt: item.observedAt,
+    marketContext: item.marketContext,
     status: item.status,
     hasMaterialMove: item.hasMaterialMove,
     horizons: item.horizons,
