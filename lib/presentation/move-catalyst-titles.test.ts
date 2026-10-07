@@ -101,7 +101,7 @@ test("all-screened candidates do not become missing coverage or zero raw candida
     assert.ok(html.includes("USD 84.250"));
     assert.ok(html.includes("+3.10% / 24 jam"));
     assert.ok(html.includes("Pergerakan intraday tidak biasa terdeteksi."));
-    assert.ok(html.includes("DETAIL PERGERAKAN & EVIDENCE"));
+    assert.ok(html.includes("DETAIL PERGERAKAN &amp; EVIDENCE"));
     assert.ok(html.includes("120 menit"));
     assert.ok(html.includes("1 kandidat berita tercatat"));
     assert.ok(html.includes("Tidak ada judul yang ditampilkan setelah penyaringan"));
