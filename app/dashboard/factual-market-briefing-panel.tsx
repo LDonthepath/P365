@@ -686,10 +686,10 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       <h3 style={{ margin: ".45rem 0 0" }}>Apa konteks rates & policy untuk Gold dan Bitcoin?</h3>
       <p className="lead-copy">
         Gold menampilkan real yield AS 10 tahun dan broad USD. Bitcoin menampilkan reserve balances
-        serta spread SOFR−IORB sebagai konteks likuiditas/funding. Pembanding utama mengikuti cadence
-        seri: observasi harian sebelumnya untuk seri harian dan observasi mingguan sebelumnya untuk
-        reserve balances. Penjelasan menerjemahkan arti indikator tanpa menetapkan sebab, regime,
-        atau arah pasar.
+        serta spread SOFR−IORB sebagai konteks likuiditas/funding. Pembanding utama mengikuti jadwal
+        pembaruan data: data harian dibanding observasi sebelumnya, sedangkan reserve balances
+        dibanding observasi mingguan sebelumnya. Penjelasan menerjemahkan arti indikator tanpa
+        menetapkan sebab, regime, atau arah pasar.
       </p>
 
       {ratesPolicy.evidenceStatus === "AVAILABLE"
