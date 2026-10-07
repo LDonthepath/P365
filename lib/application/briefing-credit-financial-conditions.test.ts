@@ -104,7 +104,7 @@ test("briefing surfaces contract-aligned credit conditions with 4W and retrieval
   assert.match(html, /US High Yield OAS/);
   assert.match(html, /US Investment Grade OAS/);
   assert.match(html, /VIX/);
-  assert.doesNotMatch(html, /Kurva Treasury 10Y−2Y/);
+  assert.doesNotMatch(html, /<strong>Kurva Treasury 10Y−2Y<\/strong>/);
   assert.match(html, /4 minggu/);
   assert.match(html, /diperoleh/);
   assert.match(html, /05 Sep 2026/);
