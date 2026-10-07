@@ -133,6 +133,35 @@ const RATES_POLICY_QUALITY_LABELS: Record<string, string> = {
   UNKNOWN: "KUALITAS BELUM PASTI",
 };
 
+function liquidityBillions(value: number): string {
+  return `${new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value)} miliar USD`;
+}
+
+function liquidityChange(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "Belum cukup riwayat";
+  return `${new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+    signDisplay: "exceptZero",
+  }).format(value)} miliar USD`;
+}
+
+function netLiquidityExplanation(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
+    return "Belum cukup riwayat sekitar satu minggu untuk menjelaskan perubahan proxy.";
+  }
+  if (value > 0) {
+    return "Proxy Net Liquidity meningkat. Secara aritmetika, aset Fed setelah dikurangi kas Treasury dan reverse repo lebih tinggi dibanding pembanding sekitar satu minggu. Ini menunjukkan likuiditas dolar yang lebih besar dalam proxy ini, bukan bukti dana langsung masuk ke Bitcoin dan bukan prediksi arah BTC.";
+  }
+  if (value < 0) {
+    return "Proxy Net Liquidity menurun. Secara aritmetika, aset Fed setelah dikurangi kas Treasury dan reverse repo lebih rendah dibanding pembanding sekitar satu minggu. Ini menunjukkan likuiditas dolar yang lebih kecil dalam proxy ini, bukan bukti dana langsung keluar dari Bitcoin dan bukan prediksi arah BTC.";
+  }
+  return "Proxy Net Liquidity tidak berubah terhadap pembanding sekitar satu minggu. Proxy ini tetap hanya menggambarkan aritmetika Fed assets dikurangi TGA dan reverse repo, bukan arus langsung ke Bitcoin.";
+}
+
 const MAX_MOVE_CATALYST_DETAILS = 3;
 
 function dateTime(value: string): string {
@@ -684,6 +713,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
   const moves = data.marketMoves;
   const ratesPolicy = data.ratesPolicy;
   const creditConditions = data.creditConditions;
+  const netLiquidity = data.netLiquidity;
   const changed = data.whatChanged;
   const baselines = data.eventBaselines;
   const surprises = data.eventSurprises;
@@ -700,7 +730,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           ? moves.materialMoveCount > 0
             ? `${moves.materialMoveCount} ALERT INTRADAY`
             : "TANPA ALERT INTRADAY"
-          : ratesPolicy.evidenceStatus === "AVAILABLE" || changed.evidenceStatus === "AVAILABLE"
+          : ratesPolicy.evidenceStatus === "AVAILABLE"
+              || netLiquidity.evidenceStatus === "AVAILABLE"
+              || changed.evidenceStatus === "AVAILABLE"
             ? "KONTEKS MAKRO TERSEDIA"
             : "DATA BELUM CUKUP"}
       </span>
@@ -771,6 +803,51 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
             <strong>Rates & Policy belum cukup</strong>
             <span>{ratesPolicy.reason}</span>
+          </div>}
+    </div>
+
+    <div className="briefing-analysis-section" style={{ marginTop: "1.25rem" }}>
+      <div className="panel-label">
+        <span>USD LIQUIDITY</span>
+        <span>{netLiquidity.evidenceStatus === "AVAILABLE" ? "PROXY FAKTUAL" : "DATA BELUM CUKUP"}</span>
+      </div>
+      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada likuiditas dolar AS?</h3>
+      <p className="lead-copy">
+        Net Liquidity memakai proxy aritmetika aset Federal Reserve dikurangi kas Treasury dan
+        reverse repo. Pembanding utama adalah sekitar satu minggu; sekitar empat minggu hanya
+        konteks tren. Proxy ini tidak mengukur arus dana langsung ke Bitcoin dan tidak menetapkan
+        arah Bitcoin, regime, atau hubungan sebab-akibat.
+      </p>
+
+      {netLiquidity.evidenceStatus === "AVAILABLE" && netLiquidity.latest
+        ? <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>Net Liquidity AS</strong>
+            <span>
+              {liquidityBillions(netLiquidity.latest.valueBillionsUsd)}
+              {" · "}Dibanding sekitar 1 minggu {liquidityChange(netLiquidity.change1wBillionsUsd)}
+              {netLiquidity.change1wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change1wFrom)}` : ""}
+            </span>
+            <span>Apa artinya: {netLiquidityExplanation(netLiquidity.change1wBillionsUsd)}</span>
+            <span>
+              Konteks sekitar 4 minggu: {liquidityChange(netLiquidity.change4wBillionsUsd)}
+              {netLiquidity.change4wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change4wFrom)}` : ""}
+            </span>
+            <span>
+              Komponen: aset Fed {liquidityBillions(netLiquidity.latest.fedAssetsBillionsUsd)}
+              {" · "}kas Treasury {liquidityBillions(netLiquidity.latest.treasuryCashBillionsUsd)}
+              {" · "}reverse repo {liquidityBillions(netLiquidity.latest.reverseRepoBillionsUsd)}
+            </span>
+            <span>
+              Observasi gabungan sampai {dateOnly(netLiquidity.latest.asOf)}
+              {" · "}kualitas komponen saat diperoleh: {RATES_POLICY_QUALITY_LABELS[netLiquidity.latest.quality] ?? "KUALITAS BELUM PASTI"}
+            </span>
+            {netLiquidity.reason
+              ? <span>{netLiquidity.reason}</span>
+              : null}
+          </div>
+        : <div className="plain-notice" style={{ marginTop: "1rem" }}>
+            <strong>Net Liquidity belum cukup</strong>
+            <span>{netLiquidity.reason}</span>
           </div>}
     </div>
 

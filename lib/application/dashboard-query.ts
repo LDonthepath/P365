@@ -302,6 +302,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     materialMoveMonitor,
     ratesPolicy: ratesInflation,
     creditConditions: creditFinancialConditions,
+    netLiquidity,
   });
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes

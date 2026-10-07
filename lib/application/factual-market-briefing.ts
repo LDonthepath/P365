@@ -22,6 +22,7 @@ import type { BriefingEventRepricingResult } from "./briefing-event-repricing";
 import type { BriefingConfirmationResult } from "./briefing-confirmation";
 import type { MaterialMoveMonitorReadModel } from "./material-move-monitor";
 import type { RatesInflationReadModel, RatesSeriesPoint } from "./rates-inflation";
+import type { NetLiquidityPoint, NetLiquidityReadModel } from "./net-liquidity";
 import type {
   CreditFinancialConditionsPoint,
   CreditFinancialConditionsReadModel,
@@ -210,6 +211,16 @@ export type FactualMarketBriefing = {
     items: CreditFinancialConditionsPoint[];
     reason: string | null;
   };
+  netLiquidity: {
+    evidenceStatus: BriefingEvidenceStatus;
+    reasoningStatus: BriefingReasoningStatus;
+    latest: NetLiquidityPoint | null;
+    change1wBillionsUsd: number | null;
+    change1wFrom: string | null;
+    change4wBillionsUsd: number | null;
+    change4wFrom: string | null;
+    reason: string | null;
+  };
   resolution: BriefingResolution;
   whatChanged: {
     evidenceStatus: BriefingEvidenceStatus;
@@ -260,6 +271,7 @@ type ComposeFactualMarketBriefingInput = {
   materialMoveMonitor?: MaterialMoveMonitorReadModel;
   ratesPolicy?: RatesInflationReadModel;
   creditConditions?: CreditFinancialConditionsReadModel;
+  netLiquidity?: NetLiquidityReadModel;
 };
 
 function observationSeriesId(observation: Observation): string | null {
@@ -376,6 +388,38 @@ function composeCreditConditions(
     reasoningStatus: "NOT_EVALUATED",
     items: result.series,
     reason: result.reason,
+  };
+}
+
+function composeNetLiquidity(
+  result: NetLiquidityReadModel | undefined,
+): FactualMarketBriefing["netLiquidity"] {
+  if (!result || result.status !== "OK") {
+    return {
+      evidenceStatus: "INSUFFICIENT",
+      reasoningStatus: "NOT_EVALUATED",
+      latest: null,
+      change1wBillionsUsd: null,
+      change1wFrom: null,
+      change4wBillionsUsd: null,
+      change4wFrom: null,
+      reason: result?.status === "UNAVAILABLE"
+        ? result.reason
+        : "Proxy Net Liquidity belum tersedia pada cutoff briefing.",
+    };
+  }
+
+  return {
+    evidenceStatus: "AVAILABLE",
+    reasoningStatus: "NOT_EVALUATED",
+    latest: result.latest,
+    change1wBillionsUsd: result.change1wBillionsUsd,
+    change1wFrom: result.change1wFrom,
+    change4wBillionsUsd: result.change4wBillionsUsd,
+    change4wFrom: result.change4wFrom,
+    reason: result.change1wBillionsUsd === null || !result.change1wFrom
+      ? "Riwayat sekitar satu minggu belum cukup untuk pembanding utama."
+      : null,
   };
 }
 
@@ -872,6 +916,7 @@ export function composeFactualMarketBriefing({
   materialMoveMonitor,
   ratesPolicy,
   creditConditions,
+  netLiquidity,
 }: ComposeFactualMarketBriefingInput): FactualMarketBriefing {
   const changes = Object.entries(baselines)
     .flatMap(([seriesId, baseline]) => {
@@ -914,6 +959,7 @@ export function composeFactualMarketBriefing({
     marketMoves,
     ratesPolicy: composeRatesPolicy(ratesPolicy),
     creditConditions: composeCreditConditions(creditConditions),
+    netLiquidity: composeNetLiquidity(netLiquidity),
     resolution: composeBriefingResolution({
       marketMoves,
       nextCatalyst,
