@@ -44,6 +44,36 @@ function hash(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
 }
 
+/**
+ * Shared REL Pearson primitive.
+ *
+ * This helper intentionally returns no interpretation threshold. Callers own
+ * sample qualification and may only use the numeric association after their
+ * own minimum-sample and temporal-alignment rules have passed.
+ */
+export function historicalRelationshipPearson(
+  points: Array<{ leftValue: number; rightValue: number }>,
+): number | undefined {
+  if (points.length < 2) return undefined;
+
+  const leftMean = points.reduce((sum, point) => sum + point.leftValue, 0) / points.length;
+  const rightMean = points.reduce((sum, point) => sum + point.rightValue, 0) / points.length;
+  let covariance = 0;
+  let leftVariance = 0;
+  let rightVariance = 0;
+
+  for (const point of points) {
+    const leftDelta = point.leftValue - leftMean;
+    const rightDelta = point.rightValue - rightMean;
+    covariance += leftDelta * rightDelta;
+    leftVariance += leftDelta * leftDelta;
+    rightVariance += rightDelta * rightDelta;
+  }
+
+  if (leftVariance <= 0 || rightVariance <= 0) return undefined;
+  return covariance / Math.sqrt(leftVariance * rightVariance);
+}
+
 export function buildHistoricalRelationshipEvidence(input: {
   methodology: HistoricalRelationshipMethodology;
   points: HistoricalRelationshipPoint[];
@@ -68,18 +98,9 @@ export function buildHistoricalRelationshipEvidence(input: {
     || a.rightObservationId.localeCompare(b.rightObservationId));
 
   const sampleSize = points.length;
-  let correlation: number | undefined;
-  if (sampleSize >= methodology.minimumSampleSize) {
-    const lx = points.reduce((s, p) => s + p.leftValue, 0) / sampleSize;
-    const ly = points.reduce((s, p) => s + p.rightValue, 0) / sampleSize;
-    let covariance = 0, vx = 0, vy = 0;
-    for (const p of points) {
-      const dx = p.leftValue - lx;
-      const dy = p.rightValue - ly;
-      covariance += dx * dy; vx += dx * dx; vy += dy * dy;
-    }
-    if (vx > 0 && vy > 0) correlation = covariance / Math.sqrt(vx * vy);
-  }
+  const correlation = sampleSize >= methodology.minimumSampleSize
+    ? historicalRelationshipPearson(points)
+    : undefined;
   const status: HistoricalRelationshipStatus =
     correlation === undefined ? "INSUFFICIENT_DATA" : "VALID";
 
