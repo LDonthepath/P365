@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
 
@@ -25,10 +26,31 @@ export function marketMemoryEffectiveAt(
   return (record as Context).createdAt;
 }
 
+function eventEvidenceSemanticFingerprint(evidence: Evidence): string {
+  const canonical = JSON.stringify([
+    evidence.sourceId,
+    evidence.kind,
+    evidence.subject,
+    evidence.content,
+    evidence.publishedAt ?? null,
+    evidence.releasedAt ?? null,
+    Object.entries(evidence.metadata ?? {}).sort(([left], [right]) => left.localeCompare(right)),
+  ]);
+  return createHash("sha256").update(canonical, "utf8").digest("hex");
+}
+
 export function marketMemoryDedupeKey(
   recordType: MarketMemoryRecordType,
   record: CanonicalRecord,
 ): string {
+  if (recordType === "EVIDENCE" && (record as Evidence).kind === "EVENT") {
+    const evidence = record as Evidence;
+    // EVIDENCE-EFF-001C: retrieval/capture time is availability, not a factual
+    // Event Evidence version. Keep one physical row for identical semantic
+    // content, while changed provider content remains append-only.
+    return `${recordType}:${record.id}:semantic-v1:${eventEvidenceSemanticFingerprint(evidence)}`;
+  }
+
   const effectiveAt = marketMemoryEffectiveAt(recordType, record);
   // FND-018A Observation IDs already encode a normalized measurement instant;
   // normalize the key timestamp too so equivalent date/offset serialization
