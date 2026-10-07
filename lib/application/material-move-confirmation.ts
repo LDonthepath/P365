@@ -83,6 +83,7 @@ export function buildMaterialMoveConfirmation(input: {
     || input.bundle.targetAsset !== "BTC"
     || input.bundle.targetSeriesKey !== "btc.spot.usd"
     || input.bundle.moveAssessmentId !== input.assessment.id
+    || input.bundle.asOf !== input.assessment.asOf
   ) {
     return {
       status: "INSUFFICIENT",
@@ -107,21 +108,28 @@ export function buildMaterialMoveConfirmation(input: {
   };
 
   const etf = btcEtfBackground(input.bundle);
-  const flow = etf?.data
+  const flow = etf?.data && etf.data.asOf === input.assessment.asOf
     ? buildBtcEtfFlowConfirmationContribution({ target, flow: etf.data })
     : {
         status: "UNRESOLVED" as const,
-        reason: etf?.reason ?? "No matured BTC ETF flow read model is available in the MOVE bundle.",
+        reason: etf?.data
+          ? "BTC ETF flow read model does not match the MOVE point-in-time cutoff."
+          : etf?.reason ?? "No matured BTC ETF flow read model is available in the MOVE bundle.",
       };
 
   const spotFlow = input.bundle.cryptoMarketStructure?.components
     .find((item) => item.component === "BTC_SPOT_FLOW")
     ?.spotFlow;
-  const marketStructure = spotFlow
+  const spotFlowMatchesWindow = spotFlow
+    && spotFlow.startAt === input.bundle.investigationWindow.startAt
+    && spotFlow.endAt === input.bundle.investigationWindow.endAt;
+  const marketStructure = spotFlowMatchesWindow
     ? buildBtcSpotFlowConfirmationContribution({ target, spotFlow })
     : {
         status: "UNRESOLVED" as const,
-        reason: "No replayable Binance BTCUSDT spot-flow evidence is available in the MOVE bundle.",
+        reason: spotFlow
+          ? "Binance BTCUSDT spot-flow coverage does not match the material-MOVE investigation window."
+          : "No replayable Binance BTCUSDT spot-flow evidence is available in the MOVE bundle.",
       };
 
   const contributions = [
