@@ -40,7 +40,7 @@ function spotFlow(input: {
   coverage?: MoveBtcSpotFlowEvidence["coverage"];
   retrievedAt?: string;
 } = {}): MoveBtcSpotFlowEvidence {
-  const nets = input.nets ?? [4, 6];
+  const nets = input.nets ?? Array.from({ length: 12 }, () => 1);
   const retrievedAt = input.retrievedAt ?? "2026-10-07T02:29:30.000Z";
   const windows = nets.map((net, index) => {
     const buy = 50 + net / 2;
@@ -48,7 +48,7 @@ function spotFlow(input: {
     return {
       evidenceId: "spot-flow-" + index,
       windowKey: "window-" + index,
-      observedAt: new Date(Date.parse("2026-10-07T02:20:00.000Z") + index * 300_000).toISOString(),
+      observedAt: new Date(Date.parse("2026-10-07T01:35:00.000Z") + index * 300_000).toISOString(),
       retrievedAt,
       totalBaseVolumeBtc: buy + sell,
       takerBuyBaseVolumeBtc: buy,
@@ -66,7 +66,7 @@ function spotFlow(input: {
     venue: "BINANCE",
     pair: "BTCUSDT",
     windowSeconds: 300,
-    startAt: "2026-10-07T02:15:00.000Z",
+    startAt: "2026-10-07T01:30:00.000Z",
     endAt: "2026-10-07T02:30:00.000Z",
     expectedCompletedWindows: windows.length,
     windows,
@@ -213,12 +213,12 @@ function bundle(input: {
 test("CONF-001D maps aggregate Binance taker flow to MARKET_STRUCTURE alignment", () => {
   const result = buildBtcSpotFlowConfirmationContribution({
     target: target("UP"),
-    spotFlow: spotFlow({ nets: [4, 6] }),
+    spotFlow: spotFlow(),
   });
 
   assert.equal(result.status, "QUALIFIED");
   if (result.status !== "QUALIFIED") return;
-  assert.equal(result.netTakerBaseVolumeBtc, 10);
+  assert.equal(result.netTakerBaseVolumeBtc, 12);
   assert.equal(result.contribution.evidenceClass, "MARKET_STRUCTURE");
   assert.equal(result.contribution.judgement, "SUPPORTING");
   assert.equal(result.contribution.knownAt, "2026-10-07T02:29:30.000Z");
@@ -246,7 +246,7 @@ test("CONF-001D produces CONFIRMING only when FLOW and MARKET_STRUCTURE independ
   const move = assessment();
   const result = buildMaterialMoveConfirmation({
     assessment: move,
-    bundle: bundle({ move, etfValue: 100_000_000, spot: spotFlow({ nets: [4, 6] }) }),
+    bundle: bundle({ move, etfValue: 100_000_000, spot: spotFlow() }),
   });
 
   assert.equal(result.status, "OK");
@@ -266,7 +266,7 @@ test("CONF-001D reports MIXED when ETF flow and synchronous taker flow disagree"
   const move = assessment();
   const result = buildMaterialMoveConfirmation({
     assessment: move,
-    bundle: bundle({ move, etfValue: -100_000_000, spot: spotFlow({ nets: [4, 6] }) }),
+    bundle: bundle({ move, etfValue: -100_000_000, spot: spotFlow() }),
   });
 
   assert.equal(result.status, "OK");
