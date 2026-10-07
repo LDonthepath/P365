@@ -462,23 +462,82 @@ function ratesPolicyValue(point: BriefingRatesPolicyPoint): string {
   }).format(point.value);
 }
 
-function ratesPolicyChange(point: BriefingRatesPolicyPoint, horizon: "1D" | "1W"): string {
-  const value = horizon === "1D" ? point.change1d : point.change1w;
-  if (value === null) {
-    return point.cadence === "WEEKLY" && horizon === "1D"
-      ? "tidak tersedia (data mingguan)"
-      : "belum cukup riwayat";
-  }
+function ratesPolicyChangeValue(point: BriefingRatesPolicyPoint, value: number): string {
   if (point.changeUnit === "BPS") return `${ratesPolicySigned(value, 1)} bps`;
   if (point.changeUnit === "USD_BILLIONS") return `${ratesPolicySigned(value, 1)} miliar USD`;
   return `${ratesPolicySigned(value, 2)}%`;
 }
 
+function ratesPolicyPrimaryComparison(
+  point: BriefingRatesPolicyPoint,
+): { value: number; from: string; cadenceLabel: string } | null {
+  if (point.cadence === "WEEKLY") {
+    return point.change1w !== null && point.change1wFrom
+      ? { value: point.change1w, from: point.change1wFrom, cadenceLabel: "observasi mingguan sebelumnya" }
+      : null;
+  }
+
+  return point.change1d !== null && point.change1dFrom
+    ? { value: point.change1d, from: point.change1dFrom, cadenceLabel: "observasi harian sebelumnya" }
+    : null;
+}
+
+function ratesPolicyExplanation(point: BriefingRatesPolicyPoint, change: number | null): string {
+  if (change === null) {
+    return "Belum cukup riwayat qualified untuk menjelaskan perubahan terhadap observasi sebelumnya.";
+  }
+
+  if (point.seriesKey === "DFII10") {
+    if (change > 0) {
+      return "Real yield AS 10 tahun naik. Imbal hasil riil Treasury meningkat, sehingga opportunity cost memegang aset tanpa kupon seperti emas juga meningkat. Ini konteks, bukan prediksi arah Gold.";
+    }
+    if (change < 0) {
+      return "Real yield AS 10 tahun turun. Imbal hasil riil Treasury menurun, sehingga opportunity cost memegang aset tanpa kupon seperti emas juga menurun. Ini konteks, bukan prediksi arah Gold.";
+    }
+    return "Real yield AS 10 tahun tidak berubah terhadap observasi sebelumnya.";
+  }
+
+  if (point.seriesKey === "DTWEXBGS") {
+    if (change > 0) {
+      return "Broad USD menguat terhadap keranjang mata uang mitra dagang. Ini menunjukkan kondisi dolar yang lebih kuat dan relevan sebagai konteks harga aset berdenominasi USD.";
+    }
+    if (change < 0) {
+      return "Broad USD melemah terhadap keranjang mata uang mitra dagang. Ini menunjukkan kondisi dolar yang lebih lemah dan relevan sebagai konteks harga aset berdenominasi USD.";
+    }
+    return "Broad USD tidak berubah terhadap observasi sebelumnya.";
+  }
+
+  if (point.seriesKey === "WRESBAL") {
+    if (change > 0) {
+      return "Reserve balances bertambah dibanding rilis mingguan sebelumnya. Cadangan bank di Federal Reserve meningkat; ini konteks likuiditas sistem, bukan ukuran dana yang langsung masuk ke Bitcoin.";
+    }
+    if (change < 0) {
+      return "Reserve balances berkurang dibanding rilis mingguan sebelumnya. Cadangan bank di Federal Reserve menurun; ini konteks likuiditas sistem, bukan ukuran dana yang langsung keluar dari Bitcoin.";
+    }
+    return "Reserve balances tidak berubah dibanding rilis mingguan sebelumnya.";
+  }
+
+  if (point.seriesKey === "SOFR_IORB_SPREAD") {
+    if (change > 0) {
+      return "Spread SOFR terhadap IORB melebar. Biaya funding overnight berjaminan bergerak lebih tinggi relatif terhadap bunga cadangan Fed; ini dapat menandai tekanan funding yang relatif lebih besar, tanpa menetapkan kondisi stress atau arah Bitcoin.";
+    }
+    if (change < 0) {
+      return "Spread SOFR terhadap IORB menyempit. Biaya funding overnight berjaminan bergerak lebih dekat ke bunga cadangan Fed; ini menunjukkan tekanan relatif yang lebih kecil pada spread tersebut, tanpa menetapkan regime atau arah Bitcoin.";
+    }
+    return "Spread SOFR terhadap IORB tidak berubah terhadap observasi sebelumnya.";
+  }
+
+  return "Perubahan dicatat sebagai konteks faktual tanpa interpretasi arah pasar.";
+}
+
 function RatesPolicyBriefingLine({ point }: { point: BriefingRatesPolicyPoint }) {
+  const comparison = ratesPolicyPrimaryComparison(point);
   return <span>
-    {RATES_POLICY_LABELS[point.seriesKey] ?? point.seriesKey}: {ratesPolicyValue(point)}
-    {" · "}1 hari {ratesPolicyChange(point, "1D")}
-    {" · "}1 minggu {ratesPolicyChange(point, "1W")}
+    <strong>{RATES_POLICY_LABELS[point.seriesKey] ?? point.seriesKey}</strong>: {ratesPolicyValue(point)}
+    {" · "}Dibanding {comparison
+      ? `${comparison.cadenceLabel} ${ratesPolicyChangeValue(point, comparison.value)} vs ${dateOnly(comparison.from)}`
+      : "observasi sebelumnya belum tersedia"}
+    {" · "}Apa artinya: {ratesPolicyExplanation(point, comparison?.value ?? null)}
     {" · "}{RATES_POLICY_QUALITY_LABELS[point.quality] ?? "FRESHNESS BELUM PASTI"}
   </span>;
 }
@@ -505,13 +564,47 @@ function creditConditionsChangeValue(
   return `${ratesPolicySigned(change.value, 2)} poin`;
 }
 
-function creditConditionsHorizon(
+function creditConditionsPreviousRelease(
   point: BriefingCreditConditionsPoint,
-  label: string,
-  change: BriefingCreditConditionsPoint["change1d"],
 ): string {
-  if (change === null) return `${label} tidak tersedia (endpoint pembanding tidak memenuhi policy)`;
-  return `${label} ${creditConditionsChangeValue(point, change)} vs ${dateOnly(change.predecessorObservedAt)}`;
+  const change = point.change1d;
+  if (change === null) return "observasi harian sebelumnya belum tersedia";
+  return `observasi harian sebelumnya ${creditConditionsChangeValue(point, change)} vs ${dateOnly(change.predecessorObservedAt)}`;
+}
+
+function creditConditionsExplanation(point: BriefingCreditConditionsPoint): string {
+  const change = point.change1d;
+  if (change === null) {
+    return "Belum cukup riwayat qualified untuk menjelaskan perubahan terhadap observasi sebelumnya.";
+  }
+
+  if (point.seriesKey === "BAMLH0A0HYM2") {
+    if (change.value > 0) {
+      return "Spread high-yield melebar. Investor meminta premi risiko lebih besar untuk utang berisiko, sehingga kondisi kredit high-yield menjadi lebih ketat dibanding observasi sebelumnya.";
+    }
+    if (change.value < 0) {
+      return "Spread high-yield menyempit. Premi risiko yang diminta investor menurun, sehingga kondisi kredit high-yield menjadi lebih longgar dibanding observasi sebelumnya.";
+    }
+    return "Spread high-yield tidak berubah dibanding observasi sebelumnya.";
+  }
+
+  if (point.seriesKey === "BAMLC0A0CM") {
+    if (change.value > 0) {
+      return "Spread investment-grade melebar. Premi risiko kredit korporasi berkualitas tinggi meningkat dibanding observasi sebelumnya.";
+    }
+    if (change.value < 0) {
+      return "Spread investment-grade menyempit. Premi risiko kredit korporasi berkualitas tinggi menurun dibanding observasi sebelumnya.";
+    }
+    return "Spread investment-grade tidak berubah dibanding observasi sebelumnya.";
+  }
+
+  if (change.value > 0) {
+    return "VIX naik. Implied volatility saham AS meningkat dibanding observasi sebelumnya; ini menunjukkan ekspektasi volatilitas yang lebih tinggi, bukan penyebab langsung pergerakan Bitcoin atau Gold.";
+  }
+  if (change.value < 0) {
+    return "VIX turun. Implied volatility saham AS menurun dibanding observasi sebelumnya; ini menunjukkan ekspektasi volatilitas yang lebih rendah, bukan penyebab langsung pergerakan Bitcoin atau Gold.";
+  }
+  return "VIX tidak berubah dibanding observasi sebelumnya.";
 }
 
 function CreditConditionsBriefingItem({
@@ -523,10 +616,9 @@ function CreditConditionsBriefingItem({
     <strong>{CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}</strong>
     <span>
       {creditConditionsValue(point)}
-      {" · "}{creditConditionsHorizon(point, "1 hari", point.change1d)}
-      {" · "}{creditConditionsHorizon(point, "1 minggu", point.change1w)}
-      {" · "}{creditConditionsHorizon(point, "4 minggu", point.change4w)}
+      {" · "}Dibanding {creditConditionsPreviousRelease(point)}
     </span>
+    <span>Apa artinya: {creditConditionsExplanation(point)}</span>
     <span>
       Observasi {dateOnly(point.observedAt)}
       {" · "}diperoleh {dateTime(point.retrievedAt)} WIB
@@ -594,8 +686,10 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       <h3 style={{ margin: ".45rem 0 0" }}>Apa konteks rates & policy untuk Gold dan Bitcoin?</h3>
       <p className="lead-copy">
         Gold menampilkan real yield AS 10 tahun dan broad USD. Bitcoin menampilkan reserve balances
-        serta spread SOFR−IORB sebagai konteks likuiditas/funding. Bagian ini hanya menyajikan fakta;
-        tidak menetapkan sebab, regime, atau arah pasar.
+        serta spread SOFR−IORB sebagai konteks likuiditas/funding. Pembanding utama mengikuti jadwal
+        pembaruan data: data harian dibanding observasi sebelumnya, sedangkan reserve balances
+        dibanding observasi mingguan sebelumnya. Penjelasan menerjemahkan arti indikator tanpa
+        menetapkan sebab, regime, atau arah pasar.
       </p>
 
       {ratesPolicy.evidenceStatus === "AVAILABLE"
@@ -630,10 +724,11 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         <span>CREDIT & FINANCIAL CONDITIONS</span>
         <span>{creditConditions.evidenceStatus === "AVAILABLE" ? "FAKTA TERSEDIA" : "DATA BELUM CUKUP"}</span>
       </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada spread kredit, volatilitas, dan kurva?</h3>
+      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada kredit dan volatilitas?</h3>
       <p className="lead-copy">
-        HY OAS, IG OAS, dan VIX dibaca sebagai kondisi finansial faktual. Kurva Treasury 10Y−2Y
-        tetap berada di Rates & Policy. Perubahan ditampilkan tanpa skor gabungan, label regime,
+        HY OAS, IG OAS, dan VIX dibandingkan dengan observasi harian sebelumnya yang qualified.
+        Setiap angka diterjemahkan ke arti finansialnya untuk pembaca non-teknis. Kurva Treasury
+        10Y−2Y tetap berada di Rates & Policy; tidak ada skor gabungan, label regime, klaim sebab,
         atau kesimpulan arah Bitcoin/Gold.
       </p>
 
