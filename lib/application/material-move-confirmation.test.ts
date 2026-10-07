@@ -23,7 +23,8 @@ import type {
   MoveEvidenceBundle,
 } from "./move-evidence-bundle";
 
-const AS_OF = "2026-10-07T02:30:00.000Z";
+const MOVE_END = "2026-10-07T02:30:00.000Z";
+const AS_OF = "2026-10-07T02:31:00.000Z";
 
 function target(direction: "UP" | "DOWN") {
   return {
@@ -41,7 +42,7 @@ function spotFlow(input: {
   retrievedAt?: string;
 } = {}): MoveBtcSpotFlowEvidence {
   const nets = input.nets ?? Array.from({ length: 12 }, () => 1);
-  const retrievedAt = input.retrievedAt ?? "2026-10-07T02:29:30.000Z";
+  const retrievedAt = input.retrievedAt ?? "2026-10-07T02:30:30.000Z";
   const windows = nets.map((net, index) => {
     const buy = 50 + net / 2;
     const sell = 50 - net / 2;
@@ -102,8 +103,8 @@ function materialHorizon(
     status: "MATERIAL_MOVE",
     targetStartObservationId: "btc-start-" + horizonMs,
     targetEndObservationId: "btc-end",
-    targetStartObservedAt: new Date(Date.parse(AS_OF) - horizonMs).toISOString(),
-    targetEndObservedAt: AS_OF,
+    targetStartObservedAt: new Date(Date.parse(MOVE_END) - horizonMs).toISOString(),
+    targetEndObservedAt: MOVE_END,
     alignmentErrorMs: 0,
     direction,
     signedPercentChange,
@@ -130,7 +131,7 @@ function assessment(
     sourceId: "coingecko-market",
     asOf: AS_OF,
     targetEndObservationId: "btc-end",
-    targetEndObservedAt: AS_OF,
+    targetEndObservedAt: MOVE_END,
     status: "MATERIAL_MOVE",
     hasMaterialMove: true,
     horizons: directions.map((item) => materialHorizon(item.horizonMs, item.direction)),
@@ -221,7 +222,7 @@ test("CONF-001D maps aggregate Binance taker flow to MARKET_STRUCTURE alignment"
   assert.equal(result.netTakerBaseVolumeBtc, 12);
   assert.equal(result.contribution.evidenceClass, "MARKET_STRUCTURE");
   assert.equal(result.contribution.judgement, "SUPPORTING");
-  assert.equal(result.contribution.knownAt, "2026-10-07T02:29:30.000Z");
+  assert.equal(result.contribution.knownAt, "2026-10-07T02:30:30.000Z");
 });
 
 test("CONF-001D fails closed when Binance spot-flow coverage is incomplete", () => {
@@ -236,7 +237,7 @@ test("CONF-001D fails closed when Binance spot-flow coverage is incomplete", () 
 test("CONF-001D refuses spot-flow evidence learned after the target cutoff", () => {
   const result = buildBtcSpotFlowConfirmationContribution({
     target: target("UP"),
-    spotFlow: spotFlow({ retrievedAt: "2026-10-07T02:31:00.000Z" }),
+    spotFlow: spotFlow({ retrievedAt: "2026-10-07T02:31:30.000Z" }),
   });
 
   assert.equal(result.status, "UNRESOLVED");
