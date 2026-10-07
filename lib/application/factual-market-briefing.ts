@@ -22,6 +22,10 @@ import type { BriefingEventRepricingResult } from "./briefing-event-repricing";
 import type { BriefingConfirmationResult } from "./briefing-confirmation";
 import type { MaterialMoveMonitorReadModel } from "./material-move-monitor";
 import type { RatesInflationReadModel, RatesSeriesPoint } from "./rates-inflation";
+import type {
+  CreditFinancialConditionsPoint,
+  CreditFinancialConditionsReadModel,
+} from "./credit-financial-conditions";
 
 const CHANGE_PRIORITY = ["DGS2", "DGS10", "DFII10", "T10YIE", "T10Y2Y"] as const;
 const MAX_VISIBLE_CHANGES = 4;
@@ -199,6 +203,12 @@ export type FactualMarketBriefing = {
     bitcoin: RatesSeriesPoint[];
     reason: string | null;
   };
+  creditConditions: {
+    evidenceStatus: BriefingEvidenceStatus;
+    reasoningStatus: BriefingReasoningStatus;
+    items: CreditFinancialConditionsPoint[];
+    reason: string | null;
+  };
   resolution: BriefingResolution;
   whatChanged: {
     evidenceStatus: BriefingEvidenceStatus;
@@ -248,6 +258,7 @@ type ComposeFactualMarketBriefingInput = {
   upcomingHighImpactEvents?: Event[];
   materialMoveMonitor?: MaterialMoveMonitorReadModel;
   ratesPolicy?: RatesInflationReadModel;
+  creditConditions?: CreditFinancialConditionsReadModel;
 };
 
 function observationSeriesId(observation: Observation): string | null {
@@ -341,6 +352,28 @@ function composeRatesPolicy(
       : available > 0
         ? "Sebagian fakta Rates & Policy belum tersedia; briefing mempertahankan gap tersebut."
         : "Fakta Rates & Policy untuk Gold dan Bitcoin belum tersedia pada cutoff briefing.",
+  };
+}
+
+function composeCreditConditions(
+  result: CreditFinancialConditionsReadModel | undefined,
+): FactualMarketBriefing["creditConditions"] {
+  if (!result || result.status !== "OK") {
+    return {
+      evidenceStatus: "INSUFFICIENT",
+      reasoningStatus: "NOT_EVALUATED",
+      items: [],
+      reason: result?.status === "UNAVAILABLE"
+        ? result.reason
+        : "Fakta Credit & Financial Conditions belum tersedia pada cutoff briefing.",
+    };
+  }
+
+  return {
+    evidenceStatus: result.series.length > 0 ? "AVAILABLE" : "INSUFFICIENT",
+    reasoningStatus: "NOT_EVALUATED",
+    items: result.series,
+    reason: result.reason,
   };
 }
 
@@ -836,6 +869,7 @@ export function composeFactualMarketBriefing({
   upcomingHighImpactEvents,
   materialMoveMonitor,
   ratesPolicy,
+  creditConditions,
 }: ComposeFactualMarketBriefingInput): FactualMarketBriefing {
   const changes = Object.entries(baselines)
     .flatMap(([seriesId, baseline]) => {
@@ -877,6 +911,7 @@ export function composeFactualMarketBriefing({
     asOf,
     marketMoves,
     ratesPolicy: composeRatesPolicy(ratesPolicy),
+    creditConditions: composeCreditConditions(creditConditions),
     resolution: composeBriefingResolution({
       marketMoves,
       nextCatalyst,
