@@ -738,9 +738,32 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       </span>
     </div>
 
+    <nav className="briefing-flow" aria-label="Urutan baca Market Briefing">
+      <a href="#briefing-market-state-title">
+        <span>01 · PASAR SEKARANG</span>
+        <strong>{moves.evidenceStatus === "AVAILABLE" ? "TERSEDIA" : "BELUM CUKUP"}</strong>
+      </a>
+      <a href="#briefing-rates-policy">
+        <span>02 · RATES &amp; POLICY</span>
+        <strong>{ratesPolicy.evidenceStatus === "AVAILABLE" ? "TERSEDIA" : "BELUM CUKUP"}</strong>
+      </a>
+      <a href="#briefing-usd-liquidity">
+        <span>03 · USD LIQUIDITY</span>
+        <strong>{netLiquidity.evidenceStatus === "AVAILABLE" ? "TERSEDIA" : "BELUM CUKUP"}</strong>
+      </a>
+      <a href="#briefing-credit-conditions">
+        <span>04 · CREDIT</span>
+        <strong>{creditConditions.evidenceStatus === "AVAILABLE" ? "TERSEDIA" : "BELUM CUKUP"}</strong>
+      </a>
+      <a href="#briefing-macro-background">
+        <span>05 · LATAR MAKRO</span>
+        <strong>{changed.evidenceStatus === "AVAILABLE" ? "TERSEDIA" : "BELUM CUKUP"}</strong>
+      </a>
+    </nav>
+
     <div className="change-layer-grid">
       <div>
-        <h2 id="briefing-market-state-title">Apa yang bergerak sekarang?</h2>
+        <h2 id="briefing-market-state-title">01 · Apa yang bergerak sekarang?</h2>
         <p className="lead-copy">
           Harga dan perubahan utama Bitcoin/Gold ditampilkan lebih dulu. P365 memberi alert
           bila detektor intraday menemukan gerakan yang tidak biasa secara historis; detail
@@ -765,9 +788,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           <span>{moves.reason}</span>
         </div>}
 
-    <div className="briefing-analysis-section" style={{ marginTop: "1.25rem" }}>
+    <div id="briefing-rates-policy" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
       <div className="panel-label">
-        <span>RATES & POLICY</span>
+        <span>02 · RATES & POLICY</span>
         <span>{ratesPolicy.evidenceStatus === "AVAILABLE" ? "FAKTA TERSEDIA" : "DATA BELUM CUKUP"}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apa konteks rates & policy untuk Gold dan Bitcoin?</h3>
@@ -806,9 +829,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div className="briefing-analysis-section" style={{ marginTop: "1.25rem" }}>
+    <div id="briefing-usd-liquidity" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
       <div className="panel-label">
-        <span>USD LIQUIDITY</span>
+        <span>03 · USD LIQUIDITY</span>
         <span>{netLiquidity.evidenceStatus === "AVAILABLE" ? "PROXY FAKTUAL" : "DATA BELUM CUKUP"}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada likuiditas dolar AS?</h3>
@@ -851,9 +874,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div className="briefing-analysis-section" style={{ marginTop: "1.25rem" }}>
+    <div id="briefing-credit-conditions" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
       <div className="panel-label">
-        <span>CREDIT & FINANCIAL CONDITIONS</span>
+        <span>04 · CREDIT & FINANCIAL CONDITIONS</span>
         <span>{creditConditions.evidenceStatus === "AVAILABLE" ? "FAKTA TERSEDIA" : "DATA BELUM CUKUP"}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada kredit dan volatilitas?</h3>
@@ -882,9 +905,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div className="briefing-analysis-section" style={{ marginTop: "1.25rem" }}>
+    <div id="briefing-macro-background" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
       <div className="panel-label">
-        <span>LATAR MAKRO</span>
+        <span>05 · LATAR MAKRO</span>
         <span>{changed.evidenceStatus === "AVAILABLE" ? "DATA TERSEDIA" : "DATA BELUM CUKUP"}</span>
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah di konteks makro?</h3>
