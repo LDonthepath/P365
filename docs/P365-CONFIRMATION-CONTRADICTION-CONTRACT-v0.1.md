@@ -252,3 +252,65 @@ The output remains:
 - non-prescriptive;
 - independent of State / Regime / Risk / Intelligence;
 - independent of trading recommendation, sizing, and execution.
+
+
+## CONF-001D — Continuous BTC material-move alignment
+
+CONF-001D extends the existing non-causal CONF-001A composition policy to the
+continuous market-first BTC path.
+
+The checkpoint reuses only evidence already present in the MOVE-002B bundle:
+
+- `FLOW` — matured US spot BTC ETF daily net flow, through the existing
+  CONF-001B adapter;
+- `MARKET_STRUCTURE` — durable Binance BTCUSDT completed 5-minute taker-flow
+  windows covering the exact material-MOVE investigation window.
+
+### BTC material-move target
+
+The target is eligible only when:
+
+- MOVE-001C status is `MATERIAL_MOVE`;
+- the target series is canonical `btc.spot.usd`;
+- all material horizons that contribute to the target agree on one observed
+  direction, UP or DOWN;
+- the evidence bundle belongs to the same MOVE assessment.
+
+If material horizons disagree on direction, CONF-001D fails closed rather than
+manufacturing one target direction.
+
+### Binance taker-flow methodology
+
+The MARKET_STRUCTURE adapter requires complete replayable 5-minute coverage for
+the MOVE window. It sums provider-native `netTakerBaseVolumeBtc` across those
+completed windows:
+
+- positive aggregate net taker volume + BTC UP → SUPPORTING;
+- negative aggregate net taker volume + BTC DOWN → SUPPORTING;
+- opposite combinations → CONTRADICTING;
+- exactly zero aggregate net taker volume → NEUTRAL.
+
+No magnitude threshold is introduced. The sign is used only for factual
+directional alignment; it does not classify flow strength.
+
+Every included window must be knowable by the MOVE assessment cutoff. Partial,
+missing, invalid, or later-known coverage is UNRESOLVED.
+
+### Composition
+
+When both BTC ETF FLOW and Binance MARKET_STRUCTURE are directionally qualified,
+CONF-001A can resolve two independent evidence classes as CONFIRMING,
+CONTRADICTING, or MIXED. If fewer than two directional classes are available,
+the result remains INSUFFICIENT_EVIDENCE.
+
+The Market Briefing may surface this alignment result, but must retain:
+
+`causalAttribution = NOT_EVALUATED`
+
+CONF-001D does not claim that ETF flow or taker flow caused the move. It does not
+predict continuation/reversal and does not create a trading signal.
+
+### Runtime boundary
+
+CONF-001D adds no provider call, repository query, durable write, scheduler,
+threshold, State, Regime, Risk, Intelligence, sizing, or execution behavior.
