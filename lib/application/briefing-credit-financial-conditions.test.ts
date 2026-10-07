@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { FactualMarketBriefingPanel } from "../../app/dashboard/factual-market-briefing-panel";
 import type { CreditFinancialConditionsReadModel } from "./credit-financial-conditions";
 import { composeFactualMarketBriefing } from "./factual-market-briefing";
+import type { RatesInflationReadModel } from "./rates-inflation";
 
 const AS_OF = "2026-10-07T11:30:00.000Z";
 
@@ -82,11 +83,76 @@ const creditConditions: CreditFinancialConditionsReadModel = {
   ],
 };
 
-test("briefing surfaces contract-aligned credit conditions with 4W and retrieval lineage", () => {
+
+const ratesPolicy: RatesInflationReadModel = {
+  status: "OK",
+  sep: { status: "UNAVAILABLE", reason: "SEP tidak diperlukan untuk fixture ini." },
+  series: [
+    {
+      seriesKey: "DFII10",
+      value: 2.92,
+      valueUnit: "PERCENT",
+      observedAt: "2026-10-02",
+      retrievedAt: "2026-10-05T20:00:00.000Z",
+      quality: "FRESH",
+      cadence: "DAILY",
+      change1d: 4,
+      change1dFrom: "2026-10-01",
+      change1w: 5,
+      change1wFrom: "2026-09-25",
+      changeUnit: "BPS",
+    },
+    {
+      seriesKey: "DTWEXBGS",
+      value: 121.3848,
+      valueUnit: "INDEX",
+      observedAt: "2026-10-02",
+      retrievedAt: "2026-10-05T20:00:00.000Z",
+      quality: "FRESH",
+      cadence: "DAILY",
+      change1d: -0.33,
+      change1dFrom: "2026-10-01",
+      change1w: 0.73,
+      change1wFrom: "2026-09-25",
+      changeUnit: "PERCENT",
+    },
+    {
+      seriesKey: "WRESBAL",
+      value: 2948.09,
+      valueUnit: "USD_BILLIONS",
+      observedAt: "2026-09-30",
+      retrievedAt: "2026-10-01T21:00:00.000Z",
+      quality: "FRESH",
+      cadence: "WEEKLY",
+      change1d: null,
+      change1dFrom: null,
+      change1w: 48.09,
+      change1wFrom: "2026-09-23",
+      changeUnit: "USD_BILLIONS",
+    },
+    {
+      seriesKey: "SOFR_IORB_SPREAD",
+      value: -2,
+      valueUnit: "BPS",
+      observedAt: "2026-10-02",
+      retrievedAt: "2026-10-05T12:00:00.000Z",
+      quality: "FRESH",
+      cadence: "DAILY",
+      change1d: 1,
+      change1dFrom: "2026-10-01",
+      change1w: -2,
+      change1wFrom: "2026-09-25",
+      changeUnit: "BPS",
+    },
+  ],
+};
+
+test("briefing explains factual rates and credit changes using cadence-aware primary comparisons", () => {
   const result = composeFactualMarketBriefing({
     baselines: {},
     observations: [],
     asOf: AS_OF,
+    ratesPolicy,
     creditConditions,
   });
 
@@ -105,9 +171,14 @@ test("briefing surfaces contract-aligned credit conditions with 4W and retrieval
   assert.match(html, /US Investment Grade OAS/);
   assert.match(html, /VIX/);
   assert.doesNotMatch(html, /<strong>Kurva Treasury 10Y−2Y<\/strong>/);
-  assert.match(html, /4 minggu/);
+  assert.match(html, /Dibanding observasi harian sebelumnya/);
+  assert.match(html, /Dibanding observasi mingguan sebelumnya/);
+  assert.match(html, /Apa artinya:/);
+  assert.match(html, /Spread high-yield melebar/);
+  assert.match(html, /Real yield AS 10 tahun naik/);
+  assert.match(html, /Reserve balances bertambah/);
+  assert.doesNotMatch(html, /4 minggu/);
   assert.match(html, /diperoleh/);
-  assert.match(html, /04 Sep 2026/);
   assert.match(html, /diperoleh 06 Okt 2026/);
 
   const normalized = html.toLowerCase();
