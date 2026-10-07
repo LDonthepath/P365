@@ -1,7 +1,10 @@
+import { MACRO_SERIES_REGISTRY, type MacroSeriesDefinition } from "../data/macro-registry";
+import { qualityFromMacroCadence } from "../domain/freshness";
 import type { DataQuality, Observation } from "../domain/types";
 import type { HistoricalObservationRepository } from "../repositories/types";
 
 const DAY = 24 * 60 * 60 * 1000;
+const FOUR_WEEKS = 28 * DAY;
 
 const DEFINITIONS = [
   {
@@ -22,12 +25,6 @@ const DEFINITIONS = [
     valueUnit: "INDEX",
     changeUnit: "INDEX_POINTS",
   },
-  {
-    seriesKey: "T10Y2Y",
-    domain: "MACRO",
-    valueUnit: "PERCENT",
-    changeUnit: "BPS",
-  },
 ] as const;
 
 export type CreditFinancialConditionsSeriesKey =
@@ -35,18 +32,29 @@ export type CreditFinancialConditionsSeriesKey =
 export type CreditFinancialConditionsValueUnit = "PERCENT" | "INDEX";
 export type CreditFinancialConditionsChangeUnit = "BPS" | "INDEX_POINTS";
 
+export type CreditFinancialConditionsChange = {
+  targetAt: string;
+  predecessorObservationId: string;
+  predecessorValue: number;
+  predecessorObservedAt: string;
+  predecessorRetrievedAt: string;
+  targetGapMs: number;
+  value: number;
+};
+
 export type CreditFinancialConditionsPoint = {
   seriesKey: CreditFinancialConditionsSeriesKey;
+  observationId: string;
   value: number;
   valueUnit: CreditFinancialConditionsValueUnit;
   observedAt: string;
   retrievedAt: string;
   sourceId: string;
-  quality: DataQuality;
-  change1d: number | null;
-  change1dFrom: string | null;
-  change1w: number | null;
-  change1wFrom: string | null;
+  acquisitionQuality: DataQuality;
+  freshness: DataQuality;
+  change1d: CreditFinancialConditionsChange | null;
+  change1w: CreditFinancialConditionsChange | null;
+  change4w: CreditFinancialConditionsChange | null;
   changeUnit: CreditFinancialConditionsChangeUnit;
 };
 
@@ -62,6 +70,12 @@ export type CreditFinancialConditionsReadModel =
     };
 
 type Definition = (typeof DEFINITIONS)[number];
+
+function registryDefinition(
+  seriesKey: CreditFinancialConditionsSeriesKey,
+): MacroSeriesDefinition | null {
+  return MACRO_SERIES_REGISTRY.find((item) => item.seriesId === seriesKey) ?? null;
+}
 
 function semanticSeriesKey(observation: Observation): string | null {
   const seriesId = observation.metadata?.seriesId;
@@ -90,18 +104,45 @@ function latestOnOrBefore(
     )[0] ?? null;
 }
 
-function change(
+function cadenceFreshness(
+  observation: Observation,
+  definition: MacroSeriesDefinition,
+  evaluatedAt: string,
+): DataQuality {
+  return qualityFromMacroCadence({
+    observationDate: observation.observedAt.slice(0, 10),
+    frequency: definition.frequency,
+    toleranceMs: definition.freshnessMs,
+    evaluatedAt,
+  });
+}
+
+function qualifiedChange(
   definition: Definition,
+  registry: MacroSeriesDefinition,
   latestValue: number,
   predecessor: Observation | null,
-): number | null {
+  targetAtMs: number,
+): CreditFinancialConditionsChange | null {
   const predecessorValue = numericValue(predecessor);
-  if (predecessorValue === null) return null;
+  if (!predecessor || predecessorValue === null) return null;
 
-  if (definition.changeUnit === "BPS") {
-    return (latestValue - predecessorValue) * 100;
-  }
-  return latestValue - predecessorValue;
+  const targetAt = new Date(targetAtMs).toISOString();
+  if (cadenceFreshness(predecessor, registry, targetAt) !== "FRESH") return null;
+
+  const predecessorAt = Date.parse(predecessor.observedAt);
+  if (!Number.isFinite(predecessorAt) || predecessorAt > targetAtMs) return null;
+
+  const raw = latestValue - predecessorValue;
+  return {
+    targetAt,
+    predecessorObservationId: predecessor.id,
+    predecessorValue,
+    predecessorObservedAt: predecessor.observedAt,
+    predecessorRetrievedAt: predecessor.retrievedAt,
+    targetGapMs: targetAtMs - predecessorAt,
+    value: definition.changeUnit === "BPS" ? raw * 100 : raw,
+  };
 }
 
 function buildPoint(
@@ -109,6 +150,9 @@ function buildPoint(
   rows: Observation[],
   asOf: number,
 ): CreditFinancialConditionsPoint | null {
+  const registry = registryDefinition(definition.seriesKey);
+  if (!registry) return null;
+
   const latest = latestOnOrBefore(rows, definition.seriesKey, asOf);
   const latestValue = numericValue(latest);
   if (!latest || latestValue === null) return null;
@@ -116,21 +160,26 @@ function buildPoint(
   const latestAt = Date.parse(latest.observedAt);
   if (!Number.isFinite(latestAt)) return null;
 
-  const oneDay = latestOnOrBefore(rows, definition.seriesKey, latestAt - DAY);
-  const oneWeek = latestOnOrBefore(rows, definition.seriesKey, latestAt - 7 * DAY);
+  const oneDayTarget = latestAt - DAY;
+  const oneWeekTarget = latestAt - 7 * DAY;
+  const fourWeeksTarget = latestAt - FOUR_WEEKS;
+  const oneDay = latestOnOrBefore(rows, definition.seriesKey, oneDayTarget);
+  const oneWeek = latestOnOrBefore(rows, definition.seriesKey, oneWeekTarget);
+  const fourWeeks = latestOnOrBefore(rows, definition.seriesKey, fourWeeksTarget);
 
   return {
     seriesKey: definition.seriesKey,
+    observationId: latest.id,
     value: latestValue,
     valueUnit: definition.valueUnit,
     observedAt: latest.observedAt,
     retrievedAt: latest.retrievedAt,
     sourceId: latest.sourceId,
-    quality: latest.quality,
-    change1d: change(definition, latestValue, oneDay),
-    change1dFrom: oneDay?.observedAt ?? null,
-    change1w: change(definition, latestValue, oneWeek),
-    change1wFrom: oneWeek?.observedAt ?? null,
+    acquisitionQuality: latest.quality,
+    freshness: cadenceFreshness(latest, registry, new Date(asOf).toISOString()),
+    change1d: qualifiedChange(definition, registry, latestValue, oneDay, oneDayTarget),
+    change1w: qualifiedChange(definition, registry, latestValue, oneWeek, oneWeekTarget),
+    change4w: qualifiedChange(definition, registry, latestValue, fourWeeks, fourWeeksTarget),
     changeUnit: definition.changeUnit,
   };
 }
@@ -138,16 +187,28 @@ function buildPoint(
 /**
  * Read-only factual Credit & Financial Conditions slice.
  *
- * The output reports observed levels, 1D/1W changes, acquisition quality and
- * provenance only. It deliberately does not classify risk-on/risk-off,
- * regime, stress thresholds, transmission, causality or trading direction.
+ * Scope is intentionally limited to HY OAS, IG OAS and VIX. T10Y2Y remains in
+ * the existing Rates & Policy slice; NFCI remains deferred.
+ *
+ * Comparison endpoints reuse the registry-backed FRED cadence freshness policy
+ * at each target horizon. The latest point also recomputes freshness at the
+ * dashboard cutoff; stored acquisition quality is retained separately.
+ * No new gap threshold, regime, risk-on/risk-off, causality or trading
+ * semantics are introduced.
  */
 export async function buildCreditFinancialConditionsReadModel(
   repository: HistoricalObservationRepository,
   asOf = new Date(),
 ): Promise<CreditFinancialConditionsReadModel> {
   const end = asOf.toISOString();
-  const start = new Date(asOf.getTime() - 21 * DAY).toISOString();
+  const maxFreshnessMs = Math.max(
+    ...DEFINITIONS.map((definition) => registryDefinition(definition.seriesKey)?.freshnessMs ?? 0),
+  );
+  // Allow the latest daily point itself to be as old as its qualified
+  // freshness window and still reach a qualified 4W predecessor.
+  const start = new Date(
+    asOf.getTime() - FOUR_WEEKS - (2 * maxFreshnessMs),
+  ).toISOString();
 
   try {
     const histories = await Promise.all(DEFINITIONS.map((definition) =>

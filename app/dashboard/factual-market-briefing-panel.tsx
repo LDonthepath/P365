@@ -124,7 +124,6 @@ const CREDIT_CONDITIONS_LABELS: Record<string, string> = {
   BAMLH0A0HYM2: "US High Yield OAS",
   BAMLC0A0CM: "US Investment Grade OAS",
   VIXCLS: "VIX",
-  T10Y2Y: "Kurva Treasury 10Y−2Y",
 };
 
 const RATES_POLICY_QUALITY_LABELS: Record<string, string> = {
@@ -495,16 +494,24 @@ function creditConditionsValue(point: BriefingCreditConditionsPoint): string {
   }).format(point.value);
 }
 
-function creditConditionsChange(
+function creditConditionsChangeValue(
   point: BriefingCreditConditionsPoint,
-  horizon: "1D" | "1W",
+  change: BriefingCreditConditionsPoint["change1d"],
 ): string {
-  const value = horizon === "1D" ? point.change1d : point.change1w;
-  if (value === null) return "belum cukup riwayat";
+  if (change === null) return "tidak tersedia";
   if (point.changeUnit === "BPS") {
-    return `${ratesPolicySigned(value, 1)} bps`;
+    return `${ratesPolicySigned(change.value, 1)} bps`;
   }
-  return `${ratesPolicySigned(value, 2)} poin`;
+  return `${ratesPolicySigned(change.value, 2)} poin`;
+}
+
+function creditConditionsHorizon(
+  point: BriefingCreditConditionsPoint,
+  label: string,
+  change: BriefingCreditConditionsPoint["change1d"],
+): string {
+  if (change === null) return `${label} tidak tersedia (endpoint pembanding tidak memenuhi policy)`;
+  return `${label} ${creditConditionsChangeValue(point, change)} vs ${dateOnly(change.predecessorObservedAt)}`;
 }
 
 function CreditConditionsBriefingItem({
@@ -516,12 +523,14 @@ function CreditConditionsBriefingItem({
     <strong>{CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}</strong>
     <span>
       {creditConditionsValue(point)}
-      {" · "}1 hari {creditConditionsChange(point, "1D")}
-      {" · "}1 minggu {creditConditionsChange(point, "1W")}
+      {" · "}{creditConditionsHorizon(point, "1 hari", point.change1d)}
+      {" · "}{creditConditionsHorizon(point, "1 minggu", point.change1w)}
+      {" · "}{creditConditionsHorizon(point, "4 minggu", point.change4w)}
     </span>
     <span>
       Observasi {dateOnly(point.observedAt)}
-      {" · "}{RATES_POLICY_QUALITY_LABELS[point.quality] ?? "FRESHNESS BELUM PASTI"}
+      {" · "}diperoleh {dateTime(point.retrievedAt)} WIB
+      {" · "}{RATES_POLICY_QUALITY_LABELS[point.freshness] ?? "FRESHNESS BELUM PASTI"}
       {" · "}sumber {point.sourceId}
     </span>
   </div>;
@@ -623,8 +632,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       </div>
       <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada spread kredit, volatilitas, dan kurva?</h3>
       <p className="lead-copy">
-        HY OAS, IG OAS, VIX, dan kurva Treasury 10Y−2Y dibaca sebagai kondisi finansial faktual.
-        Perubahan ditampilkan tanpa skor gabungan, label regime, atau kesimpulan arah Bitcoin/Gold.
+        HY OAS, IG OAS, dan VIX dibaca sebagai kondisi finansial faktual. Kurva Treasury 10Y−2Y
+        tetap berada di Rates & Policy. Perubahan ditampilkan tanpa skor gabungan, label regime,
+        atau kesimpulan arah Bitcoin/Gold.
       </p>
 
       {creditConditions.evidenceStatus === "AVAILABLE"
