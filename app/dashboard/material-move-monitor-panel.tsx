@@ -1,9 +1,12 @@
+import { useState } from "react";
 import type {
   MaterialMoveAssetReadModel,
   MaterialMoveMonitorReadModel,
 } from "@/lib/application/material-move-monitor";
+import type { MaterialMoveCrossAssetDiagnostic } from "@/lib/application/material-move-cross-asset-diagnostic";
 import { relativeTimeID } from "@/lib/data/format";
 import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
+import { loadMaterialMoveCrossAssetDiagnostic } from "./actions";
 
 const ASSET_LABEL: Record<MaterialMoveAssetReadModel["asset"], string> = {
   BTC: "Bitcoin",
@@ -74,6 +77,98 @@ function btcAmount(value: number, signed = false): string {
 function integer(value: number): string {
   if (!Number.isFinite(value)) return "—";
   return Math.round(value).toLocaleString("id-ID");
+}
+
+function ratio(value: number | null, digits = 0): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
+function correlation(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `r ${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
+}
+
+function CrossAssetCalibrationDetails({
+  asset,
+}: {
+  asset: MaterialMoveAssetReadModel["asset"];
+}) {
+  const [data, setData] = useState<MaterialMoveCrossAssetDiagnostic | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load(): Promise<void> {
+    if (loading || data) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await loadMaterialMoveCrossAssetDiagnostic(asset));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Kalibrasi historis tidak dapat dibaca.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <details
+      className="move-monitor-investigation"
+      onToggle={(event) => {
+        if (event.currentTarget.open) void load();
+      }}
+    >
+      <summary>
+        <span>Kalibrasi historis lintas aset</span>
+        <strong>{loading ? "MEMUAT…" : "REL-002A"}</strong>
+      </summary>
+      <div className="move-monitor-investigation-body">
+        {error
+          ? <p className="move-monitor-investigation-note">{error}</p>
+          : null}
+
+        {data?.status === "READY"
+          ? <div className="move-monitor-fingerprint">
+              <div className="move-monitor-fingerprint-head">
+                <strong>Hubungan deskriptif</strong>
+                <span>{relativeTimeID(data.asOf)} · ON DEMAND</span>
+              </div>
+              <div className="move-monitor-fingerprint-grid">
+                {data.pairs.map((pair) => (
+                  <div
+                    className="move-monitor-fingerprint-item"
+                    key={`${pair.horizonMinutes}-${pair.companionSeriesKey}`}
+                  >
+                    <div>
+                      <span>
+                        {SYNCHRONOUS_SERIES_LABEL[pair.companionSeriesKey] ?? pair.companionSeriesKey}
+                        {" · "}{pair.horizonMinutes}M
+                      </span>
+                      <small>{pair.status}</small>
+                    </div>
+                    <strong>{correlation(pair.correlation)}</strong>
+                    <p>
+                      Pair {pair.pairedSampleSize}/{pair.sourceHistoricalSampleSize}
+                      {" · "}coverage {ratio(pair.pairedCoverageRatio)}
+                      {" · "}searah {ratio(pair.sameDirectionShare)}
+                      {" · "}overlap {ratio(pair.targetIntervalOverlapShare)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <p>
+                Statistik ini bersifat deskriptif. Kecukupan statistik, independensi sampel,
+                stabilitas hubungan, arah ekspektasi, dan atribusi kausal belum dievaluasi.
+              </p>
+            </div>
+          : data
+            ? <p className="move-monitor-investigation-note">{data.reason}</p>
+            : loading
+              ? <p className="move-monitor-investigation-note">Membaca durable history hanya saat detail ini dibuka.</p>
+              : <p className="move-monitor-investigation-note">Buka detail untuk menghitung REL-002A dari durable history terbaru.</p>}
+      </div>
+    </details>
+  );
 }
 
 function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
@@ -237,6 +332,8 @@ function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
                 </p>
               </div>
             </details>
+
+            {material ? <CrossAssetCalibrationDetails asset={item.asset} /> : null}
           </div>
         : null}
     </article>
