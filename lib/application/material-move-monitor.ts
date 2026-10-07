@@ -30,6 +30,13 @@ export type MaterialMoveHorizonReadModel = {
   historicalSampleSize: number;
 };
 
+export type MaterialMoveMarketContext = {
+  currentValue: number | null;
+  valueUnit: string | null;
+  changePercent: number | null;
+  changeBasis: "ROLLING_24H" | "PREVIOUS_CLOSE" | "UNAVAILABLE";
+};
+
 export type MaterialMoveSynchronousFingerprintSeries = {
   seriesKey: string;
   sourceId: string;
@@ -137,6 +144,7 @@ export type MaterialMoveAssetReadModel = {
   seriesKey: ContinuousMoveCalibrationSeriesKey;
   sourceId: string;
   observedAt: string | null;
+  marketContext: MaterialMoveMarketContext | null;
   status: ContinuousMoveAssessmentStatus | "UNAVAILABLE";
   hasMaterialMove: boolean;
   horizons: MaterialMoveHorizonReadModel[];
@@ -325,6 +333,37 @@ async function evidenceSummary(input: {
   };
 }
 
+function finiteMetadataNumber(
+  observation: Observation,
+  key: string,
+): number | null {
+  const value = observation.metadata?.[key];
+  if (value === null || value === undefined) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+export function materialMoveMarketContextFromObservation(
+  observation: Observation,
+): MaterialMoveMarketContext {
+  const currentValue = Number(observation.value);
+  const rawBasis = observation.metadata?.changeBasis;
+  const changeBasis = rawBasis === "24h"
+    ? "ROLLING_24H" as const
+    : rawBasis === "previous_close"
+      ? "PREVIOUS_CLOSE" as const
+      : "UNAVAILABLE" as const;
+
+  return {
+    currentValue: Number.isFinite(currentValue) ? currentValue : null,
+    valueUnit: typeof observation.metadata?.unit === "string"
+      ? observation.metadata.unit
+      : null,
+    changePercent: finiteMetadataNumber(observation, "changePct"),
+    changeBasis,
+  };
+}
+
 async function buildAssetReadModel(input: {
   asset: MaterialMoveAsset;
   seriesKey: ContinuousMoveCalibrationSeriesKey;
@@ -350,6 +389,7 @@ async function buildAssetReadModel(input: {
         seriesKey: input.seriesKey,
         sourceId: input.sourceId,
         observedAt: null,
+        marketContext: null,
         status: "UNAVAILABLE",
         hasMaterialMove: false,
         horizons: [],
@@ -371,6 +411,7 @@ async function buildAssetReadModel(input: {
       seriesKey: input.seriesKey,
       sourceId: input.sourceId,
       observedAt: assessment.targetEndObservedAt,
+      marketContext: materialMoveMarketContextFromObservation(target),
       status: assessment.status,
       hasMaterialMove: assessment.hasMaterialMove,
       horizons: compactHorizons(assessment.horizons),
@@ -388,6 +429,7 @@ async function buildAssetReadModel(input: {
       seriesKey: input.seriesKey,
       sourceId: input.sourceId,
       observedAt: null,
+      marketContext: null,
       status: "UNAVAILABLE",
       hasMaterialMove: false,
       horizons: [],
