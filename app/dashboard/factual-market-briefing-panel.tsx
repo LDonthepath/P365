@@ -814,7 +814,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         Net Liquidity memakai proxy aritmetika aset Federal Reserve dikurangi kas Treasury dan
         reverse repo. Pembanding utama adalah sekitar satu minggu; sekitar empat minggu hanya
         konteks tren. Proxy ini tidak mengukur arus dana langsung ke Bitcoin dan tidak menetapkan
-        bullish/bearish, regime, atau hubungan sebab-akibat.
+        arah Bitcoin, regime, atau hubungan sebab-akibat.
       </p>
 
       {netLiquidity.evidenceStatus === "AVAILABLE" && netLiquidity.latest
