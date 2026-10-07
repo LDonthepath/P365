@@ -107,7 +107,8 @@ test("briefing surfaces contract-aligned credit conditions with 4W and retrieval
   assert.doesNotMatch(html, /<strong>Kurva Treasury 10Y−2Y<\/strong>/);
   assert.match(html, /4 minggu/);
   assert.match(html, /diperoleh/);
-  assert.match(html, /05 Sep 2026/);
+  assert.match(html, /04 Sep 2026/);
+  assert.match(html, /diperoleh 06 Okt 2026/);
 
   const normalized = html.toLowerCase();
   assert.equal(normalized.includes("bullish"), false);
