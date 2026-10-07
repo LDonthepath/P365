@@ -14,6 +14,10 @@ import {
   type ContinuousMoveHorizonStatus,
 } from "./continuous-move-detector";
 import { buildMoveEvidenceBundle, type MoveEvidenceBundle } from "./move-evidence-bundle";
+import {
+  buildMaterialMoveConfirmation,
+  type MaterialMoveConfirmationResult,
+} from "./material-move-confirmation";
 
 type MaterialMoveAsset = "BTC" | "GOLD";
 
@@ -107,6 +111,7 @@ export type MaterialMoveEvidenceSummary = {
     reason: string;
     policy: MoveEvidenceBundle["intradayRatesPricing"]["policy"];
   };
+  confirmation?: MaterialMoveConfirmationResult | null;
   btcSpotFlow: {
     coverage:
       | "COMPLETE"
@@ -210,6 +215,9 @@ async function evidenceSummary(input: {
   });
   if (result.status !== "READY") return null;
 
+  const confirmation = result.bundle.targetAsset === "BTC"
+    ? buildMaterialMoveConfirmation({ assessment: input.assessment, bundle: result.bundle })
+    : null;
   const spotFlow = result.bundle.cryptoMarketStructure?.components
     .find((item) => item.component === "BTC_SPOT_FLOW")
     ?.spotFlow;
@@ -236,6 +244,7 @@ async function evidenceSummary(input: {
 
   return {
     evidenceCompleteness: result.bundle.evidenceCompleteness,
+    confirmation,
     investigationWindow: {
       startAt: result.bundle.investigationWindow.startAt,
       endAt: result.bundle.investigationWindow.endAt,
