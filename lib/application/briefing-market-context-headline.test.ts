@@ -96,7 +96,7 @@ test("briefing leads with market change and keeps MOVE horizons as diagnostics",
   assert.match(html, /-0\.90% vs penutupan sebelumnya/);
   assert.match(html, /Pergerakan intraday tidak biasa terdeteksi/);
   assert.match(html, /Tidak ada pergerakan intraday material pada cutoff ini/);
-  assert.match(html, /DETAIL PERGERAKAN & EVIDENCE/);
+  assert.match(html, /DETAIL PERGERAKAN &amp; EVIDENCE/);
   assert.match(html, /60 menit/);
   assert.match(html, /120 menit/);
   assert.doesNotMatch(html, /BTC dan Gold dinilai lebih dulu terhadap ambang historis/);
