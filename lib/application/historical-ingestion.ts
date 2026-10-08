@@ -38,6 +38,8 @@ export type HistoricalIngestionOptions = {
   defillama?: DefiLlamaStablecoinBackfillRange;
   sosovalue?: SoSoValueBtcEtfFlowBackfillRange;
   cftc?: CftcGoldCotBackfillRange;
+  /** Opt-in CFTC FORWARD-only publisher-calendar gate; default cron unchanged. */
+  cftcReleaseAware?: boolean;
 };
 
 export type HistoricalIngestionAcquisition = {
@@ -147,6 +149,7 @@ async function defaultDependencies(options: HistoricalIngestionOptions): Promise
         mode: options.mode,
         acquisitionMode: "FRESH",
         ...(options.mode === "BACKFILL" ? { range: options.cftc } : {}),
+        ...(options.mode === "FORWARD" ? { releaseAware: options.cftcReleaseAware === true } : {}),
       }),
       gdelt: () => gdelt.fetchGdeltGalCandidateSnapshots({
         assets: ["BTC", "GOLD"],
