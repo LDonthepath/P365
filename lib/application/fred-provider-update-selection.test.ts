@@ -26,7 +26,9 @@ test("only FRED-reported registered updates inside the overlap trigger observati
     fetcher: (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(String(input));
       assert.equal(url.pathname, "/fred/series/updates");
-      assert.equal(url.searchParams.get("filter_value"), "macro");
+      assert.equal(url.searchParams.get("filter_value"), "all");
+      assert.equal(url.searchParams.get("start_time"), "202610080715");
+      assert.equal(url.searchParams.get("end_time"), "202610080732");
       assert.equal(url.searchParams.get("order_by"), "last_updated");
       assert.equal(url.searchParams.get("sort_order"), "desc");
       assert.equal(url.searchParams.get("limit"), "1000");
@@ -97,8 +99,8 @@ test("outage, malformed, unsorted, incomplete, or unbounded update scans fail op
     const plan = await planFredProviderUpdatedObservations({
       now, apiKey: KEY, fetcher: (async () => variant()) as typeof fetch,
     });
-    assert.equal(plan.mode, "FAIL_OPEN_FULL_SWEEP");
-    assert.deepEqual(plan.seriesIds, ALL);
+    assert.equal(plan.mode, "FEED_UNAVAILABLE_DEFERRED");
+    assert.deepEqual(plan.seriesIds, []);
   }
   const unbounded = await planFredProviderUpdatedObservations({
     now, apiKey: KEY,
@@ -106,19 +108,52 @@ test("outage, malformed, unsorted, incomplete, or unbounded update scans fail op
       id: "UNREGISTERED", last_updated: "2026-10-08 07:30:00-05",
     })), { count: 21_000 })) as typeof fetch,
   });
-  assert.equal(unbounded.mode, "FAIL_OPEN_FULL_SWEEP");
-  assert.deepEqual(unbounded.seriesIds, ALL);
+  assert.equal(unbounded.mode, "FEED_UNAVAILABLE_DEFERRED");
+  assert.deepEqual(unbounded.seriesIds, []);
 });
 
-test("the existing daily recovery sweep stays independent from the update feed", async () => {
+test("recovery tolerates 04:31 delayed dispatch, missed ticks at 04:35/04:40, not perpetual repeats", async () => {
   let calls = 0;
-  const plan = await planFredProviderUpdatedObservations({
-    now: at("2026-10-08T04:30:00Z"), apiKey: KEY,
-    fetcher: (async () => { calls++; throw new Error("daily sweep must not scan updates"); }) as typeof fetch,
-  });
+  for (const minute of ["04:30", "04:31", "04:35", "04:40", "04:44"]) {
+    const plan = await planFredProviderUpdatedObservations({
+      now: at("2026-10-08T" + minute + ":00Z"), apiKey: KEY,
+      fetcher: (async () => { calls++; throw new Error("daily sweep must not scan updates"); }) as typeof fetch,
+    });
+    assert.equal(plan.mode, "DAILY_FULL_SWEEP", minute);
+    assert.deepEqual(plan.seriesIds, ALL);
+  }
   assert.equal(calls, 0);
-  assert.equal(plan.mode, "DAILY_FULL_SWEEP");
-  assert.deepEqual(plan.seriesIds, ALL);
+  const outside = await planFredProviderUpdatedObservations({
+    now: at("2026-10-08T04:45:00Z"), apiKey: KEY,
+    fetcher: (async () => payload([])) as typeof fetch,
+  });
+  assert.equal(outside.mode, "NO_REGISTERED_UPDATES");
+});
+
+test("provider-update scan uses provider-local bounds across US daylight-saving transition", async () => {
+  const plan = await planFredProviderUpdatedObservations({
+    now: at("2026-03-08T08:05:00Z"), apiKey: KEY,
+    fetcher: (async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      assert.equal(url.searchParams.get("start_time"), "202603080149");
+      assert.equal(url.searchParams.get("end_time"), "202603080306");
+      return payload([]);
+    }) as typeof fetch,
+  });
+  assert.equal(plan.mode, "NO_REGISTERED_UPDATES");
+});
+
+test("metadata outage only falls back hourly, so 5-minute polling cannot amplify failure by 12x", async () => {
+  let calls = 0;
+  for (const hhmm of ["12:31", "12:35", "12:55", "13:00", "13:01"]) {
+    const plan = await planFredProviderUpdatedObservations({
+      now: at("2026-10-08T" + hhmm + ":00Z"), apiKey: KEY,
+      fetcher: (async () => { calls++; throw new Error("offline"); }) as typeof fetch,
+    });
+    assert.equal(plan.mode, hhmm === "13:00" ? "FAIL_OPEN_FULL_SWEEP" : "FEED_UNAVAILABLE_DEFERRED");
+    assert.equal(plan.requestedSeriesCount, hhmm === "13:00" ? 33 : 0);
+  }
+  assert.equal(calls, 5);
 });
 
 test("new URL mode is mutually exclusive and stays authenticated FRED FORWARD only", () => {

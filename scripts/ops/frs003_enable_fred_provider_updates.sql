@@ -36,9 +36,9 @@ BEGIN
 
   updated_command := replace(fred.command,
     'providers=fred&fredReleaseAware=1', 'providers=fred&fredProviderUpdates=1');
-  -- Five-minute metadata polling; observation requests run only for series
-  -- whose FRED last_updated is within the 15-minute overlap. The 04:30 UTC
-  -- poll is the single daily full-registry recovery sweep.
+  -- Five-minute metadata polling; failed-feed full sweeps only UTC minute 00.
+  -- Recovery repeats at 04:30/04:35/04:40 UTC. Owner must review 891/day
+  -- continuous-outage request bound and unverified FRED time-filter zone.
   PERFORM cron.alter_job(
     job_id := fred.jobid,
     schedule := '*/5 * * * *',
