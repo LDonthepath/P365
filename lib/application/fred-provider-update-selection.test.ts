@@ -27,8 +27,8 @@ test("only FRED-reported registered updates inside the overlap trigger observati
       const url = new URL(String(input));
       assert.equal(url.pathname, "/fred/series/updates");
       assert.equal(url.searchParams.get("filter_value"), "all");
-      assert.equal(url.searchParams.get("start_time"), "202610080715");
-      assert.equal(url.searchParams.get("end_time"), "202610080732");
+      assert.equal(url.searchParams.has("start_time"), false);
+      assert.equal(url.searchParams.has("end_time"), false);
       assert.equal(url.searchParams.get("order_by"), "last_updated");
       assert.equal(url.searchParams.get("sort_order"), "desc");
       assert.equal(url.searchParams.get("limit"), "1000");
@@ -130,17 +130,34 @@ test("recovery tolerates 04:31 delayed dispatch, missed ticks at 04:35/04:40, no
   assert.equal(outside.mode, "NO_REGISTERED_UPDATES");
 });
 
-test("provider-update scan uses provider-local bounds across US daylight-saving transition", async () => {
+test("spring DST transition uses explicit last_updated offset without undocumented time filters", async () => {
   const plan = await planFredProviderUpdatedObservations({
     now: at("2026-03-08T08:05:00Z"), apiKey: KEY,
     fetcher: (async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
-      assert.equal(url.searchParams.get("start_time"), "202603080149");
-      assert.equal(url.searchParams.get("end_time"), "202603080306");
-      return payload([]);
+      assert.equal(url.searchParams.has("start_time"), false);
+      assert.equal(url.searchParams.has("end_time"), false);
+      return payload([
+        { id: "EFFR", last_updated: "2026-03-08 01:59:00-06" },
+        { id: "SOFR", last_updated: "2026-03-08 01:44:00-06" },
+      ]);
     }) as typeof fetch,
   });
-  assert.equal(plan.mode, "NO_REGISTERED_UPDATES");
+  assert.equal(plan.mode, "PROVIDER_UPDATE_RECHECK");
+  assert.deepEqual(plan.seriesIds, ["EFFR"]);
+});
+
+test("fall DST repeated hour is ordered by explicit offsets, not local wall clock", async () => {
+  const plan = await planFredProviderUpdatedObservations({
+    now: at("2026-11-01T07:05:00Z"), apiKey: KEY,
+    fetcher: (async () => payload([
+      { id: "EFFR", last_updated: "2026-11-01 01:00:00-06" },
+      { id: "SOFR", last_updated: "2026-11-01 01:55:00-05" },
+      { id: "CCSA", last_updated: "2026-11-01 01:45:00-05" },
+    ])) as typeof fetch,
+  });
+  assert.equal(plan.mode, "PROVIDER_UPDATE_RECHECK");
+  assert.deepEqual(plan.seriesIds, ["SOFR", "EFFR"]);
 });
 
 test("metadata outage only falls back hourly, so 5-minute polling cannot amplify failure by 12x", async () => {
