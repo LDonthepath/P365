@@ -106,11 +106,17 @@ export type EconomicEventResultHistoryQuery = {
   limit: number;
 };
 
-/** Physical insert receipt from conflict-ignore RETURNING. */
+/**
+ * Physical insert receipt from conflict-ignore RETURNING.
+ * insertedCanonicalIds is optional for backwards-compatible repository mocks;
+ * when present, it contains ONLY canonical IDs of rows actually inserted.
+ * It is an internal adapter return, never a published provider metric.
+ */
 export type CanonicalWriteReceipt = {
   submitted: number;
   inserted: number;
   duplicates: number;
+  insertedCanonicalIds?: string[];
 };
 
 export interface ObservationRepository {
