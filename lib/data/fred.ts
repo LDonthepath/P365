@@ -28,17 +28,32 @@ export async function fetchFredMacroObservations(query: FredObservationQuery = {
   if (query.observationEnd !== undefined && !isDateOnly(query.observationEnd)) return providerResult("fred", "ERROR", [], "FRED observation_end must be YYYY-MM-DD");
   if (query.observationStart && query.observationEnd && query.observationStart > query.observationEnd) return providerResult("fred", "ERROR", [], "FRED observation_start must not be after observation_end");
   if (query.requireCompleteRange && (!query.observationStart || !query.observationEnd)) return providerResult("fred", "ERROR", [], "FRED complete backfill requires explicit observation_start and observation_end");
+  const allowedSeries = new Set<string>(MACRO_SERIES_REGISTRY.map((series) => series.seriesId));
+  const requestedIds = query.seriesIds;
+  if (requestedIds !== undefined && (
+    !Array.isArray(requestedIds)
+    || requestedIds.length === 0
+    || requestedIds.length > MACRO_SERIES_REGISTRY.length
+    || requestedIds.some((id) => typeof id !== "string" || !allowedSeries.has(id))
+    || new Set(requestedIds).size !== requestedIds.length
+  )) return providerResult("fred", "ERROR", [], "FRED series subset must contain unique registered series IDs");
+  if (query.requireCompleteRange && requestedIds !== undefined) {
+    return providerResult("fred", "ERROR", [], "FRED series subset is FORWARD-only");
+  }
+  const selectedSeries = requestedIds === undefined
+    ? MACRO_SERIES_REGISTRY
+    : MACRO_SERIES_REGISTRY.filter((series) => requestedIds.includes(series.seriesId));
   const apiKey = process.env.FRED_API_KEY;
   if (!apiKey) return providerResult("fred", "UNAVAILABLE", [], "FRED_API_KEY is not configured");
 
-  const results = await Promise.all(MACRO_SERIES_REGISTRY.map((series) =>
+  const results = await Promise.all(selectedSeries.map((series) =>
     fetchFredSeriesObservations(series, apiKey, query)));
   const data = results.flatMap((result) => result.data);
   const failures = results.filter((result) => result.status === "ERROR").map((result) => result.message).filter(Boolean);
   const emptyCount = results.filter((result) => result.status === "EMPTY").length;
 
   if (data.length > 0) {
-    const omitted = MACRO_SERIES_REGISTRY.length - results.filter((result) => result.status === "SUCCESS").length;
+    const omitted = selectedSeries.length - results.filter((result) => result.status === "SUCCESS").length;
     if (query.requireCompleteRange && failures.length > 0) {
       return providerResult("fred", "ERROR", data, `FRED bounded backfill incomplete: ${failures.join("; ")}`);
     }

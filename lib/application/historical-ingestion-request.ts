@@ -7,6 +7,7 @@ import {
 } from "./historical-ingestion";
 import { soSoValueBackfillRangeError } from "../data/sosovalue-etf-flow";
 import { cftcGoldCotBackfillRangeError } from "../data/cftc-gold-cot";
+import { MACRO_SERIES_REGISTRY, type MacroSeriesId } from "../data/macro-registry";
 
 export type HistoricalIngestionRequestParseResult =
   | { ok: true; options: HistoricalIngestionOptions }
@@ -43,9 +44,26 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
       return { ok: false, error: "cftcReleaseAware requires FORWARD with only cftc provider" };
     }
   }
+  // FRED series selection is opt-in; the legacy full-registry URL is unchanged.
+  const selectorParams = searchParams.getAll("fredSeries");
+  let fredSeries: MacroSeriesId[] | undefined;
+  if (selectorParams.length > 0) {
+    if (selectorParams.length !== 1 || mode !== "FORWARD" || !providers.includes("fred")
+      || providers.some((provider) => provider !== "fred" && provider !== "coingecko-context")) {
+      return { ok: false, error: "fredSeries requires FORWARD with fred (optionally coingecko-context)" };
+    }
+    const ids = selectorParams[0].split(",").map((id) => id.trim());
+    const allowlist = new Set<string>(MACRO_SERIES_REGISTRY.map((s) => s.seriesId));
+    if (ids.length < 1 || ids.length > MACRO_SERIES_REGISTRY.length
+      || ids.some((id) => !allowlist.has(id)) || new Set(ids).size !== ids.length) {
+      return { ok: false, error: "fredSeries must contain unique registered series IDs" };
+    }
+    fredSeries = ids as MacroSeriesId[];
+  }
   if (mode === "FORWARD") return {
     ok: true,
-    options: { mode, providers, ...(cftcReleaseAware === "1" ? { cftcReleaseAware: true } : {}) },
+    options: { mode, providers, ...(fredSeries ? { fred: { seriesIds: fredSeries } } : {}),
+      ...(cftcReleaseAware === "1" ? { cftcReleaseAware: true } : {}) },
   };
   if (providers.length !== 1 || !["fred", "defillama", "sosovalue", "cftc"].includes(providers[0])) {
     return { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" };
