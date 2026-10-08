@@ -33,7 +33,8 @@ function stores(withReceipt = true, rejectObservation = false): {
     for (const item of inserted) seen.add(item.id);
     await saveMany(items);
     return { submitted: items.length, inserted: inserted.length,
-      duplicates: items.length - inserted.length };
+      duplicates: items.length - inserted.length,
+      insertedCanonicalIds: inserted.map((item) => item.id) };
   };
   return {
     rawObservations,
@@ -77,6 +78,8 @@ test("FRED write metrics distinguish accepted, physical inserts, duplicates and 
   assert.equal(first.persistedObservations, 1, "legacy accepted metric retained");
   assert.equal(first.providers[0].persisted, 1);
   assert.equal(first.providers[1].writeMetrics, undefined, "other provider contract unchanged");
+  assert.equal(JSON.stringify(first).includes("insertedCanonicalIds"), false,
+    "physical insert identities must stay internal and never enter public cron telemetry");
   assert.deepEqual(first.providers[0].writeMetrics, {
     source: "POSTGREST_RETURNING_KEYS",
     observations: { submitted: 1, inserted: 1, duplicates: 0 },

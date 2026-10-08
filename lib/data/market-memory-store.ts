@@ -96,7 +96,23 @@ async function insertMany(rows: MarketMemoryRow[]): Promise<void> {
  * No preflight read (race-prone), no extra database roundtrip.
  */
 async function insertManyWithReceipt(rows: MarketMemoryRow[]): Promise<CanonicalWriteReceipt> {
-  if (rows.length === 0) return { submitted: 0, inserted: 0, duplicates: 0 };
+  if (rows.length === 0) {
+    return { submitted: 0, inserted: 0, duplicates: 0, insertedCanonicalIds: [] };
+  }
+  // Map each submitted dedupe key to one canonical ID BEFORE the write.
+  // Ambiguous request identities cannot provide authoritative inserted IDs.
+  const keyToCanonicalId = new Map<string, string>();
+  const seenCanonicalIds = new Set<string>();
+  for (const row of rows) {
+    if (!row.dedupe_key || !row.canonical_id
+      || keyToCanonicalId.has(row.dedupe_key)
+      || seenCanonicalIds.has(row.canonical_id)) {
+      throw new Error("Supabase physical insert receipt requires unique canonical identities");
+    }
+    keyToCanonicalId.set(row.dedupe_key, row.canonical_id);
+    seenCanonicalIds.add(row.canonical_id);
+  }
+
   const { url, key } = requireConfig();
   const response = await fetch(
     url + "/rest/v1/market_memory?on_conflict=dedupe_key&select=dedupe_key",
@@ -113,22 +129,18 @@ async function insertManyWithReceipt(rows: MarketMemoryRow[]): Promise<Canonical
       signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
     },
   );
-
   if (!response.ok) {
     // Do not expose raw upstream errors (may include sensitive request details).
     throw new Error("Supabase Market Memory receipt write failed (" + response.status + ")");
   }
 
   const result: unknown = await response.json();
-  const submittedKeys = new Set(rows.map((row) => row.dedupe_key));
-  if (!Array.isArray(result)
-    || result.length > rows.length
+  if (!Array.isArray(result) || result.length > rows.length
     || !result.every((entry: unknown) => {
       const item = entry && typeof entry === "object" && !Array.isArray(entry)
-        ? entry as Record<string, unknown>
-        : null;
+        ? entry as Record<string, unknown> : null;
       return item && typeof item.dedupe_key === "string"
-        && submittedKeys.has(item.dedupe_key)
+        && keyToCanonicalId.has(item.dedupe_key)
         && Object.keys(item).length === 1;
     })) {
     throw new Error("Supabase returned an invalid physical insert receipt");
@@ -137,8 +149,17 @@ async function insertManyWithReceipt(rows: MarketMemoryRow[]): Promise<Canonical
   if (insertedKeys.size !== result.length) {
     throw new Error("Supabase returned duplicate physical insert receipt keys");
   }
-  const inserted = insertedKeys.size;
-  return { submitted: rows.length, inserted, duplicates: rows.length - inserted };
+  // Sorting ensures deterministic output, NOT PostgreSQL commit ordering.
+  const insertedCanonicalIds = [...insertedKeys]
+    .map((insertedKey) => keyToCanonicalId.get(insertedKey)!)
+    .sort();
+  const inserted = insertedCanonicalIds.length;
+  return {
+    submitted: rows.length,
+    inserted,
+    duplicates: rows.length - inserted,
+    insertedCanonicalIds,
+  };
 }
 
 async function find<T extends CanonicalRecord>(recordType: MarketMemoryRecordType, id: string): Promise<T | null> {
