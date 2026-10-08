@@ -76,8 +76,8 @@ function repricing(input: {
                 eventIdentityKey: "event:v1:US:other",
                 eventId: "event-other",
                 subject: "Other release",
-                scheduledAt: "2026-10-02T12:32:00.000Z",
-                sourceId: "biquote",
+                t0: "2026-10-02T12:32:00.000Z",
+                t0Source: "SCHEDULED_AT",
               }]
             : [],
           causalAttribution: "NOT_EVALUATED",

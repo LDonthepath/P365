@@ -38,7 +38,7 @@ function monitor(titles: string[], coverage: "COMPLETE" | "PARTIAL" = "COMPLETE"
         unscheduledCandidateCount: titles.length, unscheduledCatalystCoverage: coverage,
         unscheduledCandidates: titles.map((title, index) => ({
           title, url: `https://example.com/${index}`, domain: "example.com",
-          providerDate: null, providerDateSemantics: "TIMESTAMP_UNAVAILABLE",
+          providerDate: null, providerDateSemantics: "UNAVAILABLE",
           temporalFit: "TIMESTAMP_UNAVAILABLE", firstSeenRetrievedAt: AS_OF,
           firstSnapshotEvidenceId: "snapshot-1",
         })),

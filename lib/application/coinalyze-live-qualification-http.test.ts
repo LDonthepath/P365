@@ -18,11 +18,12 @@ const baseReport: CoinalyzeLiveQualificationReport = {
   },
   timestamps: [],
   sampleAggregates: null,
-  unresolved: [
-    "PROVIDER_TIMESTAMP_BUCKET_ANCHOR",
-    "LIQUIDATION_L_S_CANONICAL_MAPPING",
-    "DURABLE_PRIVATE_STORAGE_USE",
-  ],
+  semantics: {
+    providerTimestamp: "INTERVAL_START",
+    liquidationL: "LONGS_LIQUIDATION_VOLUME",
+    liquidationS: "SHORTS_LIQUIDATION_VOLUME",
+  },
+  unresolved: ["DURABLE_PRIVATE_STORAGE_USE"],
 };
 
 test("Coinalyze qualification diagnostics requires existing CRON_SECRET bearer auth", async () => {

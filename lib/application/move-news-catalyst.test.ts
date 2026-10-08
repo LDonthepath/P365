@@ -10,6 +10,9 @@ test("move-news evidence keeps GDELT GAL candidates non-causal and current-only"
     feedWindowStartAt: "2026-10-04T11:44:00.000Z",
     coverage: "ROLLING_15_MINUTES" as const,
     totalFeedItems: 100,
+    invalidItemCount: 0,
+    matchingCandidateCount: 1,
+    candidateCoverage: "COMPLETE" as const,
     candidates: [{
       asset: "BTC" as const,
       url: "https://example.com/story",

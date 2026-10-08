@@ -71,7 +71,10 @@ test("composes the existing Gate 1 factual changes in the established priority o
     ["DGS2", "DGS10", "DFII10", "T10YIE"],
     "BRF-001A preserves the existing priority and four-item display bound",
   );
-  assert.equal(result.whatChanged.items[0]?.changeValue, 0.1);
+  assert.ok(
+    Math.abs((result.whatChanged.items[0]?.changeValue ?? NaN) - 0.1) < 1e-10,
+    "floating-point change calculation should be numerically equivalent to 0.1",
+  );
   assert.equal(result.whatChanged.items[0]?.unit, "Percent");
 });
 
@@ -578,7 +581,8 @@ test("BRF-001D groups simultaneous HIGH events into one next-catalyst slot", () 
   assert.equal(result.nextCatalyst.evidenceStatus, "AVAILABLE");
   assert.deepEqual(
     result.nextCatalyst.slot?.events.map((event) => event.subject),
-    ["CPI m/m", "Core CPI m/m"],
+    ["Core CPI m/m", "CPI m/m"],
+    "simultaneous events follow the current deterministic subject ordering",
   );
 });
 
@@ -865,6 +869,7 @@ test("BRF-002B preserves missing catalyst detail without inventing a driver", ()
         seriesKey: "btc.spot.usd",
         sourceId: "coingecko-market",
         observedAt: "2026-10-01T23:55:00.000Z",
+        marketContext: null,
         status: "MATERIAL_MOVE",
         hasMaterialMove: true,
         horizons: [{
@@ -1040,6 +1045,7 @@ test("BRF-002D treats a material MOVE with no investigation bundle as incomplete
         seriesKey: "gold.futures.usd",
         sourceId: "yahoo-finance",
         observedAt: "2026-10-01T23:55:00.000Z",
+        marketContext: null,
         status: "MATERIAL_MOVE",
         hasMaterialMove: true,
         horizons: [{
@@ -1072,6 +1078,7 @@ test("MACRO-RATES-001C puts only Gold and Bitcoin factual Rates & Policy context
     asOf: AS_OF,
     ratesPolicy: {
       status: "OK",
+      sep: { status: "UNAVAILABLE", reason: "No SEP observation in this Rates-only fixture" },
       series: [
         {
           seriesKey: "DGS2",
