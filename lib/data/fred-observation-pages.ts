@@ -1,4 +1,4 @@
-import type { MacroSeriesDefinition } from "./macro-registry";
+import type { MacroSeriesDefinition, MacroSeriesId } from "./macro-registry";
 import type { ProviderResult } from "./types";
 import { providerResult } from "./types";
 import { providerFetchPolicy, type ProviderAcquisitionMode } from "./provider-fetch-policy";
@@ -19,6 +19,8 @@ type RetrievedFredObservation = { observation: FredObservation; retrievedAt: str
 type ValidFredObservation = RetrievedFredObservation & { observation: FredObservation & { date: string; value: string } };
 
 export type FredObservationQuery = {
+  /** FORWARD-only opt-in series subset; omitted means all registered series. */
+  seriesIds?: readonly MacroSeriesId[];
   observationStart?: string;
   observationEnd?: string;
   limit?: number;

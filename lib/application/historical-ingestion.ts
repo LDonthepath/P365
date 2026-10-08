@@ -265,6 +265,12 @@ function canonicalize(
 
 function validateOptions(options: HistoricalIngestionOptions): void {
   if (options.providers.length === 0) throw new Error("At least one ingestion provider is required");
+  if (options.fred?.seriesIds !== undefined) {
+    if (options.mode !== "FORWARD" || !options.providers.includes("fred")
+      || options.providers.some((p) => p !== "fred" && p !== "coingecko-context")) {
+      throw new Error("FRED subset requires FORWARD and fred provider");
+    }
+  }
   if (options.mode === "BACKFILL") {
     if (options.providers.length !== 1 || !["fred", "defillama", "sosovalue", "cftc"].includes(options.providers[0])) {
       throw new Error("BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc");
