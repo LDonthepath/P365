@@ -16,6 +16,97 @@ export const CFTC_GOLD_COT_FORWARD_REPORT_LIMIT = 8;
 export const CFTC_GOLD_COT_MAX_BACKFILL_CALENDAR_DAYS = 370;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * CFTC's tentative 2026 publication dates, including holiday-delayed Mondays.
+ * Source: https://www.cftc.gov/MarketReports/CommitmentsofTraders/ReleaseSchedule/index.htm
+ * Publication: 15:30 America/New_York, not a fixed UTC offset.
+ * Refresh annually; unknown years fail OPEN to ordinary daily fetching.
+ */
+const CFTC_2026_RELEASE_DATES = new Set([
+  "2026-01-05",
+  "2026-01-09",
+  "2026-01-16",
+  "2026-01-23",
+  "2026-01-30",
+  "2026-02-06",
+  "2026-02-13",
+  "2026-02-20",
+  "2026-02-27",
+  "2026-03-06",
+  "2026-03-13",
+  "2026-03-20",
+  "2026-03-27",
+  "2026-04-03",
+  "2026-04-10",
+  "2026-04-17",
+  "2026-04-24",
+  "2026-05-01",
+  "2026-05-08",
+  "2026-05-15",
+  "2026-05-22",
+  "2026-05-29",
+  "2026-06-05",
+  "2026-06-12",
+  "2026-06-22",
+  "2026-06-26",
+  "2026-07-06",
+  "2026-07-10",
+  "2026-07-17",
+  "2026-07-24",
+  "2026-07-31",
+  "2026-08-07",
+  "2026-08-14",
+  "2026-08-21",
+  "2026-08-28",
+  "2026-09-04",
+  "2026-09-11",
+  "2026-09-18",
+  "2026-09-25",
+  "2026-10-02",
+  "2026-10-09",
+  "2026-10-16",
+  "2026-10-23",
+  "2026-10-30",
+  "2026-11-06",
+  "2026-11-16",
+  "2026-11-20",
+  "2026-11-30",
+  "2026-12-04",
+  "2026-12-11",
+  "2026-12-18",
+  "2026-12-28",
+]);
+const CFTC_RELEASE_MINUTE_ET = 15 * 60 + 30;
+
+/**
+ * Opt-in, conservative publisher-query gate. Keep the existing daily cron:
+ * fetch on official release dates after publication, for the following three
+ * local dates to catch delayed provider updates, plus Thursday revision sweeps
+ * and Friday 15:30 ET fallback for unannounced calendar movement.
+ * BACKFILL is never gated. Unqualified years fail open.
+ */
+export function shouldFetchCftcGoldCotReleaseAware(now: Date): boolean {
+  if (!Number.isFinite(now.getTime())) return true;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(now);
+  const get = (name: string): string => parts.find((part) => part.type === name)?.value ?? "";
+  const civilDate = `${get("year")}-${get("month")}-${get("day")}`;
+  const dayMs = Date.parse(`${civilDate}T00:00:00.000Z`);
+  if (!Number.isFinite(dayMs) || !civilDate.startsWith("2026-")) return true;
+  const minute = Number(get("hour")) * 60 + Number(get("minute"));
+  const weekday = new Date(dayMs).getUTCDay();
+  if (weekday === 4) return true; // weekly revision/overdue recovery
+  if (weekday === 5 && minute >= CFTC_RELEASE_MINUTE_ET) return true;
+  return [...CFTC_2026_RELEASE_DATES].some((releaseDate) => {
+    const ageDays = (dayMs - Date.parse(`${releaseDate}T00:00:00.000Z`)) / DAY_MS;
+    return (ageDays >= 1 && ageDays <= 3)
+      || (ageDays === 0 && minute >= CFTC_RELEASE_MINUTE_ET);
+  });
+}
+
 export type CftcGoldCotBackfillRange = { from: string; to: string };
 export type CftcGoldCotParticipant =
   | "PRODUCER_MERCHANT_PROCESSOR_USER"
@@ -143,6 +234,8 @@ export type CftcGoldCotQuery = {
   mode: "FORWARD" | "BACKFILL";
   range?: CftcGoldCotBackfillRange;
   acquisitionMode?: ProviderAcquisitionMode;
+  /** Opt-in FORWARD fetch suppression; absent means current daily behavior. */
+  releaseAware?: boolean;
 };
 
 type Dependencies = {
@@ -325,6 +418,15 @@ export async function fetchCftcGoldCotObservations(
 
   const fetcher = dependencies.fetch ?? fetch;
   const now = dependencies.now ?? (() => new Date());
+  const requestedAt = now();
+  if (query.mode === "FORWARD" && query.releaseAware === true
+    && !shouldFetchCftcGoldCotReleaseAware(requestedAt)) {
+    return providerResult(
+      "cftc", "EMPTY", [],
+      "CFTC release-aware cadence: no qualified publisher check due (no provider request)",
+      undefined, requestedAt.toISOString(),
+    );
+  }
   try {
     const response = await fetcher(buildUrl(query), {
       method: "GET",
