@@ -11,7 +11,13 @@ function snapshot(id: string, role: string, capturedAt: string, refs: string[]):
     version: "v1",
     capturedAt,
     scope: "EVENT_WINDOW",
-    observationRefs: refs.map((observationId) => ({ observationId })),
+    observationRefs: refs.map((observationId) => ({
+      key: observationId,
+      observationId,
+      evidenceId: "evidence-" + observationId,
+      sourceId: "fixture",
+      quality: "FRESH" as const,
+    })),
     eventRefs: [],
     baselineRefs: [],
     stateRefs: [],
@@ -23,15 +29,35 @@ function snapshot(id: string, role: string, capturedAt: string, refs: string[]):
       eventIdentityKey: "event:v1:US:2026-09-25T12:30:00.000Z:durable-goods-orders",
       eventWindowRole: role,
     },
-  } as MarketSnapshot;
+  } satisfies MarketSnapshot;
+}
+
+function observation(id: string, value: number, seriesKey: string): Observation {
+  return {
+    id,
+    domain: "ASSET",
+    subject: seriesKey,
+    value: String(value),
+    observedAt: "2026-09-25T12:30:00.000Z",
+    retrievedAt: "2026-09-25T12:35:00.000Z",
+    sourceId: "fixture",
+    quality: "FRESH",
+    evidenceId: "evidence-" + id,
+    identity: {
+      version: "v1",
+      seriesKey,
+      measurementId: "measurement-" + id,
+      revisionFingerprint: "revision-" + id,
+    },
+  };
 }
 
 test("builds deterministic factual PRE to post move samples without selecting thresholds", async () => {
   const observations = new Map<string, Observation>([
-    ["btc-pre", { id: "btc-pre", value: 100, identity: { seriesKey: "btc.spot.usd" } } as Observation],
-    ["btc-post", { id: "btc-post", value: 101, identity: { seriesKey: "btc.spot.usd" } } as Observation],
-    ["dxy-pre", { id: "dxy-pre", value: 100, identity: { seriesKey: "dxy.index.usd" } } as Observation],
-    ["dxy-post", { id: "dxy-post", value: 99.5, identity: { seriesKey: "dxy.index.usd" } } as Observation],
+    ["btc-pre", observation("btc-pre", 100, "btc.spot.usd")],
+    ["btc-post", observation("btc-post", 101, "btc.spot.usd")],
+    ["dxy-pre", observation("dxy-pre", 100, "dxy.index.usd")],
+    ["dxy-post", observation("dxy-post", 99.5, "dxy.index.usd")],
   ]);
   const repository = {
     save: async () => {},
@@ -59,11 +85,11 @@ test("builds deterministic factual PRE to post move samples without selecting th
 });
 
 test("keeps snapshot quality explicit instead of silently qualifying calibration evidence", async () => {
-  const observation = { id: "btc", value: 100, identity: { seriesKey: "btc.spot.usd" } } as Observation;
+  const btcObservation = observation("btc", 100, "btc.spot.usd");
   const repository = {
     save: async () => {},
     saveMany: async () => {},
-    findById: async () => observation,
+    findById: async () => btcObservation,
   } satisfies ObservationRepository;
   const pre = snapshot("pre", "PRE", "2026-09-25T12:25:00.000Z", ["btc"]);
   pre.quality = "PARTIAL";

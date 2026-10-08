@@ -78,7 +78,7 @@ function event(
 function snapshot(
   capturedAt: string,
   quality: MarketSnapshot["quality"] = "COMPLETE",
-  scope = EVENT_WINDOW_POLICY_V1.snapshotScope,
+  scope: string = EVENT_WINDOW_POLICY_V1.snapshotScope,
   eventIdentityKey: string | null = "event:v1:US:2026-10-15T12:30:00.000Z:cpi",
 ): MarketSnapshot {
   return {

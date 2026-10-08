@@ -2,13 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type {
   CoinalyzeFutureMarket,
-  CoinalyzeHistoryQuery,
   CoinalyzeHistorySeries,
   CoinalyzeLiquidationPoint,
   CoinalyzeOhlcPoint,
   CoinalyzeOhlcvPoint,
 } from "../data/coinalyze-derivatives";
-import { providerResult, type ProviderResult } from "../data/types";
+import { providerResult } from "../data/types";
 import { runCoinalyzeLiveQualification } from "./coinalyze-live-qualification";
 
 const NOW = new Date("2026-10-04T12:34:00.000Z");
@@ -100,13 +99,12 @@ test("live qualification blocks cleanly without a configured API key", async () 
 
 test("live qualification reports deterministic sample, quota and unresolved semantics without writes", async () => {
   const symbols = markets().map((market) => market.symbol);
-  let capturedQuery: CoinalyzeHistoryQuery | null = null;
   const report = await runCoinalyzeLiveQualification({
     now: () => NOW,
     provider: {
       futureMarkets: async () => providerResult("coinalyze", "SUCCESS", markets()),
       openInterest: async (query) => {
-        capturedQuery = query;
+        assert.equal(query.acquisitionMode, "FRESH");
         return providerResult("coinalyze", "SUCCESS", ohlc(query.symbols, 100));
       },
       funding: async (query) => providerResult("coinalyze", "SUCCESS", ohlc(query.symbols, 0.01)),
@@ -121,7 +119,6 @@ test("live qualification reports deterministic sample, quota and unresolved sema
   assert.deepEqual(report.universe?.sampleSymbols, symbols);
   assert.equal(report.universe?.symbolCallsPerFiveMinuteCycle, 8);
   assert.equal(report.universe?.completeCycleFitsSingleMinuteBurst, true);
-  assert.equal(capturedQuery?.acquisitionMode, "FRESH");
   assert.equal(report.timestamps.length, 4);
   assert.equal(report.sampleAggregates?.openInterestCoverage, "COMPLETE");
   assert.equal(report.sampleAggregates?.fundingCoverage, "COMPLETE");
