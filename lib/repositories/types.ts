@@ -106,9 +106,17 @@ export type EconomicEventResultHistoryQuery = {
   limit: number;
 };
 
+/** Physical insert receipt from conflict-ignore RETURNING. */
+export type CanonicalWriteReceipt = {
+  submitted: number;
+  inserted: number;
+  duplicates: number;
+};
+
 export interface ObservationRepository {
   save(observation: Observation): Promise<void>;
   saveMany(observations: Observation[]): Promise<void>;
+  saveManyWithReceipt?(observations: Observation[]): Promise<CanonicalWriteReceipt>;
   findById(id: string): Promise<Observation | null>;
   findManyByIds?(ids: string[]): Promise<Observation[]>;
 }
@@ -117,7 +125,7 @@ export interface HistoricalObservationRepository { findHistory(query: Observatio
 export interface EventRepository { save(event: Event): Promise<void>; saveMany(events: Event[]): Promise<void>; findById(id: string): Promise<Event | null>; }
 /** Point-in-time Event reads stay separate from canonical write persistence. */
 export interface HistoricalEventRepository { findHistory(query: EventHistoryQuery): Promise<Event[]>; }
-export interface EvidenceRepository { save(evidence: Evidence): Promise<void>; saveMany(evidence: Evidence[]): Promise<void>; findById(id: string): Promise<Evidence | null>; }
+export interface EvidenceRepository { save(evidence: Evidence): Promise<void>; saveMany(evidence: Evidence[]): Promise<void>; saveManyWithReceipt?(evidence: Evidence[]): Promise<CanonicalWriteReceipt>; findById(id: string): Promise<Evidence | null>; }
 /** Point-in-time Evidence reads stay separate from canonical write persistence. */
 export interface HistoricalEvidenceRepository { findHistory(query: EvidenceHistoryQuery, options?: { signal?: AbortSignal }): Promise<Evidence[]>; }
 export interface ContextRepository { save(context: Context): Promise<void>; saveMany(contexts: Context[]): Promise<void>; findById(id: string): Promise<Context | null>; }

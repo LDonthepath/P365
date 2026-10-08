@@ -1,7 +1,7 @@
 import "server-only";
 import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
-import type { ContextRepository, EventRepository, EvidenceRepository, MarketSnapshotRepository, ObservationRepository } from "../repositories/types";
+import type { ContextRepository, EventRepository, EvidenceRepository, MarketSnapshotRepository, ObservationRepository, CanonicalWriteReceipt } from "../repositories/types";
 import { SupabaseHistoricalEvidenceRepository } from "./supabase-evidence-history";
 import { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
 import { marketMemoryDedupeKey, marketMemoryEffectiveAt, type CanonicalRecord, type MarketMemoryRecordType } from "./market-memory-record";
@@ -91,6 +91,56 @@ async function insertMany(rows: MarketMemoryRow[]): Promise<void> {
   }
 }
 
+/**
+ * One atomic conflict-ignore INSERT, returning only physical inserted keys.
+ * No preflight read (race-prone), no extra database roundtrip.
+ */
+async function insertManyWithReceipt(rows: MarketMemoryRow[]): Promise<CanonicalWriteReceipt> {
+  if (rows.length === 0) return { submitted: 0, inserted: 0, duplicates: 0 };
+  const { url, key } = requireConfig();
+  const response = await fetch(
+    url + "/rest/v1/market_memory?on_conflict=dedupe_key&select=dedupe_key",
+    {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: "Bearer " + key,
+        "Content-Type": "application/json",
+        Prefer: "resolution=ignore-duplicates,return=representation",
+      },
+      body: JSON.stringify(rows),
+      cache: "no-store",
+      signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
+    },
+  );
+
+  if (!response.ok) {
+    // Do not expose raw upstream errors (may include sensitive request details).
+    throw new Error("Supabase Market Memory receipt write failed (" + response.status + ")");
+  }
+
+  const result: unknown = await response.json();
+  const submittedKeys = new Set(rows.map((row) => row.dedupe_key));
+  if (!Array.isArray(result)
+    || result.length > rows.length
+    || !result.every((entry: unknown) => {
+      const item = entry && typeof entry === "object" && !Array.isArray(entry)
+        ? entry as Record<string, unknown>
+        : null;
+      return item && typeof item.dedupe_key === "string"
+        && submittedKeys.has(item.dedupe_key)
+        && Object.keys(item).length === 1;
+    })) {
+    throw new Error("Supabase returned an invalid physical insert receipt");
+  }
+  const insertedKeys = new Set(result.map((entry: { dedupe_key: string }) => entry.dedupe_key));
+  if (insertedKeys.size !== result.length) {
+    throw new Error("Supabase returned duplicate physical insert receipt keys");
+  }
+  const inserted = insertedKeys.size;
+  return { submitted: rows.length, inserted, duplicates: rows.length - inserted };
+}
+
 async function find<T extends CanonicalRecord>(recordType: MarketMemoryRecordType, id: string): Promise<T | null> {
   const { url, key } = requireConfig();
   const params = new URLSearchParams({
@@ -169,6 +219,10 @@ class SupabaseRepository<T extends CanonicalRecord> {
 
   async saveMany(items: T[]): Promise<void> {
     await insertMany(items.map((item) => rowFor(this.recordType, item)));
+  }
+
+  async saveManyWithReceipt(items: T[]): Promise<CanonicalWriteReceipt> {
+    return insertManyWithReceipt(items.map((item) => rowFor(this.recordType, item)));
   }
 
   async findById(id: string): Promise<T | null> {
