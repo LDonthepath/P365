@@ -23,6 +23,12 @@ function isDateOnly(value: string | undefined): value is string {
 }
 
 export async function fetchFredMacroObservations(query: FredObservationQuery = {}): Promise<ProviderResult<MacroObservationInput>> {
+  // Provider-update scheduler may intentionally select no series when FRED's
+  // provider update feed reports no registered series updated in its overlap.
+  // Request parsing prevents user-supplied empty `fredSeries` selectors.
+  if (Array.isArray(query.seriesIds) && query.seriesIds.length === 0) {
+    return providerResult("fred", "EMPTY", []);
+  }
   if (query.limit !== undefined && (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > 100)) return providerResult("fred", "ERROR", [], "FRED observation limit must be an integer between 1 and 100");
   if (query.observationStart !== undefined && !isDateOnly(query.observationStart)) return providerResult("fred", "ERROR", [], "FRED observation_start must be YYYY-MM-DD");
   if (query.observationEnd !== undefined && !isDateOnly(query.observationEnd)) return providerResult("fred", "ERROR", [], "FRED observation_end must be YYYY-MM-DD");

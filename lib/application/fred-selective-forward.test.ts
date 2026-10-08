@@ -88,7 +88,6 @@ test("direct provider refuses unqualified selector before issuing any FRED reque
   globalThis.fetch = (async () => { calls++; throw new Error("must not fetch"); }) as typeof fetch;
   try {
     for (const query of [
-      { seriesIds: [] },
       { seriesIds: ["NOT_REGISTRY"] },
       { seriesIds: ["DGS2","DGS2"] },
       { seriesIds: ["DGS2"], requireCompleteRange: true, observationStart: "2026-10-01", observationEnd: "2026-10-02" },
@@ -97,6 +96,8 @@ test("direct provider refuses unqualified selector before issuing any FRED reque
       const result = await fetchFredMacroObservations(query as never);
       assert.equal(result.status, "ERROR");
     }
+    const noProviderUpdates = await fetchFredMacroObservations({ seriesIds: [] });
+    assert.equal(noProviderUpdates.status, "EMPTY");
     assert.equal(calls,0);
   } finally {
     globalThis.fetch = original;
