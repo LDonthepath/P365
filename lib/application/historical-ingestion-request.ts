@@ -34,7 +34,19 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
     return { ok: false, error: "mode must be FORWARD or BACKFILL" };
   }
   const mode: HistoricalIngestionMode = rawMode === "BACKFILL" ? "BACKFILL" : "FORWARD";
-  if (mode === "FORWARD") return { ok: true, options: { mode, providers } };
+  const cftcReleaseAware = searchParams.get("cftcReleaseAware");
+  if (cftcReleaseAware !== null) {
+    if (cftcReleaseAware !== "1") {
+      return { ok: false, error: "cftcReleaseAware must equal 1 when specified" };
+    }
+    if (mode !== "FORWARD" || providers.length !== 1 || providers[0] !== "cftc") {
+      return { ok: false, error: "cftcReleaseAware requires FORWARD with only cftc provider" };
+    }
+  }
+  if (mode === "FORWARD") return {
+    ok: true,
+    options: { mode, providers, ...(cftcReleaseAware === "1" ? { cftcReleaseAware: true } : {}) },
+  };
   if (providers.length !== 1 || !["fred", "defillama", "sosovalue", "cftc"].includes(providers[0])) {
     return { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" };
   }

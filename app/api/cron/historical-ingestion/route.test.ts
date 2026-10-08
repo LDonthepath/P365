@@ -55,6 +55,26 @@ async function main(): Promise<void> {
   assert.equal((await handler(slowLane)).status, 200);
   assert.deepEqual(received, { mode: "FORWARD", providers: ["coingecko-context"] });
   assert.equal(executions, 2, "slow lane is independently schedulable through the authenticated endpoint");
+
+  const releaseAware = new Request("https://p365.test/api/cron/historical-ingestion?mode=FORWARD&providers=cftc&cftcReleaseAware=1", {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  assert.equal((await handler(releaseAware)).status, 200);
+  assert.deepEqual(received, { mode: "FORWARD", providers: ["cftc"], cftcReleaseAware: true });
+  assert.equal(executions, 3);
+
+  for (const invalid of [
+    "mode=BACKFILL&providers=cftc&cftcReleaseAware=1",
+    "mode=FORWARD&providers=coingecko&cftcReleaseAware=1",
+    "mode=FORWARD&providers=cftc,fred&cftcReleaseAware=1",
+    "mode=FORWARD&providers=cftc&cftcReleaseAware=true",
+  ]) {
+    const request = new Request(`https://p365.test/api/cron/historical-ingestion?${invalid}`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal((await handler(request)).status, 400);
+    assert.equal(executions, 3, "invalid release-aware requests never invoke ingestion");
+  }
 }
 
 void main();

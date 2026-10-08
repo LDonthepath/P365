@@ -6,6 +6,7 @@ import {
   CFTC_GOLD_COT_PROVIDER_RESOURCE,
   cftcGoldCotBackfillRangeError,
   fetchCftcGoldCotObservations,
+  shouldFetchCftcGoldCotReleaseAware,
 } from "./cftc-gold-cot";
 
 function row(date: string): Record<string, unknown> {
@@ -200,4 +201,48 @@ test("provider HTTP and JSON failures remain explicit", async () => {
   );
   assert.equal(malformed.status, "ERROR");
   assert.equal(malformed.errorCode, "MALFORMED_PAYLOAD");
+});
+
+
+test("release-aware CFTC calendar respects Eastern DST, holiday Mondays, and safe fallback", () => {
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-10-09T18:59:00Z")), false, "pre-release Friday is not yet due");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-10-09T19:31:00Z")), true, "EDT release window");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-10-10T19:31:00Z")), true, "late-provider Saturday recheck");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-10-12T22:48:00Z")), true, "Monday recovery after Friday");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-10-13T22:48:00Z")), false, "non-release Tuesday can skip");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-10-15T22:48:00Z")), true, "weekly Thursday revision/overdue sweep");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-03-06T20:31:00Z")), true, "EST March release");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-03-13T19:31:00Z")), true, "EDT March release");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-11-16T20:29:00Z")), false, "holiday Monday not yet released");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-11-16T20:31:00Z")), true, "holiday Monday EST release");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2026-11-30T20:31:00Z")), true, "second delayed November Monday");
+  assert.equal(shouldFetchCftcGoldCotReleaseAware(new Date("2027-01-05T22:48:00Z")), true, "unknown year fails open");
+});
+
+test("CFTC cadence is opt-in, skips provider on non-release days, and never gates BACKFILL", async () => {
+  let count = 0;
+  const fetcher = (async () => {
+    count += 1;
+    return new Response(JSON.stringify([row("2026-09-29")]), { status: 200 });
+  }) as typeof fetch;
+  const skipped = await fetchCftcGoldCotObservations(
+    { mode: "FORWARD", releaseAware: true },
+    { fetch: fetcher, now: () => new Date("2026-10-13T22:48:00Z") },
+  );
+  assert.equal(skipped.status, "EMPTY");
+  assert.equal(skipped.data.length, 0);
+  assert.match(skipped.message ?? "", /no provider request/);
+  assert.equal(count, 0);
+  const defaultDaily = await fetchCftcGoldCotObservations(
+    { mode: "FORWARD" },
+    { fetch: fetcher, now: () => new Date("2026-10-13T22:48:00Z") },
+  );
+  assert.equal(defaultDaily.status, "SUCCESS");
+  assert.equal(count, 1, "legacy cron path must remain unchanged");
+  const backfill = await fetchCftcGoldCotObservations(
+    { mode: "BACKFILL", range: { from: "2026-09-01", to: "2026-09-30" }, releaseAware: true },
+    { fetch: fetcher, now: () => new Date("2026-10-13T22:48:00Z") },
+  );
+  assert.equal(backfill.status, "SUCCESS");
+  assert.equal(count, 2, "BACKFILL must not be gated");
 });
