@@ -55,16 +55,10 @@ function unavailablePlan(now: Date): FredProviderUpdatePlan {
     : deferredPlan(now);
 }
 
-// FRED documents minute-granularity bounds but not a timezone. America/Chicago
-// matches sample FRED last_updated offsets; source timezone remains a gate.
-function fredTimeBound(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Chicago", year: "numeric", month: "2-digit",
-    day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  }).formatToParts(date);
-  const val = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return val("year") + val("month") + val("day") + val("hour") + val("minute");
-}
+// FRED does not document the timezone used by start_time/end_time filters.
+// Scan its offset-aware last_updated feed instead; stop only after the
+// lookback boundary is covered. The 3-page/5-second cap fails closed to
+// selective acquisition and preserves the existing bounded hourly recovery.
 
 /** FRED last_updated carries an explicit offset, e.g. `2026-10-08 07:29:00-05`. */
 function parseFredTimestamp(value: unknown): number | null {
@@ -116,8 +110,8 @@ export async function planFredProviderUpdatedObservations(
       url.searchParams.set("file_type", "json");
       // Geographic FRED macro is not a superset of P365 registry semantics.
       url.searchParams.set("filter_value", "all");
-      url.searchParams.set("start_time", fredTimeBound(new Date(windowStart - 60_000)));
-      url.searchParams.set("end_time", fredTimeBound(new Date(now.getTime() + 60_000)));
+      // No undocumented provider-local time bounds: verify timestamps with their
+      // explicit offsets after fetching newest-first server updates.
       url.searchParams.set("order_by", "last_updated");
       url.searchParams.set("sort_order", "desc");
       url.searchParams.set("limit", String(FRED_UPDATES_LIMIT));
