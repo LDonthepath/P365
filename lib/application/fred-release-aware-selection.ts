@@ -25,6 +25,7 @@ const FRED_RELEASE_BY_SLOW_SERIES = {
 const FULL_SWEEP_UTC_HOUR = 4;
 const RELEASE_LOOKBACK_CALENDAR_DAYS = 2;
 const FRED_CALENDAR_LIMIT = 1000;
+const FRED_CALENDAR_MAX_PAGES = 4;
 
 export type FredSchedulerPlan = {
   seriesIds: MacroSeriesId[];
@@ -33,7 +34,6 @@ export type FredSchedulerPlan = {
   requestedSeriesCount: number;
   releaseWindowSeriesCount: number;
 };
-type ReleaseCalendarRow = { date: string; release_id: number };
 
 function dateOnly(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -92,39 +92,78 @@ export async function planFredReleaseAwareObservations(
   const apiKey = options.apiKey ?? process.env.FRED_API_KEY;
   if (!apiKey) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
   const start = dateDaysBefore(calendarDateNY, RELEASE_LOOKBACK_CALENDAR_DAYS);
+  // FRED realtime_start/end describe when metadata were known (ALFRED
+  // vintages), NOT a publisher release_date range. Retrieve pages ordered by
+  // release_date and scan locally until the target lookback is covered.
   const url = new URL("https://api.stlouisfed.org/fred/releases/dates");
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("file_type", "json");
   url.searchParams.set("include_release_dates_with_no_data", "true");
+  url.searchParams.set("order_by", "release_date");
   url.searchParams.set("sort_order", "desc");
-  url.searchParams.set("realtime_start", start);
-  url.searchParams.set("realtime_end", calendarDateNY);
   url.searchParams.set("limit", String(FRED_CALENDAR_LIMIT));
+  const fetcher = options.fetcher ?? fetch;
+  const published = new Set<number>();
+  let offset = 0;
+  let expectedTotal: number | null = null;
+  let previousDate: string | null = null;
+  let coveredLookback = false;
+  let sawDateOnOrBeforeToday = false;
   try {
-    const response = await (options.fetcher ?? fetch)(url, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(3_500),
-    });
-    if (!response.ok) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
-    const raw: unknown = await response.json();
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+    for (let page = 0; page < FRED_CALENDAR_MAX_PAGES; page++) {
+      url.searchParams.set("offset", String(offset));
+      const response = await fetcher(url, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(3_500),
+      });
+      if (!response.ok) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+      const raw: unknown = await response.json();
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+        return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+      }
+      const j = raw as Record<string, unknown>;
+      const total = j.count;
+      const returnedOffset = j.offset;
+      const returnedLimit = j.limit;
+      if (!Number.isSafeInteger(total) || (total as number) < 0
+        || (expectedTotal !== null && total !== expectedTotal)
+        || !Number.isSafeInteger(returnedOffset) || returnedOffset !== offset
+        || !Number.isSafeInteger(returnedLimit) || returnedLimit !== FRED_CALENDAR_LIMIT
+        || !Array.isArray(j.release_dates)
+        || j.release_dates.length !== Math.min(FRED_CALENDAR_LIMIT, (total as number) - offset)
+        || (total as number) <= offset) {
+        return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+      }
+      if (expectedTotal === null) expectedTotal = total as number;
+      const entries = j.release_dates as unknown[];
+      for (const entry of entries) {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+          return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+        }
+        const item = entry as Record<string, unknown>;
+        if (!dateOnly(item.date)
+            || !Number.isSafeInteger(item.release_id)
+            || (item.release_id as number) <= 0
+            || (previousDate !== null && item.date > previousDate)) {
+          return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+        }
+        previousDate = item.date;
+        if (item.date <= calendarDateNY) sawDateOnOrBeforeToday = true;
+        if (item.date < start) coveredLookback = true;
+        if (item.date >= start && item.date <= calendarDateNY) {
+          published.add(item.release_id as number);
+        }
+      }
+      offset += entries.length;
+      if (coveredLookback || offset === total) {
+        // An exclusively future calendar cannot establish whether the
+        // publisher lookback is complete; preserve all 33 series instead.
+        coveredLookback = sawDateOnOrBeforeToday;
+        break;
+      }
     }
-    const j = raw as Record<string, unknown>;
-    if (!Array.isArray(j.release_dates) || !Number.isSafeInteger(j.count) ||
-      (j.count as number) < 0 || (j.count as number) > FRED_CALENDAR_LIMIT ||
-      j.release_dates.length !== j.count) {
-      return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
-    }
-    const entries = j.release_dates as unknown[];
-    if (entries.some((v) => {
-      if (!v || typeof v !== "object" || Array.isArray(v)) return true;
-      const x = v as Record<string, unknown>;
-      return !dateOnly(x.date) || !Number.isSafeInteger(x.release_id)
-        || (x.release_id as number) <= 0
-        || (x.date as string) < start || (x.date as string) > calendarDateNY;
-    })) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
-    const published = new Set((entries as ReleaseCalendarRow[]).map((x) => x.release_id));
+    // The window was not fully covered within a bounded number of pages.
+    if (!coveredLookback) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
     const matchingSlow = slow.filter((id) =>
       published.has(FRED_RELEASE_BY_SLOW_SERIES[id as keyof typeof FRED_RELEASE_BY_SLOW_SERIES]));
     const eligible = new Set(matchingSlow);
