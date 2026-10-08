@@ -10,7 +10,7 @@ import { cftcGoldCotBackfillRangeError } from "../data/cftc-gold-cot";
 import { MACRO_SERIES_REGISTRY, type MacroSeriesId } from "../data/macro-registry";
 
 export type HistoricalIngestionRequestParseResult =
-  | { ok: true; options: HistoricalIngestionOptions }
+  | { ok: true; options: HistoricalIngestionOptions; fredReleaseAware?: true }
   | { ok: false; error: string };
 
 function parseDate(value: string | null): string | undefined {
@@ -46,6 +46,13 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
   }
   // FRED series selection is opt-in; the legacy full-registry URL is unchanged.
   const selectorParams = searchParams.getAll("fredSeries");
+  const releaseAwareParams = searchParams.getAll("fredReleaseAware");
+  if (releaseAwareParams.length > 0 &&
+      (releaseAwareParams.length !== 1 || releaseAwareParams[0] !== "1" ||
+        mode !== "FORWARD" || providers.length !== 1 || providers[0] !== "fred" ||
+        selectorParams.length !== 0)) {
+    return { ok: false, error: "fredReleaseAware requires FORWARD with only fred and no fredSeries" };
+  }
   let fredSeries: MacroSeriesId[] | undefined;
   if (selectorParams.length > 0) {
     if (selectorParams.length !== 1 || mode !== "FORWARD" || !providers.includes("fred")
@@ -64,6 +71,7 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
     ok: true,
     options: { mode, providers, ...(fredSeries ? { fred: { seriesIds: fredSeries } } : {}),
       ...(cftcReleaseAware === "1" ? { cftcReleaseAware: true } : {}) },
+    ...(releaseAwareParams.length === 1 ? { fredReleaseAware: true as const } : {}),
   };
   if (providers.length !== 1 || !["fred", "defillama", "sosovalue", "cftc"].includes(providers[0])) {
     return { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" };
