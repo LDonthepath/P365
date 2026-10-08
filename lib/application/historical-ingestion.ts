@@ -61,6 +61,16 @@ export type HistoricalIngestionAcquisition = {
   "hyperliquid-book": () => Promise<ProviderResult<HyperliquidPerpOrderBookSnapshot>>;
 };
 
+/** FRED write receipt: exact PostgREST insert count, not legacy accepted count. */
+export type FredPhysicalWriteMetrics = {
+  source: "POSTGREST_RETURNING_KEYS" | "NOT_EVALUATED";
+  observations: { submitted: number; inserted: number | null; duplicates: number | null };
+  evidence: { submitted: number; inserted: number | null; duplicates: number | null };
+  /** A new physical insert is not necessarily a revision of an existing measurement. */
+  revised: number | null;
+  revisionAssessment: "NOT_EVALUATED";
+};
+
 export type HistoricalIngestionProviderReport = {
   provider: HistoricalIngestionProvider;
   status: ProviderResult<unknown>["status"] | "PERSISTENCE_ERROR";
@@ -68,6 +78,8 @@ export type HistoricalIngestionProviderReport = {
   normalized: number;
   persisted: number;
   persistedEvidence: number;
+  /** Optional FRED-only actual write receipt. Legacy persisted counts mean accepted, NOT inserts. */
+  writeMetrics?: FredPhysicalWriteMetrics;
   error?: string;
 };
 
@@ -310,8 +322,25 @@ async function executeProvider(
   const result = await acquire(provider, acquisition);
   const canonical = canonicalize(result, provider, mode);
   const normalized = Math.max(canonical.observations.length, canonical.evidence.length);
+  const isFred = provider === "fred";
+  const metrics: FredPhysicalWriteMetrics | undefined = isFred
+    ? {
+        source: "NOT_EVALUATED",
+        observations: { submitted: canonical.observations.length, inserted: null, duplicates: null },
+        evidence: { submitted: canonical.evidence.length, inserted: null, duplicates: null },
+        revised: null,
+        revisionAssessment: "NOT_EVALUATED",
+      }
+    : undefined;
 
   if (normalized === 0 && canonical.evidence.length === 0) {
+    if (metrics) {
+      metrics.observations.inserted = 0;
+      metrics.observations.duplicates = 0;
+      metrics.evidence.inserted = 0;
+      metrics.evidence.duplicates = 0;
+      metrics.revised = 0;
+    }
     return {
       provider,
       status: result.status,
@@ -319,13 +348,30 @@ async function executeProvider(
       normalized,
       persisted: 0,
       persistedEvidence: 0,
+      ...(metrics ? { writeMetrics: metrics } : {}),
       error: result.status === "ERROR" || result.status === "UNAVAILABLE" ? result.message : undefined,
     };
   }
 
   try {
-    await repositories.evidence.saveMany(canonical.evidence);
-    await repositories.observations.saveMany(canonical.observations);
+    const bothSupportReceipt = isFred
+      && typeof repositories.evidence.saveManyWithReceipt === "function"
+      && typeof repositories.observations.saveManyWithReceipt === "function";
+    if (metrics && bothSupportReceipt) {
+      const ev = await repositories.evidence.saveManyWithReceipt!(canonical.evidence);
+      metrics.evidence.inserted = ev.inserted;
+      metrics.evidence.duplicates = ev.duplicates;
+      const obs = await repositories.observations.saveManyWithReceipt!(canonical.observations);
+      metrics.observations.inserted = obs.inserted;
+      metrics.observations.duplicates = obs.duplicates;
+      metrics.source = "POSTGREST_RETURNING_KEYS";
+      // No new observations implies zero revisions. Otherwise a prior-version
+      // history lookup is needed, which is intentionally outside this write path.
+      if (obs.inserted === 0) metrics.revised = 0;
+    } else {
+      await repositories.evidence.saveMany(canonical.evidence);
+      await repositories.observations.saveMany(canonical.observations);
+    }
     return {
       provider,
       status: result.status,
@@ -333,6 +379,7 @@ async function executeProvider(
       normalized,
       persisted: canonical.observations.length,
       persistedEvidence: canonical.evidence.length,
+      ...(metrics ? { writeMetrics: metrics } : {}),
       error: result.status === "ERROR" || result.status === "UNAVAILABLE" ? result.message : undefined,
     };
   } catch (error) {
@@ -343,6 +390,7 @@ async function executeProvider(
       normalized,
       persisted: 0,
       persistedEvidence: 0,
+      ...(metrics ? { writeMetrics: metrics } : {}),
       error: error instanceof Error ? error.message : "Canonical persistence failed",
     };
   }
