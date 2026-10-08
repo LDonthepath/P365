@@ -25,6 +25,7 @@ const FRED_RELEASE_BY_SLOW_SERIES = {
 const FULL_SWEEP_UTC_HOUR = 4;
 const RELEASE_LOOKBACK_CALENDAR_DAYS = 2;
 const FRED_CALENDAR_LIMIT = 1000;
+const FRED_CALENDAR_MAX_PAGES = 4;
 
 export type FredSchedulerPlan = {
   seriesIds: MacroSeriesId[];
@@ -33,7 +34,6 @@ export type FredSchedulerPlan = {
   requestedSeriesCount: number;
   releaseWindowSeriesCount: number;
 };
-type ReleaseCalendarRow = { date: string; release_id: number };
 
 function dateOnly(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -92,39 +92,72 @@ export async function planFredReleaseAwareObservations(
   const apiKey = options.apiKey ?? process.env.FRED_API_KEY;
   if (!apiKey) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
   const start = dateDaysBefore(calendarDateNY, RELEASE_LOOKBACK_CALENDAR_DAYS);
-  const url = new URL("https://api.stlouisfed.org/fred/releases/dates");
-  url.searchParams.set("api_key", apiKey);
-  url.searchParams.set("file_type", "json");
-  url.searchParams.set("include_release_dates_with_no_data", "true");
-  url.searchParams.set("sort_order", "desc");
-  url.searchParams.set("realtime_start", start);
-  url.searchParams.set("realtime_end", calendarDateNY);
-  url.searchParams.set("limit", String(FRED_CALENDAR_LIMIT));
+  // FRED 'realtime_start/end' are VINTAGE filters, not filters on
+  // publisher release dates. A single 1000-result page is NOT exhaustive.
+  // Fetch strictly descending release_date pages until we pass the
+  // earliest eligible NY date, or fail open after a bounded page cap.
+  const published = new Set<number>();
+  let finished = false;
+  let lastDate: string | null = null;
   try {
-    const response = await (options.fetcher ?? fetch)(url, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(3_500),
-    });
-    if (!response.ok) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
-    const raw: unknown = await response.json();
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+    for (let page = 0; page < FRED_CALENDAR_MAX_PAGES; page++) {
+      const offset = page * FRED_CALENDAR_LIMIT;
+      const url = new URL("https://api.stlouisfed.org/fred/releases/dates");
+      url.searchParams.set("api_key", apiKey);
+      url.searchParams.set("file_type", "json");
+      url.searchParams.set("include_release_dates_with_no_data", "true");
+      url.searchParams.set("order_by", "release_date");
+      url.searchParams.set("sort_order", "desc");
+      url.searchParams.set("limit", String(FRED_CALENDAR_LIMIT));
+      url.searchParams.set("offset", String(offset));
+
+      const response = await (options.fetcher ?? fetch)(url, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(3_500),
+      });
+      if (!response.ok) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+      const raw: unknown = await response.json();
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+        return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+      }
+      const j = raw as Record<string, unknown>;
+      if (!Array.isArray(j.release_dates) || !Number.isSafeInteger(j.count)
+        || (j.count as number) < 0
+        || (j.offset !== undefined && j.offset !== offset)
+        || (j.limit !== undefined && j.limit !== FRED_CALENDAR_LIMIT)) {
+        return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+      }
+      const count = j.count as number;
+      const expected = Math.max(0, Math.min(FRED_CALENDAR_LIMIT, count - offset));
+      const entries = j.release_dates as unknown[];
+      if (entries.length !== expected) {
+        return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+      }
+      for (const value of entries) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+        }
+        const row = value as Record<string, unknown>;
+        if (!dateOnly(row.date) || !Number.isSafeInteger(row.release_id)
+          || (row.release_id as number) <= 0
+          || (lastDate !== null && (row.date as string) > lastDate)) {
+          return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
+        }
+        lastDate = row.date as string;
+        if (lastDate < start) {
+          finished = true;
+          break;
+        }
+        if (lastDate <= calendarDateNY) published.add(row.release_id as number);
+      }
+      if (finished || offset + entries.length >= count) {
+        finished = true;
+        break;
+      }
     }
-    const j = raw as Record<string, unknown>;
-    if (!Array.isArray(j.release_dates) || !Number.isSafeInteger(j.count) ||
-      (j.count as number) < 0 || (j.count as number) > FRED_CALENDAR_LIMIT ||
-      j.release_dates.length !== j.count) {
-      return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
-    }
-    const entries = j.release_dates as unknown[];
-    if (entries.some((v) => {
-      if (!v || typeof v !== "object" || Array.isArray(v)) return true;
-      const x = v as Record<string, unknown>;
-      return !dateOnly(x.date) || !Number.isSafeInteger(x.release_id)
-        || (x.release_id as number) <= 0
-        || (x.date as string) < start || (x.date as string) > calendarDateNY;
-    })) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
-    const published = new Set((entries as ReleaseCalendarRow[]).map((x) => x.release_id));
+    // If the source has >4 pages of future/current releases, do not
+    // pretend the queried period was exhaustive: keep old 33-series path.
+    if (!finished) return fullPlan(calendarDateNY, "FAIL_OPEN_FULL_SWEEP");
     const matchingSlow = slow.filter((id) =>
       published.has(FRED_RELEASE_BY_SLOW_SERIES[id as keyof typeof FRED_RELEASE_BY_SLOW_SERIES]));
     const eligible = new Set(matchingSlow);

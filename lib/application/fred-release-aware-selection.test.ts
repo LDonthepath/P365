@@ -38,8 +38,12 @@ test("release day: one metadata request selects all hourly frequent + matched mo
       const u = new URL(String(input));
       assert.equal(u.origin, "https://api.stlouisfed.org");
       assert.equal(u.pathname, "/fred/releases/dates");
-      assert.equal(u.searchParams.get("realtime_start"), "2026-10-06");
-      assert.equal(u.searchParams.get("realtime_end"), "2026-10-08");
+      assert.equal(u.searchParams.has("realtime_start"), false,
+        "realtime_start is a FRED VINTAGE filter, not publication-date bound");
+      assert.equal(u.searchParams.has("realtime_end"), false);
+      assert.equal(u.searchParams.get("order_by"), "release_date");
+      assert.equal(u.searchParams.get("sort_order"), "desc");
+      assert.equal(u.searchParams.get("offset"), "0");
       assert.equal(u.searchParams.get("include_release_dates_with_no_data"), "true");
       assert.equal(u.searchParams.get("api_key"), FRED_KEY);
       assert.equal(init?.cache, "no-store");
@@ -93,7 +97,7 @@ test("calendar outages, malformed/partial results fail OPEN to full 33 not silen
     () => new Response("down", { status: 503 }),
     () => calendarResponse([{ date: "2026-10-08", release_id: 10 }], { count: 5000 }),
     () => calendarResponse([{ date: "2026-10-08", release_id: 10 }], { count: 2 }),
-    () => calendarResponse([{ date: "2026-10-31", release_id: 10 }]),
+    () => calendarResponse([{ date: "bad-date", release_id: 10 }]),
     () => calendarResponse([{ date: "2026-10-08", release_id: "10" as unknown as number }]),
     () => new Response("{invalid", { status: 200 }),
   ];
@@ -117,11 +121,9 @@ test("NY calendar date follows real DST boundaries, not a fixed UTC offset", asy
     "2026-11-01T06:31:00Z"]) {
     const plan = await planFredReleaseAwareObservations({
       now: at(iso), apiKey: FRED_KEY,
-      fetcher: (async (url: RequestInfo | URL) => {
-        dates.push(new URL(String(url)).searchParams.get("realtime_end")!);
-        return calendarResponse([]);
-      }) as typeof fetch,
+      fetcher: (async () => calendarResponse([])) as typeof fetch,
     });
+    dates.push(plan.calendarDateNY);
     assert.equal(plan.requestedSeriesCount, 21);
   }
   assert.deepEqual(dates, ["2026-10-31", "2026-11-01", "2026-11-01"]);
@@ -199,4 +201,72 @@ test("no calendar secret or upstream error payload leaks into planner response",
   assert.equal(output.includes(FRED_KEY), false);
   assert.equal(output.includes("request api_key"), false);
   assert.match(output, /FAIL_OPEN_FULL_SWEEP/);
+});
+
+test("all-release calendar count above 1000 pages by offset instead of suppressing valid release", async () => {
+  let calls = 0;
+  const dateFuture = "2026-10-10";
+  const first = Array.from({length: 1000}, (_, i) => ({
+    release_id: i === 999 ? 900 : 9,
+    date: i === 999 ? "2026-10-08" : dateFuture,
+  }));
+  const pages = [first, [
+    {release_id: 10, date: "2026-10-07"},
+    {release_id: 21, date: "2026-10-05"},
+  ]];
+  const result = await planFredReleaseAwareObservations({
+    now: at("2026-10-08T12:31:00Z"), apiKey: FRED_KEY,
+    fetcher: (async (url: RequestInfo | URL) => {
+      const u = new URL(String(url)); const offset = Number(u.searchParams.get("offset"));
+      assert.equal(offset, calls * 1000);
+      assert.equal(u.searchParams.has("realtime_start"), false);
+      return Response.json({
+        count: 1002, offset, limit: 1000,
+        release_dates: pages[calls++],
+      });
+    }) as typeof fetch,
+  });
+  assert.equal(calls, 2);
+  assert.equal(result.mode, "RELEASE_RECHECK");
+  assert.ok(result.seriesIds.includes("CPIAUCSL"));
+  assert.ok(result.seriesIds.includes("CPILFESL"));
+  assert.equal(result.seriesIds.includes("M2SL"), false, "older than window excluded");
+  assert.equal(result.requestedSeriesCount, 23);
+});
+
+test("future-only release dates never schedule today's slow FRED series", async () => {
+  const result = await planFredReleaseAwareObservations({
+    now: at("2026-10-08T12:31:00Z"), apiKey: FRED_KEY,
+    fetcher: (async () => calendarResponse([
+      { date: "2026-10-09", release_id: 10 },
+      { date: "2026-10-01", release_id: 10 },
+    ])) as typeof fetch,
+  });
+  assert.equal(result.mode, "HOURLY_FREQUENT");
+  assert.deepEqual(result.seriesIds, FREQUENT);
+});
+
+test("incomplete source pagination and descending-order violations fail open, not partial select", async () => {
+  for(const mode of ["cap", "out-of-order"]) {
+    let calls = 0;
+    const result = await planFredReleaseAwareObservations({
+      now: at("2026-10-08T12:31:00Z"), apiKey: FRED_KEY,
+      fetcher: (async (url: RequestInfo | URL) => {
+        const u = new URL(String(url));
+        const offset = Number(u.searchParams.get("offset"));
+        calls++;
+        if (mode === "out-of-order") {
+          return Response.json({ count: 2, offset: 0, limit:1000, release_dates: [
+            { date: "2026-10-07", release_id: 10 },
+            { date: "2026-10-08", release_id: 53 },
+          ] });
+        }
+        return Response.json({ count: 5000, offset, limit:1000, release_dates:
+          Array.from({length:1000},()=>({date:"2026-10-30", release_id:10})) });
+      }) as typeof fetch,
+    });
+    assert.equal(result.mode, "FAIL_OPEN_FULL_SWEEP");
+    assert.deepEqual(result.seriesIds, ALL);
+    assert.equal(calls, mode === "cap" ? 4 : 1);
+  }
 });
