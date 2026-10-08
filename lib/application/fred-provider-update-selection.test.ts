@@ -157,7 +157,8 @@ test("fall DST repeated hour is ordered by explicit offsets, not local wall cloc
     ])) as typeof fetch,
   });
   assert.equal(plan.mode, "PROVIDER_UPDATE_RECHECK");
-  assert.deepEqual(plan.seriesIds, ["SOFR", "EFFR"]);
+  // Selection is returned in stable P365 registry order, not feed order.
+  assert.deepEqual(plan.seriesIds, ["EFFR", "SOFR"]);
 });
 
 test("metadata outage only falls back hourly, so 5-minute polling cannot amplify failure by 12x", async () => {
