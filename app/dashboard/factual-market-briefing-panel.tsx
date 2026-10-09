@@ -881,7 +881,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
+    <div className="briefing-analysis-section briefing-primary-step ux2-context-section" style={{ marginTop: "1.25rem" }}>
       <SectionHeader titleId="briefing-usd-liquidity"
         title="03 · Apa yang berubah pada likuiditas dolar AS?"
         summary={netLiquidity.latest
@@ -934,7 +934,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
+    <div className="briefing-analysis-section briefing-primary-step ux2-context-section" style={{ marginTop: "1.25rem" }}>
       <SectionHeader titleId="briefing-credit-conditions"
         title="04 · Apa yang berubah pada kredit dan volatilitas?"
         summary={creditConditions.evidenceStatus === "AVAILABLE"
@@ -961,7 +961,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
+    <div className="briefing-analysis-section briefing-primary-step ux2-context-section" style={{ marginTop: "1.25rem" }}>
       <SectionHeader titleId="briefing-macro-background"
         title="05 · Apa yang berubah pada latar makro?"
         summary={changed.evidenceStatus === "AVAILABLE"
