@@ -24,10 +24,10 @@ function parse(params: string) {
   return parseHistoricalIngestionRequest(new URLSearchParams(params));
 }
 
-test("33/33 registry coverage: 16 daily + 5 weekly preserved hourly, 12 slower qualified", () => {
-  assert.equal(ALL.length, 33);
-  assert.equal(FREQUENT.length, 21);
-  assert.equal(new Set(ALL).size, 33);
+test("35/35 registry coverage: 16 daily + 7 weekly preserved hourly, 12 slower qualified", () => {
+  assert.equal(ALL.length, 35);
+  assert.equal(FREQUENT.length, 23);
+  assert.equal(new Set(ALL).size, 35);
 });
 
 test("release day: one metadata request selects all hourly frequent + matched monthly/quarterly", async () => {
@@ -58,13 +58,13 @@ test("release day: one metadata request selects all hourly frequent + matched mo
   assert.equal(result.mode, "RELEASE_RECHECK");
   assert.equal(result.calendarDateNY, "2026-10-08");
   assert.equal(result.releaseWindowSeriesCount, 3);
-  assert.equal(result.requestedSeriesCount, 24);
+  assert.equal(result.requestedSeriesCount, 26);
   assert.deepEqual(result.seriesIds.filter((s) => !FREQUENT.includes(s)),
     ["CPIAUCSL", "CPILFESL", "GDPC1"]);
   for (const id of FREQUENT) assert.ok(new Set<string>(result.seriesIds).has(id), id);
 });
 
-test("off-release window polls 21 critical frequent series; calendar metadata isn't publication time", async () => {
+test("off-release window polls 23 critical frequent series; calendar metadata isn't publication time", async () => {
   const plan = await planFredReleaseAwareObservations({
     now: at("2026-10-08T19:31:00Z"), apiKey: FRED_KEY,
     fetcher: (async () => calendarResponse([
@@ -73,7 +73,7 @@ test("off-release window polls 21 critical frequent series; calendar metadata is
     ])) as typeof fetch,
   });
   assert.equal(plan.mode, "HOURLY_FREQUENT");
-  assert.equal(plan.requestedSeriesCount, 21);
+  assert.equal(plan.requestedSeriesCount, 23);
   assert.deepEqual(plan.seriesIds, FREQUENT);
   for (const id of ["SOFR", "EFFR", "IORB", "DGS2", "DFII10", "DTWEXBGS",
     "WALCL", "WRESBAL", "WTREGEN", "ICSA", "CCSA", "SP500"]) {
@@ -81,7 +81,7 @@ test("off-release window polls 21 critical frequent series; calendar metadata is
   }
 });
 
-test("4 UTC is a full 33-series daily sweep with zero metadata lookups", async () => {
+test("4 UTC is a full 35-series daily sweep with zero metadata lookups", async () => {
   let calls = 0;
   const plan = await planFredReleaseAwareObservations({
     now: at("2026-10-08T04:31:00Z"), apiKey: FRED_KEY,
@@ -92,7 +92,7 @@ test("4 UTC is a full 33-series daily sweep with zero metadata lookups", async (
   assert.equal(calls, 0);
 });
 
-test("calendar outages, malformed/partial results fail OPEN to full 33 not silently skip", async () => {
+test("calendar outages, malformed/partial results fail OPEN to full 35 not silently skip", async () => {
   const now = at("2026-10-08T12:31:00Z");
   const responses = [
     () => new Response("down", { status: 503 }),
@@ -112,7 +112,7 @@ test("calendar outages, malformed/partial results fail OPEN to full 33 not silen
   const noKey = await planFredReleaseAwareObservations({ now, apiKey: "",
     fetcher: (async () => { throw Error("fail"); }) as typeof fetch });
   // Explicit empty key may fallback to configured env: if no env provided,
-  // fail-open is still the safe behavior and never returns fewer than 33.
+  // fail-open is still the safe behavior and never returns fewer than 35.
   if (!process.env.FRED_API_KEY) assert.equal(noKey.mode, "FAIL_OPEN_FULL_SWEEP");
 });
 
@@ -128,7 +128,7 @@ test("NY calendar date follows real DST boundaries, not a fixed UTC offset", asy
       }) as typeof fetch,
     });
     dates.push(plan.calendarDateNY);
-    assert.equal(plan.requestedSeriesCount, 21);
+    assert.equal(plan.requestedSeriesCount, 23);
   }
   assert.deepEqual(dates, ["2026-10-31", "2026-11-01", "2026-11-01"]);
 });
@@ -229,7 +229,7 @@ test("FRED release dates pagination scans sorted calendar pages instead of misus
   });
   assert.deepEqual(offsets,[0,1000]);
   assert.equal(plan.mode,"RELEASE_RECHECK");
-  assert.equal(plan.requestedSeriesCount,23);
+  assert.equal(plan.requestedSeriesCount,25);
   assert.deepEqual(plan.seriesIds.filter((x)=>!FREQUENT.includes(x)),["CPIAUCSL","CPILFESL"]);
 });
 
@@ -251,7 +251,7 @@ test("uncovered publisher window, pagination metadata mismatch, or unsorted date
 });
 
 
-test("changing total or reverse date ordering across pages fails closed to full 33", async () => {
+test("changing total or reverse date ordering across pages fails closed to full 35", async () => {
   const future = Array.from({length:1000}, () => ({date:"2026-10-12",release_id:999}));
   const tests = [
     () => calendarResponse([{date:"2026-10-08",release_id:10}], {count:1001,offset:1000}),

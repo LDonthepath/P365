@@ -128,6 +128,8 @@ const CREDIT_CONDITIONS_LABELS: Record<string, string> = {
   BAMLH0A0HYM2: "US High Yield OAS",
   BAMLC0A0CM: "US Investment Grade OAS",
   VIXCLS: "VIX",
+  NFCI: "Chicago Fed NFCI",
+  ANFCI: "Chicago Fed Adjusted NFCI",
 };
 
 const RATES_POLICY_QUALITY_LABELS: Record<string, string> = {
@@ -672,6 +674,12 @@ function RatesPolicyBriefingCard({ point }: { point: BriefingRatesPolicyPoint })
 type BriefingCreditConditionsPoint =
   FactualMarketBriefing["creditConditions"]["items"][number];
 
+function primaryCreditConditionsChange(
+  point: BriefingCreditConditionsPoint,
+): BriefingCreditConditionsPoint["change1d"] {
+  return point.cadence === "WEEKLY" ? point.change1w : point.change1d;
+}
+
 function creditConditionsValue(point: BriefingCreditConditionsPoint): string {
   const value = formatBriefingNumber(point.value, {
     minimumFractionDigits: 2,
@@ -694,13 +702,14 @@ function creditConditionsChangeValue(
 function creditConditionsPreviousRelease(
   point: BriefingCreditConditionsPoint,
 ): string {
-  const change = point.change1d;
-  if (change === null) return "observasi harian sebelumnya belum tersedia";
-  return `observasi harian sebelumnya ${creditConditionsChangeValue(point, change)} vs ${dateOnly(change.predecessorObservedAt)}`;
+  const change = primaryCreditConditionsChange(point);
+  const cadence = point.cadence === "WEEKLY" ? "mingguan" : "harian";
+  if (change === null) return `observasi ${cadence} sebelumnya belum tersedia`;
+  return `observasi ${cadence} sebelumnya ${creditConditionsChangeValue(point, change)} vs ${dateOnly(change.predecessorObservedAt)}`;
 }
 
 function creditConditionsExplanation(point: BriefingCreditConditionsPoint): string {
-  const change = point.change1d;
+  const change = primaryCreditConditionsChange(point);
   if (change === null) {
     return "Belum cukup riwayat qualified untuk menjelaskan perubahan terhadap observasi sebelumnya.";
   }
@@ -725,6 +734,18 @@ function creditConditionsExplanation(point: BriefingCreditConditionsPoint): stri
     return "Spread investment-grade tidak berubah dibanding observasi sebelumnya.";
   }
 
+  if (point.seriesKey === "NFCI" || point.seriesKey === "ANFCI") {
+    const context = point.seriesKey === "NFCI"
+      ? "dibanding rata-rata historis kondisi keuangan AS"
+      : "setelah penyesuaian terhadap kondisi ekonomi saat itu";
+    const direction = change.value > 0
+      ? "bergerak ke arah kondisi yang lebih ketat"
+      : change.value < 0
+        ? "bergerak ke arah kondisi yang lebih longgar"
+        : "tidak berubah";
+    return `${point.seriesKey} ${direction} ${context} dibanding observasi mingguan sebelumnya. Ini konteks mingguan, bukan bukti penyebab pergerakan Bitcoin atau Emas intraday.`;
+  }
+
   if (change.value > 0) {
     return "VIX naik. Implied volatility saham AS meningkat dibanding observasi sebelumnya; ini menunjukkan ekspektasi volatilitas yang lebih tinggi, bukan penyebab langsung pergerakan Bitcoin atau Gold.";
   }
@@ -739,12 +760,16 @@ function CreditConditionsBriefingItem({
 }: {
   point: BriefingCreditConditionsPoint;
 }) {
-  const change = point.change1d;
+  const change = primaryCreditConditionsChange(point);
   const shortExplanation = point.seriesKey === "BAMLH0A0HYM2"
     ? "Premi risiko obligasi korporasi AS berimbal hasil tinggi (HY OAS)."
     : point.seriesKey === "BAMLC0A0CM"
       ? "Premi risiko obligasi korporasi AS berperingkat investasi (IG OAS)."
-      : "VIX adalah ukuran volatilitas tersirat opsi saham AS.";
+      : point.seriesKey === "NFCI"
+        ? "Indeks mingguan kondisi keuangan AS dari Federal Reserve Bank of Chicago."
+        : point.seriesKey === "ANFCI"
+          ? "Indeks mingguan kondisi keuangan AS setelah penyesuaian kondisi ekonomi."
+          : "VIX adalah ukuran volatilitas tersirat opsi saham AS.";
   return <article className="briefing-rate-card">
     <KpiCard
       label={CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}
@@ -754,7 +779,7 @@ function CreditConditionsBriefingItem({
         ? {
             valueLabel: creditConditionsChangeValue(point, change),
             direction: ratesPolicyDirection(change.value),
-            comparisonLabel: `observasi harian sebelumnya · ${dateOnly(change.predecessorObservedAt)}`,
+            comparisonLabel: `observasi ${point.cadence === "WEEKLY" ? "mingguan" : "harian"} sebelumnya · ${dateOnly(change.predecessorObservedAt)}`,
           }
         : null}
       badge={<StatusBadge
@@ -936,10 +961,10 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
 
     <div className="briefing-analysis-section briefing-primary-step ux2-context-section" style={{ marginTop: "1.25rem" }}>
       <SectionHeader titleId="briefing-credit-conditions"
-        title="04 · Apa yang berubah pada kredit dan volatilitas?"
+        title="04 · Apa yang berubah pada kredit, volatilitas, dan kondisi keuangan?"
         summary={creditConditions.evidenceStatus === "AVAILABLE"
-          ? `${creditConditions.items.length} indikator tersedia: premi risiko HY OAS, IG OAS, dan volatilitas VIX jika tercakup.`
-          : "Data premi risiko kredit dan volatilitas belum cukup untuk ringkasan ini."}
+          ? `${creditConditions.items.length} indikator kredit, volatilitas, dan kondisi keuangan tersedia sesuai cakupan data.`
+          : "Data kredit, volatilitas, dan kondisi keuangan belum cukup untuk ringkasan ini."}
       />
       {creditConditions.evidenceStatus === "AVAILABLE"
         ? <div className="briefing-rates-content">

@@ -26,6 +26,23 @@ type MarketResult = ProviderResult<CryptoMarketObservationInput>;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DEFILLAMA_MAX_BACKFILL_CALENDAR_DAYS = 35;
+export const FRED_SELECTIVE_BACKFILL_MAX_CALENDAR_DAYS = 120;
+
+/** Restrict manual selected-series history acquisition without changing legacy full-registry backfills. */
+export function fredSelectiveBackfillRangeError(range: { from: string; to: string }): string | null {
+  const from = Date.parse(`${range.from}T00:00:00.000Z`);
+  const to = Date.parse(`${range.to}T00:00:00.000Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(range.from)
+    || !/^\d{4}-\d{2}-\d{2}$/.test(range.to)
+    || !Number.isFinite(from) || !Number.isFinite(to)
+    || new Date(from).toISOString().slice(0, 10) !== range.from
+    || new Date(to).toISOString().slice(0, 10) !== range.to || from > to) {
+    return "FRED selective BACKFILL requires valid from/to date bounds";
+  }
+  return (to - from) / DAY_MS + 1 > FRED_SELECTIVE_BACKFILL_MAX_CALENDAR_DAYS
+    ? `FRED selective BACKFILL is limited to ${FRED_SELECTIVE_BACKFILL_MAX_CALENDAR_DAYS} calendar days`
+    : null;
+}
 
 export const HISTORICAL_INGESTION_PROVIDERS = ["coingecko", "coingecko-context", "gold", "dxy", "russell", "usdjpy", "usdcnh", "fred", "federal-reserve-sep", "defillama", "sosovalue", "cftc", "gdelt", "binance-spot", "binance-book", "hyperliquid-book"] as const;
 export type HistoricalIngestionProvider = typeof HISTORICAL_INGESTION_PROVIDERS[number];
@@ -266,9 +283,19 @@ function canonicalize(
 function validateOptions(options: HistoricalIngestionOptions): void {
   if (options.providers.length === 0) throw new Error("At least one ingestion provider is required");
   if (options.fred?.seriesIds !== undefined) {
-    if (options.mode !== "FORWARD" || !options.providers.includes("fred")
-      || options.providers.some((p) => p !== "fred" && p !== "coingecko-context")) {
-      throw new Error("FRED subset requires FORWARD and fred provider");
+    const allowedForward = options.mode === "FORWARD" && options.providers.includes("fred")
+      && options.providers.every((p) => p === "fred" || p === "coingecko-context");
+    const allowedBackfill = options.mode === "BACKFILL"
+      && options.providers.length === 1 && options.providers[0] === "fred";
+    if (!allowedForward && !allowedBackfill) {
+      throw new Error("FRED subset requires FORWARD with fred or single-provider FRED BACKFILL");
+    }
+    if (allowedBackfill) {
+      const error = fredSelectiveBackfillRangeError({
+        from: options.fred.observationStart ?? "",
+        to: options.fred.observationEnd ?? "",
+      });
+      if (error) throw new Error(error);
     }
   }
   if (options.mode === "BACKFILL") {

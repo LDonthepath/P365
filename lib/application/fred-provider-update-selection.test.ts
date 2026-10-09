@@ -49,6 +49,27 @@ test("only FRED-reported registered updates inside the overlap trigger observati
   assert.equal(plan.scanWindowStartUTC, "2026-10-08T12:16:00.000Z");
 });
 
+test("NFCI and ANFCI activate via the existing registered-series FRED update lane", async () => {
+  for (const key of ["NFCI", "ANFCI"] as const) {
+    const definition = MACRO_SERIES_REGISTRY.find((item) => item.seriesId === key);
+    assert.ok(definition, `${key} must be in the production FRED registry`);
+    assert.equal(definition.frequency, "WEEKLY");
+    assert.equal(definition.unit, "Index");
+    assert.equal(definition.domain, "MACRO");
+  }
+  const plan = await planFredProviderUpdatedObservations({
+    now: at("2026-10-07T12:41:00Z"), apiKey: KEY,
+    fetcher: (async () => payload([
+      { id: "NFCI", last_updated: "2026-10-07 08:36:00-04" },
+      { id: "ANFCI", last_updated: "2026-10-07 08:35:00-04" },
+      { id: "UNREGISTERED", last_updated: "2026-10-07 08:20:00-04" },
+    ])) as typeof fetch,
+  });
+  assert.equal(plan.mode, "PROVIDER_UPDATE_RECHECK");
+  assert.deepEqual(plan.seriesIds, ["NFCI", "ANFCI"]);
+  assert.equal(plan.requestedSeriesCount, 2);
+});
+
 test("no registered provider updates yields an empty acquisition plan", async () => {
   const plan = await planFredProviderUpdatedObservations({
     now: at("2026-10-08T12:31:00Z"), apiKey: KEY,
@@ -130,6 +151,8 @@ test("recovery tolerates 04:31 delayed dispatch, missed ticks at 04:35/04:40, no
     });
     assert.equal(plan.mode, "DAILY_FULL_SWEEP", minute);
     assert.deepEqual(plan.seriesIds, ALL);
+    assert.ok(plan.seriesIds.includes("NFCI"));
+    assert.ok(plan.seriesIds.includes("ANFCI"));
   }
   assert.equal(calls, 0);
   const outside = await planFredProviderUpdatedObservations({
@@ -178,7 +201,7 @@ test("metadata outage only falls back hourly, so 5-minute polling cannot amplify
       fetcher: (async () => { calls++; throw new Error("offline"); }) as typeof fetch,
     });
     assert.equal(plan.mode, hhmm === "13:00" ? "FAIL_OPEN_FULL_SWEEP" : "FEED_UNAVAILABLE_DEFERRED");
-    assert.equal(plan.requestedSeriesCount, hhmm === "13:00" ? 33 : 0);
+    assert.equal(plan.requestedSeriesCount, hhmm === "13:00" ? 35 : 0);
     assert.equal(plan.failureReason, "UPSTREAM_FETCH_ERROR");
   }
   assert.equal(calls, 5);

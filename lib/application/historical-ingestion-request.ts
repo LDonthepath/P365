@@ -1,5 +1,6 @@
 import {
   defiLlamaBackfillRangeError,
+  fredSelectiveBackfillRangeError,
   HISTORICAL_INGESTION_PROVIDERS,
   type HistoricalIngestionMode,
   type HistoricalIngestionOptions,
@@ -62,9 +63,12 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
   }
   let fredSeries: MacroSeriesId[] | undefined;
   if (selectorParams.length > 0) {
-    if (selectorParams.length !== 1 || mode !== "FORWARD" || !providers.includes("fred")
-      || providers.some((provider) => provider !== "fred" && provider !== "coingecko-context")) {
-      return { ok: false, error: "fredSeries requires FORWARD with fred (optionally coingecko-context)" };
+    const allowedForward = mode === "FORWARD" && providers.includes("fred")
+      && providers.every((provider) => provider === "fred" || provider === "coingecko-context");
+    const allowedBackfill = mode === "BACKFILL"
+      && providers.length === 1 && providers[0] === "fred";
+    if (selectorParams.length !== 1 || (!allowedForward && !allowedBackfill)) {
+      return { ok: false, error: "fredSeries requires FORWARD with fred or single-provider FRED BACKFILL" };
     }
     const ids = selectorParams[0].split(",").map((id) => id.trim());
     const allowlist = new Set<string>(MACRO_SERIES_REGISTRY.map((s) => s.seriesId));
@@ -103,5 +107,12 @@ export function parseHistoricalIngestionRequest(searchParams: URLSearchParams): 
     if (rangeError) return { ok: false, error: rangeError };
     return { ok: true, options: { mode, providers, cftc: { from, to } } };
   }
-  return { ok: true, options: { mode, providers, fred: { observationStart: from, observationEnd: to, limit: 100 } } };
+  if (fredSeries) {
+    const rangeError = fredSelectiveBackfillRangeError({ from, to });
+    if (rangeError) return { ok: false, error: rangeError };
+  }
+  return { ok: true, options: { mode, providers, fred: {
+    observationStart: from, observationEnd: to, limit: 100,
+    ...(fredSeries ? { seriesIds: fredSeries } : {}),
+  } } };
 }

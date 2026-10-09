@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Observation } from "../domain/types";
 import { InMemoryObservationRepository } from "../repositories/memory";
+import { observationSemanticsForSeriesKey } from "../domain/observation-semantics";
 import type {
   HistoricalObservationRepository,
   ObservationHistoryQuery,
@@ -31,8 +32,8 @@ function observation(
     evidenceId: `evidence-${id}`,
     metadata: {
       seriesId,
-      unit: seriesId === "VIXCLS" ? "Index" : "Percent",
-      frequency: "DAILY",
+      unit: ["VIXCLS", "NFCI", "ANFCI"].includes(seriesId) ? "Index" : "Percent",
+      frequency: ["NFCI", "ANFCI"].includes(seriesId) ? "WEEKLY" : "DAILY",
     },
   };
 }
@@ -107,7 +108,7 @@ test("builds qualified 1D/1W/4W credit-condition facts and recomputes query-time
   assert.ok(Math.abs((vix.change1w?.value ?? 0) - (-0.55)) < 1e-9);
   assert.ok(Math.abs((vix.change4w?.value ?? 0) - (-2.48)) < 1e-9);
 
-  assert.equal(repository.queries.length, 3);
+  assert.equal(repository.queries.length, 5);
   assert.equal(
     repository.queries.some((query) => query.identity.seriesKey === "T10Y2Y"),
     false,
@@ -155,4 +156,42 @@ test("fails a horizon closed when the predecessor is outside existing FRED fresh
   assert.equal(hy.change1d, null);
   assert.equal(hy.change1w, null);
   assert.equal(hy.change4w, null);
+});
+
+
+test("weekly Chicago Fed NFCI and ANFCI preserve qualified 1W change and as-of cutoff", async () => {
+  const memory = new InMemoryObservationRepository();
+  await memory.saveMany([
+    observation("nfci-prior", "MACRO", "NFCI", -0.510, "2026-09-25", "2026-09-30T13:00:00.000Z"),
+    observation("nfci-current", "MACRO", "NFCI", -0.494, "2026-10-02", "2026-10-07T13:00:00.000Z"),
+    observation("anfci-prior", "MACRO", "ANFCI", -0.524, "2026-09-25", "2026-09-30T13:00:00.000Z"),
+    observation("anfci-current", "MACRO", "ANFCI", -0.504, "2026-10-02", "2026-10-07T13:00:00.000Z"),
+    observation("nfci-future-knowledge", "MACRO", "NFCI", 9, "2026-10-02", "2026-10-12T13:00:00.000Z"),
+  ]);
+  const result = await buildCreditFinancialConditionsReadModel(memory, new Date("2026-10-09T10:00:00.000Z"));
+  assert.equal(result.status, "OK");
+  if (result.status !== "OK") return;
+  assert.deepEqual(result.series.map((point) => point.seriesKey), ["NFCI", "ANFCI"]);
+  for (const point of result.series) {
+    assert.equal(point.valueUnit, "INDEX");
+    assert.equal(point.cadence, "WEEKLY");
+    assert.equal(point.changeUnit, "INDEX_POINTS");
+    assert.equal(point.change1d, null, "weekly release cannot be presented as a daily move");
+    assert.equal(point.change4w, null);
+    assert.equal(point.freshness, "FRESH");
+    assert.equal(point.change1w?.predecessorObservedAt, "2026-09-25");
+  }
+  assert.equal(result.series[0]?.observationId, "nfci-current");
+  assert.ok(Math.abs((result.series[0]?.change1w?.value ?? 0) - 0.016) < 1e-9);
+  assert.ok(Math.abs((result.series[1]?.change1w?.value ?? 0) - 0.020) < 1e-9);
+  for (const key of ["NFCI", "ANFCI"]) {
+    assert.deepEqual(observationSemanticsForSeriesKey(key), {
+      ontologyVersion: "v0.1",
+      marketDomain: "LIQUIDITY_FUNDING",
+      informationClass: "DERIVED_METRIC",
+      jurisdiction: "US",
+      instrument: "INDEX",
+      asset: key === "NFCI" ? "FINANCIAL_CONDITIONS" : "ADJUSTED_FINANCIAL_CONDITIONS",
+    });
+  }
 });

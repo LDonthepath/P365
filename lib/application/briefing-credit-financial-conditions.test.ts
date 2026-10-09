@@ -40,6 +40,7 @@ const creditConditions: CreditFinancialConditionsReadModel = {
       observationId: "hy-latest",
       value: 3.12,
       valueUnit: "PERCENT",
+      cadence: "DAILY",
       observedAt: "2026-10-05T00:00:00.000Z",
       retrievedAt: "2026-10-06T14:31:04.082Z",
       sourceId: "fred",
@@ -55,6 +56,7 @@ const creditConditions: CreditFinancialConditionsReadModel = {
       observationId: "ig-latest",
       value: 0.84,
       valueUnit: "PERCENT",
+      cadence: "DAILY",
       observedAt: "2026-10-05T00:00:00.000Z",
       retrievedAt: "2026-10-06T14:31:02.158Z",
       sourceId: "fred",
@@ -70,6 +72,7 @@ const creditConditions: CreditFinancialConditionsReadModel = {
       observationId: "vix-latest",
       value: 15.52,
       valueUnit: "INDEX",
+      cadence: "DAILY",
       observedAt: "2026-10-05T00:00:00.000Z",
       retrievedAt: "2026-10-06T14:31:02.771Z",
       sourceId: "fred",
@@ -166,7 +169,7 @@ test("briefing explains factual rates and credit changes using release-frequency
   const html = renderToStaticMarkup(
     createElement(FactualMarketBriefingPanel, { data: result }),
   );
-  assert.match(html, /04 · Apa yang berubah pada kredit dan volatilitas\?/);
+  assert.match(html, /04 · Apa yang berubah pada kredit, volatilitas, dan kondisi keuangan\?/);
   assert.match(html, /aria-label="US High Yield OAS"/);
   assert.match(html, /3,12%/);
   assert.match(html, /Observasi 05 Okt 2026/);
@@ -193,4 +196,37 @@ test("briefing explains factual rates and credit changes using release-frequency
   assert.equal(normalized.includes("bearish"), false);
   assert.equal(normalized.includes("risk-on"), false);
   assert.equal(normalized.includes("risk-off"), false);
+});
+
+
+test("briefing presents weekly NFCI/ANFCI without a synthetic daily delta", () => {
+  const weekly: CreditFinancialConditionsReadModel = {
+    status: "OK", reason: null, series: [
+      {
+        seriesKey: "NFCI", observationId: "nfci-current", value: -0.494, valueUnit: "INDEX", cadence: "WEEKLY",
+        observedAt: "2026-10-02", retrievedAt: "2026-10-07T13:00:00.000Z",
+        sourceId: "fred", acquisitionQuality: "FRESH", freshness: "FRESH",
+        change1d: null, change1w: change("2026-09-25T00:00:00.000Z", "nfci-prior", -0.510, "2026-09-25", "2026-09-30T13:00:00.000Z", 0.016),
+        change4w: null, changeUnit: "INDEX_POINTS",
+      },
+      {
+        seriesKey: "ANFCI", observationId: "anfci-current", value: -0.504, valueUnit: "INDEX", cadence: "WEEKLY",
+        observedAt: "2026-10-02", retrievedAt: "2026-10-07T13:00:00.000Z",
+        sourceId: "fred", acquisitionQuality: "FRESH", freshness: "FRESH",
+        change1d: null, change1w: change("2026-09-25T00:00:00.000Z", "anfci-prior", -0.524, "2026-09-25", "2026-09-30T13:00:00.000Z", 0.020),
+        change4w: null, changeUnit: "INDEX_POINTS",
+      },
+    ],
+  };
+  const result = composeFactualMarketBriefing({ baselines: {}, observations: [], asOf: AS_OF, creditConditions: weekly });
+  const html = renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data: result }));
+  const section = html.slice(html.indexOf('id="briefing-credit-conditions"'), html.indexOf('id="briefing-macro-background"'));
+  assert.match(section, /Chicago Fed NFCI/);
+  assert.match(section, /Chicago Fed Adjusted NFCI/);
+  assert.match(section, /observasi mingguan sebelumnya/);
+  assert.match(section, /NFCI bergerak ke arah kondisi yang lebih ketat/);
+  assert.match(section, /ANFCI bergerak ke arah kondisi yang lebih ketat/);
+  assert.doesNotMatch(section, /observasi harian sebelumnya/);
+  assert.doesNotMatch(section, /-0,494%/);
+  assert.match(section, /-0,49/);
 });

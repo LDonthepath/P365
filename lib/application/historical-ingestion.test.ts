@@ -525,6 +525,58 @@ async function main(): Promise<void> {
   });
   assert.equal(backfillHistory.length, 1, "repeated backfill must retain canonical idempotency");
 
+
+  // DATA-NFCI-001: selected 120-day FRED acquisition uses the existing canonical
+  // append-only writer, and replaying the same window is physically idempotent.
+  const nfciInput = (key: "NFCI" | "ANFCI", value: string): MacroObservationInput => {
+    const series = MACRO_SERIES_REGISTRY.find((item) => item.seriesId === key);
+    assert.ok(series);
+    return {
+      series, value, observationDate: "2026-10-02", previousValue: null,
+      vintageDate: "2026-10-07", releasedAt: null,
+      retrievedAt: "2026-10-09T09:00:00.000Z",
+      provenance: {
+        version: "v1", providerResource: "/fred/series/observations",
+        nativeSeriesId: key, observationDate: "2026-10-02",
+        vintageDate: "2026-10-07",
+      },
+    };
+  };
+  const selectiveParse = parseHistoricalIngestionRequest(new URLSearchParams(
+    "mode=BACKFILL&providers=fred&fredSeries=NFCI,ANFCI&from=2026-07-01&to=2026-10-09",
+  ));
+  assert.equal(selectiveParse.ok, true);
+  if (!selectiveParse.ok) throw new Error("selected-series backfill must parse");
+  const selectiveStore = repositories();
+  const selectiveAcquisition = acquisition([]);
+  selectiveAcquisition.fred = async () => providerResult("fred", "SUCCESS", [
+    nfciInput("NFCI", "-0.494"), nfciInput("ANFCI", "-0.504"),
+  ]);
+  const selectiveFirst = await runHistoricalIngestion(selectiveParse.options, {
+    acquisition: selectiveAcquisition, repositories: selectiveStore.repositories,
+  });
+  assert.equal(selectiveFirst.status, "SUCCESS");
+  assert.equal(selectiveFirst.providers[0]?.acquired, 2);
+  for (const key of ["NFCI", "ANFCI"] as const) {
+    const observations = await selectiveStore.observations.findHistory({
+      identity: { domain: "MACRO", seriesKey: key }, order: "ASC",
+    });
+    assert.equal(observations.length, 1);
+    assert.equal(observations[0]?.metadata?.unit, "Index");
+    assert.equal(observations[0]?.metadata?.frequency, "WEEKLY");
+    assert.equal(observations[0]?.semantics?.informationClass, "DERIVED_METRIC");
+    assert.equal(observations[0]?.provenance?.nativeSeriesId, key);
+  }
+  await runHistoricalIngestion(selectiveParse.options, {
+    acquisition: selectiveAcquisition, repositories: selectiveStore.repositories,
+  });
+  for (const key of ["NFCI", "ANFCI"] as const) {
+    const observations = await selectiveStore.observations.findHistory({
+      identity: { domain: "MACRO", seriesKey: key }, order: "ASC",
+    });
+    assert.equal(observations.length, 1, "replayed selected-series fact stays idempotent");
+  }
+
   const incompleteBackfillStore = repositories();
   const incompleteBackfillAcquisition = acquisition([]);
   incompleteBackfillAcquisition.fred = async () => providerResult(
@@ -828,6 +880,19 @@ async function main(): Promise<void> {
     },
   );
   assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred&fredSeries=NFCI,ANFCI&from=2026-07-01&to=2026-10-09")),
+    { ok: true, options: { mode: "BACKFILL", providers: ["fred"],
+      fred: { observationStart: "2026-07-01", observationEnd: "2026-10-09", limit: 100,
+        seriesIds: ["NFCI", "ANFCI"] } } },
+  );
+  for (const url of [
+    "mode=BACKFILL&providers=fred&fredSeries=NFCI,ANFCI&from=2026-01-01&to=2026-10-09",
+    "mode=BACKFILL&providers=fred&fredSeries=NFCI,NFCI&from=2026-07-01&to=2026-10-09",
+    "mode=BACKFILL&providers=fred&fredSeries=INVALID&from=2026-07-01&to=2026-10-09",
+    "mode=BACKFILL&providers=fred,coingecko-context&fredSeries=NFCI&from=2026-07-01&to=2026-10-09",
+  ]) assert.equal(parseHistoricalIngestionRequest(new URLSearchParams(url)).ok, false, url);
+
+  assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=defillama&from=2026-09-01&to=2026-10-05")),
     {
       ok: true,
@@ -897,6 +962,16 @@ async function main(): Promise<void> {
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=cftc,sosovalue&from=2026-09-01&to=2026-09-20")),
     { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" },
+  );
+
+  await assert.rejects(
+    runHistoricalIngestion(
+      { mode: "BACKFILL", providers: ["fred"],
+        fred: { observationStart: "2026-01-01", observationEnd: "2026-10-09",
+          limit: 100, seriesIds: ["NFCI", "ANFCI"] } },
+      { acquisition: acquisition([]), repositories: repositories().repositories },
+    ), /limited to 120 calendar days/,
+    "runtime must reject an over-wide FRED selective backfill even without HTTP parsing",
   );
 
   await assert.rejects(

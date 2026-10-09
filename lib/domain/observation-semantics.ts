@@ -51,6 +51,9 @@ const SEMANTICS_BY_KEY: Readonly<Record<string, ObservationSemantics>> = {
   T10YIE: { ontologyVersion: V, marketDomain: "RATES", informationClass: "PRICING", jurisdiction: "US", instrument: "SOVEREIGN_BOND", tenor: "10Y", asset: "INFLATION_COMPENSATION" },
   T10Y2Y: { ontologyVersion: V, marketDomain: "RATES", informationClass: "DERIVED_METRIC", jurisdiction: "US", instrument: "SOVEREIGN_BOND", tenor: "10Y-2Y" },
 
+  NFCI: { ontologyVersion: V, marketDomain: "LIQUIDITY_FUNDING", informationClass: "DERIVED_METRIC", jurisdiction: "US", instrument: "INDEX", asset: "FINANCIAL_CONDITIONS" },
+  ANFCI: { ontologyVersion: V, marketDomain: "LIQUIDITY_FUNDING", informationClass: "DERIVED_METRIC", jurisdiction: "US", instrument: "INDEX", asset: "ADJUSTED_FINANCIAL_CONDITIONS" },
+
   BAMLC0A0CM: { ontologyVersion: V, marketDomain: "CREDIT", informationClass: "PRICING", jurisdiction: "US", instrument: "CREDIT_INDEX", asset: "US_IG" },
   BAMLH0A0HYM2: { ontologyVersion: V, marketDomain: "CREDIT", informationClass: "PRICING", jurisdiction: "US", instrument: "CREDIT_INDEX", asset: "US_HY" },
 

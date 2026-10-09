@@ -55,6 +55,8 @@ export const MACRO_SERIES_REGISTRY = [
   { seriesId: "DFII10", subject: "10-Year Treasury Inflation-Indexed Security, Constant Maturity", frequency: "DAILY", unit: "Percent", source: "FRED", domain: "MACRO", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
   { seriesId: "T10YIE", subject: "10-Year Breakeven Inflation Rate", frequency: "DAILY", unit: "Percent", source: "FRED", domain: "MACRO", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
   { seriesId: "T10Y2Y", subject: "10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity", frequency: "DAILY", unit: "Percent", source: "FRED", domain: "MACRO", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
+  { seriesId: "NFCI", subject: "Chicago Fed National Financial Conditions Index", frequency: "WEEKLY", unit: "Index", source: "FRED", domain: "MACRO", freshnessMs: 14 * DAY, revalidateSeconds: 12 * 60 * 60 },
+  { seriesId: "ANFCI", subject: "Chicago Fed Adjusted National Financial Conditions Index", frequency: "WEEKLY", unit: "Index", source: "FRED", domain: "MACRO", freshnessMs: 14 * DAY, revalidateSeconds: 12 * 60 * 60 },
   { seriesId: "BAMLC0A0CM", subject: "ICE BofA US Corporate Index Option-Adjusted Spread", frequency: "DAILY", unit: "Percent", source: "FRED", domain: "MACRO", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
   { seriesId: "BAMLH0A0HYM2", subject: "ICE BofA US High Yield Index Option-Adjusted Spread", frequency: "DAILY", unit: "Percent", source: "FRED", domain: "MACRO", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
   { seriesId: "DTWEXBGS", subject: "US Broad Trade-Weighted Dollar Index", frequency: "DAILY", unit: "Index Mar 1973=100", source: "FRED", domain: "MACRO", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
