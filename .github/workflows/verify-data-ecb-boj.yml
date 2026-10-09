@@ -1,0 +1,43 @@
+name: Verify ECB / BoJ FRED data acquisition
+
+on:
+  push:
+    branches:
+      - feat/data-ecb-boj-balance-sheets
+  pull_request:
+    paths:
+      - "lib/data/macro-registry.ts"
+      - "lib/domain/observation-semantics.ts"
+      - "lib/application/fred-**"
+      - "lib/data/fred-**"
+      - "scripts/ops/data_ecb_boj_fred_rpc_allowlist.sql"
+      - "scripts/ops/obs_fred_001g_install_rpc.sql"
+      - ".github/workflows/verify-data-ecb-boj.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: FRED selector, canonical receipt, and history tests
+        run: npx --yes tsx@4.20.6 --test lib/application/fred-release-aware-selection.test.ts lib/application/fred-provider-update-selection.test.ts lib/data/fred-transactional-receipt.test.ts lib/application/fred-selective-forward.test.ts
+      - name: Semantic invariants
+        run: npx --yes tsx@4.20.6 lib/domain/observation-semantics.test.ts
+      - name: Normalization invariants
+        run: npx --yes tsx@4.20.6 lib/domain/normalize-semantics.test.ts
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
