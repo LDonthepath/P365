@@ -47,7 +47,7 @@ test("briefing exposes an explicit market-to-macro reading order", () => {
   assert.match(html, /01 · Apa yang bergerak sekarang\?/);
   assert.match(html, /02 · Apa konteks suku bunga dan kebijakan untuk Emas dan Bitcoin\?/);
   assert.match(html, /03 · Apa yang berubah pada likuiditas dolar AS\?/);
-  assert.match(html, /04 · Apa yang berubah pada kredit dan volatilitas\?/);
+  assert.match(html, /04 · Apa yang berubah pada kredit, volatilitas, dan kondisi keuangan\?/);
   assert.match(html, /05 · Apa yang berubah pada latar makro\?/);
 
   const styles = readFileSync(new URL("../../app/dashboard/overview-layout.module.css", import.meta.url), "utf8");
