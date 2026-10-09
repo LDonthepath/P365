@@ -49,8 +49,9 @@ export function presentMarketMove(item: BriefingMarketMove) {
   });
 
   const completeness = item.evidence?.evidenceCompleteness;
-  const badge: { label: string; tone: EvidenceTone } =
-    completeness === "EVIDENCE_COMPLETE"
+  const badge: { label: string; tone: EvidenceTone } | null = !item.evidence
+    ? null
+    : completeness === "EVIDENCE_COMPLETE"
       ? { label: "Bukti lengkap", tone: "complete" }
       : completeness === "EVIDENCE_INCOMPLETE"
         ? { label: "Bukti pendukung belum lengkap", tone: "partial" }

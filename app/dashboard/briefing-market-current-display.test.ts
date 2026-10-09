@@ -22,7 +22,7 @@ test("perubahan Emas terhadap penutupan sebelumnya tidak diklaim 24 jam", () => 
   assert.equal(props.change?.comparisonLabel, "Perubahan terhadap penutupan sebelumnya");
   assert.doesNotMatch(JSON.stringify(props.change), /24 jam/);
   assert.equal(props.change?.direction, "up");
-  assert.equal(props.badge.label, "Status bukti pendukung belum tersedia");
+  assert.equal(props.badge, null);
 });
 test("basis 24 jam khusus ROLLING_24H, UNAVAILABLE tetap eksplisit", () => {
   const base = move({asset:"BTC",marketContext:{currentValue: 120500,changePercent:-2.55,changeBasis:"ROLLING_24H",valueUnit:"USD"}});
@@ -59,6 +59,7 @@ test("badge hanya kelengkapan bukti dari field existing", () => {
     ["EVIDENCE_INCOMPLETE","Bukti pendukung belum lengkap","partial"],
   ] as const) {
     const props=presentMarketMove(move({evidence:{evidenceCompleteness:completeness} as BriefingMarketMove["evidence"]}));
+    assert.ok(props.badge);
     assert.equal(props.badge.label,label);
     assert.equal(props.badge.tone,tone);
   }
@@ -66,6 +67,9 @@ test("badge hanya kelengkapan bukti dari field existing", () => {
 test("ringkasan hanya memakai evidenceStatus dan materialMoveCount yang sudah ada", () => {
   const baseline = {evidenceStatus:"AVAILABLE", reasoningStatus:"NOT_EVALUATED", materialMoveCount:2,items:[],reason:null} as FactualMarketBriefing["marketMoves"];
   assert.match(marketCurrentSummary(baseline)??"",/2 pergerakan intraday/);
-  assert.match(marketCurrentSummary({...baseline,materialMoveCount:0})??"",/Tidak ada pergerakan/);
+  const summary = marketCurrentSummary({...baseline,materialMoveCount:0}) ?? "";
+  const normalSentence = "Tidak ada pergerakan intraday material pada waktu pengamatan ini.";
+  assert.equal(summary, normalSentence);
+  assert.equal(summary.split(normalSentence).length - 1, 1);
   assert.equal(marketCurrentSummary({...baseline,evidenceStatus:"INSUFFICIENT"}),null);
 });

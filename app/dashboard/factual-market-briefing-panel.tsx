@@ -319,7 +319,9 @@ function MarketMoveBriefingItem({
       value={presentation.price}
       valueDetail={presentation.priceDetail}
       change={presentation.change}
-      badge={<StatusBadge label={presentation.badge.label} tone={presentation.badge.tone} />} />
+      badge={presentation.badge
+        ? <StatusBadge label={presentation.badge.label} tone={presentation.badge.tone} />
+        : undefined} />
     <p className="ux2-market-note">
       {item.observedAt
         ? `Observasi ${dateTime(item.observedAt)} WIB`
@@ -802,7 +804,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
     <div className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
       <SectionHeader
         titleId="briefing-rates-policy"
-        title="02 · Rates & Policy"
+        title="02 · Apa konteks suku bunga dan kebijakan untuk Gold dan Bitcoin?"
         summary="Konteks Gold: Real yield AS 10 tahun dan Broad USD Index. Konteks Bitcoin: Reserve balances dan spread SOFR−IORB."
       />
 

@@ -40,6 +40,7 @@ test("Bagian 02 menampilkan empat kartu faktual, pembanding, tanggal, dan penjel
     baselines: {}, observations: [], asOf: "2026-10-09T10:00:00.000Z", ratesPolicy,
   });
   const html = renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data }));
+  assert.ok(html.includes("02 · Apa konteks suku bunga dan kebijakan untuk Gold dan Bitcoin?"));
   const start = html.indexOf('id="briefing-rates-policy"');
   const end = html.indexOf('id="briefing-usd-liquidity"');
   const section = html.slice(start, end);
