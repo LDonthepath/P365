@@ -172,7 +172,7 @@ test("briefing explains factual rates and credit changes using release-frequency
   assert.match(html, /VIX/);
   assert.doesNotMatch(html, /<strong>Kurva Treasury 10Y−2Y<\/strong>/);
   assert.match(html, /1 hari dibanding observasi/);
-  assert.match(html, /1 minggu:.*23 Sep 2026/);
+  assert.match(html, /observasi mingguan sebelumnya · 23 Sep 2026/);
   assert.match(html, /Apa artinya:/);
   assert.match(html, /Spread high-yield melebar/);
   assert.match(html, /Real yield AS 10 tahun naik/);
