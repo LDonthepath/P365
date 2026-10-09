@@ -48,8 +48,8 @@ test("briefing explains Net Liquidity with weekly primary comparison and four-we
 
   assert.match(html, /USD LIQUIDITY/);
   assert.match(html, /Net Liquidity AS/);
-  assert.match(html, /03 · Apa yang berubah pada likuiditas dolar AS\\?/);
-  assert.match(html, /aria-label="Net Liquidity AS \\(proxy\\)"/);
+  assert.match(html, /03 · Apa yang berubah pada likuiditas dolar AS\?/);
+  assert.match(html, /aria-label="Net Liquidity AS \(proxy\)"/);
   assert.match(html, /data-slot="freshness"/);
   assert.match(html, /Observasi gabungan sampai 01 Okt 2026/);
   assert.match(html, /<details class="briefing-rate-details">/);
