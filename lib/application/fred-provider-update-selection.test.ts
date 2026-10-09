@@ -95,12 +95,17 @@ test("outage, malformed, unsorted, incomplete, or unbounded update scans fail op
     ]),
     () => payload([{ id: "SOFR", last_updated: "2026-10-08 07:20:00-05" }], { count: 2 }),
   ];
-  for (const variant of variants) {
+  const expectedReasons = [
+    "UPSTREAM_HTTP_ERROR", "INVALID_FEED_ROW", "UNSORTED_FEED", "INVALID_RESPONSE",
+  ];
+  for (const [index, variant] of variants.entries()) {
     const plan = await planFredProviderUpdatedObservations({
       now, apiKey: KEY, fetcher: (async () => variant()) as typeof fetch,
     });
     assert.equal(plan.mode, "FEED_UNAVAILABLE_DEFERRED");
     assert.deepEqual(plan.seriesIds, []);
+    assert.equal(plan.failureReason, expectedReasons[index]);
+    assert.equal(plan.upstreamHttpStatus, index === 0 ? 503 : undefined);
   }
   const unbounded = await planFredProviderUpdatedObservations({
     now, apiKey: KEY,
@@ -110,6 +115,7 @@ test("outage, malformed, unsorted, incomplete, or unbounded update scans fail op
   });
   assert.equal(unbounded.mode, "FEED_UNAVAILABLE_DEFERRED");
   assert.deepEqual(unbounded.seriesIds, []);
+  assert.equal(unbounded.failureReason, "WINDOW_NOT_COVERED");
 });
 
 test("recovery tolerates 04:31 delayed dispatch, missed ticks at 04:35/04:40, not perpetual repeats", async () => {
@@ -170,8 +176,59 @@ test("metadata outage only falls back hourly, so 5-minute polling cannot amplify
     });
     assert.equal(plan.mode, hhmm === "13:00" ? "FAIL_OPEN_FULL_SWEEP" : "FEED_UNAVAILABLE_DEFERRED");
     assert.equal(plan.requestedSeriesCount, hhmm === "13:00" ? 33 : 0);
+    assert.equal(plan.failureReason, "FETCH_OR_PARSE_ERROR");
   }
   assert.equal(calls, 5);
+});
+
+
+test("failure reasons distinguish missing key, a future provider timestamp and scan budget without leaking secrets", async () => {
+  const now = at("2026-10-08T12:31:00Z");
+  const missingKey = await planFredProviderUpdatedObservations({ now, apiKey: "" });
+  assert.equal(missingKey.failureReason, "MISSING_API_KEY");
+  const future = await planFredProviderUpdatedObservations({
+    now, apiKey: KEY,
+    fetcher: (async () => payload([
+      { id: "SOFR", last_updated: "2026-10-08 07:32:00-05" },
+    ])) as typeof fetch,
+  });
+  assert.equal(future.failureReason, "FUTURE_UPDATE_TIMESTAMP");
+  const succeeded = await planFredProviderUpdatedObservations({
+    now, apiKey: KEY,
+    fetcher: (async () => payload([])) as typeof fetch,
+  });
+  assert.equal(succeeded.failureReason, undefined);
+  assert.equal(succeeded.upstreamHttpStatus, undefined);
+});
+
+test("authenticated cron report provides bounded upstream failure metadata without a URL or API key", async () => {
+  const handler = createHistoricalIngestionHandler(
+    async () => ({
+      mode: "FORWARD", status: "EMPTY", providers: [],
+      persistedObservations: 0, persistedEvidence: 0,
+    }),
+    () => "cron-secret",
+    undefined,
+    async () => ({
+      seriesIds: [], mode: "FEED_UNAVAILABLE_DEFERRED",
+      scanAsOfUTC: "2026-10-08T12:31:00.000Z",
+      scanWindowStartUTC: "2026-10-08T12:16:00.000Z",
+      requestedSeriesCount: 0, matchedRegisteredUpdates: 0,
+      failureReason: "UPSTREAM_HTTP_ERROR",
+      upstreamHttpStatus: 429,
+    }),
+  );
+  const response = await handler(new Request(
+    "https://p365.example/api/cron/historical-ingestion?providers=fred&fredProviderUpdates=1",
+    { headers: { Authorization: "Bearer cron-secret" } },
+  ));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.fredSchedule.failureReason, "UPSTREAM_HTTP_ERROR");
+  assert.equal(body.fredSchedule.upstreamHttpStatus, 429);
+  assert.equal(body.fredSchedule.mode, "FEED_UNAVAILABLE_DEFERRED");
+  assert.equal(body.fredSchedule.requestedSeriesCount, 0);
+  assert.doesNotMatch(JSON.stringify(body), /cron-secret|api_key|test-only-fred-key/);
 });
 
 test("new URL mode is mutually exclusive and stays authenticated FRED FORWARD only", () => {
