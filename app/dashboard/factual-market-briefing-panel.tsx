@@ -802,6 +802,8 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
   const ratesPolicy = data.ratesPolicy;
   const creditConditions = data.creditConditions;
   const netLiquidity = data.netLiquidity;
+  const centralBankBalanceSheets = data.centralBankBalanceSheets;
+  const centralBankAvailableCount = centralBankBalanceSheets.items.filter((item) => item.latest !== null).length;
   const changed = data.whatChanged;
   const baselines = data.eventBaselines;
   const surprises = data.eventSurprises;
@@ -820,6 +822,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
             : "TANPA PERINGATAN PERGERAKAN"
           : ratesPolicy.evidenceStatus === "AVAILABLE"
               || netLiquidity.evidenceStatus === "AVAILABLE"
+              || centralBankAvailableCount > 0
               || changed.evidenceStatus === "AVAILABLE"
             ? "KONTEKS MAKRO TERSEDIA"
             : "DATA BELUM CUKUP"}
@@ -836,8 +839,8 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         <strong>{ratesPolicy.evidenceStatus === "AVAILABLE" ? "TERSEDIA" : "BELUM CUKUP"}</strong>
       </a>
       <a href="#briefing-usd-liquidity">
-        <span>03 · USD LIQUIDITY</span>
-        <strong>{netLiquidity.evidenceStatus === "AVAILABLE" ? "TERSEDIA" : "BELUM CUKUP"}</strong>
+        <span>03 · LIKUIDITAS</span>
+        <strong>{netLiquidity.evidenceStatus === "AVAILABLE" || centralBankAvailableCount > 0 ? "TERSEDIA" : "BELUM CUKUP"}</strong>
       </a>
       <a href="#briefing-credit-conditions">
         <span>04 · CREDIT</span>
@@ -908,10 +911,10 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
 
     <div className="briefing-analysis-section briefing-primary-step ux2-context-section" style={{ marginTop: "1.25rem" }}>
       <SectionHeader titleId="briefing-usd-liquidity"
-        title="03 · Apa yang berubah pada likuiditas dolar AS?"
+        title="03 · Apa yang berubah pada likuiditas AS dan neraca bank sentral?"
         summary={netLiquidity.latest
-          ? `Proxy Net Liquidity ${liquidityBillions(netLiquidity.latest.valueBillionsUsd)}; perubahan sekitar satu minggu ${liquidityChange(netLiquidity.change1wBillionsUsd)}.`
-          : "Komponen untuk menghitung proxy Net Liquidity belum lengkap."}
+          ? `Proxy Net Liquidity AS ${liquidityBillions(netLiquidity.latest.valueBillionsUsd)}; neraca ECB/BoJ tersedia ${centralBankAvailableCount} dari 2 seri.`
+          : `Proxy Net Liquidity AS belum lengkap; neraca ECB/BoJ tersedia ${centralBankAvailableCount} dari 2 seri.`}
       />
       {netLiquidity.evidenceStatus === "AVAILABLE" && netLiquidity.latest
         ? <div className="briefing-rates-content">
@@ -957,6 +960,40 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
             <strong>Net Liquidity belum cukup</strong>
             <span>{netLiquidity.reason}</span>
           </div>}
+      <section className="briefing-rate-group" aria-label="Neraca bank sentral ECB dan BoJ" style={{ marginTop: "1.25rem" }}>
+        <h3>Neraca bank sentral · Zona Euro dan Jepang</h3>
+        <p className="briefing-rate-meaning">Data neraca ECB dan BoJ ditampilkan dalam mata uang serta skala aslinya, terpisah dari proxy Net Liquidity dolar AS.</p>
+        <div className="briefing-rates-grid">
+          {centralBankBalanceSheets.items.map((point) => <article className="briefing-rate-card" key={point.seriesKey}>
+            <KpiCard
+              label={point.label}
+              value={point.latest ? `${formatBriefingNumber(point.latest.value, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${point.displayUnit}` : null}
+              valueDetail={point.latest ? `Observasi ${dateOnly(point.latest.observedAt)} · ${point.cadence === "WEEKLY" ? "mingguan" : "bulanan"}` : null}
+              change={point.changeFromPrevious !== null && point.previous
+                ? {
+                    valueLabel: `${formatBriefingNumber(point.changeFromPrevious, { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "exceptZero" })} ${point.displayUnit}`,
+                    direction: ratesPolicyDirection(point.changeFromPrevious),
+                    comparisonLabel: `observasi ${point.cadence === "WEEKLY" ? "mingguan" : "bulanan"} sebelumnya · ${dateOnly(point.previous.observedAt)}`,
+                  }
+                : null}
+              badge={point.status === "UNAVAILABLE"
+                ? <StatusBadge label="BELUM DAPAT DIBACA" tone="unavailable" />
+                : point.status === "MISSING"
+                  ? <StatusBadge label="BELUM ADA DATA" tone="neutral" />
+                  : null}
+            />
+            <p className="briefing-rate-meaning"><strong>Apa artinya:</strong> Level aset bank sentral ini adalah konteks kebijakan moneter, bukan arus dana langsung menuju BTC atau Emas.</p>
+            {point.latest ? <details className="briefing-rate-details">
+              <summary>Baca rincian observasi</summary>
+              <p>Observasi ${dateOnly(point.latest.observedAt)}; data diperoleh ${dateTime(point.latest.retrievedAt)} WIB dari FRED.</p>
+              <p>{point.previous
+                ? `Dibanding observasi sebelumnya ${dateOnly(point.previous.observedAt)}; perubahan adalah selisih level dalam unit yang sama.`
+                : "Riwayat observasi sebelumnya belum cukup untuk menghitung perubahan."}</p>
+              <p>Tidak dikonversi ke USD dan tidak dimasukkan ke rumus Net Liquidity AS; hubungan sebab-akibat terhadap BTC/Emas tidak dievaluasi.</p>
+            </details> : <p className="briefing-rate-meaning">Observasi tersimpan belum tersedia pada cutoff briefing.</p>}
+          </article>)}
+        </div>
+      </section>
     </div>
 
     <div className="briefing-analysis-section briefing-primary-step ux2-context-section" style={{ marginTop: "1.25rem" }}>
