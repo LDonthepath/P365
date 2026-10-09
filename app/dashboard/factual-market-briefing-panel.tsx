@@ -7,6 +7,12 @@ import {
 } from "@/lib/presentation/macro-display";
 import { formatEventResultValue } from "@/lib/presentation/intraday-event-response";
 import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
+import {
+  formatBriefingBasisPoints,
+  formatBriefingNumber,
+  formatBriefingPercent,
+} from "./briefing-number-format";
+import type { Direction } from "./components/briefing-primitives";
 import { ChartCard, KpiCard, SectionHeader, StatusBadge } from "./components/briefing-primitives";
 import { marketCurrentSummary, presentMarketMove } from "./briefing-market-current-display";
 
@@ -246,17 +252,17 @@ function percentMagnitude(value: number): string {
 
 function signedPercent(value: number | null, digits = 2): string {
   if (value === null || !Number.isFinite(value)) return "—";
-  return `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
+  return formatBriefingPercent(value, digits);
 }
 
 function plainPercent(value: number | null, digits = 2): string {
   if (value === null || !Number.isFinite(value)) return "—";
-  return `${value.toFixed(digits)}%`;
+  return `${formatBriefingNumber(value, { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
 }
 
 function percentileLabel(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "—";
-  return `P${value.toFixed(1)}`;
+  return `P${formatBriefingNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 }
 
 function synchronousCoverageLabel(value: string): string {
@@ -306,19 +312,15 @@ function MarketMoveBriefingItem({
   const screenedNews = screenMoveCatalystTitles(item.evidence?.unscheduledCandidates ?? [], item.asset);
   const unscheduledCandidates = screenedNews.items.slice(0, MAX_MOVE_CATALYST_DETAILS);
   const presentation = presentMarketMove(item);
+  const assetTitle = item.asset === "BTC" ? "Bitcoin (BTC)" : "Emas (berjangka COMEX)";
 
   return <div className="ux2-market-card">
-    <KpiCard label={MOVE_ASSET_LABELS[item.asset]}
+    <KpiCard label={assetTitle}
       value={presentation.price}
+      valueDetail={presentation.priceDetail}
       change={presentation.change}
       badge={<StatusBadge label={presentation.badge.label} tone={presentation.badge.tone} />} />
     <p className="ux2-market-note">
-      {item.hasMaterialMove
-        ? "Pergerakan intraday tidak biasa terdeteksi."
-        : item.status === "BELOW_MATERIALITY_THRESHOLD"
-          ? "Tidak ada pergerakan intraday material pada waktu pengamatan ini."
-          : MOVE_ASSESSMENT_LABELS[item.status]}
-      {" · "}
       {item.observedAt
         ? `Observasi ${dateTime(item.observedAt)} WIB`
         : "Observasi tersimpan belum tersedia."}
@@ -326,6 +328,9 @@ function MarketMoveBriefingItem({
     <ChartCard title={`Perubahan intraday ${MOVE_ASSET_LABELS[item.asset]}`}
       description="Perbandingan perubahan pada 15, 30, 60, dan 120 menit; bukan riwayat harga."
       horizons={presentation.horizons} />
+    <p className="ux2-market-note">
+      Perubahan 24 jam dan perubahan intraday diukur pada rentang yang berbeda.
+    </p>
 
     {item.horizons.length > 0 || item.evidence
       ? <details className="briefing-analysis-details">
@@ -511,21 +516,32 @@ function ratesPolicySigned(value: number, digits = 1): string {
 }
 
 function ratesPolicyValue(point: BriefingRatesPolicyPoint): string {
-  if (point.valueUnit === "PERCENT") return `${point.value.toFixed(2)}%`;
-  if (point.valueUnit === "BPS") return `${ratesPolicySigned(point.value, 1)} bps`;
+  if (point.valueUnit === "PERCENT") return `${formatBriefingNumber(point.value, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  if (point.valueUnit === "BPS") return formatBriefingBasisPoints(point.value, 1);
   if (point.valueUnit === "USD_BILLIONS") {
-    return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(point.value)} miliar USD`;
+    return `${formatBriefingNumber(point.value, { maximumFractionDigits: 1 })} miliar USD`;
   }
-  return new Intl.NumberFormat("id-ID", {
+  return formatBriefingNumber(point.value, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 4,
-  }).format(point.value);
+  });
 }
 
 function ratesPolicyChangeValue(point: BriefingRatesPolicyPoint, value: number): string {
-  if (point.changeUnit === "BPS") return `${ratesPolicySigned(value, 1)} bps`;
-  if (point.changeUnit === "USD_BILLIONS") return `${ratesPolicySigned(value, 1)} miliar USD`;
-  return `${ratesPolicySigned(value, 2)}%`;
+  if (point.changeUnit === "BPS") return formatBriefingBasisPoints(value, 1);
+  if (point.changeUnit === "USD_BILLIONS") {
+    return `${formatBriefingNumber(value, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+      signDisplay: "exceptZero",
+    })} miliar USD`;
+  }
+  return formatBriefingPercent(value);
+}
+
+function ratesPolicyDirection(value: number | null): Direction {
+  if (value === null) return "unknown";
+  return value > 0 ? "up" : value < 0 ? "down" : "flat";
 }
 
 function ratesPolicyPrimaryComparison(
@@ -590,16 +606,40 @@ function ratesPolicyExplanation(point: BriefingRatesPolicyPoint, change: number 
   return "Perubahan dicatat sebagai konteks faktual tanpa interpretasi arah pasar.";
 }
 
-function RatesPolicyBriefingLine({ point }: { point: BriefingRatesPolicyPoint }) {
+function ratesPolicyShortExplanation(point: BriefingRatesPolicyPoint): string {
+  if (point.seriesKey === "DFII10") return "Imbal hasil riil Treasury AS sebagai konteks harga emas.";
+  if (point.seriesKey === "DTWEXBGS") return "Nilai dolar AS terhadap keranjang mata uang mitra dagang.";
+  if (point.seriesKey === "WRESBAL") return "Saldo cadangan bank di Federal Reserve sebagai konteks likuiditas.";
+  if (point.seriesKey === "SOFR_IORB_SPREAD") return "Selisih tingkat SOFR dan IORB sebagai konteks pendanaan overnight.";
+  return "Perubahan indikator ini dicatat sebagai konteks faktual.";
+}
+
+function RatesPolicyBriefingCard({ point }: { point: BriefingRatesPolicyPoint }) {
   const comparison = ratesPolicyPrimaryComparison(point);
-  return <span>
-    <strong>{RATES_POLICY_LABELS[point.seriesKey] ?? point.seriesKey}</strong>: {ratesPolicyValue(point)}
-    {" · "}Dibanding {comparison
-      ? `${comparison.cadenceLabel} ${ratesPolicyChangeValue(point, comparison.value)} vs ${dateOnly(comparison.from)}`
-      : "observasi sebelumnya belum tersedia"}
-    {" · "}Apa artinya: {ratesPolicyExplanation(point, comparison?.value ?? null)}
-    {" · "}{RATES_POLICY_QUALITY_LABELS[point.quality] ?? "FRESHNESS BELUM PASTI"}
-  </span>;
+  const changeValue = comparison ? ratesPolicyChangeValue(point, comparison.value) : null;
+  return <article className="briefing-rate-card">
+    <KpiCard
+      label={RATES_POLICY_LABELS[point.seriesKey] ?? point.seriesKey}
+      value={ratesPolicyValue(point)}
+      valueDetail={`Observasi ${dateOnly(point.observedAt)}`}
+      change={comparison && changeValue
+        ? {
+            valueLabel: changeValue,
+            direction: ratesPolicyDirection(comparison.value),
+            comparisonLabel: `${comparison.cadenceLabel} · ${dateOnly(comparison.from)}`,
+          }
+        : null}
+      badge={<StatusBadge
+        label={RATES_POLICY_QUALITY_LABELS[point.quality] ?? "Kualitas data belum tersedia"}
+        tone="neutral"
+      />}
+    />
+    <p className="briefing-rate-meaning"><strong>Apa artinya:</strong> {ratesPolicyShortExplanation(point)}</p>
+    <details className="briefing-rate-details">
+      <summary>Baca penjelasan</summary>
+      <p>{ratesPolicyExplanation(point, comparison?.value ?? null)}</p>
+    </details>
+  </article>;
 }
 
 type BriefingCreditConditionsPoint =
@@ -759,34 +799,31 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         : null}
     </div>
 
-    <div id="briefing-rates-policy" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>02 · RATES & POLICY</span>
-        <span>{ratesPolicy.evidenceStatus === "AVAILABLE" ? "FAKTA TERSEDIA" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa konteks rates & policy untuk Gold dan Bitcoin?</h3>
-      <p className="lead-copy">
-        Gold menampilkan real yield AS 10 tahun dan broad USD. Bitcoin menampilkan reserve balances
-        serta spread SOFR−IORB sebagai konteks likuiditas/funding. Pembanding utama mengikuti jadwal
-        pembaruan data: data harian dibanding observasi sebelumnya, sedangkan reserve balances
-        dibanding observasi mingguan sebelumnya. Penjelasan menerjemahkan arti indikator tanpa
-        menetapkan sebab, regime, atau arah pasar.
-      </p>
+    <div className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
+      <SectionHeader
+        titleId="briefing-rates-policy"
+        title="02 · Rates & Policy"
+        summary="Konteks Gold: Real yield AS 10 tahun dan Broad USD Index. Konteks Bitcoin: Reserve balances dan spread SOFR−IORB."
+      />
 
       {ratesPolicy.evidenceStatus === "AVAILABLE"
-        ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: ".75rem", marginTop: "1rem" }}>
-            <div className="plain-notice">
-              <strong>Konteks Gold</strong>
+        ? <div className="briefing-rates-content">
+            <section className="briefing-rate-group" aria-label="Konteks Gold">
+              <h3>Konteks Gold</h3>
               {ratesPolicy.gold.length
-                ? ratesPolicy.gold.map((point) => <RatesPolicyBriefingLine key={point.seriesKey} point={point} />)
-                : <span>Real yield atau broad USD belum tersedia.</span>}
-            </div>
-            <div className="plain-notice">
-              <strong>Konteks Bitcoin</strong>
+                ? <div className="briefing-rates-grid">
+                    {ratesPolicy.gold.map((point) => <RatesPolicyBriefingCard key={point.seriesKey} point={point} />)}
+                  </div>
+                : <p>Real yield atau Broad USD Index belum tersedia.</p>}
+            </section>
+            <section className="briefing-rate-group" aria-label="Konteks Bitcoin">
+              <h3>Konteks Bitcoin</h3>
               {ratesPolicy.bitcoin.length
-                ? ratesPolicy.bitcoin.map((point) => <RatesPolicyBriefingLine key={point.seriesKey} point={point} />)
-                : <span>Reserve atau spread funding belum tersedia.</span>}
-            </div>
+                ? <div className="briefing-rates-grid">
+                    {ratesPolicy.bitcoin.map((point) => <RatesPolicyBriefingCard key={point.seriesKey} point={point} />)}
+                  </div>
+                : <p>Reserve balances atau spread SOFR−IORB belum tersedia.</p>}
+            </section>
             {ratesPolicy.reason
               ? <div className="plain-notice">
                   <strong>Cakupan sebagian</strong>

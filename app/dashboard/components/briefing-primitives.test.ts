@@ -18,7 +18,7 @@ test("KpiCard menjaga nilai dan teks pembanding serta menyediakan slot freshness
     badge: createElement(StatusBadge, { label: "Bukti sebagian", tone: "partial" }),
   }));
   assert.match(html, /USD 64\.000/);
-  assert.match(html, /Naik · \+1,20%/);
+  assert.match(html, /\+1,20% \(naik\)/);
   assert.match(html, /Dalam 24 jam/);
   assert.match(html, /Bukti sebagian/);
   assert.match(html, /data-slot="freshness"/);
@@ -39,7 +39,7 @@ test("KpiCard membedakan null, kosong dan perubahan yang tersedia", () => {
     label: "Emas", value: "USD 2.500",
     change: { valueLabel: "-0,8%", direction: "down", comparisonLabel: "Penutupan sebelumnya" },
   }));
-  assert.match(html, /Turun · -0,8%/);
+  assert.match(html, /-0,8% \(turun\)/);
   assert.match(html, /var\(--red\)/);
 });
 
@@ -77,11 +77,11 @@ test("ChartCard: SVG berlabel, horizon null tidak dijadikan nol, dan tabel rinci
   }));
   assert.match(html, /role="group"/);
   assert.match(html, /role="img"/);
-  assert.match(html, /aria-label="15 menit: Naik · \+0,40%"/);
+  assert.match(html, /aria-label="15 menit: \+0,40% \(naik\)"/);
   assert.match(html, /30 menit/);
   assert.match(html, /tidak tersedia/);
-  assert.match(html, /Turun · -1,20%/);
-  assert.match(html, /Datar · 0,00%/);
+  assert.match(html, /-1,20% \(turun\)/);
+  assert.match(html, /0,00% \(datar\)/);
   assert.equal((html.match(/<svg /g) ?? []).length, 3);
   assert.match(html, /<details/);
   assert.match(html, /<summary[^>]*>\s*Lihat rincian data\s*<\/summary>/);

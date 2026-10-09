@@ -543,7 +543,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
       {activeMenu === "overview" && <>
         <div className="page-intro">
           <span>RINGKASAN</span>
-          <h1>Market Briefing</h1>
+          <h1>Ringkasan Pasar</h1>
           <p>Ringkasan hanya menampilkan kesimpulan faktual P365. Detail pasar, makro, crypto, Gold, catalyst, dan sumber data tersedia di bagian masing-masing.</p>
         </div>
         <div className="overview-briefing">

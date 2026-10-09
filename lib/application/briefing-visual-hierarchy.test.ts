@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import * as React from "react";
 import { createElement } from "react";
@@ -44,5 +45,11 @@ test("briefing exposes an explicit market-to-macro reading order", () => {
   assert.ok(credit > liquidity);
   assert.ok(macro > credit);
   assert.match(html, /01 · Apa yang bergerak sekarang\?/);
-  assert.match(html, /Apa konteks rates &amp; policy untuk Gold dan Bitcoin\?/);
+  assert.match(html, /02 · Rates &amp; Policy/);
+
+  const styles = readFileSync(new URL("../../app/dashboard/overview-layout.module.css", import.meta.url), "utf8");
+  const dashboard = readFileSync(new URL("../../app/dashboard/dashboard-view.tsx", import.meta.url), "utf8");
+  assert.match(styles, /font:700 12px\/1\.35 'DM Mono'/);
+  assert.match(styles, /@media\(max-width:380px\)[\s\S]*?overflow-x:auto/);
+  assert.match(dashboard, /<h1>Ringkasan Pasar<\/h1>/);
 });

@@ -36,6 +36,7 @@ export function StatusBadge({ label, tone = "neutral" }: StatusBadgeProps) {
 export type KpiCardProps = {
   label: string;
   value: string | null | undefined;
+  valueDetail?: string | null;
   change?: {
     valueLabel: string | null;
     direction: Direction;
@@ -45,12 +46,12 @@ export type KpiCardProps = {
   /** Slot kosong secara bawaan, tanpa kalkulasi freshness. */
   freshnessSlot?: ReactNode;
 };
-export function KpiCard({ label, value, change, badge, freshnessSlot }: KpiCardProps) {
+export function KpiCard({ label, value, valueDetail, change, badge, freshnessSlot }: KpiCardProps) {
   const shownValue = textOrNull(value);
   const shownChange = textOrNull(change?.valueLabel);
   return <article aria-label={label} style={{ ...panel, display: "flex", flexDirection: "column", gap: 12 }}>
     <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
-      <h3 style={{ margin: 0, color: "var(--muted)", fontSize: 12, lineHeight: 1.4 }}>{label}</h3>
+      <h3 style={{ margin: 0, color: "var(--text)", fontSize: 17, fontWeight: 700, lineHeight: 1.35 }}>{label}</h3>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
         {badge}
         <span data-slot="freshness" style={{ fontSize: 12 }}>{freshnessSlot}</span>
@@ -59,11 +60,14 @@ export function KpiCard({ label, value, change, badge, freshnessSlot }: KpiCardP
     <strong style={{ fontSize: 32, lineHeight: 1.15, fontVariantNumeric: "tabular-nums", overflowWrap: "anywhere" }}>
       {shownValue ?? "—"}
     </strong>
+    {shownValue !== null && textOrNull(valueDetail)
+      ? <span style={muted}>{valueDetail}</span>
+      : null}
     {shownValue === null ? <span style={muted}>Data belum tersedia</span>
       : !change || shownChange === null ? <span style={muted}>Perubahan belum tersedia</span>
       : <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <span style={{ color: directionColors[change.direction], fontSize: 14, fontWeight: 700, lineHeight: 1.5 }}>
-          {directions[change.direction]} · {shownChange}
+          {shownChange} ({directions[change.direction].toLowerCase()})
         </span>
         <span style={muted}>{textOrNull(change.comparisonLabel) ?? "Periode pembanding belum tersedia"}</span>
       </div>}
@@ -99,7 +103,7 @@ const valid = (h: ChartHorizon) =>
   textOrNull(h.valueLabel) !== null && typeof h.barLengthPercent === "number"
   && Number.isFinite(h.barLengthPercent) && h.direction !== "unknown";
 const display = (h: ChartHorizon) =>
-  valid(h) ? directions[h.direction] + " · " + h.valueLabel : "tidak tersedia";
+  valid(h) ? h.valueLabel + " (" + directions[h.direction].toLowerCase() + ")" : "tidak tersedia";
 
 /** Batang SVG murni geometri; data kosong tidak diganti angka nol. */
 export function ChartCard({ title, horizons, description }: ChartCardProps) {

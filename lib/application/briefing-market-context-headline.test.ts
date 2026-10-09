@@ -90,14 +90,18 @@ test("briefing leads with market change and keeps MOVE horizons as diagnostics",
   );
 
   assert.match(html, /01 · Apa yang bergerak sekarang\?/);
-  assert.match(html, /USD 84\.250/);
-  assert.match(html, /Naik · \+3\.10%/);
+  assert.match(html, /US\$ 84\.250/);
+  assert.match(html, /\+3,10% \(naik\)/);
   assert.match(html, /Perubahan dalam 24 jam/);
-  assert.match(html, /USD 4\.149,40/);
-  assert.match(html, /Turun · -0\.90%/);
+  assert.match(html, /US\$ 4\.149,40/);
+  assert.match(html, /-0,90% \(turun\)/);
   assert.match(html, /Perubahan terhadap penutupan sebelumnya/);
-  assert.match(html, /Pergerakan intraday tidak biasa terdeteksi/);
-  assert.match(html, /Tidak ada pergerakan intraday material pada waktu pengamatan ini/);
+  assert.match(html, /1 pergerakan intraday tidak biasa terdeteksi pada pengamatan ini/);
+  assert.equal((html.match(/Tidak ada pergerakan intraday material pada waktu pengamatan ini/g) ?? []).length, 0);
+  assert.match(html, /Bitcoin \(BTC\)/);
+  assert.match(html, /Emas \(berjangka COMEX\)/);
+  assert.match(html, /per 1 BTC/);
+  assert.match(html, /Perubahan 24 jam dan perubahan intraday diukur pada rentang yang berbeda\./);
   assert.match(html, /RINCIAN PERGERAKAN DAN BUKTI/);
   assert.match(html, /60 menit/);
   assert.match(html, /120 menit/);
