@@ -20,6 +20,18 @@ const DEFINITIONS = [
     changeUnit: "BPS",
   },
   {
+    seriesKey: "NFCI",
+    domain: "MACRO",
+    valueUnit: "INDEX",
+    changeUnit: "INDEX_POINTS",
+  },
+  {
+    seriesKey: "ANFCI",
+    domain: "MACRO",
+    valueUnit: "INDEX",
+    changeUnit: "INDEX_POINTS",
+  },
+  {
     seriesKey: "VIXCLS",
     domain: "ASSET",
     valueUnit: "INDEX",
@@ -187,8 +199,9 @@ function buildPoint(
 /**
  * Read-only factual Credit & Financial Conditions slice.
  *
- * Scope is intentionally limited to HY OAS, IG OAS and VIX. T10Y2Y remains in
- * the existing Rates & Policy slice; NFCI remains deferred.
+ * Scope includes HY OAS, IG OAS, VIX and the weekly Chicago Fed NFCI/ANFCI.
+ * T10Y2Y remains exclusively in the existing Rates & Policy slice.
+ * Weekly indexes have no synthetic daily comparison; use 1W/4W only.
  *
  * Comparison endpoints reuse the registry-backed FRED cadence freshness policy
  * at each target horizon. The latest point also recomputes freshness at the
