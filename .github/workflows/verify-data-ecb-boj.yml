@@ -4,6 +4,12 @@ on:
   pull_request:
     paths:
       - "lib/data/macro-registry.ts"
+      - "lib/application/central-bank-balance-sheets*"
+      - "lib/application/dashboard-query.ts"
+      - "lib/application/factual-market-briefing.ts"
+      - "lib/application/briefing-central-bank-balance-sheets.test.ts"
+      - "lib/application/briefing-visual-hierarchy.test.ts"
+      - "app/dashboard/factual-market-briefing-panel.tsx"
       - "lib/domain/observation-semantics.ts"
       - "lib/application/fred-**"
       - "lib/data/fred-**"
