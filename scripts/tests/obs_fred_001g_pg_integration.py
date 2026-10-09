@@ -19,7 +19,8 @@ C = 0
 def sql(statement, role="service_role", check=True):
     full = f"SET ROLE {role}; " + statement if role else statement
     proc = subprocess.run(["sudo", "-u", "postgres", "psql", "-X", "-Atq",
-                           "-v", "ON_ERROR_STOP=1", "-d", DB, "-c", full],
+                           "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose",
+                           "-d", DB, "-c", full],
                           text=True, capture_output=True)
     if check and proc.returncode:
         raise AssertionError(f"psql failed: {proc.stderr[-600:]}")
@@ -165,6 +166,44 @@ legacy_only["payload"]=dict(raw["payload"], id=legacy_only["canonical_id"], sour
 legacy_only["dedupe_key"]="OBSERVATION:"+legacy_only["canonical_id"]+":2026-01-01T00:00:00.000Z"
 stmt=f"INSERT INTO public.market_memory (record_type,source_id,canonical_id,effective_at,captured_at,dedupe_key,payload) VALUES ('OBSERVATION','fred','{legacy_only['canonical_id']}','2026-01-01T00:00:00Z',now(),'{legacy_only['dedupe_key']}','{json.dumps(legacy_only['payload'])}'::jsonb)"
 check(sql(stmt,check=False).returncode!=0, "legacy SQL source_id writer cannot bypass enforcement")
+
+# A held committed predecessor must not block an entire cron HTTP budget.
+# 55P03 is an explicitly failed transaction; a later idempotent call can retry.
+contended_one=row("2026-03-08","lock-owner","200")
+contended_two=row("2026-03-08","lock-retry","210")
+with ThreadPoolExecutor(max_workers=2) as pool:
+    holder=pool.submit(transaction,[contended_one],2.5)
+    time.sleep(0.25)
+    wait_started=time.monotonic()
+    failed=sql(do_call([contended_two]),check=False)
+    waited=time.monotonic()-wait_started
+    holder_result=holder.result()
+check(holder_result.returncode==0 and failed.returncode!=0
+      and "55P03" in failed.stderr and waited < 2.2,
+      "contended advisory lock fails with SQLSTATE 55P03 inside bounded window")
+check(int(sql("SELECT count(*) FROM public.market_memory WHERE effective_at='2026-03-08T00:00:00Z' AND record_type='OBSERVATION'").stdout.strip())==1,
+      "failed transaction inserts no partial observation")
+retry=receipt([contended_two])
+check(retry["inserted"]==1 and retry["revised"]==1
+      and retry["revisionAssessment"]=="COMPLETE",
+      "next natural retry can prove committed predecessor")
+
+# A concurrently changed enforcement gate has a bounded row-lock wait as well.
+def hold_gate():
+    return sql("BEGIN; SELECT enforced FROM public.p365_fred_revision_gate "
+               "WHERE singleton FOR UPDATE; SELECT pg_sleep(2.5); COMMIT;")
+with ThreadPoolExecutor(max_workers=2) as pool:
+    holder=pool.submit(hold_gate)
+    time.sleep(0.25)
+    wait_started=time.monotonic()
+    failed=sql(do_call([row("2026-03-09","gate-timeout","99")]),check=False)
+    waited=time.monotonic()-wait_started
+    gate_holder_result=holder.result()
+check(gate_holder_result.returncode==0 and failed.returncode!=0
+      and "55P03" in failed.stderr and waited < 2.2,
+      "held gate row respects bounded lock_timeout")
+check(int(sql("SELECT count(*) FROM public.market_memory WHERE effective_at='2026-03-09T00:00:00Z' AND record_type='OBSERVATION'").stdout.strip())==0,
+      "gate lock timeout leaves no canonical row")
 
 # Switching enforcement OFF and ON invalidates prior head generations.
 gate(False);gate(True)
