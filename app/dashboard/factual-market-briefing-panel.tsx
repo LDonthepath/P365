@@ -126,12 +126,7 @@ const CREDIT_CONDITIONS_LABELS: Record<string, string> = {
   VIXCLS: "VIX · indeks volatilitas saham AS",
 };
 
-const RATES_POLICY_QUALITY_LABELS: Record<string, string> = {
-  FRESH: "TERBARU SAAT DIPEROLEH",
-  STALE: "SUDAH LAMA SAAT DIPEROLEH",
-  PARTIAL: "DATA SEBAGIAN",
-  UNKNOWN: "KUALITAS BELUM PASTI",
-};
+
 
 function liquidityBillions(value: number): string {
   return `${new Intl.NumberFormat("id-ID", {
@@ -611,6 +606,11 @@ function ratesPolicyShortExplanation(point: BriefingRatesPolicyPoint): string {
 function RatesPolicyBriefingCard({ point }: { point: BriefingRatesPolicyPoint }) {
   const comparison = ratesPolicyPrimaryComparison(point);
   const changeValue = comparison ? ratesPolicyChangeValue(point, comparison.value) : null;
+  const badgeLabel = point.quality === "PARTIAL"
+    ? "Data sebagian"
+    : point.quality === "UNKNOWN"
+      ? "Kualitas belum diketahui"
+      : null;
   return <article className="briefing-rate-card">
     <KpiCard
       label={RATES_POLICY_LABELS[point.seriesKey] ?? point.seriesKey}
@@ -623,10 +623,9 @@ function RatesPolicyBriefingCard({ point }: { point: BriefingRatesPolicyPoint })
             comparisonLabel: `${comparison.cadenceLabel} · ${dateOnly(comparison.from)}`,
           }
         : null}
-      badge={<StatusBadge
-        label={RATES_POLICY_QUALITY_LABELS[point.quality] ?? "Kualitas data belum tersedia"}
-        tone="neutral"
-      />}
+      badge={badgeLabel
+        ? <StatusBadge label={badgeLabel} tone="neutral" />
+        : undefined}
     />
     <p className="briefing-rate-meaning"><strong>Apa artinya:</strong> {ratesPolicyShortExplanation(point)}</p>
     <details className="briefing-rate-details">

@@ -53,7 +53,7 @@ test("Bagian 02 menampilkan empat kartu faktual, pembanding, tanggal, dan penjel
   assert.match(section, /-0,61%/);
   assert.match(section, /2.948,1 miliar USD/);
   assert.match(section, /Observasi 08 Okt 2026/);
-  assert.match(section, /TERBARU SAAT DIPEROLEH/);
+  assert.doesNotMatch(section, /TERBARU SAAT DIPEROLEH|SUDAH LAMA SAAT DIPEROLEH|SEGAR|TERTUNDA|USANG/);
   assert.match(section, /DATA SEBAGIAN/);
   assert.match(section, /Apa artinya:/);
   assert.match(section, /<details class="briefing-rate-details">/);
