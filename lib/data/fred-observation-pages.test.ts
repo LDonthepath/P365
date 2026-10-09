@@ -107,6 +107,41 @@ async function main(): Promise<void> {
   assert.equal(forward.status, "SUCCESS");
   assert.equal(forwardUrls.length, 1, "FORWARD must retain the existing single-window behavior");
   assert.equal(forwardUrls[0].searchParams.has("offset"), false);
+
+  // Native-currency ECB / BoJ backfills share the existing bounded FRED adapter.
+  // Neither an observation-period date nor a FRED vintage is a publication time.
+  for (const caseData of [
+    { id: "ECBASSETSW", frequency: "WEEKLY", unit: "Millions of Euros",
+      latest: "2026-09-25", predecessor: "2026-09-18", value: "5912178.00000", prior: "5915343.00000" },
+    { id: "JPNASSETS", frequency: "MONTHLY", unit: "100 Million Yen",
+      latest: "2026-09-01", predecessor: "2026-08-01", value: "6446620", prior: "6442957" },
+  ] as const) {
+    const definition = MACRO_SERIES_REGISTRY.find((item) => item.seriesId === caseData.id);
+    assert.ok(definition, caseData.id);
+    assert.equal(definition.frequency, caseData.frequency);
+    assert.equal(definition.unit, caseData.unit);
+    const requests: URL[] = [];
+    const native = await fetchFredSeriesObservations(definition, "test-api-key", {
+      observationStart: "2026-07-01", observationEnd: "2026-10-09",
+      requireCompleteRange: true, limit: 8, acquisitionMode: "FRESH",
+    }, fetchPages([
+      { count: 2, offset: 0, limit: 8, observations: [
+        { date: caseData.latest, value: caseData.value, realtime_start: "2026-10-09" },
+        { date: caseData.predecessor, value: caseData.prior, realtime_start: "2026-10-09" },
+      ] },
+    ], requests));
+    assert.equal(native.status, "SUCCESS", caseData.id);
+    assert.equal(native.data.length, 2);
+    assert.equal(native.data[0].value, caseData.value, "native value must not be converted to USD");
+    assert.equal(native.data[0].observationDate, caseData.latest);
+    assert.equal(native.data[0].previousValue, caseData.prior);
+    assert.equal(native.data[0].vintageDate, "2026-10-09");
+    assert.equal(native.data[0].releasedAt, null);
+    assert.equal(native.data[0].provenance.nativeSeriesId, caseData.id);
+    assert.equal(requests[0].searchParams.get("series_id"), caseData.id);
+    assert.equal(requests[0].searchParams.get("observation_start"), "2026-07-01");
+    assert.equal(requests[0].searchParams.get("observation_end"), "2026-10-09");
+  }
 }
 
 void main();
