@@ -2,8 +2,8 @@ import { MACRO_SERIES_REGISTRY, type MacroSeriesId } from "../data/macro-registr
 
 /**
  * FRS-003: opt-in FRED observation request planner.
- * Hourly DAILY+WEEKLY (21) retain their exact existing availability check.
- * Only MONTHLY+QUARTERLY (12) can be deferred outside a source-release day.
+ * Hourly DAILY+WEEKLY registry series retain their existing availability check.
+ * Only MONTHLY+QUARTERLY series can be deferred outside a source-release day.
  * Source publisher dates do NOT prove when FRED observations become available.
  */
 const FRED_RELEASE_BY_SLOW_SERIES = {
@@ -69,7 +69,7 @@ function slowIds(): MacroSeriesId[] | null {
 }
 
 /**
- * Fail OPEN to all 33 when no key, API error, invalid/partial source calendar,
+ * Fail OPEN to the complete registry when no key, API error, invalid/partial source calendar,
  * registry drift, or any unexpected response. The caller must already be
  * authenticated; no credential or FRED upstream URL appears in the plan.
  */
@@ -157,7 +157,7 @@ export async function planFredReleaseAwareObservations(
       offset += entries.length;
       if (coveredLookback || offset === total) {
         // An exclusively future calendar cannot establish whether the
-        // publisher lookback is complete; preserve all 33 series instead.
+        // publisher lookback is complete; preserve all registry series instead.
         coveredLookback = sawDateOnOrBeforeToday;
         break;
       }

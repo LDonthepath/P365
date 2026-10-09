@@ -178,7 +178,7 @@ test("metadata outage only falls back hourly, so 5-minute polling cannot amplify
       fetcher: (async () => { calls++; throw new Error("offline"); }) as typeof fetch,
     });
     assert.equal(plan.mode, hhmm === "13:00" ? "FAIL_OPEN_FULL_SWEEP" : "FEED_UNAVAILABLE_DEFERRED");
-    assert.equal(plan.requestedSeriesCount, hhmm === "13:00" ? 33 : 0);
+    assert.equal(plan.requestedSeriesCount, hhmm === "13:00" ? 35 : 0);
     assert.equal(plan.failureReason, "UPSTREAM_FETCH_ERROR");
   }
   assert.equal(calls, 5);
