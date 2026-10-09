@@ -656,26 +656,27 @@ const MACRO_SECTION_LABELS: Record<string, string> = {
 };
 
 function localizeMacroFormattedValue(formatted: string): string {
-  const currency = formatted.match(/^([+-]?)\\$(-?)([\\d,]+)(?:\\.(\\d+))?([TMB]?)$/);
+  const currency = formatted.match(/^([+-]?)\$(-?)([\d,]+)(?:\.(\d+))?([TMB]?)$/);
   if (currency) {
     const [, outerSign, innerSign, integer, fraction = "", scale = ""] = currency;
-    const numeric = Number(`${integer.replaceAll(",", "")}.${fraction || "0"}`);
+    const numeric = Number(integer.replaceAll(",", "") + "." + (fraction || "0"));
     const localized = new Intl.NumberFormat("id-ID", {
       minimumFractionDigits: fraction.length,
       maximumFractionDigits: fraction.length,
     }).format(numeric);
     const scaleLabel = scale === "T" ? " triliun" : scale === "B" ? " miliar" : scale === "M" ? " juta" : "";
-    return `${outerSign || innerSign ? "-" : outerSign}US$ ${localized}${scaleLabel}`;
+    const sign = outerSign === "-" || innerSign === "-" ? "-" : outerSign;
+    return sign + "US$ " + localized + scaleLabel;
   }
 
-  const percent = formatted.match(/^([+-]?)([\\d,]+)\\.(\\d+)%$/);
+  const percent = formatted.match(/^([+-]?)([\d,]+)\.(\d+)%$/);
   if (percent) {
     const [, sign, integer, fraction] = percent;
-    const numeric = Number(`${integer.replaceAll(",", "")}.${fraction}`);
-    return `${sign}${new Intl.NumberFormat("id-ID", { minimumFractionDigits: fraction.length, maximumFractionDigits: fraction.length }).format(numeric)}%`;
+    const numeric = Number(integer.replaceAll(",", "") + "." + fraction);
+    return sign + new Intl.NumberFormat("id-ID", { minimumFractionDigits: fraction.length, maximumFractionDigits: fraction.length }).format(numeric) + "%";
   }
 
-  return formatted.replace(/(\\d)\\.(\\d)/g, "$1,$2");
+  return formatted.replace(/(\d)\.(\d)/g, "$1,$2");
 }
 
 function macroValueId(value: string, unit: string): string {
