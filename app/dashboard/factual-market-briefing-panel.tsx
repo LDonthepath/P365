@@ -915,7 +915,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
 
       {netLiquidity.evidenceStatus === "AVAILABLE" && netLiquidity.latest
         ? <>
-            <div className="briefing-stage4-grid" style={{ marginTop: "1rem" }}>
+            <div className="briefing-stage4-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 15rem), 1fr))", gap: ".75rem", marginTop: "1rem" }}>
               <article className="briefing-stage4-card">
                 <KpiCard
                   label="Net Liquidity (proxy)"
@@ -982,7 +982,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       </p>
 
       {creditConditions.evidenceStatus === "AVAILABLE" && creditConditions.items.length > 0
-        ? <div className="briefing-stage4-grid" style={{ marginTop: "1rem" }}>
+        ? <div className="briefing-stage4-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 15rem), 1fr))", gap: ".75rem", marginTop: "1rem" }}>
             {creditConditions.items.map((point) =>
               <CreditConditionsBriefingItem key={point.seriesKey} point={point} />
             )}
@@ -1002,7 +1002,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           : "Belum ada nilai makro dengan baseline pembanding pada read model ini."}
       />
       {changed.evidenceStatus === "AVAILABLE" && changed.items.length > 0
-        ? <div className="briefing-stage4-grid" style={{ marginTop: "1rem" }}>
+        ? <div className="briefing-stage4-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 15rem), 1fr))", gap: ".75rem", marginTop: "1rem" }}>
             {changed.items.map((item) => {
               const label = macroSeriesLabel(item.seriesId, item.subject);
               return <article className="briefing-stage4-card" key={item.seriesId}>
