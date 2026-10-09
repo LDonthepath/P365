@@ -172,4 +172,24 @@ check(sql("SELECT epoch FROM public.p365_fred_revision_gate").stdout.strip().end
 res=receipt([row("2026-01-03","after-reenable","109")])
 check(res["revised"] is None and res["revisionAssessment"]=="NOT_EVALUATED", "old epoch head cannot be treated as current write-order proof")
 
+# Cap sentinel and missing predecessor numeric payload must never produce
+# a falsely proven "revised" count.
+gate(False)
+history=[row("2026-05-01",f"over-cap-{i}","200") for i in range(65)]
+missing_prior=row("2026-05-02","legacy-missing-value","200")
+del missing_prior["payload"]["value"]
+history.append(missing_prior)
+seed=json.dumps(history,separators=(",",":")).replace("'", "''")
+sql("INSERT INTO public.market_memory(record_type,canonical_id,effective_at,captured_at,dedupe_key,payload) "
+    "SELECT record_type,canonical_id,effective_at,captured_at,dedupe_key,payload "
+    f"FROM jsonb_to_recordset('{seed}'::jsonb) AS x(record_type text,canonical_id text,"
+    "effective_at timestamptz,captured_at timestamptz,dedupe_key text,payload jsonb)")
+gate(True)
+bounded=receipt([row("2026-05-01","over-cap-candidate","201")])
+check(bounded["revised"] is None and bounded["revisionAssessment"]=="NOT_EVALUATED",
+      "65 prior versions exceed complete-history bound")
+missing=receipt([row("2026-05-02","missing-value-candidate","201")])
+check(missing["revised"] is None and missing["revisionAssessment"]=="NOT_EVALUATED",
+      "missing predecessor value must never fabricate a factual revision")
+
 print(f"PASS: {C} assertions; real PostgreSQL concurrent sessions, retry, rollback, gate, ACL and epoch invariants")
