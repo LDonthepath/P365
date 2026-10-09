@@ -1,7 +1,7 @@
 import "server-only";
 import type { MarketSnapshot } from "../domain/market-snapshot";
 import type { Context, Event, Evidence, Observation } from "../domain/types";
-import type { ContextRepository, EventRepository, EvidenceRepository, MarketSnapshotRepository, ObservationRepository, CanonicalWriteReceipt } from "../repositories/types";
+import type { ContextRepository, EventRepository, EvidenceRepository, MarketSnapshotRepository, ObservationRepository, CanonicalWriteReceipt, FredRevisionWriteReceipt } from "../repositories/types";
 import { SupabaseHistoricalEvidenceRepository } from "./supabase-evidence-history";
 import { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
 import { marketMemoryDedupeKey, marketMemoryEffectiveAt, type CanonicalRecord, type MarketMemoryRecordType } from "./market-memory-record";
@@ -162,6 +162,65 @@ async function insertManyWithReceipt(rows: MarketMemoryRow[]): Promise<Canonical
   };
 }
 
+/** Optional transaction-coordinated FRED-only physical and revision receipt. */
+async function insertFredObservationsWithRevisionReceipt(
+  observations: Observation[],
+): Promise<FredRevisionWriteReceipt> {
+  if (observations.some((item) => item.sourceId !== "fred")) {
+    throw new Error("FRED coordinated writer rejects non-FRED observations");
+  }
+  if (observations.length === 0) {
+    return { submitted: 0, inserted: 0, duplicates: 0,
+      insertedCanonicalIds: [], revised: 0, revisionAssessment: "COMPLETE" };
+  }
+  if (observations.length > 500) throw new Error("FRED receipt batch exceeds 500 observations");
+  const rows = observations.map((item) => rowFor("OBSERVATION", item));
+  const submittedIds = new Set(rows.map((row) => row.canonical_id));
+  if (submittedIds.size !== rows.length) {
+    throw new Error("FRED coordinated writer requires unique canonical IDs");
+  }
+  const { url, key } = requireConfig();
+  const response = await fetch(url + "/rest/v1/rpc/p365_insert_fred_observations_v1", {
+    method: "POST",
+    headers: { apikey: key, Authorization: "Bearer " + key,
+      "Content-Type": "application/json" },
+    body: JSON.stringify({ p_rows: rows }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    // No raw upstream body, URL or credential in operator metrics.
+    throw new Error("FRED coordinated write RPC failed (" + response.status + ")");
+  }
+  const raw: unknown = await response.json();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("FRED coordinated writer received malformed receipt");
+  }
+  const receipt = raw as Record<string, unknown>;
+  const inserted = receipt.inserted, duplicates = receipt.duplicates;
+  const revised = receipt.revised, status = receipt.revisionAssessment;
+  const ids = receipt.insertedCanonicalIds;
+  if (receipt.submitted !== rows.length
+    || !Number.isSafeInteger(inserted) || (inserted as number) < 0 || (inserted as number) > rows.length
+    || !Number.isSafeInteger(duplicates) || duplicates !== rows.length - (inserted as number)
+    || !Array.isArray(ids) || ids.length !== inserted
+    || !ids.every((id) => typeof id === "string" && submittedIds.has(id))
+    || new Set(ids).size !== ids.length
+    || (status !== "COMPLETE" && status !== "NOT_EVALUATED")
+    || (status === "COMPLETE" &&
+      (!Number.isSafeInteger(revised) || (revised as number) < 0 || (revised as number) > (inserted as number)))
+    || (status === "NOT_EVALUATED" && revised !== null)
+    || (inserted === 0 && (revised !== 0 || status !== "COMPLETE"))) {
+    throw new Error("FRED coordinated writer received unqualified receipt");
+  }
+  return {
+    submitted: rows.length, inserted: inserted as number,
+    duplicates: duplicates as number, insertedCanonicalIds: ids as string[],
+    revised: revised as number | null,
+    revisionAssessment: status as "COMPLETE" | "NOT_EVALUATED",
+  };
+}
+
 async function find<T extends CanonicalRecord>(recordType: MarketMemoryRecordType, id: string): Promise<T | null> {
   const { url, key } = requireConfig();
   const params = new URLSearchParams({
@@ -244,6 +303,13 @@ class SupabaseRepository<T extends CanonicalRecord> {
 
   async saveManyWithReceipt(items: T[]): Promise<CanonicalWriteReceipt> {
     return insertManyWithReceipt(items.map((item) => rowFor(this.recordType, item)));
+  }
+
+  async saveManyWithFredRevisionReceipt(items: T[]): Promise<FredRevisionWriteReceipt> {
+    if (this.recordType !== "OBSERVATION") {
+      throw new Error("FRED coordinated writer is Observation-only");
+    }
+    return insertFredObservationsWithRevisionReceipt(items as Observation[]);
   }
 
   async findById(id: string): Promise<T | null> {
