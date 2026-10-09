@@ -840,44 +840,67 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
     </div>
 
     <div id="briefing-usd-liquidity" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>03 · USD LIQUIDITY</span>
-        <span>{netLiquidity.evidenceStatus === "AVAILABLE" ? "PROXY FAKTUAL" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada likuiditas dolar AS?</h3>
-      <p className="lead-copy">
-        Net Liquidity memakai proxy aritmetika aset Federal Reserve dikurangi kas Treasury dan
-        reverse repo. Pembanding utama adalah sekitar satu minggu; sekitar empat minggu hanya
-        konteks tren. Proxy ini tidak mengukur arus dana langsung ke Bitcoin dan tidak menetapkan
-        arah Bitcoin, regime, atau hubungan sebab-akibat.
+      <SectionHeader
+        titleId="briefing-usd-liquidity-title"
+        title="03 · Apa yang berubah pada likuiditas dolar AS?"
+        summary="Proxy Net Liquidity menggabungkan aset Federal Reserve, kas Treasury, dan reverse repo pada tanggal observasi terakhir."
+      />
+      <p className="briefing-rate-meaning">
+        Net Liquidity adalah proxy aritmetika. Proxy ini tidak menunjukkan arus dana langsung ke Bitcoin.
       </p>
 
       {netLiquidity.evidenceStatus === "AVAILABLE" && netLiquidity.latest
-        ? <div className="plain-notice" style={{ marginTop: "1rem" }}>
-            <strong>Net Liquidity AS</strong>
-            <span>
-              {liquidityBillions(netLiquidity.latest.valueBillionsUsd)}
-              {" · "}Dibanding sekitar 1 minggu {liquidityChange(netLiquidity.change1wBillionsUsd)}
-              {netLiquidity.change1wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change1wFrom)}` : ""}
-            </span>
-            <span>Apa artinya: {netLiquidityExplanation(netLiquidity.change1wBillionsUsd)}</span>
-            <span>
-              Konteks sekitar 4 minggu: {liquidityChange(netLiquidity.change4wBillionsUsd)}
-              {netLiquidity.change4wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change4wFrom)}` : ""}
-            </span>
-            <span>
-              Komponen: aset Fed {liquidityBillions(netLiquidity.latest.fedAssetsBillionsUsd)}
-              {" · "}kas Treasury {liquidityBillions(netLiquidity.latest.treasuryCashBillionsUsd)}
-              {" · "}reverse repo {liquidityBillions(netLiquidity.latest.reverseRepoBillionsUsd)}
-            </span>
-            <span>
-              Observasi gabungan sampai {dateOnly(netLiquidity.latest.asOf)}
-              {" · "}kualitas komponen saat diperoleh: {RATES_POLICY_QUALITY_LABELS[netLiquidity.latest.quality] ?? "KUALITAS BELUM PASTI"}
-            </span>
+        ? <>
+            <div className="briefing-stage4-grid" style={{ marginTop: "1rem" }}>
+              <article className="briefing-stage4-card">
+                <KpiCard
+                  label="Net Liquidity (proxy)"
+                  value={liquidityBillions(netLiquidity.latest.valueBillionsUsd)}
+                  valueDetail={`Observasi ${dateOnly(netLiquidity.latest.asOf)} · 4 minggu: ${liquidityChange(netLiquidity.change4wBillionsUsd)}${netLiquidity.change4wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change4wFrom)}` : ""}`}
+                  change={netLiquidity.change1wBillionsUsd === null
+                    ? null
+                    : {
+                        valueLabel: liquidityChange(netLiquidity.change1wBillionsUsd),
+                        direction: ratesPolicyDirection(netLiquidity.change1wBillionsUsd),
+                        comparisonLabel: `1 minggu dibanding data sampai ${netLiquidity.change1wFrom ? dateOnly(netLiquidity.change1wFrom) : "tanggal belum tersedia"}`,
+                      }}
+                />
+                <p className="briefing-rate-meaning">Perubahan agregat proxy dalam satu minggu; angka 4 minggu memberi pembanding tambahan.</p>
+                <details className="briefing-rate-details">
+                  <summary>Rincian perhitungan proxy</summary>
+                  <p>{netLiquidityExplanation(netLiquidity.change1wBillionsUsd)}</p>
+                  <p>Aset Federal Reserve dikurangi kas Treasury (TGA) dan reverse repo (RRP). Ini bukan ukuran arus dana langsung ke Bitcoin.</p>
+                </details>
+              </article>
+              <article className="briefing-stage4-card">
+                <KpiCard
+                  label="Aset Federal Reserve"
+                  value={liquidityBillions(netLiquidity.latest.fedAssetsBillionsUsd)}
+                  valueDetail={`Nilai komponen pada ${dateOnly(netLiquidity.latest.asOf)}`}
+                />
+              </article>
+              <article className="briefing-stage4-card">
+                <KpiCard
+                  label="Kas Treasury (TGA)"
+                  value={liquidityBillions(netLiquidity.latest.treasuryCashBillionsUsd)}
+                  valueDetail={`Nilai komponen pada ${dateOnly(netLiquidity.latest.asOf)}`}
+                />
+              </article>
+              <article className="briefing-stage4-card">
+                <KpiCard
+                  label="Reverse repo (RRP)"
+                  value={liquidityBillions(netLiquidity.latest.reverseRepoBillionsUsd)}
+                  valueDetail={`Nilai komponen pada ${dateOnly(netLiquidity.latest.asOf)}`}
+                />
+              </article>
+            </div>
+            <p className="briefing-rate-meaning">
+              Read model menyediakan perubahan mingguan dan 4 mingguan untuk agregat Net Liquidity; perubahan tiap komponen tidak tersedia.
+            </p>
             {netLiquidity.reason
-              ? <span>{netLiquidity.reason}</span>
+              ? <p className="briefing-rate-meaning">{netLiquidity.reason}</p>
               : null}
-          </div>
+          </>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
             <strong>Net Liquidity belum cukup</strong>
             <span>{netLiquidity.reason}</span>
