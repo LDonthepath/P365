@@ -129,9 +129,9 @@ const RATES_POLICY_LABELS: Record<string, string> = {
 };
 
 const CREDIT_CONDITIONS_LABELS: Record<string, string> = {
-  BAMLH0A0HYM2: "US High Yield OAS",
-  BAMLC0A0CM: "US Investment Grade OAS",
-  VIXCLS: "VIX",
+  BAMLH0A0HYM2: "Spread obligasi berperingkat rendah (HY OAS)",
+  BAMLC0A0CM: "Spread obligasi investment-grade (IG OAS)",
+  VIXCLS: "VIX · indeks volatilitas saham AS",
 };
 
 const RATES_POLICY_QUALITY_LABELS: Record<string, string> = {
@@ -648,65 +648,72 @@ type BriefingCreditConditionsPoint =
   FactualMarketBriefing["creditConditions"]["items"][number];
 
 function creditConditionsValue(point: BriefingCreditConditionsPoint): string {
-  if (point.valueUnit === "PERCENT") return `${point.value.toFixed(2)}%`;
-  return new Intl.NumberFormat("id-ID", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(point.value);
+  return `${formatBriefingNumber(point.value, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${point.valueUnit === "PERCENT" ? "%" : ""}`;
+}
+
+type BriefingCreditChange = NonNullable<BriefingCreditConditionsPoint["change1d"]>;
+type BriefingCreditComparison = { label: string; change: BriefingCreditChange };
+
+function creditConditionsComparisons(point: BriefingCreditConditionsPoint): BriefingCreditComparison[] {
+  return [
+    { label: "1 hari", change: point.change1d },
+    { label: "1 minggu", change: point.change1w },
+    { label: "4 minggu", change: point.change4w },
+  ].filter((item): item is BriefingCreditComparison => item.change !== null);
 }
 
 function creditConditionsChangeValue(
   point: BriefingCreditConditionsPoint,
-  change: BriefingCreditConditionsPoint["change1d"],
+  value: number,
 ): string {
-  if (change === null) return "tidak tersedia";
   if (point.changeUnit === "BPS") {
-    return `${ratesPolicySigned(change.value, 1)} bps`;
+    return `${ratesPolicySigned(value, 1)} bps`;
   }
-  return `${ratesPolicySigned(change.value, 2)} poin`;
+  return `${ratesPolicySigned(value, 2)} poin indeks`;
 }
 
-function creditConditionsPreviousRelease(
+function creditConditionsExplanation(
   point: BriefingCreditConditionsPoint,
+  change: BriefingCreditChange | null,
 ): string {
-  const change = point.change1d;
-  if (change === null) return "observasi harian sebelumnya belum tersedia";
-  return `observasi harian sebelumnya ${creditConditionsChangeValue(point, change)} vs ${dateOnly(change.predecessorObservedAt)}`;
-}
-
-function creditConditionsExplanation(point: BriefingCreditConditionsPoint): string {
-  const change = point.change1d;
   if (change === null) {
-    return "Belum cukup riwayat qualified untuk menjelaskan perubahan terhadap observasi sebelumnya.";
+    return "Pembanding harian, mingguan, atau 4 mingguan belum tersedia pada read model ini.";
   }
 
   if (point.seriesKey === "BAMLH0A0HYM2") {
     if (change.value > 0) {
-      return "Spread high-yield melebar. Investor meminta premi risiko lebih besar untuk utang berisiko, sehingga kondisi kredit high-yield menjadi lebih ketat dibanding observasi sebelumnya.";
+      return "Spread high-yield melebar. Investor meminta premi risiko lebih besar untuk utang berisiko, sehingga kondisi kredit high-yield menjadi lebih ketat dibanding pembanding.";
     }
     if (change.value < 0) {
-      return "Spread high-yield menyempit. Premi risiko yang diminta investor menurun, sehingga kondisi kredit high-yield menjadi lebih longgar dibanding observasi sebelumnya.";
+      return "Spread high-yield menyempit. Premi risiko yang diminta investor menurun, sehingga kondisi kredit high-yield menjadi lebih longgar dibanding pembanding.";
     }
-    return "Spread high-yield tidak berubah dibanding observasi sebelumnya.";
+    return "Spread high-yield tidak berubah dibanding pembanding.";
   }
 
   if (point.seriesKey === "BAMLC0A0CM") {
     if (change.value > 0) {
-      return "Spread investment-grade melebar. Premi risiko kredit korporasi berkualitas tinggi meningkat dibanding observasi sebelumnya.";
+      return "Spread investment-grade melebar. Premi risiko kredit korporasi berkualitas tinggi meningkat dibanding pembanding.";
     }
     if (change.value < 0) {
-      return "Spread investment-grade menyempit. Premi risiko kredit korporasi berkualitas tinggi menurun dibanding observasi sebelumnya.";
+      return "Spread investment-grade menyempit. Premi risiko kredit korporasi berkualitas tinggi menurun dibanding pembanding.";
     }
-    return "Spread investment-grade tidak berubah dibanding observasi sebelumnya.";
+    return "Spread investment-grade tidak berubah dibanding pembanding.";
   }
 
   if (change.value > 0) {
-    return "VIX naik. Implied volatility saham AS meningkat dibanding observasi sebelumnya; ini menunjukkan ekspektasi volatilitas yang lebih tinggi, bukan penyebab langsung pergerakan Bitcoin atau Gold.";
+    return "VIX naik. Volatilitas saham AS yang tersirat meningkat dibanding pembanding; ini bukan penyebab langsung pergerakan Bitcoin atau Emas.";
   }
   if (change.value < 0) {
-    return "VIX turun. Implied volatility saham AS menurun dibanding observasi sebelumnya; ini menunjukkan ekspektasi volatilitas yang lebih rendah, bukan penyebab langsung pergerakan Bitcoin atau Gold.";
+    return "VIX turun. Volatilitas saham AS yang tersirat menurun dibanding pembanding; ini bukan penyebab langsung pergerakan Bitcoin atau Emas.";
   }
-  return "VIX tidak berubah dibanding observasi sebelumnya.";
+  return "VIX tidak berubah dibanding pembanding.";
+}
+
+function creditConditionsSummary(points: readonly BriefingCreditConditionsPoint[]): string {
+  if (points.length === 0) {
+    return "Belum ada indikator kredit dan kondisi keuangan yang tersedia pada read model ini.";
+  }
+  return `Indikator yang tersedia: ${points.map((point) => CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey).join(", ")}.`;
 }
 
 function CreditConditionsBriefingItem({
@@ -714,20 +721,33 @@ function CreditConditionsBriefingItem({
 }: {
   point: BriefingCreditConditionsPoint;
 }) {
-  return <div className="plain-notice">
-    <strong>{CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}</strong>
-    <span>
-      {creditConditionsValue(point)}
-      {" · "}Dibanding {creditConditionsPreviousRelease(point)}
-    </span>
-    <span>Apa artinya: {creditConditionsExplanation(point)}</span>
-    <span>
-      Observasi {dateOnly(point.observedAt)}
-      {" · "}diperoleh {dateTime(point.retrievedAt)} WIB
-      {" · "}{RATES_POLICY_QUALITY_LABELS[point.freshness] ?? "FRESHNESS BELUM PASTI"}
-      {" · "}sumber {point.sourceId}
-    </span>
-  </div>;
+  const comparisons = creditConditionsComparisons(point);
+  const primary = comparisons[0] ?? null;
+
+  return <article className="briefing-stage4-card">
+    <KpiCard
+      label={CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}
+      value={creditConditionsValue(point)}
+      valueDetail={`Observasi ${dateOnly(point.observedAt)}`}
+      change={primary
+        ? {
+            valueLabel: creditConditionsChangeValue(point, primary.change.value),
+            direction: ratesPolicyDirection(primary.change.value),
+            comparisonLabel: `${primary.label} dibanding observasi ${dateOnly(primary.change.predecessorObservedAt)}`,
+          }
+        : null}
+    />
+    <p className="briefing-rate-meaning">Apa artinya: {creditConditionsExplanation(point, primary?.change ?? null)}</p>
+    <details className="briefing-rate-details">
+      <summary>Lihat pembanding dan sumber</summary>
+      <ul>
+        {comparisons.map(({ label, change }) => <li key={label}>
+          {label}: {creditConditionsChangeValue(point, change.value)} dibanding observasi {dateOnly(change.predecessorObservedAt)}
+        </li>)}
+      </ul>
+      <p>Observasi {dateOnly(point.observedAt)} · sumber {point.sourceId} · diperoleh {dateTime(point.retrievedAt)} WIB.</p>
+    </details>
+  </article>;
 }
 
 export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefing }) {
@@ -908,32 +928,23 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
     </div>
 
     <div id="briefing-credit-conditions" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>04 · CREDIT & FINANCIAL CONDITIONS</span>
-        <span>{creditConditions.evidenceStatus === "AVAILABLE" ? "FAKTA TERSEDIA" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada kredit dan volatilitas?</h3>
-      <p className="lead-copy">
-        HY OAS, IG OAS, dan VIX dibandingkan dengan observasi harian sebelumnya yang qualified.
-        Setiap angka diterjemahkan ke arti finansialnya untuk pembaca non-teknis. Kurva Treasury
-        10Y−2Y tetap berada di Rates & Policy; tidak ada skor gabungan, label regime, klaim sebab,
-        atau kesimpulan arah Bitcoin/Gold.
+      <SectionHeader
+        titleId="briefing-credit-conditions-title"
+        title="04 · Apa perubahan pada kredit dan kondisi keuangan?"
+        summary={creditConditionsSummary(creditConditions.items)}
+      />
+      <p className="briefing-rate-meaning">
+        HY OAS dan IG OAS mengukur spread kredit obligasi; VIX merangkum volatilitas tersirat saham AS.
       </p>
 
-      {creditConditions.evidenceStatus === "AVAILABLE"
-        ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(245px,1fr))", gap: ".75rem", marginTop: "1rem" }}>
+      {creditConditions.evidenceStatus === "AVAILABLE" && creditConditions.items.length > 0
+        ? <div className="briefing-stage4-grid" style={{ marginTop: "1rem" }}>
             {creditConditions.items.map((point) =>
               <CreditConditionsBriefingItem key={point.seriesKey} point={point} />
             )}
-            {creditConditions.reason
-              ? <div className="plain-notice">
-                  <strong>Cakupan sebagian</strong>
-                  <span>{creditConditions.reason}</span>
-                </div>
-              : null}
           </div>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
-            <strong>Credit & Financial Conditions belum cukup</strong>
+            <strong>Indikator kredit belum tersedia</strong>
             <span>{creditConditions.reason}</span>
           </div>}
     </div>
