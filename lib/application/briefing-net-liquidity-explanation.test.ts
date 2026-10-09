@@ -46,17 +46,17 @@ test("briefing explains Net Liquidity with weekly primary comparison and four-we
     createElement(FactualMarketBriefingPanel, { data: result }),
   );
 
-  assert.match(html, /USD LIQUIDITY/);
-  assert.match(html, /Net Liquidity AS/);
+  assert.match(html, /03 · Apa yang berubah pada likuiditas dolar AS\?/);
+  assert.match(html, /Net Liquidity \(proxy\)/);
   assert.match(html, /6\.225,4 miliar USD/);
-  assert.match(html, /Dibanding sekitar 1 minggu \+42,6 miliar USD/);
-  assert.match(html, /Konteks sekitar 4 minggu: -18,4 miliar USD/);
-  assert.match(html, /Apa artinya: Proxy Net Liquidity meningkat/);
+  assert.match(html, /\+42,6 miliar USD/);\n  assert.match(html, /1 minggu dibanding data sampai/);
+  assert.match(html, /4 minggu: -18,4 miliar USD/);
+  assert.match(html, /Proxy Net Liquidity meningkat/);
   assert.match(html, /bukan bukti dana langsung masuk ke Bitcoin/);
-  assert.match(html, /kualitas komponen saat diperoleh: TERBARU SAAT DIPEROLEH/);
-  assert.match(html, /aset Fed 6\.587,2 miliar USD/);
-  assert.match(html, /kas Treasury 350,1 miliar USD/);
-  assert.match(html, /reverse repo 11,7 miliar USD/);
+  assert.doesNotMatch(html, /TERBARU SAAT DIPEROLEH|FRESH|STALE/);\n  assert.match(html, /perubahan tiap komponen tidak tersedia/);
+  assert.match(html, /Aset Federal Reserve/);\n  assert.match(html, /6\.587,2 miliar USD/);
+  assert.match(html, /Kas Treasury \(TGA\)/);\n  assert.match(html, /350,1 miliar USD/);
+  assert.match(html, /Reverse repo \(RRP\)/);\n  assert.match(html, /11,7 miliar USD/);
 
   const normalized = html.toLowerCase();
   assert.equal(normalized.includes("bullish"), false);

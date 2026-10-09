@@ -166,21 +166,21 @@ test("briefing explains factual rates and credit changes using release-frequency
   const html = renderToStaticMarkup(
     createElement(FactualMarketBriefingPanel, { data: result }),
   );
-  assert.match(html, /CREDIT &amp; FINANCIAL CONDITIONS/);
-  assert.match(html, /US High Yield OAS/);
-  assert.match(html, /US Investment Grade OAS/);
+  assert.match(html, /04 · Apa perubahan pada kredit dan kondisi keuangan\?/);
+  assert.match(html, /Spread obligasi berperingkat rendah \(HY OAS\)/);
+  assert.match(html, /Spread obligasi investment-grade \(IG OAS\)/);
   assert.match(html, /VIX/);
   assert.doesNotMatch(html, /<strong>Kurva Treasury 10Y−2Y<\/strong>/);
-  assert.match(html, /Dibanding observasi harian sebelumnya/);
-  assert.match(html, /observasi mingguan sebelumnya · 23 Sep 2026/);
+  assert.match(html, /1 hari dibanding observasi/);
+  assert.match(html, /1 minggu:.*23 Sep 2026/);
   assert.match(html, /Apa artinya:/);
   assert.match(html, /Spread high-yield melebar/);
   assert.match(html, /Real yield AS 10 tahun naik/);
   assert.match(html, /Reserve balances bertambah/);
   assert.doesNotMatch(html, /cadence/i);
-  assert.doesNotMatch(html, /4 minggu/);
+  assert.match(html, /4 minggu:/);
   assert.match(html, /diperoleh/);
-  assert.match(html, /diperoleh 06 Okt 2026/);
+  assert.match(html, /diperoleh 06 Okt 2026/);\n  assert.doesNotMatch(html, /FRESH|STALE|TERBARU SAAT DIPEROLEH|SUDAH LAMA SAAT DIPEROLEH/);
 
   const normalized = html.toLowerCase();
   assert.equal(normalized.includes("bullish"), false);
