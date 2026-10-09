@@ -1,10 +1,6 @@
 "use client";
 
 import type { FactualMarketBriefing } from "@/lib/application/factual-market-briefing";
-import {
-  formatMacroDisplayDelta,
-  formatMacroDisplayValue,
-} from "@/lib/presentation/macro-display";
 import { formatEventResultValue } from "@/lib/presentation/intraday-event-response";
 import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
 import {
@@ -170,6 +166,37 @@ function netLiquidityExplanation(value: number | null): string {
   return "Proxy Net Liquidity tidak berubah terhadap pembanding sekitar satu minggu. Proxy ini tetap hanya menggambarkan aritmetika Fed assets dikurangi TGA dan reverse repo, bukan arus langsung ke Bitcoin.";
 }
 
+/** Formatter khusus tampilan Bagian 05; nilai, basis, dan unit domain tidak diubah. */
+function briefingMacroUnit(unit: string): string {
+  const normalized = unit.trim().toLowerCase();
+  if (normalized.includes("billion") && (normalized.includes("dollar") || normalized.includes("usd"))) return "miliar USD";
+  if (normalized.includes("million") && (normalized.includes("dollar") || normalized.includes("usd"))) return "juta USD";
+  if (normalized.includes("thousand") && (normalized.includes("dollar") || normalized.includes("usd"))) return "ribu USD";
+  if (normalized === "usd" || normalized === "dollars") return "USD";
+  return unit;
+}
+
+function briefingMacroValue(value: string, unit: string): string {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return value;
+  const normalized = unit.trim().toLowerCase();
+  if (normalized === "%" || normalized.includes("percent")) {
+    return `${formatBriefingNumber(numeric, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  }
+  const shownUnit = briefingMacroUnit(unit);
+  return `${formatBriefingNumber(numeric, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${shownUnit ? ` ${shownUnit}` : ""}`;
+}
+
+function briefingMacroDelta(value: number, unit: string): string {
+  const shown = formatBriefingNumber(value, {
+    minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "exceptZero",
+  });
+  const normalized = unit.trim().toLowerCase();
+  if (normalized === "%" || normalized.includes("percent")) return `${shown} poin persentase`;
+  const shownUnit = briefingMacroUnit(unit);
+  return `${shown}${shownUnit ? ` ${shownUnit}` : ""}`;
+}
+
 const MAX_MOVE_CATALYST_DETAILS = 3;
 
 function dateTime(value: string): string {
@@ -319,7 +346,7 @@ function MarketMoveBriefingItem({
       value={presentation.price}
       valueDetail={presentation.priceDetail}
       change={presentation.change}
-      badge={<StatusBadge label={presentation.badge.label} tone={presentation.badge.tone} />} />
+      badge={presentation.badge ? <StatusBadge label={presentation.badge.label} tone={presentation.badge.tone} /> : null} />
     <p className="ux2-market-note">
       {item.observedAt
         ? `Observasi ${dateTime(item.observedAt)} WIB`
@@ -646,11 +673,11 @@ type BriefingCreditConditionsPoint =
   FactualMarketBriefing["creditConditions"]["items"][number];
 
 function creditConditionsValue(point: BriefingCreditConditionsPoint): string {
-  if (point.valueUnit === "PERCENT") return `${point.value.toFixed(2)}%`;
-  return new Intl.NumberFormat("id-ID", {
+  const value = formatBriefingNumber(point.value, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(point.value);
+  });
+  return point.valueUnit === "PERCENT" ? `${value}%` : value;
 }
 
 function creditConditionsChangeValue(
@@ -712,20 +739,37 @@ function CreditConditionsBriefingItem({
 }: {
   point: BriefingCreditConditionsPoint;
 }) {
-  return <div className="plain-notice">
-    <strong>{CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}</strong>
-    <span>
-      {creditConditionsValue(point)}
-      {" · "}Dibanding {creditConditionsPreviousRelease(point)}
-    </span>
-    <span>Apa artinya: {creditConditionsExplanation(point)}</span>
-    <span>
-      Observasi {dateOnly(point.observedAt)}
-      {" · "}diperoleh {dateTime(point.retrievedAt)} WIB
-      {" · "}{RATES_POLICY_QUALITY_LABELS[point.freshness] ?? "FRESHNESS BELUM PASTI"}
-      {" · "}sumber {point.sourceId}
-    </span>
-  </div>;
+  const change = point.change1d;
+  const shortExplanation = point.seriesKey === "BAMLH0A0HYM2"
+    ? "Premi risiko obligasi korporasi AS berimbal hasil tinggi (HY OAS)."
+    : point.seriesKey === "BAMLC0A0CM"
+      ? "Premi risiko obligasi korporasi AS berperingkat investasi (IG OAS)."
+      : "VIX adalah ukuran volatilitas tersirat opsi saham AS.";
+  return <article className="briefing-rate-card">
+    <KpiCard
+      label={CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}
+      value={creditConditionsValue(point)}
+      valueDetail={`Observasi ${dateOnly(point.observedAt)}`}
+      change={change
+        ? {
+            valueLabel: creditConditionsChangeValue(point, change),
+            direction: ratesPolicyDirection(change.value),
+            comparisonLabel: `observasi harian sebelumnya · ${dateOnly(change.predecessorObservedAt)}`,
+          }
+        : null}
+      badge={<StatusBadge
+        label={RATES_POLICY_QUALITY_LABELS[point.acquisitionQuality] ?? "KUALITAS BELUM PASTI"}
+        tone="neutral"
+      />}
+    />
+    <p className="briefing-rate-meaning"><strong>Apa artinya:</strong> {shortExplanation}</p>
+    <details className="briefing-rate-details">
+      <summary>Baca penjelasan</summary>
+      <p>Dibanding {creditConditionsPreviousRelease(point)}.</p>
+      <p>{creditConditionsExplanation(point)}</p>
+      <p>Data diperoleh {dateTime(point.retrievedAt)} WIB · sumber {point.sourceId}.</p>
+    </details>
+  </article>;
 }
 
 export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefing }) {
@@ -802,7 +846,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
     <div className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
       <SectionHeader
         titleId="briefing-rates-policy"
-        title="02 · Rates & Policy"
+        title="02 · Apa konteks suku bunga dan kebijakan untuk Emas dan Bitcoin?"
         summary="Konteks Gold: Real yield AS 10 tahun dan Broad USD Index. Konteks Bitcoin: Reserve balances dan spread SOFR−IORB."
       />
 
@@ -837,44 +881,52 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div id="briefing-usd-liquidity" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>03 · USD LIQUIDITY</span>
-        <span>{netLiquidity.evidenceStatus === "AVAILABLE" ? "PROXY FAKTUAL" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada likuiditas dolar AS?</h3>
-      <p className="lead-copy">
-        Net Liquidity memakai proxy aritmetika aset Federal Reserve dikurangi kas Treasury dan
-        reverse repo. Pembanding utama adalah sekitar satu minggu; sekitar empat minggu hanya
-        konteks tren. Proxy ini tidak mengukur arus dana langsung ke Bitcoin dan tidak menetapkan
-        arah Bitcoin, regime, atau hubungan sebab-akibat.
-      </p>
-
+    <div className="briefing-analysis-section briefing-primary-step ux2-context-section" style={{ marginTop: "1.25rem" }}>
+      <SectionHeader titleId="briefing-usd-liquidity"
+        title="03 · Apa yang berubah pada likuiditas dolar AS?"
+        summary={netLiquidity.latest
+          ? `Proxy Net Liquidity ${liquidityBillions(netLiquidity.latest.valueBillionsUsd)}; perubahan sekitar satu minggu ${liquidityChange(netLiquidity.change1wBillionsUsd)}.`
+          : "Komponen untuk menghitung proxy Net Liquidity belum lengkap."}
+      />
       {netLiquidity.evidenceStatus === "AVAILABLE" && netLiquidity.latest
-        ? <div className="plain-notice" style={{ marginTop: "1rem" }}>
-            <strong>Net Liquidity AS</strong>
-            <span>
-              {liquidityBillions(netLiquidity.latest.valueBillionsUsd)}
-              {" · "}Dibanding sekitar 1 minggu {liquidityChange(netLiquidity.change1wBillionsUsd)}
-              {netLiquidity.change1wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change1wFrom)}` : ""}
-            </span>
-            <span>Apa artinya: {netLiquidityExplanation(netLiquidity.change1wBillionsUsd)}</span>
-            <span>
-              Konteks sekitar 4 minggu: {liquidityChange(netLiquidity.change4wBillionsUsd)}
-              {netLiquidity.change4wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change4wFrom)}` : ""}
-            </span>
-            <span>
-              Komponen: aset Fed {liquidityBillions(netLiquidity.latest.fedAssetsBillionsUsd)}
-              {" · "}kas Treasury {liquidityBillions(netLiquidity.latest.treasuryCashBillionsUsd)}
-              {" · "}reverse repo {liquidityBillions(netLiquidity.latest.reverseRepoBillionsUsd)}
-            </span>
-            <span>
-              Observasi gabungan sampai {dateOnly(netLiquidity.latest.asOf)}
-              {" · "}kualitas komponen saat diperoleh: {RATES_POLICY_QUALITY_LABELS[netLiquidity.latest.quality] ?? "KUALITAS BELUM PASTI"}
-            </span>
-            {netLiquidity.reason
-              ? <span>{netLiquidity.reason}</span>
-              : null}
+        ? <div className="briefing-rates-content">
+            <div className="briefing-rates-grid">
+              <div className="briefing-rate-card">
+                <KpiCard label="Net Liquidity AS (proxy)"
+                  value={liquidityBillions(netLiquidity.latest.valueBillionsUsd)}
+                  valueDetail={`Observasi gabungan sampai ${dateOnly(netLiquidity.latest.asOf)}`}
+                  change={netLiquidity.change1wBillionsUsd === null ? null : {
+                    valueLabel: liquidityChange(netLiquidity.change1wBillionsUsd),
+                    direction: ratesPolicyDirection(netLiquidity.change1wBillionsUsd),
+                    comparisonLabel: netLiquidity.change1wFrom
+                      ? `Dibanding sekitar 1 minggu · ${dateOnly(netLiquidity.change1wFrom)}`
+                      : "Pembanding sekitar 1 minggu belum tersedia",
+                  }}
+                  badge={<StatusBadge
+                    label={RATES_POLICY_QUALITY_LABELS[netLiquidity.latest.quality] ?? "KUALITAS BELUM PASTI"}
+                    tone="neutral"
+                  />}
+                />
+              </div>
+            </div>
+            <p className="briefing-rate-meaning"><strong>Apa artinya:</strong> Proxy aritmetika aset Fed dikurangi kas Treasury dan reverse repo; bukan arus dana langsung ke Bitcoin.</p>
+            <div className="monitor-list" aria-label="Komponen proxy Net Liquidity">
+              <div><strong>Aset Federal Reserve</strong><span>aset Fed {liquidityBillions(netLiquidity.latest.fedAssetsBillionsUsd)}</span></div>
+              <div><strong>Kas Treasury</strong><span>kas Treasury {liquidityBillions(netLiquidity.latest.treasuryCashBillionsUsd)}</span></div>
+              <div><strong>Reverse repo</strong><span>reverse repo {liquidityBillions(netLiquidity.latest.reverseRepoBillionsUsd)}</span></div>
+            </div>
+            <p className="briefing-rate-meaning">Perubahan masing-masing komponen tidak tersedia dalam read model ini; perubahan 1 minggu dan 4 minggu hanya untuk proxy gabungan.</p>
+            <details className="briefing-rate-details">
+              <summary>Baca penjelasan dan pembanding</summary>
+              <p>Apa artinya: {netLiquidityExplanation(netLiquidity.change1wBillionsUsd)}</p>
+              <p>Dibanding sekitar 1 minggu {liquidityChange(netLiquidity.change1wBillionsUsd)}
+                {netLiquidity.change1wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change1wFrom)}` : ""}</p>
+              <p>Konteks sekitar 4 minggu: {liquidityChange(netLiquidity.change4wBillionsUsd)}
+                {netLiquidity.change4wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change4wFrom)}` : ""}</p>
+              <p>kualitas komponen saat diperoleh: {RATES_POLICY_QUALITY_LABELS[netLiquidity.latest.quality] ?? "KUALITAS BELUM PASTI"}</p>
+              <p>Proxy ini tidak mengukur arus dana langsung ke Bitcoin dan tidak menetapkan arah Bitcoin atau hubungan sebab-akibat.</p>
+              {netLiquidity.reason ? <p>{netLiquidity.reason}</p> : null}
+            </details>
           </div>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
             <strong>Net Liquidity belum cukup</strong>
@@ -882,24 +934,20 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div id="briefing-credit-conditions" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>04 · CREDIT & FINANCIAL CONDITIONS</span>
-        <span>{creditConditions.evidenceStatus === "AVAILABLE" ? "FAKTA TERSEDIA" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada kredit dan volatilitas?</h3>
-      <p className="lead-copy">
-        HY OAS, IG OAS, dan VIX dibandingkan dengan observasi harian sebelumnya yang qualified.
-        Setiap angka diterjemahkan ke arti finansialnya untuk pembaca non-teknis. Kurva Treasury
-        10Y−2Y tetap berada di Rates & Policy; tidak ada skor gabungan, label regime, klaim sebab,
-        atau kesimpulan arah Bitcoin/Gold.
-      </p>
-
+    <div className="briefing-analysis-section briefing-primary-step ux2-context-section" style={{ marginTop: "1.25rem" }}>
+      <SectionHeader titleId="briefing-credit-conditions"
+        title="04 · Apa yang berubah pada kredit dan volatilitas?"
+        summary={creditConditions.evidenceStatus === "AVAILABLE"
+          ? `${creditConditions.items.length} indikator tersedia: premi risiko HY OAS, IG OAS, dan volatilitas VIX jika tercakup.`
+          : "Data premi risiko kredit dan volatilitas belum cukup untuk ringkasan ini."}
+      />
       {creditConditions.evidenceStatus === "AVAILABLE"
-        ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(245px,1fr))", gap: ".75rem", marginTop: "1rem" }}>
-            {creditConditions.items.map((point) =>
-              <CreditConditionsBriefingItem key={point.seriesKey} point={point} />
-            )}
+        ? <div className="briefing-rates-content">
+            <div className="briefing-rates-grid">
+              {creditConditions.items.map((point) =>
+                <CreditConditionsBriefingItem key={point.seriesKey} point={point} />
+              )}
+            </div>
             {creditConditions.reason
               ? <div className="plain-notice">
                   <strong>Cakupan sebagian</strong>
@@ -908,32 +956,43 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
               : null}
           </div>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
-            <strong>Credit & Financial Conditions belum cukup</strong>
+            <strong>Kredit dan kondisi finansial belum cukup</strong>
             <span>{creditConditions.reason}</span>
           </div>}
     </div>
 
-    <div id="briefing-macro-background" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>05 · LATAR MAKRO</span>
-        <span>{changed.evidenceStatus === "AVAILABLE" ? "DATA TERSEDIA" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah di konteks makro?</h3>
-      <p className="lead-copy">
-        Ringkasan baseline faktual Macro yang sudah tersedia. Bagian ini tidak mengubah
-        pergerakan bersama menjadi klaim transmisi atau penyebab.
-      </p>
-
+    <div className="briefing-analysis-section briefing-primary-step ux2-context-section" style={{ marginTop: "1.25rem" }}>
+      <SectionHeader titleId="briefing-macro-background"
+        title="05 · Apa yang berubah pada latar makro?"
+        summary={changed.evidenceStatus === "AVAILABLE"
+          ? `${changed.items.length} seri makro memiliki nilai observasi dan baseline faktual yang dapat dibandingkan.`
+          : "Nilai makro dengan baseline faktual belum cukup untuk ditampilkan."}
+      />
       {changed.evidenceStatus === "AVAILABLE"
-        ? <div className="monitor-list" style={{ marginTop: "1rem" }}>
-            {changed.items.map((item) => <div key={item.seriesId}>
-              <strong>{SERIES_LABELS[item.seriesId] ?? item.subject}</strong>
-              <span>
-                Saat ini {formatMacroDisplayValue(item.currentValue, item.unit)}
-                {" · "}sebelumnya {formatMacroDisplayValue(item.baselineValue, item.unit)}
-                {" · "}{formatMacroDisplayDelta(item.changeValue, item.unit)}
-              </span>
-            </div>)}
+        ? <div className="briefing-rates-content">
+            <div className="briefing-rates-grid">
+              {changed.items.map((item) =>
+                <article className="briefing-rate-card" key={item.seriesId}>
+                  <KpiCard
+                    label={SERIES_LABELS[item.seriesId] ?? item.subject}
+                    value={briefingMacroValue(item.currentValue, item.unit)}
+                    valueDetail={`Observasi ${dateOnly(item.currentObservedAt)}`}
+                    change={{
+                      valueLabel: briefingMacroDelta(item.changeValue, item.unit),
+                      direction: ratesPolicyDirection(item.changeValue),
+                      comparisonLabel: `baseline ${briefingMacroValue(item.baselineValue, item.unit)} · ${dateOnly(item.baselineObservedAt)}`,
+                    }}
+                  />
+                  <p className="briefing-rate-meaning"><strong>Apa artinya:</strong> Perubahan terhadap baseline faktual tersimpan; bukan kesimpulan sebab-akibat.</p>
+                  <details className="briefing-rate-details">
+                    <summary>Baca rincian observasi</summary>
+                    <p>Nilai terkini {briefingMacroValue(item.currentValue, item.unit)} pada {dateOnly(item.currentObservedAt)}.</p>
+                    <p>Nilai pembanding {briefingMacroValue(item.baselineValue, item.unit)} pada {dateOnly(item.baselineObservedAt)}.</p>
+                    <p>Perubahan {briefingMacroDelta(item.changeValue, item.unit)} · sumber {item.sourceId}.</p>
+                  </details>
+                </article>
+              )}
+            </div>
           </div>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
             <strong>Data makro belum cukup</strong>

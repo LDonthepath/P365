@@ -2126,3 +2126,27 @@
 @media (max-width: 760px) {
   .overviewLayout :global(.ux2-market-grid) { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* UX-002 Stage 4: tipografi dan grid aman untuk Bagian 01–05, tanpa status/freshness baru. */
+.overviewLayout :global(.overview-change-layer .briefing-flow > a > span),
+.overviewLayout :global(.overview-change-layer .briefing-flow > a > strong) {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.overviewLayout :global(.overview-change-layer .ux2-context-section .briefing-rate-meaning),
+.overviewLayout :global(.overview-change-layer .ux2-context-section .briefing-rate-details),
+.overviewLayout :global(.overview-change-layer .ux2-context-section .monitor-list),
+.overviewLayout :global(.overview-change-layer .ux2-context-section .monitor-list strong),
+.overviewLayout :global(.overview-change-layer .ux2-context-section .monitor-list span),
+.overviewLayout :global(.overview-change-layer .ux2-context-section .plain-notice),
+.overviewLayout :global(.overview-change-layer .ux2-context-section .briefing-rate-details > summary) {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 380px) {
+  .overviewLayout :global(.overview-change-layer .ux2-context-section .monitor-list) {
+    grid-template-columns: minmax(0,1fr);
+    min-width: 0;
+  }
+}

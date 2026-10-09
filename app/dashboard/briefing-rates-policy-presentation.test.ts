@@ -47,6 +47,7 @@ test("Bagian 02 menampilkan empat kartu faktual, pembanding, tanggal, dan penjel
   for (const label of ["Real yield AS 10 tahun", "Broad USD Index", "Reserve balances", "Spread SOFR−IORB"]) {
     assert.ok(section.includes(label), `${label} tampil di Bagian 02`);
   }
+  assert.match(section, /02 · Apa konteks suku bunga dan kebijakan untuk Emas dan Bitcoin\?/);
   assert.match(section, /2,92%/);
   assert.match(section, /\+2,3 bps/);
   assert.match(section, /-0,61%/);
