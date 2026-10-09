@@ -231,7 +231,7 @@ test("FRED release dates pagination scans sorted calendar pages instead of misus
   });
   assert.deepEqual(offsets,[0,1000]);
   assert.equal(plan.mode,"RELEASE_RECHECK");
-  assert.equal(plan.requestedSeriesCount,25);
+  assert.equal(plan.requestedSeriesCount,26);
   assert.deepEqual(plan.seriesIds.filter((x)=>!FREQUENT.includes(x)),["CPIAUCSL","CPILFESL"]);
 });
 
