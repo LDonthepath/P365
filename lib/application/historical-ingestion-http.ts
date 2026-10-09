@@ -46,6 +46,9 @@ export function createHistoricalIngestionHandler(
           scanWindowStartUTC: plan.scanWindowStartUTC,
           requestedSeriesCount: plan.requestedSeriesCount,
           matchedRegisteredUpdates: plan.matchedRegisteredUpdates,
+          ...(plan.failureReason ? { failureReason: plan.failureReason } : {}),
+          ...(plan.upstreamHttpStatus !== undefined
+            ? { upstreamHttpStatus: plan.upstreamHttpStatus } : {}),
         }
       : undefined;
     return Response.json(plan ? {
