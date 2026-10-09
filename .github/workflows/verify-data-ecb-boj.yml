@@ -1,9 +1,6 @@
 name: Verify ECB / BoJ FRED data acquisition
 
 on:
-  push:
-    branches:
-      - feat/data-ecb-boj-balance-sheets
   pull_request:
     paths:
       - "lib/data/macro-registry.ts"
@@ -39,6 +36,8 @@ jobs:
           echo "NODE_PATH=$RUNNER_TEMP/node_modules" >> "$GITHUB_ENV"
       - name: FRED selector, canonical receipt, and history tests
         run: npx --yes tsx@4.20.6 --test lib/application/fred-release-aware-selection.test.ts lib/application/fred-provider-update-selection.test.ts lib/data/fred-transactional-receipt.test.ts lib/application/fred-selective-forward.test.ts
+      - name: Native FRED observation/backfill adapter tests
+        run: npx --yes tsx@4.20.6 lib/data/fred-observation-pages.test.ts
       - name: Semantic invariants
         run: npx --yes tsx@4.20.6 lib/domain/observation-semantics.test.ts
       - name: Normalization invariants
