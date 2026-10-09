@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
+import { MACRO_SERIES_REGISTRY } from "./macro-registry";
 import type { Observation } from "../domain/types";
 
 process.env.SUPABASE_URL = "https://p365-test.supabase.co";
@@ -19,6 +22,17 @@ function observation(id: string, sourceId = "fred"): Observation {
     metadata: { seriesId: "ICSA", unit: "Number", frequency: "WEEKLY" },
   } as Observation;
 }
+
+test("installed FRED coordinated RPC allowlist matches every canonical FRED registry series", () => {
+  const script = readFileSync(resolve("scripts/ops/obs_fred_001g_install_rpc.sql"), "utf8");
+  const match = script.match(/v_series NOT IN \(([^)]+)\)/);
+  assert.ok(match, "RPC must explicitly validate FRED series identity");
+  const allowed = [...match[1].matchAll(/'([A-Z0-9_]+)'/g)].map((item) => item[1]);
+  const registered = MACRO_SERIES_REGISTRY.map((series) => series.seriesId);
+  assert.equal(new Set(allowed).size, allowed.length, "RPC list must not contain duplicates");
+  assert.deepEqual(allowed.sort(), [...registered].sort(),
+    "no registered FRED series may be excluded by a stale database RPC installer");
+});
 
 test("optional FRED RPC sends exact canonical rows, exposes bounded revision counts, never source details", async () => {
   const { supabaseCanonicalRepositories } = await import("./market-memory-store");
