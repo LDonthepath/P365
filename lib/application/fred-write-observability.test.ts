@@ -136,3 +136,68 @@ test("FRED empty data returns known zero inserts; partial persistence errors ret
   assert.equal(failed.providers[0].writeMetrics?.observations.inserted, null);
   assert.equal(failed.persistedObservations, 0, "legacy status remains failed");
 });
+
+
+test("coordinated FRED mode uses RPC receipt and counts only proven factual revisions", async () => {
+  const before = process.env.P365_FRED_TRANSACTIONAL_REVISIONS;
+  process.env.P365_FRED_TRANSACTIONAL_REVISIONS = "1";
+  const store = stores();
+  let rpcCalls = 0;
+  store.repositories.observations.saveManyWithFredRevisionReceipt = async (items) => {
+    rpcCalls += 1;
+    await store.rawObservations.saveMany(items);
+    return {
+      submitted: items.length, inserted: 1, duplicates: items.length - 1,
+      insertedCanonicalIds: [items[0].id],
+      revised: 1, revisionAssessment: "COMPLETE",
+    };
+  };
+  try {
+    const report = await runHistoricalIngestion(
+      { mode: "FORWARD", providers: ["fred"] },
+      { acquisition: acquisition([macro("4.2")]), repositories: store.repositories },
+    );
+    assert.equal(report.status, "SUCCESS");
+    assert.equal(rpcCalls, 1);
+    assert.equal(report.providers[0].writeMetrics?.source, "FRED_COORDINATED_RPC");
+    assert.equal(report.providers[0].writeMetrics?.revised, 1);
+    assert.equal(report.providers[0].writeMetrics?.revisionAssessment, "COMPLETE");
+    assert.equal(JSON.stringify(report).includes("insertedCanonicalIds"), false);
+  } finally {
+    if (before === undefined) delete process.env.P365_FRED_TRANSACTIONAL_REVISIONS;
+    else process.env.P365_FRED_TRANSACTIONAL_REVISIONS = before;
+  }
+});
+
+test("coordinated FRED mode fails closed without RPC or when predecessor proof is incomplete", async () => {
+  const before = process.env.P365_FRED_TRANSACTIONAL_REVISIONS;
+  process.env.P365_FRED_TRANSACTIONAL_REVISIONS = "1";
+  try {
+    const missing = stores();
+    const rejected = await runHistoricalIngestion(
+      { mode: "FORWARD", providers: ["fred"] },
+      { acquisition: acquisition([macro("4.2")]), repositories: missing.repositories },
+    );
+    assert.equal(rejected.providers[0].status, "PERSISTENCE_ERROR");
+    assert.equal(rejected.providers[0].writeMetrics?.revisionAssessment, "NOT_EVALUATED");
+    assert.equal(rejected.providers[0].writeMetrics?.revised, null);
+    assert.equal(await missing.rawObservations.findById(
+      "observation-not-written" ), null);
+
+    const uncertain = stores();
+    uncertain.repositories.observations.saveManyWithFredRevisionReceipt = async (rows) => ({
+      submitted: rows.length, inserted: 1, duplicates: rows.length - 1,
+      insertedCanonicalIds: [rows[0].id], revised: null, revisionAssessment: "NOT_EVALUATED",
+    });
+    const report = await runHistoricalIngestion(
+      { mode: "FORWARD", providers: ["fred"] },
+      { acquisition: acquisition([macro("4.3")]), repositories: uncertain.repositories },
+    );
+    assert.equal(report.providers[0].writeMetrics?.source, "FRED_COORDINATED_RPC");
+    assert.equal(report.providers[0].writeMetrics?.revised, null);
+    assert.equal(report.providers[0].writeMetrics?.revisionAssessment, "NOT_EVALUATED");
+  } finally {
+    if (before === undefined) delete process.env.P365_FRED_TRANSACTIONAL_REVISIONS;
+    else process.env.P365_FRED_TRANSACTIONAL_REVISIONS = before;
+  }
+});
