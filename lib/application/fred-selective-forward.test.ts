@@ -34,11 +34,13 @@ test("selector rejects empty, unknown, duplicate, malformed, oversized and repea
     assert.equal(result.ok, false, query);
   }
   for (const query of [
-    "mode=BACKFILL&providers=fred&fredSeries=DGS2&from=2026-01-01&to=2026-01-02",
     "mode=FORWARD&providers=coingecko-context&fredSeries=DGS2",
     "mode=FORWARD&providers=fred,gold&fredSeries=DGS2",
     "mode=FORWARD&providers=cftc&fredSeries=DGS2",
   ]) assert.equal(parse(query).ok, false, query);
+  // Selective FRED BACKFILL is approved for a single FRED provider and a bounded range.
+  const bounded = parse("mode=BACKFILL&providers=fred&fredSeries=ECBASSETSW,JPNASSETS&from=2026-07-01&to=2026-10-09");
+  assert.equal(bounded.ok, true, "ECB/BoJ 101-day backfill must pass request parsing");
 });
 
 test("the provider sends requests only for opt-in selected series, preserving canonical temporal data", async () => {
@@ -90,7 +92,7 @@ test("direct provider refuses unqualified selector before issuing any FRED reque
     for (const query of [
       { seriesIds: ["NOT_REGISTRY"] },
       { seriesIds: ["DGS2","DGS2"] },
-      { seriesIds: ["DGS2"], requireCompleteRange: true, observationStart: "2026-10-01", observationEnd: "2026-10-02" },
+      { seriesIds: ["DGS2"], requireCompleteRange: true, observationStart: "2026-10-01" },
     ]) {
       // Runtime defense also rejects untyped callers.
       const result = await fetchFredMacroObservations(query as never);
@@ -104,9 +106,8 @@ test("direct provider refuses unqualified selector before issuing any FRED reque
   }
 });
 
-test("application rejects selector outside FRED FORWARD even for programmatic calls", async () => {
+test("application rejects FRED subset outside supported provider combinations", async () => {
   for (const options of [
-    { mode:"BACKFILL", providers:["fred"], fred:{ seriesIds:["DGS2"], observationStart:"2026-10-01", observationEnd:"2026-10-02" } },
     { mode:"FORWARD", providers:["coingecko-context"], fred:{ seriesIds:["DGS2"] } },
     { mode:"FORWARD", providers:["fred","gold"], fred:{ seriesIds:["DGS2"] } },
   ]) {
