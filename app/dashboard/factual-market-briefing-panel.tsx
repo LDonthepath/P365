@@ -7,6 +7,8 @@ import {
 } from "@/lib/presentation/macro-display";
 import { formatEventResultValue } from "@/lib/presentation/intraday-event-response";
 import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
+import { ChartCard, KpiCard, SectionHeader, StatusBadge } from "./components/briefing-primitives";
+import { marketCurrentSummary, presentMarketMove } from "./briefing-market-current-display";
 
 const SERIES_LABELS: Record<string, string> = {
   DGS2: "US Treasury 2Y",
@@ -252,31 +254,6 @@ function plainPercent(value: number | null, digits = 2): string {
   return `${value.toFixed(digits)}%`;
 }
 
-function marketContextPrice(
-  item: FactualMarketBriefing["marketMoves"]["items"][number],
-): string {
-  const value = item.marketContext?.currentValue;
-  if (value === null || value === undefined || !Number.isFinite(value)) return "Harga belum tersedia";
-  const digits = item.asset === "BTC" ? 0 : 2;
-  return `USD ${new Intl.NumberFormat("id-ID", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(value)}`;
-}
-
-function marketContextChange(
-  item: FactualMarketBriefing["marketMoves"]["items"][number],
-): string {
-  const context = item.marketContext;
-  if (!context || context.changePercent === null || !Number.isFinite(context.changePercent)) {
-    return "Perubahan utama belum tersedia";
-  }
-  const change = signedPercent(context.changePercent);
-  if (context.changeBasis === "ROLLING_24H") return `${change} / 24 jam`;
-  if (context.changeBasis === "PREVIOUS_CLOSE") return `${change} vs penutupan sebelumnya`;
-  return `${change} · basis perubahan belum tersedia`;
-}
-
 function percentileLabel(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "—";
   return `P${value.toFixed(1)}`;
@@ -328,34 +305,36 @@ function MarketMoveBriefingItem({
   const scheduledCatalysts = item.evidence?.scheduledCatalysts.slice(0, MAX_MOVE_CATALYST_DETAILS) ?? [];
   const screenedNews = screenMoveCatalystTitles(item.evidence?.unscheduledCandidates ?? [], item.asset);
   const unscheduledCandidates = screenedNews.items.slice(0, MAX_MOVE_CATALYST_DETAILS);
+  const presentation = presentMarketMove(item);
 
-  return <div className="plain-notice">
-    <strong>{MOVE_ASSET_LABELS[item.asset]}</strong>
-    <span>
-      <strong>{marketContextPrice(item)}</strong>
-      {" · "}{marketContextChange(item)}
-    </span>
-    <span>
+  return <div className="ux2-market-card">
+    <KpiCard label={MOVE_ASSET_LABELS[item.asset]}
+      value={presentation.price}
+      change={presentation.change}
+      badge={<StatusBadge label={presentation.badge.label} tone={presentation.badge.tone} />} />
+    <p className="ux2-market-note">
       {item.hasMaterialMove
         ? "Pergerakan intraday tidak biasa terdeteksi."
         : item.status === "BELOW_MATERIALITY_THRESHOLD"
-          ? "Tidak ada pergerakan intraday material pada cutoff ini."
+          ? "Tidak ada pergerakan intraday material pada waktu pengamatan ini."
           : MOVE_ASSESSMENT_LABELS[item.status]}
-    </span>
-    <span>
+      {" · "}
       {item.observedAt
         ? `Observasi ${dateTime(item.observedAt)} WIB`
-        : "Observasi durable belum tersedia."}
-    </span>
+        : "Observasi tersimpan belum tersedia."}
+    </p>
+    <ChartCard title={`Perubahan intraday ${MOVE_ASSET_LABELS[item.asset]}`}
+      description="Perbandingan perubahan pada 15, 30, 60, dan 120 menit; bukan riwayat harga."
+      horizons={presentation.horizons} />
 
     {item.horizons.length > 0 || item.evidence
       ? <details className="briefing-analysis-details">
           <summary>
             <div>
-              <span>DETAIL PERGERAKAN & EVIDENCE</span>
+              <span>RINCIAN PERGERAKAN DAN BUKTI</span>
               <strong>{MOVE_ASSESSMENT_LABELS[item.status]}</strong>
             </div>
-            <span>Buka detail</span>
+            <span>Buka rincian</span>
           </summary>
           <div className="briefing-analysis-body">
             {item.horizons.map((candidate) => <span key={candidate.horizonMinutes}>
@@ -377,13 +356,13 @@ function MarketMoveBriefingItem({
             {item.evidence
               ? <>
                   <span>
-                    Catalyst dalam window: {item.evidence.scheduledCatalystCount} event terjadwal
+                    Pemicu peristiwa dalam rentang pengamatan: {item.evidence.scheduledCatalystCount} peristiwa terjadwal
                     {" · "}cakupan {MOVE_COVERAGE_LABELS[item.evidence.scheduledCatalystCoverage] ?? "belum diketahui"}
                     {" · "}{item.evidence.unscheduledCandidateCount} kandidat berita tercatat
                     {" · "}cakupan berita {MOVE_COVERAGE_LABELS[item.evidence.unscheduledCatalystCoverage] ?? "belum diketahui"}
                   </span>
                   {scheduledCatalysts.map((event) => <span key={`${event.eventIdentityKey ?? event.eventId}:${event.retrievedAt}`}>
-                    Event: {event.subject}
+                    Peristiwa: {event.subject}
                     {" · "}{jurisdictionLabel(event.jurisdiction ?? null)}
                     {" · "}{dateTime(event.scheduledAt)} WIB
                     {" · "}{MOVE_IMPORTANCE_LABELS[event.importance] ?? "dampak belum ditetapkan"}
@@ -391,7 +370,7 @@ function MarketMoveBriefingItem({
                   </span>)}
                   {item.evidence.scheduledCatalystCount > scheduledCatalysts.length
                     ? <span>
-                        +{item.evidence.scheduledCatalystCount - scheduledCatalysts.length} event terjadwal lain dalam window.
+                        +{item.evidence.scheduledCatalystCount - scheduledCatalysts.length} peristiwa terjadwal lain dalam rentang pengamatan.
                       </span>
                     : null}
                   {unscheduledCandidates.map((candidate) => <span key={candidate.url}>
@@ -406,11 +385,11 @@ function MarketMoveBriefingItem({
                     ? <span>{screenedNews.excludedTitleCount} judul promosi/topik lain tersaring dari tampilan.</span>
                     : null}
                   {item.evidence.unscheduledCandidateCount > 0 && screenedNews.items.length === 0
-                    ? <span>Tidak ada judul yang ditampilkan setelah penyaringan; cakupan feed tetap seperti tercatat.</span>
+                    ? <span>Tidak ada judul yang ditampilkan setelah penyaringan; cakupan sumber berita tetap seperti tercatat.</span>
                     : null}
                   {screenedNews.items.length > unscheduledCandidates.length
                     ? <span>
-                        +{screenedNews.items.length - unscheduledCandidates.length} kandidat berita lain untuk ditampilkan dalam window.
+                        +{screenedNews.items.length - unscheduledCandidates.length} kandidat berita lain untuk ditampilkan dalam rentang pengamatan.
                       </span>
                     : null}
                 </>
@@ -418,8 +397,8 @@ function MarketMoveBriefingItem({
 
             {spotFlow
               ? <span>
-                  Binance Spot: buy share {spotFlow.takerBuyShare === null ? "—" : plainPercent(spotFlow.takerBuyShare * 100, 1)}
-                  {" · "}net taker {spotFlow.netTakerBaseVolumeBtc > 0 ? "+" : ""}
+                  Binance Spot: porsi pembelian taker {spotFlow.takerBuyShare === null ? "—" : plainPercent(spotFlow.takerBuyShare * 100, 1)}
+                  {" · "}volume taker bersih {spotFlow.netTakerBaseVolumeBtc > 0 ? "+" : ""}
                   {spotFlow.netTakerBaseVolumeBtc.toLocaleString("id-ID", { maximumFractionDigits: 2 })} BTC
                   {" · "}cakupan {MOVE_COVERAGE_LABELS[spotFlow.coverage] ?? "belum diketahui"}
                 </span>
@@ -427,9 +406,9 @@ function MarketMoveBriefingItem({
 
             {moveConfirmation
               ? <>
-                  <span><strong>KESELARASAN EVIDENCE</strong> · {confirmationStatus(moveConfirmation.assessment.resolution)}</span>
+                  <span><strong>KESELARASAN BUKTI</strong> · {confirmationStatus(moveConfirmation.assessment.resolution)}</span>
                   <span>
-                    {confirmationResolution(moveConfirmation.assessment.resolution)} Arah move: {moveConfirmation.targetDirection === "UP" ? "naik" : "turun"}.
+                    {confirmationResolution(moveConfirmation.assessment.resolution)} Arah pergerakan: {moveConfirmation.targetDirection === "UP" ? "naik" : "turun"}.
                   </span>
                   {moveConfirmation.evidence.map((evidence) => <span key={`${evidence.evidenceClass}:${evidence.source}`}>
                     {confirmationSource(evidence.source)} · {confirmationJudgement(evidence.judgement)}
@@ -440,18 +419,18 @@ function MarketMoveBriefingItem({
 
             {item.evidence
               ? <>
-                  <span><strong>STATUS EVIDENCE</strong></span>
+                  <span><strong>STATUS BUKTI</strong></span>
                   <span>
                     Lintas pasar: {synchronousCoverageLabel(item.evidence.synchronousCoverage)}
                   </span>
                   <span>
-                    Catalyst terjadwal: {scheduledCatalystEvidenceLabel(
+                    Pemicu peristiwa terjadwal: {scheduledCatalystEvidenceLabel(
                       item.evidence.scheduledCatalystCoverage,
                       item.evidence.scheduledCatalystCount,
                     )}
                   </span>
                   <span>
-                    Catalyst berita: {unscheduledCatalystEvidenceLabel(
+                    Pemicu dari berita: {unscheduledCatalystEvidenceLabel(
                       item.evidence.unscheduledCatalystCoverage,
                       item.evidence.unscheduledCandidateCount,
                     )}
@@ -465,11 +444,11 @@ function MarketMoveBriefingItem({
                     {MOVE_EVIDENCE_STATE_LABELS[component.state] ?? "STATUS BELUM PASTI"}
                   </span>)}
                   <span>
-                    Rates intraday: {MOVE_EVIDENCE_STATE_LABELS[item.evidence.intradayRatesPricing.state] ?? "STATUS BELUM PASTI"}
+                    Suku bunga intraday: {MOVE_EVIDENCE_STATE_LABELS[item.evidence.intradayRatesPricing.state] ?? "STATUS BELUM PASTI"}
                     {" · "}kebijakan sumber gratis
                   </span>
                   <span>
-                    Keseluruhan evidence: {MOVE_COMPLETENESS_LABELS[item.evidence.evidenceCompleteness] ?? "BELUM DINILAI"}
+                    Kelengkapan bukti keseluruhan: {MOVE_COMPLETENESS_LABELS[item.evidence.evidenceCompleteness] ?? "BELUM DINILAI"}
                   </span>
                 </>
               : null}
@@ -723,13 +702,13 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
   const resolution = data.resolution;
 
   return <section className="panel overview-change-layer" aria-labelledby="briefing-market-state-title">
-    <div className="panel-label">
-      <span>MARKET BRIEFING</span>
+    <div className="panel-label" style={{ fontSize: 12, gap: 12, flexWrap: "wrap" }}>
+      <span>RINGKASAN PASAR</span>
       <span>
         {moves.evidenceStatus === "AVAILABLE"
           ? moves.materialMoveCount > 0
-            ? `${moves.materialMoveCount} ALERT INTRADAY`
-            : "TANPA ALERT INTRADAY"
+            ? `${moves.materialMoveCount} PERINGATAN PERGERAKAN`
+            : "TANPA PERINGATAN PERGERAKAN"
           : ratesPolicy.evidenceStatus === "AVAILABLE"
               || netLiquidity.evidenceStatus === "AVAILABLE"
               || changed.evidenceStatus === "AVAILABLE"
@@ -738,10 +717,10 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       </span>
     </div>
 
-    <nav className="briefing-flow" aria-label="Urutan baca Market Briefing">
+    <nav className="briefing-flow" aria-label="Urutan baca Ringkasan Pasar">
       <a href="#briefing-market-state-title">
-        <span>01 · PASAR SEKARANG</span>
-        <strong>{moves.evidenceStatus === "AVAILABLE" ? "TERSEDIA" : "BELUM CUKUP"}</strong>
+        <span style={{ fontSize: 12 }}>01 · PASAR SEKARANG</span>
+        <strong style={{ fontSize: 12 }}>{moves.evidenceStatus === "AVAILABLE" ? "TERSEDIA" : "BELUM CUKUP"}</strong>
       </a>
       <a href="#briefing-rates-policy">
         <span>02 · RATES &amp; POLICY</span>
@@ -761,32 +740,24 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       </a>
     </nav>
 
-    <div className="change-layer-grid">
-      <div>
-        <h2 id="briefing-market-state-title">01 · Apa yang bergerak sekarang?</h2>
-        <p className="lead-copy">
-          Harga dan perubahan utama Bitcoin/Gold ditampilkan lebih dulu. P365 memberi alert
-          bila detektor intraday menemukan gerakan yang tidak biasa secara historis; detail
-          15/30/60/120 menit tersedia bila dibuka. Cross-asset, catalyst, dan spot participation
-          tetap hanya memakai evidence yang tersedia pada cutoff; tidak ada atribusi sebab-akibat.
-        </p>
-      </div>
+    <div className="ux2-market-current">
+      <SectionHeader titleId="briefing-market-state-title" title="01 · Apa yang bergerak sekarang?"
+        summary={marketCurrentSummary(moves)} />
+      {moves.evidenceStatus === "AVAILABLE"
+        ? <div className="ux2-market-grid">
+            {moves.items.map((item) => <MarketMoveBriefingItem item={item} key={item.asset} />)}
+          </div>
+        : <div className="plain-notice">
+            <strong>Data pemantauan pasar belum cukup</strong>
+            <span>{moves.reason ?? "Data belum tersedia"}</span>
+          </div>}
+      {moves.evidenceStatus === "AVAILABLE" && moves.reason
+        ? <div className="plain-notice">
+            <strong>Cakupan sebagian</strong>
+            <span>{moves.reason}</span>
+          </div>
+        : null}
     </div>
-
-    {moves.evidenceStatus === "AVAILABLE"
-      ? <div style={{ display: "grid", gap: ".75rem", marginTop: "1rem" }}>
-          {moves.items.map((item) => <MarketMoveBriefingItem item={item} key={item.asset} />)}
-          {moves.reason
-            ? <div className="plain-notice">
-                <strong>Cakupan sebagian</strong>
-                <span>{moves.reason}</span>
-              </div>
-            : null}
-        </div>
-      : <div className="plain-notice" style={{ marginTop: "1rem" }}>
-          <strong>Assessment market belum cukup</strong>
-          <span>{moves.reason}</span>
-        </div>}
 
     <div id="briefing-rates-policy" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
       <div className="panel-label">
