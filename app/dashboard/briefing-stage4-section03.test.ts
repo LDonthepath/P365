@@ -135,6 +135,16 @@ test("Bagian 05 merender nilai, perubahan, tanggal, dan sumber macro dengan form
         currentObservedAt: "2026-10-08",
         baselineObservedAt: "2026-10-01",
         sourceId: "FRED",
+      }, {
+        seriesId: "WALCL",
+        subject: "Federal Reserve assets",
+        unit: "USD billions",
+        currentValue: "12345.67",
+        baselineValue: "12000.00",
+        changeValue: 345.67,
+        currentObservedAt: "2026-10-08",
+        baselineObservedAt: "2026-10-01",
+        sourceId: "FRED",
       }],
     },
   } as FactualMarketBriefing;
@@ -148,6 +158,8 @@ test("Bagian 05 merender nilai, perubahan, tanggal, dan sumber macro dengan form
   assert.ok(section.includes(`class="briefing-stage4-grid"`));
   assert.ok(section.includes("4,21%"));
   assert.ok(section.includes("+0,21 poin persentase"));
+  assert.ok(section.includes("US$ 12,35 triliun"));
+  assert.ok(section.includes("+US$ 345,67 miliar"));
   assert.ok(section.includes("Observasi 08 Okt 2026"));
   assert.ok(section.includes("Dibanding observasi 01 Okt 2026"));
   assert.ok(section.includes("Sumber: FRED"));
