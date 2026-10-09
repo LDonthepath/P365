@@ -20,7 +20,7 @@ test("briefing exposes an explicit market-to-macro reading order", () => {
     createElement(FactualMarketBriefingPanel, { data }),
   );
 
-  assert.match(html, /aria-label="Urutan baca Market Briefing"/);
+  assert.match(html, /aria-label="Urutan baca Ringkasan Pasar"/);
   assert.match(html, /href="#briefing-market-state-title"/);
   assert.match(html, /01 · PASAR SEKARANG/);
   assert.match(html, /href="#briefing-rates-policy"/);
