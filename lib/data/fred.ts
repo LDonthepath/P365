@@ -43,9 +43,6 @@ export async function fetchFredMacroObservations(query: FredObservationQuery = {
     || requestedIds.some((id) => typeof id !== "string" || !allowedSeries.has(id))
     || new Set(requestedIds).size !== requestedIds.length
   )) return providerResult("fred", "ERROR", [], "FRED series subset must contain unique registered series IDs");
-  if (query.requireCompleteRange && requestedIds !== undefined) {
-    return providerResult("fred", "ERROR", [], "FRED series subset is FORWARD-only");
-  }
   const selectedSeries = requestedIds === undefined
     ? MACRO_SERIES_REGISTRY
     : MACRO_SERIES_REGISTRY.filter((series) => requestedIds.includes(series.seriesId));
@@ -58,6 +55,11 @@ export async function fetchFredMacroObservations(query: FredObservationQuery = {
   const failures = results.filter((result) => result.status === "ERROR").map((result) => result.message).filter(Boolean);
   const emptyCount = results.filter((result) => result.status === "EMPTY").length;
 
+  if (query.requireCompleteRange && requestedIds !== undefined && (failures.length > 0 || emptyCount > 0)) {
+    // A selected-series backfill must not store a misleading partial history.
+    return providerResult("fred", "ERROR", [], "FRED selective backfill incomplete: " +
+      (failures.length ? failures.join("; ") : `${emptyCount} selected series returned no observations`));
+  }
   if (data.length > 0) {
     const omitted = selectedSeries.length - results.filter((result) => result.status === "SUCCESS").length;
     if (query.requireCompleteRange && failures.length > 0) {

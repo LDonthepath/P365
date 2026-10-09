@@ -828,6 +828,19 @@ async function main(): Promise<void> {
     },
   );
   assert.deepEqual(
+    parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=fred&fredSeries=NFCI,ANFCI&from=2026-07-01&to=2026-10-09")),
+    { ok: true, options: { mode: "BACKFILL", providers: ["fred"],
+      fred: { observationStart: "2026-07-01", observationEnd: "2026-10-09", limit: 100,
+        seriesIds: ["NFCI", "ANFCI"] } } },
+  );
+  for (const url of [
+    "mode=BACKFILL&providers=fred&fredSeries=NFCI,ANFCI&from=2026-01-01&to=2026-10-09",
+    "mode=BACKFILL&providers=fred&fredSeries=NFCI,NFCI&from=2026-07-01&to=2026-10-09",
+    "mode=BACKFILL&providers=fred&fredSeries=INVALID&from=2026-07-01&to=2026-10-09",
+    "mode=BACKFILL&providers=fred,coingecko-context&fredSeries=NFCI&from=2026-07-01&to=2026-10-09",
+  ]) assert.equal(parseHistoricalIngestionRequest(new URLSearchParams(url)).ok, false, url);
+
+  assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=defillama&from=2026-09-01&to=2026-10-05")),
     {
       ok: true,
@@ -897,6 +910,16 @@ async function main(): Promise<void> {
   assert.deepEqual(
     parseHistoricalIngestionRequest(new URLSearchParams("mode=BACKFILL&providers=cftc,sosovalue&from=2026-09-01&to=2026-09-20")),
     { ok: false, error: "BACKFILL requires exactly one supported provider: fred, defillama, sosovalue, or cftc" },
+  );
+
+  await assert.rejects(
+    runHistoricalIngestion(
+      { mode: "BACKFILL", providers: ["fred"],
+        fred: { observationStart: "2026-01-01", observationEnd: "2026-10-09",
+          limit: 100, seriesIds: ["NFCI", "ANFCI"] } },
+      { acquisition: acquisition([]), repositories: repositories().repositories },
+    ), /limited to 120 calendar days/,
+    "runtime must reject an over-wide FRED selective backfill even without HTTP parsing",
   );
 
   await assert.rejects(
