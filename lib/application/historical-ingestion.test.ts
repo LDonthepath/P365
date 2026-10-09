@@ -525,6 +525,58 @@ async function main(): Promise<void> {
   });
   assert.equal(backfillHistory.length, 1, "repeated backfill must retain canonical idempotency");
 
+
+  // DATA-NFCI-001: selected 120-day FRED acquisition uses the existing canonical
+  // append-only writer, and replaying the same window is physically idempotent.
+  const nfciInput = (key: "NFCI" | "ANFCI", value: string): MacroObservationInput => {
+    const series = MACRO_SERIES_REGISTRY.find((item) => item.seriesId === key);
+    assert.ok(series);
+    return {
+      series, value, observationDate: "2026-10-02", previousValue: null,
+      vintageDate: "2026-10-07", releasedAt: null,
+      retrievedAt: "2026-10-09T09:00:00.000Z",
+      provenance: {
+        version: "v1", providerResource: "/fred/series/observations",
+        nativeSeriesId: key, observationDate: "2026-10-02",
+        vintageDate: "2026-10-07",
+      },
+    };
+  };
+  const selectiveParse = parseHistoricalIngestionRequest(new URLSearchParams(
+    "mode=BACKFILL&providers=fred&fredSeries=NFCI,ANFCI&from=2026-07-01&to=2026-10-09",
+  ));
+  assert.equal(selectiveParse.ok, true);
+  if (!selectiveParse.ok) throw new Error("selected-series backfill must parse");
+  const selectiveStore = repositories();
+  const selectiveAcquisition = acquisition([]);
+  selectiveAcquisition.fred = async () => providerResult("fred", "SUCCESS", [
+    nfciInput("NFCI", "-0.494"), nfciInput("ANFCI", "-0.504"),
+  ]);
+  const selectiveFirst = await runHistoricalIngestion(selectiveParse.options, {
+    acquisition: selectiveAcquisition, repositories: selectiveStore.repositories,
+  });
+  assert.equal(selectiveFirst.status, "SUCCESS");
+  assert.equal(selectiveFirst.providers[0]?.acquired, 2);
+  for (const key of ["NFCI", "ANFCI"] as const) {
+    const observations = await selectiveStore.observations.findHistory({
+      identity: { domain: "MACRO", seriesKey: key }, order: "ASC",
+    });
+    assert.equal(observations.length, 1);
+    assert.equal(observations[0]?.metadata?.unit, "Index");
+    assert.equal(observations[0]?.metadata?.frequency, "WEEKLY");
+    assert.equal(observations[0]?.semantics?.informationClass, "DERIVED_METRIC");
+    assert.equal(observations[0]?.provenance?.nativeSeriesId, key);
+  }
+  await runHistoricalIngestion(selectiveParse.options, {
+    acquisition: selectiveAcquisition, repositories: selectiveStore.repositories,
+  });
+  for (const key of ["NFCI", "ANFCI"] as const) {
+    const observations = await selectiveStore.observations.findHistory({
+      identity: { domain: "MACRO", seriesKey: key }, order: "ASC",
+    });
+    assert.equal(observations.length, 1, "replayed selected-series fact stays idempotent");
+  }
+
   const incompleteBackfillStore = repositories();
   const incompleteBackfillAcquisition = acquisition([]);
   incompleteBackfillAcquisition.fred = async () => providerResult(
