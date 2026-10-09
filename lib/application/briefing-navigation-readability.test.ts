@@ -14,11 +14,11 @@ test("briefing flow keeps readable labels and touch targets", () => {
   );
   assert.match(
     css,
-    /\.briefing-flow a span\)\{[\s\S]*?font:700 9px\/1\.35/,
+    /\.briefing-flow a span\)\{[\s\S]*?font:700 12px\/1\.35/,
   );
   assert.match(
     css,
-    /\.briefing-flow a strong\)\{[\s\S]*?font:600 8px\/1\.3/,
+    /\.briefing-flow a strong\)\{[\s\S]*?font:600 12px\/1\.3/,
   );
   assert.match(
     css,
@@ -26,7 +26,11 @@ test("briefing flow keeps readable labels and touch targets", () => {
   );
   assert.match(
     css,
-    /@media\(max-width:760px\)[\s\S]*?\.briefing-flow a span\)\{[\s\S]*?font-size:8px;/,
+    /@media\(max-width:760px\)[\s\S]*?\.briefing-flow a span\)\{[\s\S]*?font-size:12px;/,
+  );
+  assert.match(
+    css,
+    /@media\(max-width:380px\)[\s\S]*?\.briefing-flow\)\{[\s\S]*?overflow-x:auto;/,
   );
 });
 

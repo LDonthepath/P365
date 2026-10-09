@@ -7,6 +7,7 @@ import {
 } from "@/lib/presentation/macro-display";
 import { formatEventResultValue } from "@/lib/presentation/intraday-event-response";
 import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
+import { formatBriefingNumber, formatBriefingPercent } from "./briefing-number-format";
 import { ChartCard, KpiCard, SectionHeader, StatusBadge } from "./components/briefing-primitives";
 import { marketCurrentSummary, presentMarketMove } from "./briefing-market-current-display";
 
@@ -246,17 +247,17 @@ function percentMagnitude(value: number): string {
 
 function signedPercent(value: number | null, digits = 2): string {
   if (value === null || !Number.isFinite(value)) return "—";
-  return `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
+  return formatBriefingPercent(value, digits);
 }
 
 function plainPercent(value: number | null, digits = 2): string {
   if (value === null || !Number.isFinite(value)) return "—";
-  return `${value.toFixed(digits)}%`;
+  return `${formatBriefingNumber(value, { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
 }
 
 function percentileLabel(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "—";
-  return `P${value.toFixed(1)}`;
+  return `P${formatBriefingNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 }
 
 function synchronousCoverageLabel(value: string): string {
@@ -306,19 +307,15 @@ function MarketMoveBriefingItem({
   const screenedNews = screenMoveCatalystTitles(item.evidence?.unscheduledCandidates ?? [], item.asset);
   const unscheduledCandidates = screenedNews.items.slice(0, MAX_MOVE_CATALYST_DETAILS);
   const presentation = presentMarketMove(item);
+  const assetTitle = item.asset === "BTC" ? "Bitcoin (BTC)" : "Emas (XAU)";
 
   return <div className="ux2-market-card">
-    <KpiCard label={MOVE_ASSET_LABELS[item.asset]}
+    <KpiCard label={assetTitle}
       value={presentation.price}
+      valueDetail={presentation.priceDetail}
       change={presentation.change}
       badge={<StatusBadge label={presentation.badge.label} tone={presentation.badge.tone} />} />
     <p className="ux2-market-note">
-      {item.hasMaterialMove
-        ? "Pergerakan intraday tidak biasa terdeteksi."
-        : item.status === "BELOW_MATERIALITY_THRESHOLD"
-          ? "Tidak ada pergerakan intraday material pada waktu pengamatan ini."
-          : MOVE_ASSESSMENT_LABELS[item.status]}
-      {" · "}
       {item.observedAt
         ? `Observasi ${dateTime(item.observedAt)} WIB`
         : "Observasi tersimpan belum tersedia."}
@@ -326,6 +323,9 @@ function MarketMoveBriefingItem({
     <ChartCard title={`Perubahan intraday ${MOVE_ASSET_LABELS[item.asset]}`}
       description="Perbandingan perubahan pada 15, 30, 60, dan 120 menit; bukan riwayat harga."
       horizons={presentation.horizons} />
+    <p className="ux2-market-note">
+      Perubahan 24 jam dan perubahan intraday diukur pada rentang yang berbeda.
+    </p>
 
     {item.horizons.length > 0 || item.evidence
       ? <details className="briefing-analysis-details">

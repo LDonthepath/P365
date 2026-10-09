@@ -1,5 +1,6 @@
 import type { BriefingMarketMove, FactualMarketBriefing } from "@/lib/application/factual-market-briefing";
 import type { ChartHorizon, Direction, EvidenceTone } from "./components/briefing-primitives";
+import { formatBriefingNumber, formatBriefingPercent } from "./briefing-number-format";
 
 const HORIZONS = [15, 30, 60, 120] as const;
 const measured = (status: string) =>
@@ -7,17 +8,17 @@ const measured = (status: string) =>
 const finite = (value: number | null | undefined): value is number =>
   typeof value === "number" && Number.isFinite(value);
 const direction = (value: number): Direction => value > 0 ? "up" : value < 0 ? "down" : "flat";
-const signed = (value: number): string => `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+const signed = (value: number): string => formatBriefingPercent(value);
 
 /** Adaptasi format dan geometri visual saja; tidak menetapkan materialitas/kualitas/freshness. */
 export function presentMarketMove(item: BriefingMarketMove) {
   const context = item.marketContext;
   const current = context?.currentValue;
   const price = finite(current)
-    ? `USD ${new Intl.NumberFormat("id-ID", {
+    ? `US$ ${formatBriefingNumber(current, {
         minimumFractionDigits: item.asset === "BTC" ? 0 : 2,
         maximumFractionDigits: item.asset === "BTC" ? 0 : 2,
-      }).format(current)}`
+      })}`
     : null;
 
   const comparisonLabel = context?.changeBasis === "ROLLING_24H"
@@ -52,10 +53,10 @@ export function presentMarketMove(item: BriefingMarketMove) {
     completeness === "EVIDENCE_COMPLETE"
       ? { label: "Bukti lengkap", tone: "complete" }
       : completeness === "EVIDENCE_INCOMPLETE"
-        ? { label: "Bukti belum lengkap", tone: "partial" }
-        : { label: "Kelengkapan bukti belum tersedia", tone: "neutral" };
+        ? { label: "Bukti pendukung belum lengkap", tone: "partial" }
+        : { label: "Status bukti pendukung belum tersedia", tone: "neutral" };
 
-  return { price, change, horizons, badge };
+  return { price, priceDetail: item.asset === "BTC" ? "per 1 BTC" : null, change, horizons, badge };
 }
 
 export function marketCurrentSummary(moves: FactualMarketBriefing["marketMoves"]): string | null {
@@ -63,5 +64,5 @@ export function marketCurrentSummary(moves: FactualMarketBriefing["marketMoves"]
   if (moves.materialMoveCount > 0) {
     return `${moves.materialMoveCount} pergerakan intraday tidak biasa terdeteksi pada pengamatan ini.`;
   }
-  return "Tidak ada pergerakan intraday tidak biasa yang terdeteksi pada pengamatan ini.";
+  return "Tidak ada pergerakan intraday material pada waktu pengamatan ini.";
 }

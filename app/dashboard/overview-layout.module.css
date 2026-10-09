@@ -1745,21 +1745,21 @@
 .overviewLayout :global(.briefing-flow a span),
 .overviewLayout :global(.briefing-flow a strong){
   display:block;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+  min-width:0;
+  white-space:normal;
+  overflow-wrap:anywhere;
 }
 
 .overviewLayout :global(.briefing-flow a span){
   color:#d8b878;
-  font:700 9px/1.35 'DM Mono',monospace;
+  font:700 12px/1.35 'DM Mono',monospace;
   letter-spacing:.045em;
 }
 
 .overviewLayout :global(.briefing-flow a strong){
   margin-top:5px;
   color:var(--muted);
-  font:600 8px/1.3 'DM Mono',monospace;
+  font:600 12px/1.3 'DM Mono',monospace;
   letter-spacing:.04em;
 }
 
@@ -1979,11 +1979,11 @@
   }
 
   .overviewLayout :global(.briefing-flow a span){
-    font-size:8px;
+    font-size:12px;
   }
 
   .overviewLayout :global(.briefing-flow a strong){
-    font-size:7.5px;
+    font-size:12px;
   }
 
   .overviewLayout :global(.overview-briefing .monitor-list){
@@ -2010,6 +2010,20 @@
 
   .overviewLayout :global(.briefing-boundary-note span){
     text-align:left;
+  }
+}
+
+@media(max-width:380px){
+  .overviewLayout :global(.briefing-flow){
+    display:flex;
+    overflow-x:auto;
+    padding-bottom:6px;
+    scroll-snap-type:x mandatory;
+  }
+
+  .overviewLayout :global(.briefing-flow a){
+    flex:0 0 10rem;
+    scroll-snap-align:start;
   }
 }
 
