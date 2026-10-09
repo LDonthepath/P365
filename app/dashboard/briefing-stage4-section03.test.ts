@@ -103,7 +103,7 @@ test("Bagian 04 memakai formatter id-ID dan hanya membandingkan field kredit yan
   assert.ok(section.includes("1,19%"));
   assert.ok(section.includes("18,40"));
   assert.ok(section.includes("+13,4 bps"));
-  assert.ok(section.includes("1 minggu dibanding observasi 01 Okt 2026"));
+  assert.ok(section.includes("1 hari dibanding observasi 07 Okt 2026"));\n  assert.ok(section.includes("1 minggu: +23,2 bps dibanding observasi 01 Okt 2026"));
   assert.ok(section.includes("4 minggu: -3,0 bps dibanding observasi 10 Sep 2026"));
   assert.equal((section.match(/<details class="briefing-rate-details">/g) ?? []).length, 3);
   assert.doesNotMatch(section, /FRESH|STALE|SEGAR|TERTUNDA|USANG|MOVE/);
