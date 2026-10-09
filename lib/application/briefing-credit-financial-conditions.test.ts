@@ -194,3 +194,47 @@ test("briefing explains factual rates and credit changes using release-frequency
   assert.equal(normalized.includes("risk-on"), false);
   assert.equal(normalized.includes("risk-off"), false);
 });
+
+test("weekly Chicago Fed financial indexes render factual 1W context rather than fake daily delta", () => {
+  const weeklyIndexes: CreditFinancialConditionsReadModel = {
+    status: "OK",
+    reason: null,
+    series: [
+      {
+        ...creditConditions.series[2],
+        seriesKey: "NFCI",
+        observationId: "nfci-latest",
+        value: -0.494,
+        observedAt: "2026-10-02",
+        change1d: null,
+        change1w: change("2026-09-25T00:00:00.000Z", "nfci-prior", -0.51, "2026-09-25", "2026-09-30T13:00:00.000Z", 0.016),
+        change4w: null,
+      },
+      {
+        ...creditConditions.series[2],
+        seriesKey: "ANFCI",
+        observationId: "anfci-latest",
+        value: -0.504,
+        observedAt: "2026-10-02",
+        change1d: null,
+        change1w: change("2026-09-25T00:00:00.000Z", "anfci-prior", -0.524, "2026-09-25", "2026-09-30T13:00:00.000Z", 0.02),
+        change4w: null,
+      },
+    ],
+  };
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    creditConditions: weeklyIndexes,
+  });
+  const html = renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data: result }));
+  const section = html.slice(html.indexOf('id="briefing-credit-conditions"'), html.indexOf('id="briefing-macro-background"'));
+  assert.match(section, /Chicago Fed NFCI/);
+  assert.match(section, /Chicago Fed ANFCI/);
+  assert.match(section, /observasi mingguan sebelumnya/);
+  assert.match(section, /kondisi finansial AS menjadi relatif lebih ketat/);
+  assert.doesNotMatch(section, /observasi harian sebelumnya/);
+  assert.doesNotMatch(section, /0,49%|0,50%/);
+  assert.doesNotMatch(section, /risk-on|risk-off|bullish|bearish/);
+});
