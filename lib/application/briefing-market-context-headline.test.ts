@@ -89,14 +89,16 @@ test("briefing leads with market change and keeps MOVE horizons as diagnostics",
     createElement(FactualMarketBriefingPanel, { data }),
   );
 
-  assert.match(html, /Harga dan perubahan utama Bitcoin\/Gold ditampilkan lebih dulu/);
+  assert.match(html, /01 · Apa yang bergerak sekarang\?/);
   assert.match(html, /USD 84\.250/);
-  assert.match(html, /\+3\.10% \/ 24 jam/);
+  assert.match(html, /Naik · \+3\.10%/);
+  assert.match(html, /Perubahan dalam 24 jam/);
   assert.match(html, /USD 4\.149,40/);
-  assert.match(html, /-0\.90% vs penutupan sebelumnya/);
+  assert.match(html, /Turun · -0\.90%/);
+  assert.match(html, /Perubahan terhadap penutupan sebelumnya/);
   assert.match(html, /Pergerakan intraday tidak biasa terdeteksi/);
-  assert.match(html, /Tidak ada pergerakan intraday material pada cutoff ini/);
-  assert.match(html, /DETAIL PERGERAKAN &amp; EVIDENCE/);
+  assert.match(html, /Tidak ada pergerakan intraday material pada waktu pengamatan ini/);
+  assert.match(html, /RINCIAN PERGERAKAN DAN BUKTI/);
   assert.match(html, /60 menit/);
   assert.match(html, /120 menit/);
   assert.doesNotMatch(html, /BTC dan Gold dinilai lebih dulu terhadap ambang historis/);
