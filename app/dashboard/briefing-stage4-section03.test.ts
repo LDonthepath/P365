@@ -41,7 +41,7 @@ test("Bagian 03 menampilkan proxy, pembanding agregat, komponen, dan batas makna
 
   assert.ok(section.includes("03 · Apa yang berubah pada likuiditas dolar AS?"));
   assert.ok(section.includes("Net Liquidity (proxy)"));
-  assert.ok(section.includes("grid-template-columns:repeat(auto-fit,minmax(min(100%, 15rem),1fr))"));
+  assert.match(section, /grid-template-columns:repeat\\(auto-fit,minmax\\(min\\(100%,\\s*15rem\\),1fr\\)\\)/);
   assert.ok(section.includes("5,5 miliar USD"));
   assert.ok(section.includes("1 minggu dibanding data sampai 01 Okt 2026"));
   assert.ok(section.includes("4 minggu: -12,3 miliar USD"));
@@ -100,7 +100,7 @@ test("Bagian 04 memakai formatter id-ID dan hanya membandingkan field kredit yan
   assert.ok(section.includes("Spread obligasi berperingkat rendah (HY OAS)"));
   assert.ok(section.includes("Spread obligasi investment-grade (IG OAS)"));
   assert.ok(section.includes("VIX · indeks volatilitas saham AS"));
-  assert.ok(section.includes("grid-template-columns:repeat(auto-fit,minmax(min(100%, 15rem),1fr))"));
+  assert.match(section, /grid-template-columns:repeat\\(auto-fit,minmax\\(min\\(100%,\\s*15rem\\),1fr\\)\\)/);
   assert.ok(section.includes("7,23%"));
   assert.ok(section.includes("1,19%"));
   assert.ok(section.includes("18,40"));
@@ -145,7 +145,7 @@ test("Bagian 05 merender nilai, perubahan, tanggal, dan sumber macro dengan form
 
   assert.ok(section.includes("05 · Apa yang berubah pada latar makro?"));
   assert.ok(section.includes("Imbal hasil Treasury AS 10 tahun"));
-  assert.ok(section.includes("grid-template-columns:repeat(auto-fit,minmax(min(100%, 15rem),1fr))"));
+  assert.match(section, /grid-template-columns:repeat\\(auto-fit,minmax\\(min\\(100%,\\s*15rem\\),1fr\\)\\)/);
   assert.ok(section.includes("4,21%"));
   assert.ok(section.includes("+0,21 poin persentase"));
   assert.ok(section.includes("Observasi 08 Okt 2026"));

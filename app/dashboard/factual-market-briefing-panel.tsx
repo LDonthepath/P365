@@ -16,14 +16,6 @@ import type { Direction } from "./components/briefing-primitives";
 import { ChartCard, KpiCard, SectionHeader, StatusBadge } from "./components/briefing-primitives";
 import { marketCurrentSummary, presentMarketMove } from "./briefing-market-current-display";
 
-const SERIES_LABELS: Record<string, string> = {
-  DGS2: "US Treasury 2Y",
-  DGS10: "US Treasury 10Y",
-  DFII10: "US 10Y Real Yield",
-  T10YIE: "10Y Breakeven Inflation",
-  T10Y2Y: "10Y–2Y Spread",
-};
-
 const PRICING_LABELS: Record<string, string> = {
   "btc.spot.usd": "Bitcoin",
   "eth.spot.usd": "Ethereum",
