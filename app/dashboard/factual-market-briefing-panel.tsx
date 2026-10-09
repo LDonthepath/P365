@@ -647,6 +647,49 @@ function RatesPolicyBriefingCard({ point }: { point: BriefingRatesPolicyPoint })
 type BriefingCreditConditionsPoint =
   FactualMarketBriefing["creditConditions"]["items"][number];
 
+const MACRO_SECTION_LABELS: Record<string, string> = {
+  DGS2: "Imbal hasil Treasury AS 2 tahun",
+  DGS10: "Imbal hasil Treasury AS 10 tahun",
+  DFII10: "Real yield AS 10 tahun",
+  T10YIE: "Inflasi impas AS 10 tahun",
+  T10Y2Y: "Spread Treasury AS 10 tahun–2 tahun",
+};
+
+function localizeMacroFormattedValue(formatted: string): string {
+  const currency = formatted.match(/^([+-]?)\\$(-?)([\\d,]+)(?:\\.(\\d+))?([TMB]?)$/);
+  if (currency) {
+    const [, outerSign, innerSign, integer, fraction = "", scale = ""] = currency;
+    const numeric = Number(`${integer.replaceAll(",", "")}.${fraction || "0"}`);
+    const localized = new Intl.NumberFormat("id-ID", {
+      minimumFractionDigits: fraction.length,
+      maximumFractionDigits: fraction.length,
+    }).format(numeric);
+    const scaleLabel = scale === "T" ? " triliun" : scale === "B" ? " miliar" : scale === "M" ? " juta" : "";
+    return `${outerSign || innerSign ? "-" : outerSign}US$ ${localized}${scaleLabel}`;
+  }
+
+  const percent = formatted.match(/^([+-]?)([\\d,]+)\\.(\\d+)%$/);
+  if (percent) {
+    const [, sign, integer, fraction] = percent;
+    const numeric = Number(`${integer.replaceAll(",", "")}.${fraction}`);
+    return `${sign}${new Intl.NumberFormat("id-ID", { minimumFractionDigits: fraction.length, maximumFractionDigits: fraction.length }).format(numeric)}%`;
+  }
+
+  return formatted.replace(/(\\d)\\.(\\d)/g, "$1,$2");
+}
+
+function macroValueId(value: string, unit: string): string {
+  return localizeMacroFormattedValue(formatMacroDisplayValue(value, unit));
+}
+
+function macroDeltaId(value: number, unit: string): string {
+  return localizeMacroFormattedValue(formatMacroDisplayDelta(value, unit));
+}
+
+function macroSeriesLabel(seriesId: string, subject: string): string {
+  return MACRO_SECTION_LABELS[seriesId] ?? subject;
+}
+
 function creditConditionsValue(point: BriefingCreditConditionsPoint): string {
   return `${formatBriefingNumber(point.value, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${point.valueUnit === "PERCENT" ? "%" : ""}`;
 }
@@ -950,26 +993,36 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
     </div>
 
     <div id="briefing-macro-background" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>05 · LATAR MAKRO</span>
-        <span>{changed.evidenceStatus === "AVAILABLE" ? "DATA TERSEDIA" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah di konteks makro?</h3>
-      <p className="lead-copy">
-        Ringkasan baseline faktual Macro yang sudah tersedia. Bagian ini tidak mengubah
-        pergerakan bersama menjadi klaim transmisi atau penyebab.
-      </p>
-
-      {changed.evidenceStatus === "AVAILABLE"
-        ? <div className="monitor-list" style={{ marginTop: "1rem" }}>
-            {changed.items.map((item) => <div key={item.seriesId}>
-              <strong>{SERIES_LABELS[item.seriesId] ?? item.subject}</strong>
-              <span>
-                Saat ini {formatMacroDisplayValue(item.currentValue, item.unit)}
-                {" · "}sebelumnya {formatMacroDisplayValue(item.baselineValue, item.unit)}
-                {" · "}{formatMacroDisplayDelta(item.changeValue, item.unit)}
-              </span>
-            </div>)}
+      <SectionHeader
+        titleId="briefing-macro-background-title"
+        title="05 · Apa yang berubah pada latar makro?"
+        summary={changed.items.length > 0
+          ? "Nilai makro saat ini dibandingkan dengan baseline historis yang tersedia."
+          : "Belum ada nilai makro dengan baseline pembanding pada read model ini."}
+      />
+      {changed.evidenceStatus === "AVAILABLE" && changed.items.length > 0
+        ? <div className="briefing-stage4-grid" style={{ marginTop: "1rem" }}>
+            {changed.items.map((item) => {
+              const label = macroSeriesLabel(item.seriesId, item.subject);
+              return <article className="briefing-stage4-card" key={item.seriesId}>
+                <KpiCard
+                  label={label}
+                  value={macroValueId(item.currentValue, item.unit)}
+                  valueDetail={`Observasi ${dateOnly(item.currentObservedAt)} · baseline ${macroValueId(item.baselineValue, item.unit)} pada ${dateOnly(item.baselineObservedAt)}`}
+                  change={{
+                    valueLabel: macroDeltaId(item.changeValue, item.unit),
+                    direction: item.changeValue > 0 ? "up" : item.changeValue < 0 ? "down" : "flat",
+                    comparisonLabel: `Dibanding observasi ${dateOnly(item.baselineObservedAt)}`,
+                  }}
+                />
+                <p className="briefing-rate-meaning">Perbandingan nilai tercatat pada dua tanggal observasi.</p>
+                <details className="briefing-rate-details">
+                  <summary>Lihat baseline dan sumber</summary>
+                  <p>Nilai baseline: {macroValueId(item.baselineValue, item.unit)} · observasi {dateOnly(item.baselineObservedAt)}.</p>
+                  <p>Sumber: {item.sourceId}. Observasi terbaru: {dateOnly(item.currentObservedAt)}.</p>
+                </details>
+              </article>;
+            })}
           </div>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
             <strong>Data makro belum cukup</strong>

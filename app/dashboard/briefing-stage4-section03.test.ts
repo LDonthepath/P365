@@ -110,3 +110,43 @@ test("Bagian 04 memakai formatter id-ID dan hanya membandingkan field kredit yan
   assert.doesNotMatch(section, /FRESH|STALE|SEGAR|TERTUNDA|USANG|MOVE/);
   assert.doesNotMatch(section, /<svg|Grafik/);
 });
+
+test("Bagian 05 merender nilai, perubahan, tanggal, dan sumber macro dengan format id-ID", () => {
+  const base = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: "2026-10-09T10:00:00.000Z",
+  });
+  const data = {
+    ...base,
+    whatChanged: {
+      evidenceStatus: "AVAILABLE",
+      reasoningStatus: "NOT_EVALUATED",
+      reason: null,
+      items: [{
+        seriesId: "DGS10",
+        subject: "US Treasury 10Y",
+        unit: "percent",
+        currentValue: "4.21",
+        baselineValue: "4.00",
+        changeValue: 0.21,
+        currentObservedAt: "2026-10-08",
+        baselineObservedAt: "2026-10-01",
+        sourceId: "FRED",
+      }],
+    },
+  } as FactualMarketBriefing;
+  const html = renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data }));
+  const start = html.indexOf('id="briefing-macro-background-title"');
+  const end = html.indexOf('class="briefing-analysis-details"', start);
+  const section = html.slice(start, end);
+
+  assert.ok(section.includes("05 · Apa yang berubah pada latar makro?"));
+  assert.ok(section.includes("Imbal hasil Treasury AS 10 tahun"));
+  assert.ok(section.includes("4,21%"));
+  assert.ok(section.includes("+0,21 poin persentase"));
+  assert.ok(section.includes("Observasi 08 Okt 2026"));
+  assert.ok(section.includes("Dibanding observasi 01 Okt 2026"));
+  assert.ok(section.includes("Sumber: FRED"));
+  assert.ok(section.includes("<details class=\"briefing-rate-details\">"));
+});
