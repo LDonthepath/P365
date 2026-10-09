@@ -9,7 +9,6 @@ import { formatEventResultValue } from "@/lib/presentation/intraday-event-respon
 import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
 import { ChartCard, KpiCard, SectionHeader, StatusBadge } from "./components/briefing-primitives";
 import { marketCurrentSummary, presentMarketMove } from "./briefing-market-current-display";
-import marketCurrentStyles from "./briefing-market-current.module.css";
 
 const SERIES_LABELS: Record<string, string> = {
   DGS2: "US Treasury 2Y",
@@ -308,12 +307,12 @@ function MarketMoveBriefingItem({
   const unscheduledCandidates = screenedNews.items.slice(0, MAX_MOVE_CATALYST_DETAILS);
   const presentation = presentMarketMove(item);
 
-  return <div className={marketCurrentStyles.moveCard}>
+  return <div className="ux2-market-card">
     <KpiCard label={MOVE_ASSET_LABELS[item.asset]}
       value={presentation.price}
       change={presentation.change}
       badge={<StatusBadge label={presentation.badge.label} tone={presentation.badge.tone} />} />
-    <p className={marketCurrentStyles.note}>
+    <p className="ux2-market-note">
       {item.hasMaterialMove
         ? "Pergerakan intraday tidak biasa terdeteksi."
         : item.status === "BELOW_MATERIALITY_THRESHOLD"
@@ -741,11 +740,11 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       </a>
     </nav>
 
-    <div className={marketCurrentStyles.section}>
+    <div className="ux2-market-current">
       <SectionHeader titleId="briefing-market-state-title" title="01 · Apa yang bergerak sekarang?"
         summary={marketCurrentSummary(moves)} />
       {moves.evidenceStatus === "AVAILABLE"
-        ? <div className={marketCurrentStyles.moveGrid}>
+        ? <div className="ux2-market-grid">
             {moves.items.map((item) => <MarketMoveBriefingItem item={item} key={item.asset} />)}
           </div>
         : <div className="plain-notice">
