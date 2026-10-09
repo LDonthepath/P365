@@ -127,6 +127,8 @@ const RATES_POLICY_LABELS: Record<string, string> = {
 const CREDIT_CONDITIONS_LABELS: Record<string, string> = {
   BAMLH0A0HYM2: "US High Yield OAS",
   BAMLC0A0CM: "US Investment Grade OAS",
+  NFCI: "Chicago Fed NFCI",
+  ANFCI: "Chicago Fed ANFCI",
   VIXCLS: "VIX",
 };
 
@@ -691,18 +693,33 @@ function creditConditionsChangeValue(
   return `${ratesPolicySigned(change.value, 2)} poin`;
 }
 
+function creditConditionsPrimaryComparison(point: BriefingCreditConditionsPoint) {
+  const weekly = point.seriesKey === "NFCI" || point.seriesKey === "ANFCI";
+  return {
+    change: weekly ? point.change1w : point.change1d,
+    cadence: weekly ? "mingguan" : "harian",
+  };
+}
+
 function creditConditionsPreviousRelease(
   point: BriefingCreditConditionsPoint,
 ): string {
-  const change = point.change1d;
-  if (change === null) return "observasi harian sebelumnya belum tersedia";
-  return `observasi harian sebelumnya ${creditConditionsChangeValue(point, change)} vs ${dateOnly(change.predecessorObservedAt)}`;
+  const { change, cadence } = creditConditionsPrimaryComparison(point);
+  if (change === null) return `observasi ${cadence} sebelumnya belum tersedia`;
+  return `observasi ${cadence} sebelumnya ${creditConditionsChangeValue(point, change)} vs ${dateOnly(change.predecessorObservedAt)}`;
 }
 
 function creditConditionsExplanation(point: BriefingCreditConditionsPoint): string {
-  const change = point.change1d;
+  const { change } = creditConditionsPrimaryComparison(point);
   if (change === null) {
     return "Belum cukup riwayat qualified untuk menjelaskan perubahan terhadap observasi sebelumnya.";
+  }
+
+  if (point.seriesKey === "NFCI" || point.seriesKey === "ANFCI") {
+    const index = point.seriesKey;
+    if (change.value > 0) return `${index} naik dibanding pengamatan mingguan sebelumnya; kondisi finansial AS menjadi relatif lebih ketat menurut indeks ini, bukan bukti penyebab pergerakan aset.`;
+    if (change.value < 0) return `${index} turun dibanding pengamatan mingguan sebelumnya; kondisi finansial AS menjadi relatif lebih longgar menurut indeks ini, bukan bukti penyebab pergerakan aset.`;
+    return `${index} tidak berubah dibanding pengamatan mingguan sebelumnya.`;
   }
 
   if (point.seriesKey === "BAMLH0A0HYM2") {
@@ -739,12 +756,16 @@ function CreditConditionsBriefingItem({
 }: {
   point: BriefingCreditConditionsPoint;
 }) {
-  const change = point.change1d;
+  const { change, cadence } = creditConditionsPrimaryComparison(point);
   const shortExplanation = point.seriesKey === "BAMLH0A0HYM2"
     ? "Premi risiko obligasi korporasi AS berimbal hasil tinggi (HY OAS)."
     : point.seriesKey === "BAMLC0A0CM"
       ? "Premi risiko obligasi korporasi AS berperingkat investasi (IG OAS)."
-      : "VIX adalah ukuran volatilitas tersirat opsi saham AS.";
+      : point.seriesKey === "NFCI"
+        ? "Indeks mingguan kondisi finansial AS dari Chicago Fed. Nilai positif berarti lebih ketat dari rata-rata historis."
+        : point.seriesKey === "ANFCI"
+          ? "Indeks mingguan Chicago Fed yang menyesuaikan kondisi finansial terhadap kondisi ekonomi."
+          : "VIX adalah ukuran volatilitas tersirat opsi saham AS.";
   return <article className="briefing-rate-card">
     <KpiCard
       label={CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}
@@ -754,7 +775,7 @@ function CreditConditionsBriefingItem({
         ? {
             valueLabel: creditConditionsChangeValue(point, change),
             direction: ratesPolicyDirection(change.value),
-            comparisonLabel: `observasi harian sebelumnya · ${dateOnly(change.predecessorObservedAt)}`,
+            comparisonLabel: `observasi ${cadence} sebelumnya · ${dateOnly(change.predecessorObservedAt)}`,
           }
         : null}
       badge={<StatusBadge
@@ -938,7 +959,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       <SectionHeader titleId="briefing-credit-conditions"
         title="04 · Apa yang berubah pada kredit dan volatilitas?"
         summary={creditConditions.evidenceStatus === "AVAILABLE"
-          ? `${creditConditions.items.length} indikator tersedia: premi risiko HY OAS, IG OAS, dan volatilitas VIX jika tercakup.`
+          ? `${creditConditions.items.length} indikator tersedia: HY OAS, IG OAS, VIX, NFCI dan ANFCI jika tercakup.`
           : "Data premi risiko kredit dan volatilitas belum cukup untuk ringkasan ini."}
       />
       {creditConditions.evidenceStatus === "AVAILABLE"
