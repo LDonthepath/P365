@@ -25,6 +25,8 @@ const DEFINITIONS = [
     valueUnit: "INDEX",
     changeUnit: "INDEX_POINTS",
   },
+  { seriesKey: "NFCI", domain: "MACRO", valueUnit: "INDEX", changeUnit: "INDEX_POINTS" },
+  { seriesKey: "ANFCI", domain: "MACRO", valueUnit: "INDEX", changeUnit: "INDEX_POINTS" },
 ] as const;
 
 export type CreditFinancialConditionsSeriesKey =
@@ -47,6 +49,7 @@ export type CreditFinancialConditionsPoint = {
   observationId: string;
   value: number;
   valueUnit: CreditFinancialConditionsValueUnit;
+  cadence: "DAILY" | "WEEKLY";
   observedAt: string;
   retrievedAt: string;
   sourceId: string;
@@ -172,12 +175,15 @@ function buildPoint(
     observationId: latest.id,
     value: latestValue,
     valueUnit: definition.valueUnit,
+    cadence: registry.frequency === "WEEKLY" ? "WEEKLY" : "DAILY",
     observedAt: latest.observedAt,
     retrievedAt: latest.retrievedAt,
     sourceId: latest.sourceId,
     acquisitionQuality: latest.quality,
     freshness: cadenceFreshness(latest, registry, new Date(asOf).toISOString()),
-    change1d: qualifiedChange(definition, registry, latestValue, oneDay, oneDayTarget),
+    change1d: registry.frequency === "WEEKLY"
+      ? null
+      : qualifiedChange(definition, registry, latestValue, oneDay, oneDayTarget),
     change1w: qualifiedChange(definition, registry, latestValue, oneWeek, oneWeekTarget),
     change4w: qualifiedChange(definition, registry, latestValue, fourWeeks, fourWeeksTarget),
     changeUnit: definition.changeUnit,
@@ -187,8 +193,9 @@ function buildPoint(
 /**
  * Read-only factual Credit & Financial Conditions slice.
  *
- * Scope is intentionally limited to HY OAS, IG OAS and VIX. T10Y2Y remains in
- * the existing Rates & Policy slice; NFCI remains deferred.
+ * Scope includes HY OAS, IG OAS, VIX, and weekly Chicago Fed NFCI/ANFCI.
+ * T10Y2Y remains in Rates & Policy. Weekly indexes never emit a 1D
+ * change; the dashboard uses their 1W comparison instead.
  *
  * Comparison endpoints reuse the registry-backed FRED cadence freshness policy
  * at each target horizon. The latest point also recomputes freshness at the
