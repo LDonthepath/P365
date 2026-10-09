@@ -31,8 +31,8 @@ function observation(
     evidenceId: `evidence-${id}`,
     metadata: {
       seriesId,
-      unit: seriesId === "VIXCLS" ? "Index" : "Percent",
-      frequency: "DAILY",
+      unit: ["VIXCLS", "NFCI", "ANFCI"].includes(seriesId) ? "Index" : "Percent",
+      frequency: ["NFCI", "ANFCI"].includes(seriesId) ? "WEEKLY" : "DAILY",
     },
   };
 }
@@ -107,7 +107,7 @@ test("builds qualified 1D/1W/4W credit-condition facts and recomputes query-time
   assert.ok(Math.abs((vix.change1w?.value ?? 0) - (-0.55)) < 1e-9);
   assert.ok(Math.abs((vix.change4w?.value ?? 0) - (-2.48)) < 1e-9);
 
-  assert.equal(repository.queries.length, 3);
+  assert.equal(repository.queries.length, 5);
   assert.equal(
     repository.queries.some((query) => query.identity.seriesKey === "T10Y2Y"),
     false,
@@ -155,4 +155,38 @@ test("fails a horizon closed when the predecessor is outside existing FRED fresh
   assert.equal(hy.change1d, null);
   assert.equal(hy.change1w, null);
   assert.equal(hy.change4w, null);
+});
+
+test("weekly NFCI/ANFCI use FRED index units, source-time cutoff and weekly comparisons only", async () => {
+  const memory = new InMemoryObservationRepository();
+  await memory.saveMany([
+    observation("nfci-4w", "MACRO", "NFCI", -0.56, "2026-09-04", "2026-09-10T13:00:00.000Z"),
+    observation("nfci-1w", "MACRO", "NFCI", -0.51, "2026-09-25", "2026-09-30T13:00:00.000Z"),
+    observation("nfci-now", "MACRO", "NFCI", -0.494, "2026-10-02", "2026-10-07T13:00:00.000Z"),
+    observation("anfci-1w", "MACRO", "ANFCI", -0.524, "2026-09-25", "2026-09-30T13:00:00.000Z"),
+    observation("anfci-now", "MACRO", "ANFCI", -0.504, "2026-10-02", "2026-10-07T13:00:00.000Z"),
+    observation("anfci-future-knowledge", "MACRO", "ANFCI", -0.3, "2026-10-02", "2026-10-10T13:00:00.000Z"),
+  ]);
+
+  const repository = new RecordingRepository(memory);
+  const result = await buildCreditFinancialConditionsReadModel(
+    repository,
+    new Date("2026-10-09T00:00:00.000Z"),
+  );
+  assert.equal(result.status, "OK");
+  if (result.status !== "OK") return;
+  assert.deepEqual(result.series.map((item) => item.seriesKey), ["NFCI", "ANFCI"]);
+  for (const point of result.series) {
+    assert.equal(point.valueUnit, "INDEX");
+    assert.equal(point.changeUnit, "INDEX_POINTS");
+    assert.equal(point.freshness, "FRESH");
+    assert.equal(point.change1d, null, "weekly provider release cannot be fabricated as a daily change");
+    assert.ok(point.change1w);
+    assert.equal(point.change1w.predecessorObservedAt, "2026-09-25");
+  }
+  const nfci = result.series.find((p) => p.seriesKey === "NFCI");
+  const anfci = result.series.find((p) => p.seriesKey === "ANFCI");
+  assert.ok(Math.abs((nfci?.change1w?.value ?? 0) - 0.016) < 1e-9);
+  assert.equal(anfci?.observationId, "anfci-now", "later-retrieved revision must be excluded");
+  assert.ok(repository.queries.every((query) => query.retrievedAtOnOrBefore === "2026-10-09T00:00:00.000Z"));
 });
