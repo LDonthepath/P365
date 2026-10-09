@@ -105,3 +105,56 @@ test("RPC refuses ambiguous physical insert and revision counters", async () => 
     ), /unqualified receipt/);
   } finally { globalThis.fetch = prior; }
 });
+
+test("bounded SQL lock contention is classified without exposing PostgREST internals", async () => {
+  const { supabaseCanonicalRepositories } = await import("./market-memory-store");
+  const previous = globalThis.fetch;
+  globalThis.fetch = (async () => Response.json({
+    code: "55P03", message: "sensitive details and SQL", details: "secret",
+  }, { status: 500 })) as typeof fetch;
+  try {
+    await assert.rejects(
+      supabaseCanonicalRepositories.observations.saveManyWithFredRevisionReceipt(
+        [observation("fred-lock-contention")]),
+      (err: unknown) => err instanceof Error
+        && err.message.includes("55P03")
+        && err.message.includes("transaction aborted")
+        && !err.message.includes("sensitive"),
+    );
+  } finally { globalThis.fetch = previous; }
+});
+
+test("transport abort yields UNKNOWN commit outcome, not a confirmed zero-write receipt", async () => {
+  const { supabaseCanonicalRepositories } = await import("./market-memory-store");
+  const previous = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    const err = new Error("secret URL or provider key");
+    err.name = "TimeoutError";
+    throw err;
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      supabaseCanonicalRepositories.observations.saveManyWithFredRevisionReceipt(
+        [observation("fred-client-timeout")]),
+      (err: unknown) => err instanceof Error
+        && err.message.includes("commit outcome UNKNOWN")
+        && !err.message.includes("secret"),
+    );
+  } finally { globalThis.fetch = previous; }
+});
+
+test("unknown upstream HTTP errors remain generic and never expose the body", async () => {
+  const { supabaseCanonicalRepositories } = await import("./market-memory-store");
+  const previous = globalThis.fetch;
+  globalThis.fetch = (async () => Response.json({
+    code: "PGRST202", message: "secret PostgREST detail",
+  }, { status: 404 })) as typeof fetch;
+  try {
+    await assert.rejects(
+      supabaseCanonicalRepositories.observations.saveManyWithFredRevisionReceipt(
+        [observation("fred-generic-error")]),
+      (err: unknown) => err instanceof Error
+        && err.message === "FRED coordinated write RPC failed (404)",
+    );
+  } finally { globalThis.fetch = previous; }
+});

@@ -111,6 +111,9 @@ DECLARE
   v_inserted_ids text[] := '{}'::text[];
   v_expected_dedupe text;
   v_input_count integer;
+  -- Entire advisory lock acquisition shares one deadline, not one budget per key.
+  v_lock_deadline timestamptz;
+  v_lock_key bigint;
 BEGIN
   IF p_rows IS NULL OR jsonb_typeof(p_rows) <> 'array' THEN
     RAISE EXCEPTION 'FRED receipt requires a JSON array' USING ERRCODE = '22023';
@@ -119,6 +122,9 @@ BEGIN
   IF v_input_count > 500 THEN
     RAISE EXCEPTION 'FRED receipt batch exceeds 500 rows' USING ERRCODE = '22023';
   END IF;
+  -- Bound ordinary table/row lock waits too (including gate row and unique
+  -- constraint conflicts). Never rely on client HTTP abort to cancel a write.
+  PERFORM set_config('lock_timeout','1500ms',true);
   -- Locks on the singleton control row prevent activation/deactivation mid-batch.
   SELECT enforced,epoch INTO STRICT v_enforced,v_epoch FROM public.p365_fred_revision_gate
   WHERE singleton FOR SHARE;
@@ -179,11 +185,23 @@ BEGIN
 
   -- Each logical measurement has one transaction-level lock. Acquiring locks
   -- in global lexical order avoids cross-batch lock-order deadlock.
+  -- A single global 1.5-second deadline bounds all advisory contention.
+  -- A failed RPC raises 55P03; PostgreSQL rolls back its entire transaction,
+  -- and the next *natural* ingestion run can safely retry by dedupe identity.
+  v_lock_deadline := clock_timestamp() + interval '1500 milliseconds';
   FOR v_sorted_key IN SELECT DISTINCT key FROM unnest(v_keys) AS key ORDER BY key LOOP
-    PERFORM pg_advisory_xact_lock(hashtextextended('P365:FRED:001G:'||v_sorted_key,0));
+    v_lock_key := hashtextextended('P365:FRED:001G:'||v_sorted_key,0);
+    LOOP
+      EXIT WHEN pg_try_advisory_xact_lock(v_lock_key);
+      IF clock_timestamp() >= v_lock_deadline THEN
+        RAISE EXCEPTION 'FRED coordinated write lock contention'
+          USING ERRCODE = '55P03';
+      END IF;
+      PERFORM pg_sleep(0.025);
+    END LOOP;
   END LOOP;
   -- PL/pgSQL statements below obtain fresh READ COMMITTED snapshots after
-  -- waiting for locks; testing is mandatory before production activation.
+  -- obtaining locks; testing is mandatory before production activation.
 
   FOR v_item IN SELECT value FROM jsonb_array_elements(p_rows) LOOP
     v_id := v_item->>'canonical_id';

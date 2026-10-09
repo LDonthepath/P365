@@ -180,16 +180,31 @@ async function insertFredObservationsWithRevisionReceipt(
     throw new Error("FRED coordinated writer requires unique canonical IDs");
   }
   const { url, key } = requireConfig();
-  const response = await fetch(url + "/rest/v1/rpc/p365_insert_fred_observations_v1", {
-    method: "POST",
-    headers: { apikey: key, Authorization: "Bearer " + key,
-      "Content-Type": "application/json" },
-    body: JSON.stringify({ p_rows: rows }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url + "/rest/v1/rpc/p365_insert_fred_observations_v1", {
+      method: "POST",
+      headers: { apikey: key, Authorization: "Bearer " + key,
+        "Content-Type": "application/json" },
+      body: JSON.stringify({ p_rows: rows }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    // HTTP abort does not establish whether a database transaction committed.
+    const name = error instanceof Error ? error.name : "";
+    throw new Error(name === "TimeoutError" || name === "AbortError"
+      ? "FRED coordinated write request timed out; commit outcome UNKNOWN"
+      : "FRED coordinated write transport failed; commit outcome UNKNOWN");
+  }
   if (!response.ok) {
-    // No raw upstream body, URL or credential in operator metrics.
+    // Only read SQLSTATE; do not emit the upstream body, URL or credentials.
+    const body: unknown = await response.json().catch(() => null);
+    const code = body !== null && typeof body === "object" && !Array.isArray(body)
+      ? (body as { code?: unknown }).code : undefined;
+    if (code === "55P03") {
+      throw new Error("FRED coordinated write lock contention (55P03); transaction aborted");
+    }
     throw new Error("FRED coordinated write RPC failed (" + response.status + ")");
   }
   const raw: unknown = await response.json();
