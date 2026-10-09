@@ -66,7 +66,7 @@ test("the provider sends requests only for opt-in selected series, preserving ca
     assert.equal(result.data.length, 4);
     assert.deepEqual(touched, MACRO_SERIES_REGISTRY
       .filter((s) => selection.includes(s.seriesId)).map((s) => s.seriesId));
-    assert.equal(touched.length, 4, "4 fetches instead of the default 33");
+    assert.equal(touched.length, 4, "4 fetches instead of the default 35");
     for (const data of result.data) {
       assert.equal(data.observationDate, "2026-10-01");
       assert.equal(data.value, "4.25");
