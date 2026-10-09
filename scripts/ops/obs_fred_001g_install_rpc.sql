@@ -246,7 +246,82 @@ BEGIN
              OR v_prior #>> '{observedAt}' IS DISTINCT FROM v_period
              OR (v_prior #>> '{identity,measurementId}' IS NOT NULL AND
                 v_prior #>> '{identity,measurementId}' IS DISTINCT FROM v_measurement)
-             OR v_prior #>> '{value}' !~ '^[-+]?[0-9]+(\.[0-9]+)?([Ee][-+]?[0-9]+)?$'
+             OR v_prior #>> '{value}' IS NULL
+             OR v_prior #>> '{value}' !~ '^[-+]?[0-9]+(\.[0-9]+)?([Ee][-+]?[0-9]+)?
+             OR length(v_prior #>> '{value}') > 80
+          THEN
+            v_qualified := false;
+            EXIT;
+          END IF;
+          BEGIN
+            v_prior_number := (v_prior->>'value')::numeric;
+          EXCEPTION WHEN numeric_value_out_of_range THEN
+            v_qualified := false;
+            EXIT;
+          END;
+          IF v_prior_count > 1 AND v_prior_number IS DISTINCT FROM v_prior_reference THEN
+            v_qualified := false;
+            EXIT;
+          END IF;
+          v_prior_reference := v_prior_number;
+        END LOOP;
+        v_has_prior := v_prior_count > 0;
+      END IF;
+    END IF;
+
+    -- This is the one and only canonical write for this candidate.
+    -- Conflict-ignore RETURNING is the physical insert authority.
+    PERFORM set_config('p365.fred_revision_rpc','1',true);
+    v_actual_insert := NULL;
+    INSERT INTO public.market_memory
+      (record_type,canonical_id,effective_at,captured_at,dedupe_key,payload)
+    VALUES
+      ('OBSERVATION',v_id,v_effective,(v_item->>'captured_at')::timestamptz,
+       v_dedupe,v_item->'payload')
+    ON CONFLICT (dedupe_key) DO NOTHING
+    RETURNING canonical_id INTO v_actual_insert;
+    PERFORM set_config('p365.fred_revision_rpc','0',true);
+
+    IF v_actual_insert IS NOT NULL THEN
+      v_inserted := v_inserted + 1;
+      v_inserted_ids := array_append(v_inserted_ids,v_actual_insert);
+      IF v_qualified THEN
+        IF v_has_prior AND v_prior_reference IS DISTINCT FROM v_value THEN
+          v_revised := v_revised + 1;
+        END IF;
+      ELSE
+        v_unknown := v_unknown + 1;
+      END IF;
+      IF v_enforced THEN
+        INSERT INTO public.p365_fred_revision_heads
+          (logical_key,canonical_id,epoch,measurement_id,unit,frequency,canonical_value)
+        VALUES(v_key,v_id,v_epoch,v_measurement,v_unit,v_frequency,v_value)
+        ON CONFLICT(logical_key) DO UPDATE SET
+          canonical_id=EXCLUDED.canonical_id,
+          epoch=EXCLUDED.epoch,
+          measurement_id=EXCLUDED.measurement_id,
+          unit=EXCLUDED.unit,frequency=EXCLUDED.frequency,
+          canonical_value=EXCLUDED.canonical_value,updated_at=now();
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'submitted',v_input_count,'inserted',v_inserted,
+    'duplicates',v_input_count-v_inserted,
+    'insertedCanonicalIds',to_jsonb(v_inserted_ids),
+    'revised',CASE WHEN v_unknown=0 THEN to_jsonb(v_revised) ELSE 'null'::jsonb END,
+    'revisionAssessment',CASE WHEN v_unknown=0 THEN 'COMPLETE' ELSE 'NOT_EVALUATED' END
+  );
+END
+$fn$;
+
+REVOKE ALL ON FUNCTION public.p365_fred_revision_gate_epoch_v1() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.p365_guard_fred_revision_writer_v1() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.p365_insert_fred_observations_v1(jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.p365_insert_fred_observations_v1(jsonb) TO service_role;
+COMMIT;
+
              OR length(v_prior #>> '{value}') > 80
           THEN
             v_qualified := false;
