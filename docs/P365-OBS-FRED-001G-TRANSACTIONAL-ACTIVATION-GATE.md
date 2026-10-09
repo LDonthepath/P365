@@ -14,7 +14,7 @@ The installation script is scripts/ops/obs_fred_001g_install_rpc.sql. It creates
 
 ## Verification / limits
 
-- Staging-only disposable PostgreSQL 18.6 database p365stage: 24 PASS assertions involving two concurrent SQL sessions, reversed lock ordering, identical retry races, rollback, legacy ambiguous values, security and enrollment gate. Test harness scripts/tests/obs_fred_001g_pg_integration.py refuses any database name other than p365stage and resets only that fixture.
+- Staging-only disposable PostgreSQL 18.6 database p365stage: 26 PASS assertions involving two concurrent SQL sessions, reversed lock ordering, identical retry races, rollback, legacy ambiguous values, security and enrollment gate. Test harness scripts/tests/obs_fred_001g_pg_integration.py refuses any database name other than p365stage and resets only that fixture.
 - FRED/ingestion/receipt focused and regression suite 75/75 PASS, TypeScript, modified-file ESLint and Next.js build PASS on development checkout. Only existing unrelated build warnings.
 - NOT YET VERIFIED: PostgreSQL 17 two-session staging test against the production-equivalent triggers, real 264-row p50/p95 query cost, permission and writer audits, end-to-end Supabase credentials, and natural provider freshness. PostgreSQL 18 test success must not be represented as PostgreSQL 17 qualification.
 
