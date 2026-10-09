@@ -27,7 +27,7 @@ test("briefing exposes an explicit market-to-macro reading order", () => {
   assert.match(html, /href="#briefing-rates-policy"/);
   assert.match(html, /02 · RATES &amp; POLICY/);
   assert.match(html, /href="#briefing-usd-liquidity"/);
-  assert.match(html, /03 · USD LIQUIDITY/);
+  assert.match(html, /03 · LIKUIDITAS/);
   assert.match(html, /href="#briefing-credit-conditions"/);
   assert.match(html, /04 · CREDIT/);
   assert.match(html, /href="#briefing-macro-background"/);
@@ -46,7 +46,7 @@ test("briefing exposes an explicit market-to-macro reading order", () => {
   assert.ok(macro > credit);
   assert.match(html, /01 · Apa yang bergerak sekarang\?/);
   assert.match(html, /02 · Apa konteks suku bunga dan kebijakan untuk Emas dan Bitcoin\?/);
-  assert.match(html, /03 · Apa yang berubah pada likuiditas dolar AS\?/);
+  assert.match(html, /03 · Apa yang berubah pada likuiditas AS dan neraca bank sentral\?/);
   assert.match(html, /04 · Apa yang berubah pada kredit, volatilitas, dan kondisi keuangan\?/);
   assert.match(html, /05 · Apa yang berubah pada latar makro\?/);
 

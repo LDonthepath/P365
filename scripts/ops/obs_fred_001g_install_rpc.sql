@@ -145,7 +145,7 @@ BEGIN
        OR v_item #>> '{payload,sourceId}' IS DISTINCT FROM 'fred'
        OR v_domain IS NULL OR v_domain NOT IN ('MACRO','ASSET')
        OR v_item #>> '{payload,identity,version}' IS DISTINCT FROM 'v1'
-       OR v_series IS NULL OR v_series NOT IN ('FEDFUNDS', 'EFFR', 'WALCL', 'WRESBAL', 'M2SL', 'WTREGEN', 'SOFR', 'IORB', 'RRPONTSYD', 'CPIAUCSL', 'CPILFESL', 'PCEPI', 'PCEPILFE', 'UNRATE', 'PAYEMS', 'ICSA', 'CCSA', 'JTSJOL', 'JTSQUR', 'SAHMREALTIME', 'DGS2', 'DGS10', 'DFII10', 'T10YIE', 'T10Y2Y', 'NFCI', 'ANFCI', 'BAMLC0A0CM', 'BAMLH0A0HYM2', 'DTWEXBGS', 'GDPC1', 'VIXCLS', 'SP500', 'NASDAQCOM', 'DCOILWTICO')
+       OR v_series IS NULL OR v_series NOT IN ('FEDFUNDS', 'EFFR', 'WALCL', 'ECBASSETSW', 'JPNASSETS', 'WRESBAL', 'M2SL', 'WTREGEN', 'SOFR', 'IORB', 'RRPONTSYD', 'CPIAUCSL', 'CPILFESL', 'PCEPI', 'PCEPILFE', 'UNRATE', 'PAYEMS', 'ICSA', 'CCSA', 'JTSJOL', 'JTSQUR', 'SAHMREALTIME', 'DGS2', 'DGS10', 'DFII10', 'T10YIE', 'T10Y2Y', 'NFCI', 'ANFCI', 'BAMLC0A0CM', 'BAMLH0A0HYM2', 'DTWEXBGS', 'GDPC1', 'VIXCLS', 'SP500', 'NASDAQCOM', 'DCOILWTICO')
        OR v_item #>> '{payload,identity,seriesKey}' IS DISTINCT FROM v_series
        OR v_measurement IS NULL OR length(v_measurement) < 10 OR length(v_measurement) > 160
        OR v_unit IS NULL OR length(v_unit) = 0

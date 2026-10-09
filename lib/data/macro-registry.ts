@@ -33,6 +33,8 @@ export const MACRO_SERIES_REGISTRY = [
   { seriesId: "FEDFUNDS", subject: "Federal Funds Rate", frequency: "MONTHLY", unit: "Percent", source: "FRED", domain: "MACRO", freshnessMs: STANDARD_MONTHLY_CADENCE_TOLERANCE, revalidateSeconds: 12 * 60 * 60 },
   { seriesId: "EFFR", subject: "Effective Federal Funds Rate", frequency: "DAILY", unit: "Percent", source: "FRED", domain: "MACRO", freshnessMs: 5 * DAY, revalidateSeconds: 6 * 60 * 60 },
   { seriesId: "WALCL", subject: "Federal Reserve Total Assets", frequency: "WEEKLY", unit: "Millions of U.S. Dollars", source: "FRED", domain: "MACRO", freshnessMs: 14 * DAY, revalidateSeconds: 12 * 60 * 60 },
+  { seriesId: "ECBASSETSW", subject: "Eurosystem Central Bank Assets", frequency: "WEEKLY", unit: "Millions of Euros", source: "FRED", domain: "MACRO", freshnessMs: 14 * DAY, revalidateSeconds: 12 * 60 * 60 },
+  { seriesId: "JPNASSETS", subject: "Bank of Japan Total Assets", frequency: "MONTHLY", unit: "100 Million Yen", source: "FRED", domain: "MACRO", freshnessMs: STANDARD_MONTHLY_CADENCE_TOLERANCE, revalidateSeconds: 12 * 60 * 60 },
   { seriesId: "WRESBAL", subject: "Reserve Balances with Federal Reserve Banks", frequency: "WEEKLY", unit: "Millions of U.S. Dollars", source: "FRED", domain: "MACRO", freshnessMs: 14 * DAY, revalidateSeconds: 12 * 60 * 60 },
   { seriesId: "M2SL", subject: "M2 Money Stock", frequency: "MONTHLY", unit: "Billions of U.S. Dollars", source: "FRED", domain: "MACRO", freshnessMs: LAGGED_MONTHLY_CADENCE_TOLERANCE, revalidateSeconds: 12 * 60 * 60 },
   { seriesId: "WTREGEN", subject: "U.S. Treasury General Account", frequency: "WEEKLY", unit: "Millions of U.S. Dollars", source: "FRED", domain: "MACRO", freshnessMs: 14 * DAY, revalidateSeconds: 12 * 60 * 60 },

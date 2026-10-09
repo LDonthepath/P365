@@ -23,6 +23,7 @@ import type { BriefingConfirmationResult } from "./briefing-confirmation";
 import type { MaterialMoveMonitorReadModel } from "./material-move-monitor";
 import type { RatesInflationReadModel, RatesSeriesPoint } from "./rates-inflation";
 import type { NetLiquidityPoint, NetLiquidityReadModel } from "./net-liquidity";
+import type { CentralBankBalanceSheetReadModel } from "./central-bank-balance-sheets";
 import type {
   CreditFinancialConditionsPoint,
   CreditFinancialConditionsReadModel,
@@ -211,6 +212,7 @@ export type FactualMarketBriefing = {
     items: CreditFinancialConditionsPoint[];
     reason: string | null;
   };
+  centralBankBalanceSheets: CentralBankBalanceSheetReadModel;
   netLiquidity: {
     evidenceStatus: BriefingEvidenceStatus;
     reasoningStatus: BriefingReasoningStatus;
@@ -272,6 +274,7 @@ type ComposeFactualMarketBriefingInput = {
   ratesPolicy?: RatesInflationReadModel;
   creditConditions?: CreditFinancialConditionsReadModel;
   netLiquidity?: NetLiquidityReadModel;
+  centralBankBalanceSheets?: CentralBankBalanceSheetReadModel;
 };
 
 function observationSeriesId(observation: Observation): string | null {
@@ -917,6 +920,7 @@ export function composeFactualMarketBriefing({
   ratesPolicy,
   creditConditions,
   netLiquidity,
+  centralBankBalanceSheets,
 }: ComposeFactualMarketBriefingInput): FactualMarketBriefing {
   const changes = Object.entries(baselines)
     .flatMap(([seriesId, baseline]) => {
@@ -960,6 +964,13 @@ export function composeFactualMarketBriefing({
     ratesPolicy: composeRatesPolicy(ratesPolicy),
     creditConditions: composeCreditConditions(creditConditions),
     netLiquidity: composeNetLiquidity(netLiquidity),
+    centralBankBalanceSheets: centralBankBalanceSheets ?? {
+      asOf,
+      items: [
+        { seriesKey: "ECBASSETSW", label: "Neraca Eurosystem (ECB)", displayUnit: "juta EUR", cadence: "WEEKLY", status: "MISSING", latest: null, previous: null, changeFromPrevious: null },
+        { seriesKey: "JPNASSETS", label: "Neraca Bank of Japan", displayUnit: "100 juta JPY", cadence: "MONTHLY", status: "MISSING", latest: null, previous: null, changeFromPrevious: null },
+      ],
+    },
     resolution: composeBriefingResolution({
       marketMoves,
       nextCatalyst,

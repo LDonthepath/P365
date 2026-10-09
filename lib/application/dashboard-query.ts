@@ -13,6 +13,7 @@ import { getIntradayEventMonitor, type IntradayEventMonitorResult } from "./intr
 import { buildBriefingEventRepricing } from "./briefing-event-repricing";
 import { buildBriefingConfirmation } from "./briefing-confirmation";
 import { buildNetLiquidityReadModel, type NetLiquidityReadModel } from "./net-liquidity";
+import { buildCentralBankBalanceSheetReadModel, type CentralBankBalanceSheetReadModel } from "./central-bank-balance-sheets";
 import { buildRatesInflationReadModel, type RatesInflationReadModel } from "./rates-inflation";
 import {
   buildCreditFinancialConditionsReadModel,
@@ -38,6 +39,7 @@ export type DashboardData = NormalizedDashboardData & {
   intradayEventMonitor: IntradayEventMonitorResult;
   durableHighImpactEvents: Event[];
   netLiquidity: NetLiquidityReadModel;
+  centralBankBalanceSheets: CentralBankBalanceSheetReadModel;
   ratesInflation: RatesInflationReadModel;
   creditFinancialConditions: CreditFinancialConditionsReadModel;
   mvpFactualContext: MacroCryptoGoldFactualContext;
@@ -216,6 +218,9 @@ export async function getDashboardData(): Promise<DashboardData> {
   const intradayEventMonitorPromise = getIntradayEventMonitor();
   const durableHighImpactEventBundlePromise = getDurableHighImpactEventBundle(asOf);
   const netLiquidityPromise = buildDashboardNetLiquidity(asOf);
+  const centralBankBalanceSheetsPromise = buildCentralBankBalanceSheetReadModel(
+    dashboardHistoricalObservationRepository, asOf,
+  );
   const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf);
   const creditFinancialConditionsPromise = buildCreditFinancialConditionsReadModel(
     dashboardHistoricalObservationRepository,
@@ -247,6 +252,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     intradayEventMonitor,
     durableHighImpactEventBundle,
     netLiquidity,
+    centralBankBalanceSheets,
     ratesInflation,
     creditFinancialConditions,
     mvpFactualContext,
@@ -263,6 +269,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     intradayEventMonitorPromise,
     durableHighImpactEventBundlePromise,
     netLiquidityPromise,
+    centralBankBalanceSheetsPromise,
     ratesInflationPromise,
     creditFinancialConditionsPromise,
     mvpFactualContextPromise,
@@ -303,6 +310,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     ratesPolicy: ratesInflation,
     creditConditions: creditFinancialConditions,
     netLiquidity,
+    centralBankBalanceSheets,
   });
 
   // Dashboard rendering is a read/presentation path. Durable canonical writes
@@ -314,6 +322,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     intradayEventMonitor: stripIntradayRepricingSource(intradayEventMonitor),
     durableHighImpactEvents: durableHighImpactEventBundle.display,
     netLiquidity,
+    centralBankBalanceSheets,
     ratesInflation,
     creditFinancialConditions,
     mvpFactualContext,
