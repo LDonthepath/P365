@@ -48,6 +48,11 @@ test("briefing explains Net Liquidity with weekly primary comparison and four-we
 
   assert.match(html, /USD LIQUIDITY/);
   assert.match(html, /Net Liquidity AS/);
+  assert.match(html, /03 · Apa yang berubah pada likuiditas dolar AS\\?/);
+  assert.match(html, /aria-label="Net Liquidity AS \\(proxy\\)"/);
+  assert.match(html, /data-slot="freshness"/);
+  assert.match(html, /Observasi gabungan sampai 01 Okt 2026/);
+  assert.match(html, /<details class="briefing-rate-details">/);
   assert.match(html, /6\.225,4 miliar USD/);
   assert.match(html, /Dibanding sekitar 1 minggu \+42,6 miliar USD/);
   assert.match(html, /Konteks sekitar 4 minggu: -18,4 miliar USD/);

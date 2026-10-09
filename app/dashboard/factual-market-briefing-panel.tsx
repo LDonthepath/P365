@@ -837,44 +837,52 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div id="briefing-usd-liquidity" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>03 · USD LIQUIDITY</span>
-        <span>{netLiquidity.evidenceStatus === "AVAILABLE" ? "PROXY FAKTUAL" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada likuiditas dolar AS?</h3>
-      <p className="lead-copy">
-        Net Liquidity memakai proxy aritmetika aset Federal Reserve dikurangi kas Treasury dan
-        reverse repo. Pembanding utama adalah sekitar satu minggu; sekitar empat minggu hanya
-        konteks tren. Proxy ini tidak mengukur arus dana langsung ke Bitcoin dan tidak menetapkan
-        arah Bitcoin, regime, atau hubungan sebab-akibat.
-      </p>
-
+    <div className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
+      <SectionHeader titleId="briefing-usd-liquidity"
+        title="03 · Apa yang berubah pada likuiditas dolar AS?"
+        summary={netLiquidity.latest
+          ? `Proxy Net Liquidity ${liquidityBillions(netLiquidity.latest.valueBillionsUsd)}; perubahan sekitar satu minggu ${liquidityChange(netLiquidity.change1wBillionsUsd)}.`
+          : "Komponen untuk menghitung proxy Net Liquidity belum lengkap."}
+      />
       {netLiquidity.evidenceStatus === "AVAILABLE" && netLiquidity.latest
-        ? <div className="plain-notice" style={{ marginTop: "1rem" }}>
-            <strong>Net Liquidity AS</strong>
-            <span>
-              {liquidityBillions(netLiquidity.latest.valueBillionsUsd)}
-              {" · "}Dibanding sekitar 1 minggu {liquidityChange(netLiquidity.change1wBillionsUsd)}
-              {netLiquidity.change1wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change1wFrom)}` : ""}
-            </span>
-            <span>Apa artinya: {netLiquidityExplanation(netLiquidity.change1wBillionsUsd)}</span>
-            <span>
-              Konteks sekitar 4 minggu: {liquidityChange(netLiquidity.change4wBillionsUsd)}
-              {netLiquidity.change4wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change4wFrom)}` : ""}
-            </span>
-            <span>
-              Komponen: aset Fed {liquidityBillions(netLiquidity.latest.fedAssetsBillionsUsd)}
-              {" · "}kas Treasury {liquidityBillions(netLiquidity.latest.treasuryCashBillionsUsd)}
-              {" · "}reverse repo {liquidityBillions(netLiquidity.latest.reverseRepoBillionsUsd)}
-            </span>
-            <span>
-              Observasi gabungan sampai {dateOnly(netLiquidity.latest.asOf)}
-              {" · "}kualitas komponen saat diperoleh: {RATES_POLICY_QUALITY_LABELS[netLiquidity.latest.quality] ?? "KUALITAS BELUM PASTI"}
-            </span>
-            {netLiquidity.reason
-              ? <span>{netLiquidity.reason}</span>
-              : null}
+        ? <div className="briefing-rates-content">
+            <div className="briefing-rates-grid">
+              <div className="briefing-rate-card">
+                <KpiCard label="Net Liquidity AS (proxy)"
+                  value={liquidityBillions(netLiquidity.latest.valueBillionsUsd)}
+                  valueDetail={`Observasi gabungan sampai ${dateOnly(netLiquidity.latest.asOf)}`}
+                  change={netLiquidity.change1wBillionsUsd === null ? null : {
+                    valueLabel: liquidityChange(netLiquidity.change1wBillionsUsd),
+                    direction: ratesPolicyDirection(netLiquidity.change1wBillionsUsd),
+                    comparisonLabel: netLiquidity.change1wFrom
+                      ? `Dibanding sekitar 1 minggu · ${dateOnly(netLiquidity.change1wFrom)}`
+                      : "Pembanding sekitar 1 minggu belum tersedia",
+                  }}
+                  badge={<StatusBadge
+                    label={RATES_POLICY_QUALITY_LABELS[netLiquidity.latest.quality] ?? "KUALITAS BELUM PASTI"}
+                    tone="neutral"
+                  />}
+                />
+              </div>
+            </div>
+            <p className="briefing-rate-meaning"><strong>Apa artinya:</strong> Proxy aritmetika aset Fed dikurangi kas Treasury dan reverse repo; bukan arus dana langsung ke Bitcoin.</p>
+            <div className="monitor-list" aria-label="Komponen proxy Net Liquidity">
+              <div><strong>Aset Federal Reserve</strong><span>aset Fed {liquidityBillions(netLiquidity.latest.fedAssetsBillionsUsd)}</span></div>
+              <div><strong>Kas Treasury</strong><span>kas Treasury {liquidityBillions(netLiquidity.latest.treasuryCashBillionsUsd)}</span></div>
+              <div><strong>Reverse repo</strong><span>reverse repo {liquidityBillions(netLiquidity.latest.reverseRepoBillionsUsd)}</span></div>
+            </div>
+            <p className="briefing-rate-meaning">Perubahan masing-masing komponen tidak tersedia dalam read model ini; perubahan 1 minggu dan 4 minggu hanya untuk proxy gabungan.</p>
+            <details className="briefing-rate-details">
+              <summary>Baca penjelasan dan pembanding</summary>
+              <p>Apa artinya: {netLiquidityExplanation(netLiquidity.change1wBillionsUsd)}</p>
+              <p>Dibanding sekitar 1 minggu {liquidityChange(netLiquidity.change1wBillionsUsd)}
+                {netLiquidity.change1wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change1wFrom)}` : ""}</p>
+              <p>Konteks sekitar 4 minggu: {liquidityChange(netLiquidity.change4wBillionsUsd)}
+                {netLiquidity.change4wFrom ? ` vs data sampai ${dateOnly(netLiquidity.change4wFrom)}` : ""}</p>
+              <p>kualitas komponen saat diperoleh: {RATES_POLICY_QUALITY_LABELS[netLiquidity.latest.quality] ?? "KUALITAS BELUM PASTI"}</p>
+              <p>Proxy ini tidak mengukur arus dana langsung ke Bitcoin dan tidak menetapkan arah Bitcoin atau hubungan sebab-akibat.</p>
+              {netLiquidity.reason ? <p>{netLiquidity.reason}</p> : null}
+            </details>
           </div>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
             <strong>Net Liquidity belum cukup</strong>
