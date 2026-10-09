@@ -1,10 +1,6 @@
 "use client";
 
 import type { FactualMarketBriefing } from "@/lib/application/factual-market-briefing";
-import {
-  formatMacroDisplayDelta,
-  formatMacroDisplayValue,
-} from "@/lib/presentation/macro-display";
 import { formatEventResultValue } from "@/lib/presentation/intraday-event-response";
 import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
 import {
@@ -168,6 +164,37 @@ function netLiquidityExplanation(value: number | null): string {
     return "Proxy Net Liquidity menurun. Secara aritmetika, aset Fed setelah dikurangi kas Treasury dan reverse repo lebih rendah dibanding pembanding sekitar satu minggu. Ini menunjukkan likuiditas dolar yang lebih kecil dalam proxy ini, bukan bukti dana langsung keluar dari Bitcoin dan bukan prediksi arah BTC.";
   }
   return "Proxy Net Liquidity tidak berubah terhadap pembanding sekitar satu minggu. Proxy ini tetap hanya menggambarkan aritmetika Fed assets dikurangi TGA dan reverse repo, bukan arus langsung ke Bitcoin.";
+}
+
+/** Formatter khusus tampilan Bagian 05; nilai, basis, dan unit domain tidak diubah. */
+function briefingMacroUnit(unit: string): string {
+  const normalized = unit.trim().toLowerCase();
+  if (normalized.includes("billion") && (normalized.includes("dollar") || normalized.includes("usd"))) return "miliar USD";
+  if (normalized.includes("million") && (normalized.includes("dollar") || normalized.includes("usd"))) return "juta USD";
+  if (normalized.includes("thousand") && (normalized.includes("dollar") || normalized.includes("usd"))) return "ribu USD";
+  if (normalized === "usd" || normalized === "dollars") return "USD";
+  return unit;
+}
+
+function briefingMacroValue(value: string, unit: string): string {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return value;
+  const normalized = unit.trim().toLowerCase();
+  if (normalized === "%" || normalized.includes("percent")) {
+    return `${formatBriefingNumber(numeric, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  }
+  const shownUnit = briefingMacroUnit(unit);
+  return `${formatBriefingNumber(numeric, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${shownUnit ? ` ${shownUnit}` : ""}`;
+}
+
+function briefingMacroDelta(value: number, unit: string): string {
+  const shown = formatBriefingNumber(value, {
+    minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "exceptZero",
+  });
+  const normalized = unit.trim().toLowerCase();
+  if (normalized === "%" || normalized.includes("percent")) return `${shown} poin persentase`;
+  const shownUnit = briefingMacroUnit(unit);
+  return `${shown}${shownUnit ? ` ${shownUnit}` : ""}`;
 }
 
 const MAX_MOVE_CATALYST_DETAILS = 3;
@@ -934,27 +961,38 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div id="briefing-macro-background" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>05 · LATAR MAKRO</span>
-        <span>{changed.evidenceStatus === "AVAILABLE" ? "DATA TERSEDIA" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah di konteks makro?</h3>
-      <p className="lead-copy">
-        Ringkasan baseline faktual Macro yang sudah tersedia. Bagian ini tidak mengubah
-        pergerakan bersama menjadi klaim transmisi atau penyebab.
-      </p>
-
+    <div className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
+      <SectionHeader titleId="briefing-macro-background"
+        title="05 · Apa yang berubah pada latar makro?"
+        summary={changed.evidenceStatus === "AVAILABLE"
+          ? `${changed.items.length} seri makro memiliki nilai observasi dan baseline faktual yang dapat dibandingkan.`
+          : "Nilai makro dengan baseline faktual belum cukup untuk ditampilkan."}
+      />
       {changed.evidenceStatus === "AVAILABLE"
-        ? <div className="monitor-list" style={{ marginTop: "1rem" }}>
-            {changed.items.map((item) => <div key={item.seriesId}>
-              <strong>{SERIES_LABELS[item.seriesId] ?? item.subject}</strong>
-              <span>
-                Saat ini {formatMacroDisplayValue(item.currentValue, item.unit)}
-                {" · "}sebelumnya {formatMacroDisplayValue(item.baselineValue, item.unit)}
-                {" · "}{formatMacroDisplayDelta(item.changeValue, item.unit)}
-              </span>
-            </div>)}
+        ? <div className="briefing-rates-content">
+            <div className="briefing-rates-grid">
+              {changed.items.map((item) =>
+                <article className="briefing-rate-card" key={item.seriesId}>
+                  <KpiCard
+                    label={SERIES_LABELS[item.seriesId] ?? item.subject}
+                    value={briefingMacroValue(item.currentValue, item.unit)}
+                    valueDetail={`Observasi ${dateOnly(item.currentObservedAt)}`}
+                    change={{
+                      valueLabel: briefingMacroDelta(item.changeValue, item.unit),
+                      direction: ratesPolicyDirection(item.changeValue),
+                      comparisonLabel: `baseline ${briefingMacroValue(item.baselineValue, item.unit)} · ${dateOnly(item.baselineObservedAt)}`,
+                    }}
+                  />
+                  <p className="briefing-rate-meaning"><strong>Apa artinya:</strong> Perubahan terhadap baseline faktual tersimpan; bukan kesimpulan sebab-akibat.</p>
+                  <details className="briefing-rate-details">
+                    <summary>Baca rincian observasi</summary>
+                    <p>Nilai terkini {briefingMacroValue(item.currentValue, item.unit)} pada {dateOnly(item.currentObservedAt)}.</p>
+                    <p>Nilai pembanding {briefingMacroValue(item.baselineValue, item.unit)} pada {dateOnly(item.baselineObservedAt)}.</p>
+                    <p>Perubahan {briefingMacroDelta(item.changeValue, item.unit)} · sumber {item.sourceId}.</p>
+                  </details>
+                </article>
+              )}
+            </div>
           </div>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
             <strong>Data makro belum cukup</strong>
