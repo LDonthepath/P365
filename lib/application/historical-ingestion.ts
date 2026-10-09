@@ -63,12 +63,12 @@ export type HistoricalIngestionAcquisition = {
 
 /** FRED write receipt: exact PostgREST insert count, not legacy accepted count. */
 export type FredPhysicalWriteMetrics = {
-  source: "POSTGREST_RETURNING_KEYS" | "NOT_EVALUATED";
+  source: "POSTGREST_RETURNING_KEYS" | "FRED_COORDINATED_RPC" | "NOT_EVALUATED";
   observations: { submitted: number; inserted: number | null; duplicates: number | null };
   evidence: { submitted: number; inserted: number | null; duplicates: number | null };
   /** A new physical insert is not necessarily a revision of an existing measurement. */
   revised: number | null;
-  revisionAssessment: "NOT_EVALUATED";
+  revisionAssessment: "COMPLETE" | "NOT_EVALUATED";
 };
 
 export type HistoricalIngestionProviderReport = {
@@ -363,7 +363,24 @@ async function executeProvider(
     const bothSupportReceipt = isFred
       && typeof repositories.evidence.saveManyWithReceipt === "function"
       && typeof repositories.observations.saveManyWithReceipt === "function";
-    if (metrics && bothSupportReceipt) {
+    const coordinatedFred = isFred && process.env.P365_FRED_TRANSACTIONAL_REVISIONS === "1";
+    if (metrics && coordinatedFred) {
+      if (typeof repositories.evidence.saveManyWithReceipt !== "function"
+        || typeof repositories.observations.saveManyWithFredRevisionReceipt !== "function") {
+        throw new Error("FRED coordinated revision writer unavailable");
+      }
+      // Evidence and Observation remain separate requests; neither the
+      // API nor these receipts imply atomic persistence across both families.
+      const ev = await repositories.evidence.saveManyWithReceipt(canonical.evidence);
+      metrics.evidence.inserted = ev.inserted;
+      metrics.evidence.duplicates = ev.duplicates;
+      const obs = await repositories.observations.saveManyWithFredRevisionReceipt(canonical.observations);
+      metrics.observations.inserted = obs.inserted;
+      metrics.observations.duplicates = obs.duplicates;
+      metrics.revised = obs.revised;
+      metrics.revisionAssessment = obs.revisionAssessment;
+      metrics.source = "FRED_COORDINATED_RPC";
+    } else if (metrics && bothSupportReceipt) {
       const ev = await repositories.evidence.saveManyWithReceipt!(canonical.evidence);
       metrics.evidence.inserted = ev.inserted;
       metrics.evidence.duplicates = ev.duplicates;
