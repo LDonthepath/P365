@@ -312,7 +312,7 @@ function MarketMoveBriefingItem({
   const screenedNews = screenMoveCatalystTitles(item.evidence?.unscheduledCandidates ?? [], item.asset);
   const unscheduledCandidates = screenedNews.items.slice(0, MAX_MOVE_CATALYST_DETAILS);
   const presentation = presentMarketMove(item);
-  const assetTitle = item.asset === "BTC" ? "Bitcoin (BTC)" : "Emas (XAU)";
+  const assetTitle = item.asset === "BTC" ? "Bitcoin (BTC)" : "Emas (berjangka COMEX)";
 
   return <div className="ux2-market-card">
     <KpiCard label={assetTitle}

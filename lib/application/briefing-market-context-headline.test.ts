@@ -99,7 +99,7 @@ test("briefing leads with market change and keeps MOVE horizons as diagnostics",
   assert.match(html, /1 pergerakan intraday tidak biasa terdeteksi pada pengamatan ini/);
   assert.equal((html.match(/Tidak ada pergerakan intraday material pada waktu pengamatan ini/g) ?? []).length, 0);
   assert.match(html, /Bitcoin \(BTC\)/);
-  assert.match(html, /Emas \(XAU\)/);
+  assert.match(html, /Emas \(berjangka COMEX\)/);
   assert.match(html, /per 1 BTC/);
   assert.match(html, /Perubahan 24 jam dan perubahan intraday diukur pada rentang yang berbeda\./);
   assert.match(html, /RINCIAN PERGERAKAN DAN BUKTI/);
