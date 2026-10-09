@@ -180,7 +180,8 @@ test("briefing explains factual rates and credit changes using release-frequency
   assert.doesNotMatch(html, /cadence/i);
   assert.match(html, /4 minggu:/);
   assert.match(html, /diperoleh/);
-  assert.match(html, /diperoleh 06 Okt 2026/);\n  assert.doesNotMatch(html, /FRESH|STALE|TERBARU SAAT DIPEROLEH|SUDAH LAMA SAAT DIPEROLEH/);
+  assert.match(html, /diperoleh 06 Okt 2026/);
+  assert.doesNotMatch(html, /FRESH|STALE|TERBARU SAAT DIPEROLEH|SUDAH LAMA SAAT DIPEROLEH/);
 
   const normalized = html.toLowerCase();
   assert.equal(normalized.includes("bullish"), false);
