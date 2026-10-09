@@ -166,7 +166,12 @@ test("briefing explains factual rates and credit changes using release-frequency
   const html = renderToStaticMarkup(
     createElement(FactualMarketBriefingPanel, { data: result }),
   );
-  assert.match(html, /CREDIT &amp; FINANCIAL CONDITIONS/);
+  assert.match(html, /04 · Apa yang berubah pada kredit dan volatilitas\?/);
+  assert.match(html, /aria-label="US High Yield OAS"/);
+  assert.match(html, /3,12%/);
+  assert.match(html, /Observasi 05 Okt 2026/);
+  assert.match(html, /TERBARU SAAT DIPEROLEH/);
+  assert.match(html, /<details class="briefing-rate-details">/);
   assert.match(html, /US High Yield OAS/);
   assert.match(html, /US Investment Grade OAS/);
   assert.match(html, /VIX/);
@@ -178,7 +183,8 @@ test("briefing explains factual rates and credit changes using release-frequency
   assert.match(html, /Real yield AS 10 tahun naik/);
   assert.match(html, /Reserve balances bertambah/);
   assert.doesNotMatch(html, /cadence/i);
-  assert.doesNotMatch(html, /4 minggu/);
+  const creditSection = html.slice(html.indexOf('id="briefing-credit-conditions"'), html.indexOf('id="briefing-macro-background"'));
+  assert.doesNotMatch(creditSection, /4 minggu/);
   assert.match(html, /diperoleh/);
   assert.match(html, /diperoleh 06 Okt 2026/);
 

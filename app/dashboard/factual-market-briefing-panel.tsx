@@ -646,11 +646,11 @@ type BriefingCreditConditionsPoint =
   FactualMarketBriefing["creditConditions"]["items"][number];
 
 function creditConditionsValue(point: BriefingCreditConditionsPoint): string {
-  if (point.valueUnit === "PERCENT") return `${point.value.toFixed(2)}%`;
-  return new Intl.NumberFormat("id-ID", {
+  const value = formatBriefingNumber(point.value, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(point.value);
+  });
+  return point.valueUnit === "PERCENT" ? `${value}%` : value;
 }
 
 function creditConditionsChangeValue(
@@ -712,20 +712,37 @@ function CreditConditionsBriefingItem({
 }: {
   point: BriefingCreditConditionsPoint;
 }) {
-  return <div className="plain-notice">
-    <strong>{CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}</strong>
-    <span>
-      {creditConditionsValue(point)}
-      {" · "}Dibanding {creditConditionsPreviousRelease(point)}
-    </span>
-    <span>Apa artinya: {creditConditionsExplanation(point)}</span>
-    <span>
-      Observasi {dateOnly(point.observedAt)}
-      {" · "}diperoleh {dateTime(point.retrievedAt)} WIB
-      {" · "}{RATES_POLICY_QUALITY_LABELS[point.freshness] ?? "FRESHNESS BELUM PASTI"}
-      {" · "}sumber {point.sourceId}
-    </span>
-  </div>;
+  const change = point.change1d;
+  const shortExplanation = point.seriesKey === "BAMLH0A0HYM2"
+    ? "Premi risiko obligasi korporasi AS berimbal hasil tinggi (HY OAS)."
+    : point.seriesKey === "BAMLC0A0CM"
+      ? "Premi risiko obligasi korporasi AS berperingkat investasi (IG OAS)."
+      : "VIX adalah ukuran volatilitas tersirat opsi saham AS.";
+  return <article className="briefing-rate-card">
+    <KpiCard
+      label={CREDIT_CONDITIONS_LABELS[point.seriesKey] ?? point.seriesKey}
+      value={creditConditionsValue(point)}
+      valueDetail={`Observasi ${dateOnly(point.observedAt)}`}
+      change={change
+        ? {
+            valueLabel: creditConditionsChangeValue(point, change),
+            direction: ratesPolicyDirection(change.value),
+            comparisonLabel: `observasi harian sebelumnya · ${dateOnly(change.predecessorObservedAt)}`,
+          }
+        : null}
+      badge={<StatusBadge
+        label={RATES_POLICY_QUALITY_LABELS[point.acquisitionQuality] ?? "KUALITAS BELUM PASTI"}
+        tone="neutral"
+      />}
+    />
+    <p className="briefing-rate-meaning"><strong>Apa artinya:</strong> {shortExplanation}</p>
+    <details className="briefing-rate-details">
+      <summary>Baca penjelasan</summary>
+      <p>Dibanding {creditConditionsPreviousRelease(point)}.</p>
+      <p>{creditConditionsExplanation(point)}</p>
+      <p>Data diperoleh {dateTime(point.retrievedAt)} WIB · sumber {point.sourceId}.</p>
+    </details>
+  </article>;
 }
 
 export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefing }) {
@@ -890,24 +907,20 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
           </div>}
     </div>
 
-    <div id="briefing-credit-conditions" className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
-      <div className="panel-label">
-        <span>04 · CREDIT & FINANCIAL CONDITIONS</span>
-        <span>{creditConditions.evidenceStatus === "AVAILABLE" ? "FAKTA TERSEDIA" : "DATA BELUM CUKUP"}</span>
-      </div>
-      <h3 style={{ margin: ".45rem 0 0" }}>Apa yang berubah pada kredit dan volatilitas?</h3>
-      <p className="lead-copy">
-        HY OAS, IG OAS, dan VIX dibandingkan dengan observasi harian sebelumnya yang qualified.
-        Setiap angka diterjemahkan ke arti finansialnya untuk pembaca non-teknis. Kurva Treasury
-        10Y−2Y tetap berada di Rates & Policy; tidak ada skor gabungan, label regime, klaim sebab,
-        atau kesimpulan arah Bitcoin/Gold.
-      </p>
-
+    <div className="briefing-analysis-section briefing-primary-step" style={{ marginTop: "1.25rem" }}>
+      <SectionHeader titleId="briefing-credit-conditions"
+        title="04 · Apa yang berubah pada kredit dan volatilitas?"
+        summary={creditConditions.evidenceStatus === "AVAILABLE"
+          ? `${creditConditions.items.length} indikator tersedia: premi risiko HY OAS, IG OAS, dan volatilitas VIX jika tercakup.`
+          : "Data premi risiko kredit dan volatilitas belum cukup untuk ringkasan ini."}
+      />
       {creditConditions.evidenceStatus === "AVAILABLE"
-        ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(245px,1fr))", gap: ".75rem", marginTop: "1rem" }}>
-            {creditConditions.items.map((point) =>
-              <CreditConditionsBriefingItem key={point.seriesKey} point={point} />
-            )}
+        ? <div className="briefing-rates-content">
+            <div className="briefing-rates-grid">
+              {creditConditions.items.map((point) =>
+                <CreditConditionsBriefingItem key={point.seriesKey} point={point} />
+              )}
+            </div>
             {creditConditions.reason
               ? <div className="plain-notice">
                   <strong>Cakupan sebagian</strong>
@@ -916,7 +929,7 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
               : null}
           </div>
         : <div className="plain-notice" style={{ marginTop: "1rem" }}>
-            <strong>Credit & Financial Conditions belum cukup</strong>
+            <strong>Kredit dan kondisi finansial belum cukup</strong>
             <span>{creditConditions.reason}</span>
           </div>}
     </div>
