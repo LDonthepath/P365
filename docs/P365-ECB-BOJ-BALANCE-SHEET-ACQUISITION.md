@@ -52,3 +52,23 @@
 Tests: FRED selector, FRED coordinated RPC allowlist parity, canonical semantic dimensions, normalized observations; lint and Next.js build via the PR GitHub Actions workflow. The production Vercel build-limit status is a platform limit, **not** a verified compilation result.
 
 Not in this checkpoint: automatic publication-time claims, aggregate monetary base, FX conversion, global-liquidity score, risk-on/off labels, predictive/trading logic, Gold/BTC causal inference, new recurring jobs.
+
+
+## Bagian 03 — UI dan scheduler yang sama dengan FRED lain
+
+**Baseline:** PR #270 berangkat dari GitHub `main@26fed1f535dc984b7c51d7fd762f9b07b4c27180` (merge PR #269), bukan deployment produksi Vercel `4590ccc...`. Perubahan tetap pada PR #270; tidak ada self-merge, pengaktifan cron baru, atau redeploy production.
+
+**Wiring UI:**
+`lib/application/central-bank-balance-sheets.ts` membaca history canonical `ECBASSETSW` dan `JPNASSETS` masing-masing dengan `sourceId=fred`, domain `MACRO`, cutoff `observedAt` dan `retrievedAt` yang sama dengan dashboard, unit dan cadence sesuai registry. Pembanding adalah periode observasi **berbeda** sebelumnya; tidak ada perubahan harian sintetis. Riwayat yang hilang/gagal dibaca ditampilkan eksplisit sebagai status tersendiri. Jalur `dashboard-query.ts → factual-market-briefing.ts → factual-market-briefing-panel.tsx` memasukkan kedua kartu pada **Bagian 03** di luar subbagian **Net Liquidity AS**. Angka tetap **juta EUR** dan **100 juta JPY**. Render tidak memanggil FRED dan tidak menulis database. Slot freshness KPI sengaja dibiarkan kosong mengikuti UX-002 Stage 4.
+
+**Kesetaraan scheduler:**
+Kedua seri menggunakan **satu registry** dan jalur akuisisi aktif yang **sama persis** dengan seri FRED lama. Selector `planFredProviderUpdatedObservations()` mendeteksi provider-native update untuk kedua series ID, dan full registry sweep harian/fallback menyertakan keduanya secara otomatis. Seleksi `JPNASSETS` melalui calendar release-aware yang lama juga mencakup release ID 266. Tidak dibuat job spesifik ECB/BoJ, tidak dijadwalkan berdasarkan jam terkaan, dan tidak ada perubahan cron.
+
+Verifikasi read-only Supabase 9 Okt 2026:
+- Job 24 `p365-fred-release-aware` aktif, `*/5 * * * *`, perintah `providers=fred&fredProviderUpdates=1` masih aktif dan hanya dipakai untuk FRED.
+- Job 4 `p365-fred` aktif, `31 * * * *`, sebenarnya konteks CoinGecko, bukan penulis FRED kedua.
+- Dalam 24 jam sebelum pemeriksaan: 250/250 job 24 dan 24/24 job 4 bertanda `succeeded`. Ini bukti cron dispatch, **bukan** konfirmasi ingesti ECB/BoJ.
+- `public.market_memory` belum mempunyai `OBSERVATION` kedua seri. Aktivasi data menunggu **redeploy kode terbaru** oleh owner setelah limit Vercel reset; jangan klaim `PRODUCTION-ACTIVE` sebelum baris history dan receipt terverifikasi.
+- Migrasi whitelist RPC sudah diterapkan pada database produksi pada checkpoint awal PR #270; tidak melakukan perubahan database lebih lanjut dalam pekerjaan UI ini.
+
+**Verifikasi sebelum merge:** GitHub Actions menjalankan tes selektor FRED dan backfill, parity allowlist, read-model ECB/BoJ (point-in-time, vintage/revision, sumber/unit native, error per seri), JSX Bagian 03 pada data tersedia/hilang, lint dan Next.js build. Verifikasi response HTTP **preview exact head** tetap bergantung Vercel build reset. Preview READY lama `ebb3036...` **tidak mencakup penambahan UI Bagian 03**, sehingga jangan menyebutnya bukti visual UI terbaru.
