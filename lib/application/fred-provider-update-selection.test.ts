@@ -109,9 +109,12 @@ test("outage, malformed, unsorted, incomplete, or unbounded update scans fail op
   }
   const unbounded = await planFredProviderUpdatedObservations({
     now, apiKey: KEY,
-    fetcher: (async () => payload(Array.from({ length: 1000 }, () => ({
+    fetcher: (async (input: RequestInfo | URL) => payload(Array.from({ length: 1000 }, () => ({
       id: "UNREGISTERED", last_updated: "2026-10-08 07:30:00-05",
-    })), { count: 21_000 })) as typeof fetch,
+    })), {
+      count: 21_000,
+      offset: Number(new URL(String(input)).searchParams.get("offset")),
+    })) as typeof fetch,
   });
   assert.equal(unbounded.mode, "FEED_UNAVAILABLE_DEFERRED");
   assert.deepEqual(unbounded.seriesIds, []);
