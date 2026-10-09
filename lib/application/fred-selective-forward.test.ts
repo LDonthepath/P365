@@ -112,6 +112,6 @@ test("application rejects FRED subset outside supported provider combinations", 
     { mode:"FORWARD", providers:["fred","gold"], fred:{ seriesIds:["DGS2"] } },
   ]) {
     await assert.rejects(runHistoricalIngestion(options as never),
-      /FRED subset requires FORWARD and fred provider/);
+      /FRED subset requires FORWARD with fred or single-provider FRED BACKFILL/);
   }
 });
