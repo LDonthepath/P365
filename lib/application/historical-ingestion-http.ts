@@ -49,6 +49,7 @@ export function createHistoricalIngestionHandler(
           ...(plan.failureReason ? { failureReason: plan.failureReason } : {}),
           ...(plan.upstreamHttpStatus !== undefined
             ? { upstreamHttpStatus: plan.upstreamHttpStatus } : {}),
+          ...(plan.timeoutRetries === 1 ? { timeoutRetries: 1 } : {}),
         }
       : undefined;
     return Response.json(plan ? {

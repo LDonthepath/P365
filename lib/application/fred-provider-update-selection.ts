@@ -9,7 +9,9 @@ const PROVIDER_UPDATE_LOOKBACK_MS = 15 * 60_000;
 const FRED_UPDATES_LIMIT = 1000;
 const FRED_UPDATES_MAX_PAGES = 3;
 const FRED_UPDATES_PAGE_TIMEOUT_MS = 1_500;
-const FRED_UPDATES_TOTAL_BUDGET_MS = 5_000;
+// Recover one timed-out page per scan, never retry 429 or bad responses.
+const FRED_UPDATES_TIMEOUT_RETRY_MS = 3_000;
+const FRED_UPDATES_TOTAL_BUDGET_MS = 6_500;
 // Keep metadata-outage full scans <= hourly old cadence, never every 5 minutes.
 const FAILURE_FALLBACK_UTC_MINUTE = 0;
 const FRED_UPDATES_URL = "https://api.stlouisfed.org/fred/series/updates";
@@ -20,7 +22,8 @@ type FredUpdatesPayload = { count?: unknown; offset?: unknown; limit?: unknown; 
 export type FredUpdateFeedFailureReason =
   | "MISSING_API_KEY" | "SCAN_TIME_BUDGET" | "UPSTREAM_HTTP_ERROR"
   | "INVALID_RESPONSE" | "INVALID_FEED_ROW" | "FUTURE_UPDATE_TIMESTAMP"
-  | "UNSORTED_FEED" | "WINDOW_NOT_COVERED" | "FETCH_OR_PARSE_ERROR";
+  | "UNSORTED_FEED" | "WINDOW_NOT_COVERED" | "FETCH_OR_PARSE_ERROR"
+  | "UPSTREAM_TIMEOUT" | "UPSTREAM_FETCH_ERROR" | "RESPONSE_PARSE_ERROR";
 
 export type FredProviderUpdatePlan = {
   seriesIds: MacroSeriesId[];
@@ -32,6 +35,8 @@ export type FredProviderUpdatePlan = {
   /** Only emitted when provider metadata could not be qualified; never includes URLs or keys. */
   failureReason?: FredUpdateFeedFailureReason;
   upstreamHttpStatus?: number;
+  /** Count of retry requests after confirmed timeout, at most one scan-wide. */
+  timeoutRetries?: 1;
 };
 
 function fullPlan(now: Date, mode: FredProviderUpdatePlan["mode"]): FredProviderUpdatePlan {
@@ -61,6 +66,7 @@ function unavailablePlan(
   now: Date,
   failureReason: FredUpdateFeedFailureReason,
   upstreamHttpStatus?: number,
+  timeoutRetries: 0 | 1 = 0,
 ): FredProviderUpdatePlan {
   const fallback = now.getUTCMinutes() === FAILURE_FALLBACK_UTC_MINUTE
     ? fullPlan(now, "FAIL_OPEN_FULL_SWEEP")
@@ -69,6 +75,7 @@ function unavailablePlan(
     ...fallback,
     failureReason,
     ...(upstreamHttpStatus === undefined ? {} : { upstreamHttpStatus }),
+    ...(timeoutRetries === 1 ? { timeoutRetries: 1 as const } : {}),
   };
 }
 
@@ -86,6 +93,10 @@ function parseFredTimestamp(value: unknown): number | null {
     : match[3].includes(":") ? match[3] : `${match[3].slice(0, 3)}:${match[3].slice(3)}`;
   const parsed = Date.parse(`${match[1]}T${match[2]}${offset}`);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -119,9 +130,11 @@ export async function planFredProviderUpdatedObservations(
   let previousUpdatedAt = Number.POSITIVE_INFINITY;
   let coveredWindow = false;
   const metadataDeadline = Date.now() + FRED_UPDATES_TOTAL_BUDGET_MS;
+  let timeoutRetries: 0 | 1 = 0;
+  const unavailable = (reason: FredUpdateFeedFailureReason, status?: number) =>
+    unavailablePlan(now, reason, status, timeoutRetries);
 
-  try {
-    for (let page = 0; page < FRED_UPDATES_MAX_PAGES; page++) {
+  for (let page = 0; page < FRED_UPDATES_MAX_PAGES; page++) {
       const url = new URL(FRED_UPDATES_URL);
       url.searchParams.set("api_key", apiKey);
       url.searchParams.set("file_type", "json");
@@ -133,15 +146,48 @@ export async function planFredProviderUpdatedObservations(
       url.searchParams.set("sort_order", "desc");
       url.searchParams.set("limit", String(FRED_UPDATES_LIMIT));
       url.searchParams.set("offset", String(offset));
-      const remainingMs = metadataDeadline - Date.now();
-      if (remainingMs <= 0) return unavailablePlan(now, "SCAN_TIME_BUDGET");
-      const response = await fetcher(url, {
-        cache: "no-store",
-        signal: AbortSignal.timeout(Math.min(FRED_UPDATES_PAGE_TIMEOUT_MS, remainingMs)),
-      });
-      if (!response.ok) return unavailablePlan(now, "UPSTREAM_HTTP_ERROR", response.status);
-      const raw: unknown = await response.json();
-      if (!isRecord(raw)) return unavailablePlan(now, "INVALID_RESPONSE");
+      let raw: unknown;
+      // One retry across all pages, within the same bounded metadata scan.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const remainingMs = metadataDeadline - Date.now();
+        if (remainingMs <= 0) return unavailable("SCAN_TIME_BUDGET");
+        const timeoutMs = Math.min(
+          attempt === 0 ? FRED_UPDATES_PAGE_TIMEOUT_MS : FRED_UPDATES_TIMEOUT_RETRY_MS,
+          remainingMs,
+        );
+        let response: Response;
+        try {
+          response = await fetcher(url, {
+            cache: "no-store",
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+        } catch (error) {
+          if (isTimeoutError(error)) {
+            if (attempt === 0 && timeoutRetries === 0 && metadataDeadline > Date.now()) {
+              timeoutRetries = 1;
+              continue;
+            }
+            return unavailable("UPSTREAM_TIMEOUT");
+          }
+          // Do not expose fetch errors: they might contain a URL with credentials.
+          return unavailable("UPSTREAM_FETCH_ERROR");
+        }
+        if (!response.ok) return unavailable("UPSTREAM_HTTP_ERROR", response.status);
+        try {
+          raw = await response.json();
+          break;
+        } catch (error) {
+          if (isTimeoutError(error)) {
+            if (attempt === 0 && timeoutRetries === 0 && metadataDeadline > Date.now()) {
+              timeoutRetries = 1;
+              continue;
+            }
+            return unavailable("UPSTREAM_TIMEOUT");
+          }
+          return unavailable("RESPONSE_PARSE_ERROR");
+        }
+      }
+      if (!isRecord(raw)) return unavailable("INVALID_RESPONSE");
       const payload = raw as FredUpdatesPayload;
       const total = payload.count;
       if (!Number.isSafeInteger(total) || (total as number) < 0
@@ -149,7 +195,7 @@ export async function planFredProviderUpdatedObservations(
         || payload.offset !== offset || payload.limit !== FRED_UPDATES_LIMIT
         || !Array.isArray(payload.seriess)
         || payload.seriess.length !== Math.min(FRED_UPDATES_LIMIT, (total as number) - offset)) {
-        return unavailablePlan(now, "INVALID_RESPONSE");
+        return unavailable("INVALID_RESPONSE");
       }
       if (expectedTotal === null) expectedTotal = total as number;
       const rows = payload.seriess as FredSeriesUpdate[];
@@ -160,12 +206,12 @@ export async function planFredProviderUpdatedObservations(
 
       let reachedBeforeWindow = false;
       for (const row of rows) {
-        if (!isRecord(row)) return unavailablePlan(now, "INVALID_FEED_ROW");
+        if (!isRecord(row)) return unavailable("INVALID_FEED_ROW");
         const updatedAt = parseFredTimestamp(row.last_updated);
         if (!updatedAt || typeof row.id !== "string")
-          return unavailablePlan(now, "INVALID_FEED_ROW");
-        if (updatedAt > now.getTime()) return unavailablePlan(now, "FUTURE_UPDATE_TIMESTAMP");
-        if (updatedAt > previousUpdatedAt) return unavailablePlan(now, "UNSORTED_FEED");
+          return unavailable("INVALID_FEED_ROW");
+        if (updatedAt > now.getTime()) return unavailable("FUTURE_UPDATE_TIMESTAMP");
+        if (updatedAt > previousUpdatedAt) return unavailable("UNSORTED_FEED");
         previousUpdatedAt = updatedAt;
         if (updatedAt < windowStart) reachedBeforeWindow = true;
         if (updatedAt >= windowStart && eligible.has(row.id)) selected.add(row.id as MacroSeriesId);
@@ -176,10 +222,10 @@ export async function planFredProviderUpdatedObservations(
         coveredWindow = true;
         break;
       }
-      if (rows.length !== FRED_UPDATES_LIMIT) return unavailablePlan(now, "INVALID_RESPONSE");
+      if (rows.length !== FRED_UPDATES_LIMIT) return unavailable("INVALID_RESPONSE");
     }
 
-    if (!coveredWindow) return unavailablePlan(now, "WINDOW_NOT_COVERED");
+    if (!coveredWindow) return unavailable("WINDOW_NOT_COVERED");
     const seriesIds = MACRO_SERIES_REGISTRY
       .map((series) => series.seriesId)
       .filter((seriesId) => selected.has(seriesId));
@@ -190,9 +236,6 @@ export async function planFredProviderUpdatedObservations(
       scanWindowStartUTC: new Date(windowStart).toISOString(),
       requestedSeriesCount: seriesIds.length,
       matchedRegisteredUpdates: seriesIds.length,
+      ...(timeoutRetries === 1 ? { timeoutRetries: 1 as const } : {}),
     };
-  } catch {
-    // The URL carries the API key; do not echo upstream exceptions.
-    return unavailablePlan(now, "FETCH_OR_PARSE_ERROR");
-  }
 }

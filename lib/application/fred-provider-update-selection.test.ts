@@ -179,7 +179,7 @@ test("metadata outage only falls back hourly, so 5-minute polling cannot amplify
     });
     assert.equal(plan.mode, hhmm === "13:00" ? "FAIL_OPEN_FULL_SWEEP" : "FEED_UNAVAILABLE_DEFERRED");
     assert.equal(plan.requestedSeriesCount, hhmm === "13:00" ? 33 : 0);
-    assert.equal(plan.failureReason, "FETCH_OR_PARSE_ERROR");
+    assert.equal(plan.failureReason, "UPSTREAM_FETCH_ERROR");
   }
   assert.equal(calls, 5);
 });
@@ -290,4 +290,118 @@ test("activation SQL switches only FRED job 24 and has an inverse guarded rollba
   assert.match(rollbackSql, /fredProviderUpdates=1/);
   assert.match(rollbackSql, /fredReleaseAware=1/);
   assert.match(rollbackSql, /RAISE EXCEPTION 'FRS-003 restore preflight failed/);
+});
+
+function fredTimeout(): Error {
+  const error = new Error("private upstream URL with api_key=test-only-fred-key");
+  error.name = "TimeoutError";
+  return error;
+}
+
+test("one transient metadata timeout is retried once and a qualified update is retained", async () => {
+  let calls = 0;
+  const plan = await planFredProviderUpdatedObservations({
+    now: at("2026-10-08T12:31:00Z"), apiKey: KEY,
+    fetcher: (async () => {
+      calls++;
+      if (calls === 1) throw fredTimeout();
+      return payload([
+        { id: "SOFR", last_updated: "2026-10-08 07:29:00-05" },
+        { id: "UNREGISTERED", last_updated: "2026-10-08 07:15:00-05" },
+      ]);
+    }) as typeof fetch,
+  });
+  assert.equal(calls, 2);
+  assert.equal(plan.mode, "PROVIDER_UPDATE_RECHECK");
+  assert.deepEqual(plan.seriesIds, ["SOFR"]);
+  assert.equal(plan.failureReason, undefined);
+  assert.equal(plan.timeoutRetries, 1);
+  assert.doesNotMatch(JSON.stringify(plan), /test-only-fred-key|api_key/);
+});
+
+test("persistent timeout retries at most once and fails safely without series selection", async () => {
+  let calls = 0;
+  const plan = await planFredProviderUpdatedObservations({
+    now: at("2026-10-08T12:31:00Z"), apiKey: KEY,
+    fetcher: (async () => { calls++; throw fredTimeout(); }) as typeof fetch,
+  });
+  assert.equal(calls, 2);
+  assert.equal(plan.mode, "FEED_UNAVAILABLE_DEFERRED");
+  assert.deepEqual(plan.seriesIds, []);
+  assert.equal(plan.failureReason, "UPSTREAM_TIMEOUT");
+  assert.equal(plan.timeoutRetries, 1);
+  assert.doesNotMatch(JSON.stringify(plan), /test-only-fred-key|api_key/);
+});
+
+test("later metadata-page timeout uses same one-retry budget without partial selection", async () => {
+  const offsets: number[] = [];
+  const first = Array.from({ length: 1000 }, () => ({
+    id: "UNREGISTERED", last_updated: "2026-10-08 07:30:00-05",
+  }));
+  let secondAttempts = 0;
+  const plan = await planFredProviderUpdatedObservations({
+    now: at("2026-10-08T12:31:00Z"), apiKey: KEY,
+    fetcher: (async (input: RequestInfo | URL) => {
+      const offset = Number(new URL(String(input)).searchParams.get("offset"));
+      offsets.push(offset);
+      if (offset === 0) return payload(first, { count: 1002, offset: 0 });
+      secondAttempts++;
+      if (secondAttempts === 1) throw fredTimeout();
+      return payload([
+        { id: "EFFR", last_updated: "2026-10-08 07:20:00-05" },
+        { id: "UNREGISTERED", last_updated: "2026-10-08 07:15:00-05" },
+      ], { count: 1002, offset: 1000 });
+    }) as typeof fetch,
+  });
+  assert.deepEqual(offsets, [0, 1000, 1000]);
+  assert.equal(plan.mode, "PROVIDER_UPDATE_RECHECK");
+  assert.deepEqual(plan.seriesIds, ["EFFR"]);
+  assert.equal(plan.timeoutRetries, 1);
+});
+
+test("FRED 429, non-timeout fetch failure and invalid JSON are not retried", async () => {
+  const cases: Array<{ respond: () => Promise<Response>; reason: string; status?: number }> = [
+    { respond: async () => new Response("rate-limited", { status: 429 }),
+      reason: "UPSTREAM_HTTP_ERROR", status: 429 },
+    { respond: async () => { throw Error("secret upstream api_key=test-only-fred-key"); },
+      reason: "UPSTREAM_FETCH_ERROR" },
+    { respond: async () => new Response("{", { status: 200 }),
+      reason: "RESPONSE_PARSE_ERROR" },
+  ];
+  for (const variant of cases) {
+    let calls = 0;
+    const plan = await planFredProviderUpdatedObservations({
+      now: at("2026-10-08T12:31:00Z"), apiKey: KEY,
+      fetcher: (async () => { calls++; return variant.respond(); }) as typeof fetch,
+    });
+    assert.equal(calls, 1, variant.reason);
+    assert.equal(plan.mode, "FEED_UNAVAILABLE_DEFERRED", variant.reason);
+    assert.equal(plan.failureReason, variant.reason);
+    assert.equal(plan.timeoutRetries, undefined);
+    assert.equal(plan.upstreamHttpStatus, variant.status);
+    assert.doesNotMatch(JSON.stringify(plan), /test-only-fred-key|api_key/);
+  }
+});
+
+test("authenticated cron reports a successful metadata retry without exposing credentials", async () => {
+  const handler = createHistoricalIngestionHandler(
+    async () => ({ mode: "FORWARD", status: "EMPTY", providers: [],
+      persistedObservations: 0, persistedEvidence: 0 }),
+    () => "cron-secret",
+    undefined,
+    async () => ({ seriesIds: ["SOFR"], mode: "PROVIDER_UPDATE_RECHECK",
+      scanAsOfUTC: "2026-10-08T12:31:00.000Z",
+      scanWindowStartUTC: "2026-10-08T12:16:00.000Z",
+      requestedSeriesCount: 1, matchedRegisteredUpdates: 1,
+      timeoutRetries: 1 }),
+  );
+  const response = await handler(new Request(
+    "https://p365.test/api/cron/historical-ingestion?mode=FORWARD&providers=fred&fredProviderUpdates=1",
+    { headers: { authorization: "Bearer cron-secret" } },
+  ));
+  assert.equal(response.status, 200);
+  const report = await response.json();
+  assert.equal(report.fredSchedule.mode, "PROVIDER_UPDATE_RECHECK");
+  assert.equal(report.fredSchedule.timeoutRetries, 1);
+  assert.doesNotMatch(JSON.stringify(report), /cron-secret|api_key|test-only-fred-key/);
 });
