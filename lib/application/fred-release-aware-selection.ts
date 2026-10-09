@@ -8,6 +8,7 @@ import { MACRO_SERIES_REGISTRY, type MacroSeriesId } from "../data/macro-registr
  */
 const FRED_RELEASE_BY_SLOW_SERIES = {
   FEDFUNDS: 18,
+  JPNASSETS: 266, // Bank of Japan Accounts; FRED publisher calendar, not arrival timestamp
   M2SL: 21,
   CPIAUCSL: 10,
   CPILFESL: 10,

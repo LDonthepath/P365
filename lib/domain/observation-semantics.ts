@@ -25,6 +25,8 @@ const SEMANTICS_BY_KEY: Readonly<Record<string, ObservationSemantics>> = {
   FEDFUNDS: { ontologyVersion: V, marketDomain: "POLICY", informationClass: "OBSERVATION", jurisdiction: "US", instrument: "POLICY_RATE" },
   EFFR: { ontologyVersion: V, marketDomain: "LIQUIDITY_FUNDING", informationClass: "PRICING", jurisdiction: "US", instrument: "MONEY_MARKET_RATE", tenor: "OVERNIGHT" },
   WALCL: { ontologyVersion: V, marketDomain: "POLICY", informationClass: "OBSERVATION", jurisdiction: "US", instrument: "BALANCE_SHEET" },
+  ECBASSETSW: { ontologyVersion: V, marketDomain: "POLICY", informationClass: "OBSERVATION", jurisdiction: "EURO_AREA", instrument: "BALANCE_SHEET" },
+  JPNASSETS: { ontologyVersion: V, marketDomain: "POLICY", informationClass: "OBSERVATION", jurisdiction: "JAPAN", instrument: "BALANCE_SHEET" },
   WRESBAL: { ontologyVersion: V, marketDomain: "LIQUIDITY_FUNDING", informationClass: "OBSERVATION", jurisdiction: "US", instrument: "BALANCE_SHEET" },
   M2SL: { ontologyVersion: V, marketDomain: "LIQUIDITY_FUNDING", informationClass: "OBSERVATION", jurisdiction: "US", instrument: "ECONOMIC_SERIES" },
   WTREGEN: { ontologyVersion: V, marketDomain: "FISCAL_SOVEREIGN", informationClass: "OBSERVATION", jurisdiction: "US", instrument: "CASH" },

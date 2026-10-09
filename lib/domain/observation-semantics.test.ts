@@ -44,6 +44,15 @@ function main(): void {
     );
   }
 
+  assertEqual(requireObservationSemantics("ECBASSETSW"), {
+    ontologyVersion: "v0.1", marketDomain: "POLICY", informationClass: "OBSERVATION",
+    jurisdiction: "EURO_AREA", instrument: "BALANCE_SHEET",
+  }, "ECB asset balance sheet dimensions");
+  assertEqual(requireObservationSemantics("JPNASSETS"), {
+    ontologyVersion: "v0.1", marketDomain: "POLICY", informationClass: "OBSERVATION",
+    jurisdiction: "JAPAN", instrument: "BALANCE_SHEET",
+  }, "BoJ asset balance sheet dimensions");
+
   const requiredMetricKeys = [
     "gold.futures.usd",
     "russell2000.index.usd",
