@@ -119,10 +119,17 @@ export type CanonicalWriteReceipt = {
   insertedCanonicalIds?: string[];
 };
 
+export type FredRevisionWriteReceipt = CanonicalWriteReceipt & {
+  revised: number | null;
+  revisionAssessment: "COMPLETE" | "NOT_EVALUATED";
+};
+
 export interface ObservationRepository {
   save(observation: Observation): Promise<void>;
   saveMany(observations: Observation[]): Promise<void>;
   saveManyWithReceipt?(observations: Observation[]): Promise<CanonicalWriteReceipt>;
+  /** Opt-in coordinated FRED-only writer; unavailable implementation fails closed. */
+  saveManyWithFredRevisionReceipt?(observations: Observation[]): Promise<FredRevisionWriteReceipt>;
   findById(id: string): Promise<Observation | null>;
   findManyByIds?(ids: string[]): Promise<Observation[]>;
 }
