@@ -58,8 +58,8 @@ VALUES (5,'Incident holds evidence');
 """)
 check(sql("SELECT count(*) FROM cron.job_run_details;").stdout.strip() == "9",
       "fixture has nine synthetic log rows")
-check(not sql("SELECT 1 FROM cron.job WHERE jobname='p365-log-retention';",False).returncode == 0,
-      "install does not assume a scheduler job table exists")
+check(sql("SELECT to_regclass('cron.job') IS NULL;").stdout.strip()=="t",
+      "installer does not add or modify a cron scheduler job")
 dry = receipt()
 check(dry["status"]=="DRY_RUN" and dry["deleted"]==0 and dry["eligibleSample"]==2,
       "dry run reports at most two removable records")
@@ -84,9 +84,14 @@ check(sql("SELECT count(*) FROM cron.job_run_details;").stdout.strip()=="7",
 second = receipt(execute=True)
 check(second["deleted"]==2, "second bounded batch removes two more eligible rows")
 third = receipt(execute=True)
-check(third["deleted"]==0, "remaining records are protected")
+check(third["deleted"]==1, "final eligible record is removed in a third batch")
+fourth = receipt(execute=True)
+check(fourth["deleted"]==0, "no further eligible rows remain")
 remaining = set(sql("SELECT runid FROM cron.job_run_details ORDER BY runid").stdout.splitlines())
-check(remaining == {"2","3","5","6","9"} if second["deleted"]==2 and first["deleted"]==2 else False,
-      "hold, recent rows, incomplete row and below-threshold failures survive")
-# Five eligible rows in the fixture: 1,4,7,8,9; the first two batches
-# delete four. One eligible row should remain; this assertion is separate.
+check(remaining == {"2","3","5","6"},
+      "held, recent, incomplete, and below-failure-threshold rows survive")
+check(sql("SELECT count(*) FROM p365_ops.cron_log_retention_holds").stdout.strip()=="1",
+      "incident hold list remains immutable during prune")
+check(sql("SELECT to_regclass('public.market_memory') IS NULL;").stdout.strip()=="t",
+      "synthetic test never required or touched Market Memory")
+print(f"PASS: {CHECKS} HOUSEKEEP-002B pg integration assertions")
