@@ -64,8 +64,8 @@ test("badge hanya kelengkapan bukti dari field existing", () => {
     ["EVIDENCE_INCOMPLETE","Bukti pendukung belum lengkap","partial"],
   ] as const) {
     const props=presentMarketMove(move({evidence:{evidenceCompleteness:completeness} as BriefingMarketMove["evidence"]}));
-    assert.equal(props.badge.label,label);
-    assert.equal(props.badge.tone,tone);
+    assert.equal(props.badge?.label,label);
+    assert.equal(props.badge?.tone,tone);
   }
 });
 test("ringkasan hanya memakai evidenceStatus dan materialMoveCount yang sudah ada", () => {
