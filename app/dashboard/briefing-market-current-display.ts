@@ -49,12 +49,14 @@ export function presentMarketMove(item: BriefingMarketMove) {
   });
 
   const completeness = item.evidence?.evidenceCompleteness;
-  const badge: { label: string; tone: EvidenceTone } =
+  const badge: { label: string; tone: EvidenceTone } | null =
     completeness === "EVIDENCE_COMPLETE"
       ? { label: "Bukti lengkap", tone: "complete" }
       : completeness === "EVIDENCE_INCOMPLETE"
         ? { label: "Bukti pendukung belum lengkap", tone: "partial" }
-        : { label: "Status bukti pendukung belum tersedia", tone: "neutral" };
+        : item.hasMaterialMove
+          ? { label: "Bukti pergerakan material belum tersedia untuk dinilai", tone: "neutral" }
+          : null;
 
   return { price, priceDetail: item.asset === "BTC" ? "per 1 BTC" : null, change, horizons, badge };
 }

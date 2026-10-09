@@ -22,7 +22,12 @@ test("perubahan Emas terhadap penutupan sebelumnya tidak diklaim 24 jam", () => 
   assert.equal(props.change?.comparisonLabel, "Perubahan terhadap penutupan sebelumnya");
   assert.doesNotMatch(JSON.stringify(props.change), /24 jam/);
   assert.equal(props.change?.direction, "up");
-  assert.equal(props.badge.label, "Status bukti pendukung belum tersedia");
+  assert.equal(props.badge, null);
+});
+test("bukti yang belum tersedia ditandai hanya saat ada pergerakan material", () => {
+  const props = presentMarketMove(move({ status: "MATERIAL_MOVE", hasMaterialMove: true }));
+  assert.equal(props.badge?.label, "Bukti pergerakan material belum tersedia untuk dinilai");
+  assert.equal(props.badge?.tone, "neutral");
 });
 test("basis 24 jam khusus ROLLING_24H, UNAVAILABLE tetap eksplisit", () => {
   const base = move({asset:"BTC",marketContext:{currentValue: 120500,changePercent:-2.55,changeBasis:"ROLLING_24H",valueUnit:"USD"}});

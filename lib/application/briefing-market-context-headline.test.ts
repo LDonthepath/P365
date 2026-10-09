@@ -77,6 +77,19 @@ const monitor: MaterialMoveMonitorReadModel = {
   ],
 };
 
+test("hari normal hanya menampilkan satu ringkasan tidak ada pergerakan material", () => {
+  const normal: MaterialMoveMonitorReadModel = {
+    ...monitor,
+    assets: monitor.assets.map((asset) => ({
+      ...asset, status: "BELOW_MATERIALITY_THRESHOLD", hasMaterialMove: false,
+    })),
+  };
+  const data = composeFactualMarketBriefing({ baselines: {}, observations: [], asOf: AS_OF, materialMoveMonitor: normal });
+  const html = renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data }));
+  assert.equal((html.match(/Tidak ada pergerakan intraday material pada waktu pengamatan ini\./g) ?? []).length, 1);
+  assert.doesNotMatch(html, /Status bukti pendukung belum tersedia/);
+});
+
 test("briefing leads with market change and keeps MOVE horizons as diagnostics", () => {
   const data = composeFactualMarketBriefing({
     baselines: {},
