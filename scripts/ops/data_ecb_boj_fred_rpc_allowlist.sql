@@ -2,6 +2,8 @@
 -- Adds only ECBASSETSW and JPNASSETS. Does not re-install tables, triggers,
 -- revision gate, cron jobs, or alter the canonical writer contract.
 -- Idempotent, fail-closed if the expected production function has drifted.
+-- PostgreSQL omits the default SECURITY INVOKER clause in pg_get_functiondef,
+-- so inspect pg_proc.prosecdef instead.
 BEGIN;
 DO $data_ecb_boj$
 DECLARE
@@ -12,7 +14,7 @@ BEGIN
   SELECT pg_get_functiondef('public.p365_insert_fred_observations_v1(jsonb)'::regprocedure)
     INTO STRICT writer_ddl;
   IF position('v_series NOT IN (' IN writer_ddl) = 0
-     OR position('SECURITY INVOKER' IN upper(writer_ddl)) = 0
+     OR (SELECT p.prosecdef FROM pg_catalog.pg_proc AS p WHERE p.oid = 'public.p365_insert_fred_observations_v1(jsonb)'::regprocedure) IS DISTINCT FROM false
   THEN
     RAISE EXCEPTION 'FRED writer contract has drifted; allowlist not modified';
   END IF;
@@ -43,7 +45,7 @@ BEGIN
   SELECT pg_get_functiondef('public.p365_insert_fred_observations_v1(jsonb)'::regprocedure)
     INTO STRICT writer_ddl;
   IF position('''WALCL'', ''ECBASSETSW'', ''JPNASSETS'', ''WRESBAL'', ''M2SL''' IN writer_ddl) = 0
-     OR position('SECURITY INVOKER' IN upper(writer_ddl)) = 0
+     OR (SELECT p.prosecdef FROM pg_catalog.pg_proc AS p WHERE p.oid = 'public.p365_insert_fred_observations_v1(jsonb)'::regprocedure) IS DISTINCT FROM false
   THEN
     RAISE EXCEPTION 'FRED writer verification failed; transaction rolled back';
   END IF;
