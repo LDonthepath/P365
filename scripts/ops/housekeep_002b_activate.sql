@@ -34,12 +34,12 @@ BEGIN
     'SELECT p365_ops.prune_cron_run_details_v1(%s,%s,%s,true);',
     v_success_days,v_failure_days,v_batch_limit
   );
-  PERFORM cron.schedule(v_jobname,'17 3 * * *',v_command);
+  PERFORM cron.schedule(v_jobname,'17 * * * *',v_command);
 END
 $activate$;
 COMMIT;
 
--- After explicit approval and execution, verify cron.job row exists exactly
+-- Hourly bounded batches drain existing backlog without a large DELETE.\n-- After explicit approval and execution, verify cron.job row exists exactly
 -- once, old scheduling unchanged, first natural batch <= 250 deletes, and
 -- p365_operational_metrics/Market Memory counts unaffected.
 -- Rollback before/after first run: unschedule ONLY this named job. Deleted
