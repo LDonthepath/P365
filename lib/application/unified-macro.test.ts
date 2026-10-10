@@ -117,3 +117,53 @@ test("DXY read error fails closed while qualified FRED yields remain visible", a
   assert.equal(result.unifiedMacro?.[0].latest, null);
   assert.equal(result.unifiedMacro?.filter((point) => point.latest).length, 2);
 });
+
+test("MVP DXY and Unified Macro agree when the newest raw row is an invalid instrument", async () => {
+  const memory = new InMemoryObservationRepository();
+  const invalidNewest = row("dxy.index.usd", "190", "2026-10-09T21:00:50Z", {
+    metadata: { metricId: "dxy.index.usd", symbol: "DTWEXBGS", unit: "Index", freshnessCalendar: "ICE_USDX" },
+  });
+  await memory.saveMany([...dxyRows, invalidNewest]);
+  const rates = await buildRatesInflationReadModel(memory, cutoff);
+  const context = await buildMacroCryptoGoldFactualContext(memory, cutoff, {
+    ratesInflation: rates, netLiquidity: { status: "UNAVAILABLE", reason: "Fixture" },
+  });
+  assert.equal(rates.unifiedMacro?.[0].latest?.value, 102.231);
+  assert.equal(context.macro.dxy.status, "AVAILABLE");
+  if (context.macro.dxy.status === "AVAILABLE") {
+    assert.equal(context.macro.dxy.latestValue, 102.231);
+    assert.equal(context.macro.dxy.latestObservedAt, dxyRows[0].observedAt);
+  }
+});
+
+test("MVP DXY does not resurrect an older same-time revision rejected by Unified Macro", async () => {
+  const memory = new InMemoryObservationRepository();
+  const rejectedCorrection = {
+    ...dxyRows[0], id: "dxy-rejected-correction", value: "190", quality: "PARTIAL" as const,
+    retrievedAt: "2026-10-09T22:00:00Z",
+  };
+  await memory.saveMany([...dxyRows, rejectedCorrection]);
+  const rates = await buildRatesInflationReadModel(memory, cutoff);
+  const context = await buildMacroCryptoGoldFactualContext(memory, cutoff, {
+    ratesInflation: rates, netLiquidity: { status: "UNAVAILABLE", reason: "Fixture" },
+  });
+  assert.equal(rates.unifiedMacro?.[0].latest?.value, 102.230);
+  assert.equal(context.macro.dxy.status, "AVAILABLE");
+  if (context.macro.dxy.status === "AVAILABLE") {
+    assert.equal(context.macro.dxy.latestValue, 102.230);
+    assert.equal(context.macro.dxy.latestObservedAt, dxyRows[1].observedAt);
+  }
+});
+
+test("MVP DXY remains unavailable if no same-source qualified historical quote exists", async () => {
+  const memory = new InMemoryObservationRepository();
+  await memory.saveMany([row("dxy.index.usd", "190", "2026-10-09T21:00:50Z", {
+    metadata: { metricId: "dxy.index.usd", symbol: "DTWEXBGS", unit: "Index" },
+  })]);
+  const rates = await buildRatesInflationReadModel(memory, cutoff);
+  const context = await buildMacroCryptoGoldFactualContext(memory, cutoff, {
+    ratesInflation: rates, netLiquidity: { status: "UNAVAILABLE", reason: "Fixture" },
+  });
+  assert.equal(rates.unifiedMacro?.[0].latest, null);
+  assert.equal(context.macro.dxy.status, "UNAVAILABLE");
+});
