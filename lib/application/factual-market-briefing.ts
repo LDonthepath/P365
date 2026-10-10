@@ -433,8 +433,10 @@ function composeNetLiquidity(
   };
 }
 
+const GOLD_MOVE_LABEL = "Emas berjangka COMEX (GC=F)";
+
 function assetNames(assets: Array<BriefingMarketMove["asset"]>): string {
-  return assets.map((asset) => asset === "BTC" ? "Bitcoin" : "Gold").join(" dan ");
+  return assets.map((asset) => asset === "BTC" ? "Bitcoin" : GOLD_MOVE_LABEL).join(" dan ");
 }
 
 function composeBriefingResolution(input: {
@@ -450,7 +452,7 @@ function composeBriefingResolution(input: {
       reasoningStatus: "NOT_EVALUATED",
       materialAssets: [],
       evidenceCompleteness: null,
-      statement: "Penilaian Bitcoin/Gold belum cukup untuk menyusun kesimpulan briefing pada batas waktu ini.",
+      statement: `Penilaian Bitcoin dan ${GOLD_MOVE_LABEL} belum cukup untuk menyusun kesimpulan briefing pada batas waktu ini.`,
       driverStatement: "Pendorong pasar belum dievaluasi karena penilaian pasar belum cukup.",
       watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
         ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat dan pembaruan penilaian pasar."
@@ -468,11 +470,11 @@ function composeBriefingResolution(input: {
       materialAssets: [],
       evidenceCompleteness: null,
       statement:
-        "Belum ada pergerakan material Bitcoin atau Gold pada batas waktu ini. Paket investigasi tidak diaktifkan karena tidak ada pemicu pergerakan yang memenuhi ambang historis.",
+        `Belum ada pergerakan material Bitcoin atau ${GOLD_MOVE_LABEL} pada batas waktu ini. Paket investigasi tidak diaktifkan karena tidak ada pemicu pergerakan yang memenuhi ambang historis.`,
       driverStatement: "Tidak ada pendorong yang dievaluasi karena belum ada pergerakan material yang menjadi target investigasi.",
       watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
         ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat dan apakah muncul pergerakan material baru."
-        : "Pantau perubahan Bitcoin/Gold berikutnya dan peristiwa berdampak tinggi saat tersedia pada data tersimpan.",
+        : `Pantau perubahan Bitcoin dan ${GOLD_MOVE_LABEL} berikutnya dan peristiwa berdampak tinggi saat tersedia pada data tersimpan.`,
     };
   }
 
