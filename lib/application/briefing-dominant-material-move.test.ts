@@ -45,7 +45,7 @@ test("Gold Futures can dominate BTC with accurate identity and negative return",
   const rendered = html(assets);
   assert.match(rendered, /Emas berjangka COMEX \(GC=F\) turun -3,00% pada horizon 60 menit/);
   assert.match(rendered, /Yahoo Finance · GC=F/);
-  assert.match(briefing(assets).resolution.statement, /Emas berjangka COMEX \\(GC=F\\) mengalami pergerakan material/);
+  assert.match(briefing(assets).resolution.statement, /Emas berjangka COMEX \(GC=F\) mengalami pergerakan material/);
   assert.doesNotMatch(rendered, /XAU\/USD Spot|Gold Spot/);
   assert.equal((rendered.match(/data-testid="dominant-material-move"/g) ?? []).length, 1);
 });
