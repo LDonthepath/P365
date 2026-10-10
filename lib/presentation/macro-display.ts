@@ -1,9 +1,9 @@
 function formatMoney(value: number): string {
   const magnitude = Math.abs(value);
   const sign = value < 0 ? "-" : "";
-  if (magnitude >= 1_000_000_000_000) return `${sign}${(magnitude / 1_000_000_000_000).toFixed(2)}T`;
-  if (magnitude >= 1_000_000_000) return `${sign}${(magnitude / 1_000_000_000).toFixed(2)}B`;
-  if (magnitude >= 1_000_000) return `${sign}${(magnitude / 1_000_000).toFixed(2)}M`;
+  if (magnitude >= 1_000_000_000_000) return `${sign}$${(magnitude / 1_000_000_000_000).toFixed(2)}T`;
+  if (magnitude >= 1_000_000_000) return `${sign}$${(magnitude / 1_000_000_000).toFixed(2)}B`;
+  if (magnitude >= 1_000_000) return `${sign}$${(magnitude / 1_000_000).toFixed(2)}M`;
   return sign + new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
