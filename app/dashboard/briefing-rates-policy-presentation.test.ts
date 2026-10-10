@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FactualMarketBriefingPanel } from "./factual-market-briefing-panel";
 import { composeFactualMarketBriefing } from "@/lib/application/factual-market-briefing";
-import type { RatesInflationReadModel, RatesSeriesPoint } from "@/lib/application/rates-inflation";
+import { buildUnifiedMacroPoint, type RatesInflationReadModel, type RatesSeriesPoint } from "@/lib/application/rates-inflation";
 
 (globalThis as typeof globalThis & { React?: typeof React }).React = React;
 
@@ -28,6 +28,10 @@ const point = (overrides: Partial<RatesSeriesPoint>): RatesSeriesPoint => ({
 test("Bagian 02 menampilkan empat kartu faktual, pembanding, tanggal, dan penjelasan lipat", () => {
   const ratesPolicy: RatesInflationReadModel = {
     status: "OK",
+    unifiedMacro: [buildUnifiedMacroPoint("DFII10", [
+      { id: "real-latest", domain: "MACRO", subject: "DFII10", sourceId: "fred", value: "2.92", observedAt: "2026-10-08", retrievedAt: "2026-10-09T10:00:00Z", quality: "FRESH", evidenceId: "e1", metadata: { seriesId: "DFII10", unit: "Percent", frequency: "DAILY" } },
+      { id: "real-previous", domain: "MACRO", subject: "DFII10", sourceId: "fred", value: "2.897", observedAt: "2026-10-07", retrievedAt: "2026-10-08T10:00:00Z", quality: "FRESH", evidenceId: "e2", metadata: { seriesId: "DFII10", unit: "Percent", frequency: "DAILY" } },
+    ], new Date("2026-10-09T10:00:00Z"))],
     sep: { status: "UNAVAILABLE", reason: "Tidak ada data SEP pada fixture." },
     series: [
       point({ seriesKey: "DFII10" }),
@@ -49,7 +53,7 @@ test("Bagian 02 menampilkan empat kartu faktual, pembanding, tanggal, dan penjel
   }
   assert.match(section, /02 · Apa konteks suku bunga dan kebijakan untuk Emas dan Bitcoin\?/);
   assert.match(section, /2,92%/);
-  assert.match(section, /\+2,3 bps/);
+  assert.match(section, /\+2,30 bps/);
   assert.match(section, /-0,61%/);
   assert.match(section, /2.948,1 miliar USD/);
   assert.match(section, /Observasi 08 Okt 2026/);

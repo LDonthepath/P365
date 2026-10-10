@@ -89,6 +89,11 @@ const creditConditions: CreditFinancialConditionsReadModel = {
 
 const ratesPolicy: RatesInflationReadModel = {
   status: "OK",
+  unifiedMacro: [{ seriesKey: "DFII10",
+    latest: { observationId: "real-latest", value: 2.92, observedAt: "2026-10-02", retrievedAt: "2026-10-05T20:00:00Z", quality: "FRESH", freshness: "FRESH", sourceId: "fred" },
+    previous: { observationId: "real-previous", value: 2.88, observedAt: "2026-10-01", retrievedAt: "2026-10-02T20:00:00Z" },
+    change: 4, reason: null,
+  }],
   sep: { status: "UNAVAILABLE", reason: "SEP tidak diperlukan untuk fixture ini." },
   series: [
     {
@@ -183,7 +188,9 @@ test("briefing explains factual rates and credit changes using release-frequency
   assert.match(html, /observasi mingguan sebelumnya · 23 Sep 2026/);
   assert.match(html, /Apa artinya:/);
   assert.match(html, /Spread high-yield melebar/);
-  assert.match(html, /Real yield AS 10 tahun naik/);
+  assert.match(html, /aria-label="Real yield AS 10 tahun"/);
+  assert.match(html, /\+4,00 bps/);
+  assert.match(html, /2,88% · 2026-10-01/);
   assert.match(html, /Reserve balances bertambah/);
   assert.doesNotMatch(html, /cadence/i);
   const creditSection = html.slice(html.indexOf('id="briefing-credit-conditions"'), html.indexOf('id="briefing-macro-background"'));

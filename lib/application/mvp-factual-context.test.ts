@@ -111,7 +111,7 @@ test("builds deterministic point-in-time 1D/1W/4W factual horizons", async () =>
 
   assert.equal(repository.queries.length, 12, "three series use one latest plus three bounded target queries each");
   assert.ok(repository.queries.every((query) => query.retrievedAtOnOrBefore === AS_OF), "one shared asOf cutoff is used across all horizons");
-  assert.ok(repository.queries.every((query) => query.order === "DESC" && query.limit === 1), "every history read is a bounded authoritative point query");
+  assert.ok(repository.queries.every((query) => query.order === "DESC" && query.limit === (query.identity.seriesKey === "dxy.index.usd" && query.observedAtOnOrBefore === AS_OF ? 100 : 1)), "only the shared DXY latest query reads bounded history; horizon queries stay limit=1");
   assert.ok(repository.queries.every((query) => query.observedAtOnOrAfter === undefined), "no four-week range scan is used");
 });
 

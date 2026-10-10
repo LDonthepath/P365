@@ -21,7 +21,7 @@ import type {
 import type { BriefingEventRepricingResult } from "./briefing-event-repricing";
 import type { BriefingConfirmationResult } from "./briefing-confirmation";
 import type { MaterialMoveMonitorReadModel } from "./material-move-monitor";
-import type { RatesInflationReadModel, RatesSeriesPoint } from "./rates-inflation";
+import type { RatesInflationReadModel, RatesSeriesPoint, UnifiedMacroPoint } from "./rates-inflation";
 import type { NetLiquidityPoint, NetLiquidityReadModel } from "./net-liquidity";
 import type { CentralBankBalanceSheetReadModel } from "./central-bank-balance-sheets";
 import type {
@@ -202,6 +202,7 @@ export type FactualMarketBriefing = {
   ratesPolicy: {
     evidenceStatus: BriefingEvidenceStatus;
     reasoningStatus: BriefingReasoningStatus;
+    unifiedMacro: UnifiedMacroPoint[];
     gold: RatesSeriesPoint[];
     bitcoin: RatesSeriesPoint[];
     reason: string | null;
@@ -328,7 +329,7 @@ function composeMarketMoves(
 }
 
 const BRIEFING_RATES_POLICY_KEYS = {
-  gold: ["DFII10", "DTWEXBGS"],
+  gold: ["DTWEXBGS"],
   bitcoin: ["WRESBAL", "SOFR_IORB_SPREAD"],
 } as const;
 
@@ -337,8 +338,9 @@ function composeRatesPolicy(
 ): FactualMarketBriefing["ratesPolicy"] {
   if (!result || result.status !== "OK") {
     return {
-      evidenceStatus: "INSUFFICIENT",
+      evidenceStatus: result?.unifiedMacro?.some((point) => point.latest) ? "AVAILABLE" : "INSUFFICIENT",
       reasoningStatus: "NOT_EVALUATED",
+      unifiedMacro: result?.unifiedMacro ?? [],
       gold: [],
       bitcoin: [],
       reason: result?.status === "UNAVAILABLE"
@@ -360,8 +362,9 @@ function composeRatesPolicy(
   const available = gold.length + bitcoin.length;
 
   return {
-    evidenceStatus: available > 0 ? "AVAILABLE" : "INSUFFICIENT",
+    evidenceStatus: available > 0 || result.unifiedMacro?.some((point) => point.latest) ? "AVAILABLE" : "INSUFFICIENT",
     reasoningStatus: "NOT_EVALUATED",
+    unifiedMacro: result.unifiedMacro ?? [],
     gold,
     bitcoin,
     reason: available === expected

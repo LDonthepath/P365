@@ -1156,7 +1156,7 @@ test("MACRO-RATES-001C puts only Gold and Bitcoin factual Rates & Policy context
 
   assert.equal(result.ratesPolicy.evidenceStatus, "AVAILABLE");
   assert.equal(result.ratesPolicy.reasoningStatus, "NOT_EVALUATED");
-  assert.deepEqual(result.ratesPolicy.gold.map((item) => item.seriesKey), ["DFII10", "DTWEXBGS"]);
+  assert.deepEqual(result.ratesPolicy.gold.map((item) => item.seriesKey), ["DTWEXBGS"]);
   assert.deepEqual(result.ratesPolicy.bitcoin.map((item) => item.seriesKey), ["WRESBAL", "SOFR_IORB_SPREAD"]);
   assert.equal(result.ratesPolicy.gold.some((item) => item.seriesKey === "DGS2"), false);
   assert.equal(result.ratesPolicy.reason, null);
