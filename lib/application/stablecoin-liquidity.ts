@@ -8,6 +8,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export type StablecoinLiquidityRecency = "CURRENT" | "STALE" | "UNKNOWN";
 
 export type StablecoinLiquidityPoint = {
+  sourceId?: string;
   value: number;
   observedAt: string;
   retrievedAt: string;
@@ -36,6 +37,7 @@ function numericPoint(observation: Observation | null): StablecoinLiquidityPoint
   if (!Number.isFinite(value)) return null;
   return {
     value,
+    sourceId: observation.sourceId,
     observedAt: observation.observedAt,
     retrievedAt: observation.retrievedAt,
     acquisitionQuality: observation.quality,

@@ -2150,3 +2150,19 @@
     min-width: 0;
   }
 }
+
+.overviewLayout :global(.move-investigation-summary){
+  min-width:0;
+  padding:14px;
+  margin:12px 0;
+  border:1px solid rgba(201,170,105,.22);
+  border-radius:10px;
+  line-height:1.65;
+  overflow-wrap:anywhere;
+}
+.overviewLayout :global(.move-investigation-summary h3){font-size:14px;margin:0 0 8px;}
+.overviewLayout :global(.move-investigation-summary h4){font-size:12px;margin:12px 0 5px;}
+.overviewLayout :global(.move-investigation-summary p),
+.overviewLayout :global(.move-investigation-summary li){font-size:12px;margin:6px 0;}
+.overviewLayout :global(.move-investigation-summary ul){padding-left:18px;margin:0;}
+.overviewLayout :global(.move-investigation-window){color:var(--text-muted);}

@@ -1247,6 +1247,42 @@ intentionally filters test-file diagnostics during its build type check. These
 unrelated baseline failures are not repaired by ALT-002. Exact-head preview and
 independent acceptance review are recorded in the PR, not claimed as production.
 
+### ALT-003 — Factual material move investigation summary (10 Oct 2026 WIB)
+
+Status: **IMPLEMENTED / INDEPENDENT REVIEW & OWNER MERGE PENDING**. Base current
+GitHub main is `54bb45027eaa369d0a43556a6f0963268fa0adbf` (10 Oct 2026
+10:04:43 WIB), with zero open PRs at preflight. The existing MOVE panel now shows
+up to three deterministic contemporaneous facts, separate daily/weekly background,
+and explicit evidence gaps outside diagnostic details. Gold remains Yahoo COMEX
+Gold Futures **Emas berjangka COMEX (GC=F)**; #277 remains separate.
+
+The monitor projects existing bundle endpoints, provenance, spot-flow intervals,
+background values and coverage reasons without new reads or calculations. Selection
+ranks material horizons by absolute detector return, longer horizon and lexical
+lineage; within a horizon it prefers DXY, ETH, other companions, then the target.
+At most two fingerprint facts reserve a slot for the latest aligned Binance 5m
+interval; remaining slots use fingerprint, scheduled candidates, then dated news.
+Input ordering cannot change the result. Every interval retains its own timestamp,
+source and coverage. Canonical retrieval and observation cutoff, immutable endpoint
+quality and existing ±120s alignment apply. Daily ETF/stablecoin and weekly CFTC
+never become synchronous evidence. News/event proximity never establishes cause.
+Repository read errors, missing feed windows, qualified zero-result and query-limit
+coverage remain distinct. `causalAttribution=NOT_EVALUATED` is unchanged.
+
+No detector/calibration change, extra provider/query, write/history mutation, cron,
+production activation, reasoning model, trading signal or Briefing 01–05 edits.
+No-material presentation returns before inspecting evidence; monitor integration
+asserts unchanged investigation read counters for unavailable/insufficient targets.
+Existing details and cross-asset diagnostic handlers remain available.
+
+Validation: final focused detector → monitor → presentation/UI suite 41/41 pass
+(including 11 new investigation tests); relevant same-command regression base/head
+both 84 pass and the same 7 existing failures. Full TypeScript base/head both report
+the same two missing `query.limit` errors in historical-ingestion.test.ts. Lint and
+Next.js build results are recorded in the PR. Full visual mobile verification remains
+unproven: local Chromium download failed and the cloud browser cannot access the
+local fixture. Do not treat static render assertions as visual mobile proof.
+
 ## 22. Final audit conclusion
 
 P365 should **not** restart its architecture and should **not** add a reasoning engine yet.

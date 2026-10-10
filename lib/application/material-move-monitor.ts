@@ -42,6 +42,8 @@ export type MaterialMoveSynchronousFingerprintSeries = {
   sourceId: string;
   state: "AVAILABLE_SYNCHRONOUS" | "INSUFFICIENT_DATA" | "UNKNOWN";
   signedPercentChange: number | null;
+  start?: import("./move-evidence-bundle").MoveEvidencePoint;
+  end?: import("./move-evidence-bundle").MoveEvidencePoint;
 };
 
 export type MaterialMoveSynchronousFingerprintHorizon = {
@@ -50,7 +52,18 @@ export type MaterialMoveSynchronousFingerprintHorizon = {
   series: MaterialMoveSynchronousFingerprintSeries[];
 };
 
+export type MaterialMoveBackgroundObservation = {
+  seriesKey: string;
+  sourceId: string;
+  value: number;
+  unit: "USD" | "CONTRACTS";
+  observedAt: string;
+  retrievedAt: string;
+  quality: Observation["quality"];
+};
+
 export type MaterialMoveEvidenceSummary = {
+  asOf?: string;
   evidenceCompleteness: "EVIDENCE_COMPLETE" | "EVIDENCE_INCOMPLETE";
   investigationWindow: {
     startAt: string;
@@ -58,6 +71,7 @@ export type MaterialMoveEvidenceSummary = {
   };
   synchronousCoverage: "COMPLETE" | "PARTIAL" | "EMPTY";
   synchronousFingerprint: MaterialMoveSynchronousFingerprintHorizon[];
+  scheduledCatalystReason?: string;
   scheduledCatalystCount: number;
   scheduledCatalystCoverage:
     | "COMPLETE"
@@ -74,6 +88,7 @@ export type MaterialMoveEvidenceSummary = {
     | "retrievedAt"
     | "sourceId"
   >>;
+  unscheduledCatalystReason?: string;
   unscheduledCandidateCount: number;
   unscheduledCatalystCoverage:
     | "COMPLETE"
@@ -98,6 +113,7 @@ export type MaterialMoveEvidenceSummary = {
       kind: MoveEvidenceBundle["slowBackground"]["items"][number]["kind"];
       state: MoveEvidenceBundle["slowBackground"]["items"][number]["state"];
       reason: string | null;
+      observations?: MaterialMoveBackgroundObservation[];
     }>;
   };
   cryptoMarketStructure: {
@@ -120,6 +136,10 @@ export type MaterialMoveEvidenceSummary = {
   };
   confirmation?: MaterialMoveConfirmationResult | null;
   btcSpotFlow: {
+    state?: import("./move-evidence-bundle").MoveBtcSpotFlowEvidence["state"];
+    startAt?: string;
+    endAt?: string;
+    windows?: import("./move-evidence-bundle").MoveBtcSpotFlowWindowEvidence[];
     coverage:
       | "COMPLETE"
       | "PARTIAL"
@@ -210,6 +230,27 @@ function compactHorizons(
   }));
 }
 
+/** Project existing canonical points only; never read history or derive a new metric. */
+function backgroundObservations(item: MoveEvidenceBundle["slowBackground"]["items"][number]): MaterialMoveBackgroundObservation[] {
+  if (item.state !== "AVAILABLE_BACKGROUND" || !item.data) return [];
+  if (item.kind === "USD_STABLECOIN_LIQUIDITY") {
+    const point = item.data.latest;
+    return point?.sourceId ? [{ seriesKey: item.data.seriesKey, sourceId: point.sourceId,
+      value: point.value, unit: "USD", observedAt: point.observedAt,
+      retrievedAt: point.retrievedAt, quality: point.acquisitionQuality }] : [];
+  }
+  if (item.kind === "BTC_ETF_NET_FLOW") {
+    const point = item.data.latest;
+    return point ? [{ seriesKey: item.data.seriesKey, sourceId: "sosovalue-etf-flow",
+      value: point.value, unit: "USD", observedAt: point.observedAt,
+      retrievedAt: point.retrievedAt, quality: point.quality }] : [];
+  }
+  if (item.data.status !== "AVAILABLE") return [];
+  return [item.data.managedMoney.long, item.data.managedMoney.short].map((point) => ({
+    ...point, sourceId: "cftc-gold-cot", unit: "CONTRACTS" as const,
+  }));
+}
+
 async function evidenceSummary(input: {
   assessment: Awaited<ReturnType<typeof detectContinuousMarketMove>>;
   observations: HistoricalObservationRepository;
@@ -254,6 +295,7 @@ async function evidenceSummary(input: {
     : null;
 
   return {
+    asOf: result.bundle.asOf,
     evidenceCompleteness: result.bundle.evidenceCompleteness,
     confirmation,
     investigationWindow: {
@@ -269,8 +311,11 @@ async function evidenceSummary(input: {
         sourceId: series.sourceId,
         state: series.state,
         signedPercentChange: series.signedPercentChange ?? null,
+        start: series.start,
+        end: series.end,
       })),
     })),
+    scheduledCatalystReason: result.bundle.scheduledCatalysts.reason,
     scheduledCatalystCount: result.bundle.scheduledCatalysts.events.length,
     scheduledCatalystCoverage: result.bundle.scheduledCatalysts.coverage,
     scheduledCatalysts: result.bundle.scheduledCatalysts.events.map((event) => ({
@@ -283,6 +328,7 @@ async function evidenceSummary(input: {
       retrievedAt: event.retrievedAt,
       sourceId: event.sourceId,
     })),
+    unscheduledCatalystReason: result.bundle.unscheduledCatalysts.reason,
     unscheduledCandidateCount: result.bundle.unscheduledCatalysts.candidates.length,
     unscheduledCatalystCoverage: result.bundle.unscheduledCatalysts.coverage,
     unscheduledCandidates: result.bundle.unscheduledCatalysts.candidates.map((candidate) => ({
@@ -301,6 +347,7 @@ async function evidenceSummary(input: {
         kind: item.kind,
         state: item.state,
         reason: item.reason ?? null,
+        observations: backgroundObservations(item),
       })),
     },
     cryptoMarketStructure: result.bundle.cryptoMarketStructure
@@ -321,6 +368,10 @@ async function evidenceSummary(input: {
     },
     btcSpotFlow: spotFlow && spotFlowTotals
       ? {
+          state: spotFlow.state,
+          startAt: spotFlow.startAt,
+          endAt: spotFlow.endAt,
+          windows: spotFlow.windows,
           coverage: spotFlow.coverage,
           venue: spotFlow.venue,
           pair: spotFlow.pair,
