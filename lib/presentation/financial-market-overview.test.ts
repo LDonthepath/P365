@@ -165,7 +165,16 @@ test("Pasar board is wired once, collapses details and does not request a new pr
   const jsx = readFileSync("app/dashboard/financial-market-overview-panel.tsx", "utf8");
   assert.equal((view.match(/<FinancialMarketOverviewPanel data=/g) ?? []).length, 1);
   assert.match(view, /activeMenu === "heatmap"/);
-  assert.match(jsx, /<details className=/);
-  assert.match(jsx, /causalitas tidak dievaluasi/i);
+  assert.match(jsx, /<details className=\{styles\.details\}>/);
+  assert.match(jsx, /<summary>Asal dan waktu<\/summary>/);
+  // The displayed warning is Indonesian: "kausalitas", not the stale "causalitas".
+  // Keep the complete factual/causality disclaimer rather than weakening its contract.
+  assert.match(jsx, /Hubungan hanya deskriptif; kausalitas tidak dievaluasi\./i);
+  assert.match(jsx, /Hanya pasangan intraday yang sudah lolos alignment timestamp/);
+  assert.match(jsx, /Yield harian dan credit spread tidak digabung ke perbandingan ini/);
+  assert.match(jsx, /data\.pairs\.length/);
+  assert.match(jsx, /data\.comparisonNote/);
+  assert.equal(build([], [], move(1)).causalAttribution, "NOT_EVALUATED");
+  assert.equal(build([], [], move(1, 121000)).causalAttribution, "NOT_EVALUATED");
   assert.doesNotMatch(jsx, /fetch\(|createClient|insert\(/);
 });

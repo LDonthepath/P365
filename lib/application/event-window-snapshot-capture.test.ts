@@ -1,3 +1,4 @@
+import { mock } from "node:test";
 import type { EconomicEventResult } from "../domain/event-result";
 import { selectActiveMarketSnapshot } from "../domain/snapshot-supersession";
 import type { Event, Observation } from "../domain/types";
@@ -192,6 +193,23 @@ async function fixture(
       snapshotHistory: snapshots,
     },
   };
+}
+
+// Historical repair uses wall-clock now; pin it after the synthetic 15 Oct
+// release so the test verifies replay, not future-knowledge rejection.
+async function repairAtFixtureTime(
+  eventIdentityKey: string,
+  dependencies: Parameters<typeof runEventWindowSnapshotRepair>[1],
+): Promise<Awaited<ReturnType<typeof runEventWindowSnapshotRepair>>> {
+  mock.timers.enable({
+    apis: ["Date"],
+    now: new Date("2026-10-15T15:30:00.000Z"),
+  });
+  try {
+    return await runEventWindowSnapshotRepair(eventIdentityKey, dependencies);
+  } finally {
+    mock.timers.reset();
+  }
 }
 
 async function main(): Promise<void> {
@@ -411,7 +429,7 @@ async function main(): Promise<void> {
     "normal cron does not widen the 90-minute reconstruction window",
   );
 
-  const repairByIdentity = await runEventWindowSnapshotRepair(
+  const repairByIdentity = await repairAtFixtureTime(
     historicalRepair.event.identity!.key,
     { repositories: historicalRepair.repositories },
   );
@@ -427,7 +445,7 @@ async function main(): Promise<void> {
   });
   assertEqual(historicalRows.length, 4, "historical repair retains predecessors and appends two corrections");
 
-  const repairRetry = await runEventWindowSnapshotRepair(
+  const repairRetry = await repairAtFixtureTime(
     historicalRepair.event.identity!.key,
     { repositories: historicalRepair.repositories },
   );
