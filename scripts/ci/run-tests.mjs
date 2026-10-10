@@ -12,16 +12,7 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-// Diagnostic-only comparison: run this exact runner against a separate
-// checked-out base commit. The default always scans the current repository.
-const rootOption = process.argv.find((arg) => arg.startsWith("--root="));
-const root = rootOption ? resolve(projectRoot, rootOption.slice("--root=".length)) : projectRoot;
-if (!rootsAreValid()) process.exitCode = 1;
-
-function rootsAreValid() {
-  return existsSync(join(root, "package.json"));
-}
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const roots = ["app", "lib", "tests"];
 const tests = [];
 
