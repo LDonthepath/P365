@@ -27,6 +27,8 @@ type MaterialMoveAsset = "BTC" | "GOLD";
 
 export type MaterialMoveHorizonReadModel = {
   horizonMinutes: number;
+  targetStartObservedAt?: string;
+  targetEndObservedAt?: string;
   status: ContinuousMoveHorizonStatus;
   signedPercentChange: number | null;
   materialityThresholdPercent: number | null;
@@ -142,6 +144,7 @@ export type MaterialMoveAssetReadModel = {
   seriesKey: ContinuousMoveCalibrationSeriesKey;
   sourceId: string;
   observedAt: string | null;
+  observationQuality?: Observation["quality"];
   marketContext: MaterialMoveMarketContext | null;
   status: ContinuousMoveAssessmentStatus | "UNAVAILABLE";
   hasMaterialMove: boolean;
@@ -197,6 +200,8 @@ function compactHorizons(
 ): MaterialMoveHorizonReadModel[] {
   return horizons.map((item) => ({
     horizonMinutes: Math.round(item.horizonMs / 60_000),
+    targetStartObservedAt: item.targetStartObservedAt,
+    targetEndObservedAt: item.targetEndObservedAt,
     status: item.status,
     signedPercentChange: item.signedPercentChange ?? null,
     materialityThresholdPercent: item.materialityThresholdPercent ?? null,
@@ -378,6 +383,7 @@ async function buildAssetReadModel(input: {
       seriesKey: input.seriesKey,
       sourceId: input.sourceId,
       observedAt: assessment.targetEndObservedAt,
+      observationQuality: target.quality,
       marketContext: materialMoveMarketContextFromObservation(target),
       status: assessment.status,
       hasMaterialMove: assessment.hasMaterialMove,

@@ -166,6 +166,7 @@ export type BriefingMarketMove = {
   seriesKey: MaterialMoveMonitorReadModel["assets"][number]["seriesKey"];
   sourceId: string;
   observedAt: string | null;
+  observationQuality?: Observation["quality"];
   marketContext: MaterialMoveMonitorReadModel["assets"][number]["marketContext"];
   status: MaterialMoveMonitorReadModel["assets"][number]["status"];
   hasMaterialMove: boolean;
@@ -291,7 +292,7 @@ function priorityIndex(seriesId: string): number {
 function composeMarketMoves(
   result: MaterialMoveMonitorReadModel | undefined,
 ): FactualMarketBriefing["marketMoves"] {
-  if (!result || result.status === "UNAVAILABLE") {
+  if (!result) {
     return {
       evidenceStatus: "INSUFFICIENT",
       reasoningStatus: "NOT_EVALUATED",
@@ -306,6 +307,7 @@ function composeMarketMoves(
     seriesKey: item.seriesKey,
     sourceId: item.sourceId,
     observedAt: item.observedAt,
+    observationQuality: item.observationQuality,
     marketContext: item.marketContext,
     status: item.status,
     hasMaterialMove: item.hasMaterialMove,
@@ -316,13 +318,15 @@ function composeMarketMoves(
   const materialMoveCount = items.filter((item) => item.hasMaterialMove).length;
 
   return {
-    evidenceStatus: items.length > 0 ? "AVAILABLE" : "INSUFFICIENT",
+    evidenceStatus: items.length > 0 && result.status !== "UNAVAILABLE" ? "AVAILABLE" : "INSUFFICIENT",
     reasoningStatus: "NOT_EVALUATED",
     materialMoveCount,
     items,
     reason: items.length === 0
       ? "Belum ada assessment durable BTC/Gold pada cutoff briefing."
-      : result.status === "PARTIAL"
+      : result.status === "UNAVAILABLE"
+        ? "Observasi durable BTC/Gold belum tersedia pada cutoff briefing."
+        : result.status === "PARTIAL"
         ? "Sebagian assessment BTC/Gold belum tersedia; briefing mempertahankan gap tersebut secara eksplisit."
         : null,
   };

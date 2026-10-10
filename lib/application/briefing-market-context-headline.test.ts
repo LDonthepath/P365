@@ -31,6 +31,8 @@ const monitor: MaterialMoveMonitorReadModel = {
       hasMaterialMove: true,
       horizons: [
         {
+          targetStartObservedAt: "2026-10-07T11:00:00.000Z",
+          targetEndObservedAt: AS_OF,
           horizonMinutes: 60,
           status: "MATERIAL_MOVE",
           signedPercentChange: 1.2,
@@ -39,6 +41,8 @@ const monitor: MaterialMoveMonitorReadModel = {
           historicalSampleSize: 400,
         },
         {
+          targetStartObservedAt: "2026-10-07T10:00:00.000Z",
+          targetEndObservedAt: AS_OF,
           horizonMinutes: 120,
           status: "MATERIAL_MOVE",
           signedPercentChange: 1.6,
@@ -86,7 +90,7 @@ test("hari normal hanya menampilkan satu ringkasan tidak ada pergerakan material
   };
   const data = composeFactualMarketBriefing({ baselines: {}, observations: [], asOf: AS_OF, materialMoveMonitor: normal });
   const html = renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data }));
-  assert.equal((html.match(/Tidak ada pergerakan intraday material pada waktu pengamatan ini\./g) ?? []).length, 1);
+  assert.equal((html.match(/Tidak ada pergerakan intraday material pada penilaian yang tersedia\./g) ?? []).length, 1);
   assert.doesNotMatch(html, /Status bukti pendukung belum tersedia/);
 });
 
@@ -109,10 +113,10 @@ test("briefing leads with market change and keeps MOVE horizons as diagnostics",
   assert.match(html, /US\$ 4\.149,40/);
   assert.match(html, /-0,90% \(turun\)/);
   assert.match(html, /Perubahan terhadap penutupan sebelumnya/);
-  assert.match(html, /1 pergerakan intraday tidak biasa terdeteksi pada pengamatan ini/);
-  assert.equal((html.match(/Tidak ada pergerakan intraday material pada waktu pengamatan ini/g) ?? []).length, 0);
+  assert.match(html, /BTC naik \+1,60% pada horizon 120 menit/);
+  assert.equal((html.match(/Tidak ada pergerakan intraday material pada penilaian yang tersedia/g) ?? []).length, 0);
   assert.match(html, /Bitcoin \(BTC\)/);
-  assert.match(html, /Emas \(berjangka COMEX\)/);
+  assert.match(html, /Emas berjangka COMEX \(GC=F\)/);
   assert.match(html, /per 1 BTC/);
   assert.match(html, /Perubahan 24 jam dan perubahan intraday diukur pada rentang yang berbeda\./);
   assert.match(html, /RINCIAN PERGERAKAN DAN BUKTI/);
