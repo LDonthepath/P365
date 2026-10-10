@@ -1,3 +1,4 @@
+import { presentMaterialMoveInvestigation, MOVE_LABELS } from "@/lib/presentation/material-move-investigation";
 import { useState } from "react";
 import type {
   MaterialMoveAssetReadModel,
@@ -9,13 +10,12 @@ import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-title
 import { loadMaterialMoveCrossAssetDiagnostic } from "./actions";
 
 const ASSET_LABEL: Record<MaterialMoveAssetReadModel["asset"], string> = {
-  BTC: "Bitcoin",
-  GOLD: "Gold",
+  ...MOVE_LABELS,
 };
 
 const ASSESSMENT_LABEL: Record<MaterialMoveAssetReadModel["status"], string> = {
   MATERIAL_MOVE: "INTRADAY TIDAK BIASA",
-  BELOW_MATERIALITY_THRESHOLD: "INTRADAY NORMAL",
+  BELOW_MATERIALITY_THRESHOLD: "DI BAWAH AMBANG MATERIALITAS",
   INSUFFICIENT_DATA: "DATA BELUM CUKUP",
   INCOMPATIBLE: "DATA TIDAK KOMPATIBEL",
   UNKNOWN: "STATUS BELUM PASTI",
@@ -24,7 +24,7 @@ const ASSESSMENT_LABEL: Record<MaterialMoveAssetReadModel["status"], string> = {
 
 const HORIZON_LABEL: Record<MaterialMoveAssetReadModel["horizons"][number]["status"], string> = {
   MATERIAL_MOVE: "MATERIAL",
-  BELOW_MATERIALITY_THRESHOLD: "NORMAL",
+  BELOW_MATERIALITY_THRESHOLD: "DI BAWAH AMBANG",
   INSUFFICIENT_DATA: "DATA KURANG",
   INCOMPATIBLE: "TIDAK KOMPATIBEL",
   UNKNOWN: "BELUM PASTI",
@@ -43,7 +43,7 @@ const SYNCHRONOUS_SERIES_LABEL: Record<string, string> = {
   "btc.spot.usd": "BTC",
   "eth.spot.usd": "ETH",
   "dxy.index.usd": "DXY",
-  "gold.futures.usd": "GOLD",
+  "gold.futures.usd": MOVE_LABELS.GOLD,
   "fx.usdjpy.jpy_per_usd": "USD/JPY",
   "fx.usdcnh.cnh_per_usd": "USD/CNH",
 };
@@ -165,7 +165,7 @@ function CrossAssetCalibrationDetails({
                         {SYNCHRONOUS_SERIES_LABEL[pair.companionSeriesKey] ?? pair.companionSeriesKey}
                         {" · "}{pair.horizonMinutes}M
                       </span>
-                      <small>{pair.status}</small>
+                      <small>{{ OBSERVED: "TERAMATI", INSUFFICIENT_DATA: "DATA BELUM CUKUP", UNKNOWN: "BELUM PASTI" }[pair.status]}</small>
                     </div>
                     <strong>{correlation(pair.correlation)}</strong>
                     <p>
@@ -192,8 +192,9 @@ function CrossAssetCalibrationDetails({
   );
 }
 
-function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
-  const material = item.hasMaterialMove;
+function AssetCard({ item, asOf }: { item: MaterialMoveAssetReadModel; asOf: string }) {
+  const material = item.status === "MATERIAL_MOVE" && item.hasMaterialMove;
+  const investigation = presentMaterialMoveInvestigation(item, asOf);
   const screenedNews = screenMoveCatalystTitles(item.evidence?.unscheduledCandidates ?? [], item.asset);
 
   return (
@@ -224,6 +225,20 @@ function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
       {item.observedAt
         ? <p className="move-monitor-time">Observasi terakhir · {relativeTimeID(item.observedAt)}</p>
         : <p className="move-monitor-time">Belum ada observasi durable yang layak.</p>}
+
+      {investigation ? <section className="move-investigation-summary" aria-label={investigation.title}>
+        <h3>{investigation.title}</h3>
+        {investigation.window ? <p className="move-investigation-window">{investigation.window}</p> : null}
+        <h4>Fakta kontemporer</h4>
+        {investigation.facts.length ? <ul>{investigation.facts.map(fact => <li key={fact.id}>{fact.text}</li>)}</ul>
+          : <p>Belum ada fakta kontemporer yang memenuhi syarat pada batas waktu ini.</p>}
+        <h4>Konteks latar</h4>
+        <ul>{investigation.background.map(fact => <li key={fact.id}>{fact.text}</li>)}</ul>
+        <p>Data harian/mingguan ini bukan bukti penyebab pergerakan dalam hitungan menit. Posisi CFTC adalah posisi futures COMEX, bukan pasar spot.</p>
+        <h4>Bukti belum cukup</h4>
+        <ul>{investigation.gaps.map(gap => <li key={gap}>{gap}</li>)}</ul>
+        <p>Hubungan sebab-akibat belum dievaluasi. Fakta bersamaan bukan bukti kausalitas.</p>
+      </section> : null}
 
       {item.horizons.length > 0
         ? <details className="move-monitor-investigation move-monitor-detector-detail">
@@ -382,27 +397,27 @@ function AssetCard({ item }: { item: MaterialMoveAssetReadModel }) {
 }
 
 export function MaterialMoveMonitorPanel({ data }: { data: MaterialMoveMonitorReadModel }) {
-  const materialCount = data.assets.filter((item) => item.hasMaterialMove).length;
+  const materialCount = data.assets.filter((item) => item.status === "MATERIAL_MOVE" && item.hasMaterialMove).length;
 
   return (
     <section className={`panel move-monitor${materialCount > 0 ? " has-material" : ""}`} aria-labelledby="move-monitor-title">
       <div className="move-monitor-head">
         <div>
           <span className="move-monitor-kicker">MOVE MONITOR · FAKTUAL</span>
-          <h2 id="move-monitor-title">Kondisi pasar BTC & Gold</h2>
+          <h2 id="move-monitor-title">Kondisi pasar BTC & Emas berjangka COMEX (GC=F)</h2>
           <p>
             Harga dan perubahan utama ditampilkan lebih dulu. Detektor intraday bekerja sebagai alert
             ketika gerakan tidak biasa secara historis; horizon 15/30/60/120 menit tersedia di detail.
           </p>
         </div>
         <div className="move-monitor-summary">
-          <strong>{materialCount > 0 ? `${materialCount} ALERT INTRADAY` : "TANPA ALERT INTRADAY"}</strong>
+          <strong>{materialCount > 0 ? `${materialCount} ALERT INTRADAY` : data.assets.length === 2 && data.assets.every(item => item.status === "BELOW_MATERIALITY_THRESHOLD") ? "DI BAWAH AMBANG MATERIALITAS" : "PENILAIAN BELUM LENGKAP"}</strong>
           <span>Cutoff {relativeTimeID(data.asOf)}</span>
         </div>
       </div>
 
       <div className="move-monitor-grid">
-        {data.assets.map((item) => <AssetCard item={item} key={item.asset} />)}
+        {data.assets.map((item) => <AssetCard item={item} asOf={data.asOf} key={item.asset} />)}
       </div>
 
       <div className="move-monitor-foot">
