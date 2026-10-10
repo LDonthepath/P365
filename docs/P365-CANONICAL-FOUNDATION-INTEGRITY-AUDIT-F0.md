@@ -54,6 +54,13 @@ The conceptual ownership targets are `core/{domain,ports,contracts}`, `modules/{
 
 **Every gate is divisible into small reviewable PRs; one logical change = one PR; owner alone merges.** Verify actual changes with the same tests on base/head and post-merge production SHA/logs/dashboard, within available Vercel Hobby limits. Missing evidence remains `UNVERIFIED`, not PASS.
 
+### Recovery implementation tracking (10 October 2026, after audit)
+
+- [PR #284](https://github.com/LDonthepath/P365/pull/284) — **OPEN, NOT MERGED**: this AGENTS.md + foundation SSOT update (governance/docs only).
+- [PR #285](https://github.com/LDonthepath/P365/pull/285) — **DRAFT, NOT MERGED**: bounded **G0 quality gate**, adding full test discovery, typecheck, CI Node 24 and two test-only `ObservationHistoryQuery.limit` fixture repairs. No business logic, production, database or cron changes.
+- [CI baseline comparison run](https://github.com/LDonthepath/P365/actions/runs/38033393190): **480 tests** with the identical runner; audited `main@33406c3` = **461 PASS / 19 FAIL**; G0 head = **462 PASS / 18 FAIL**, **zero new failing tests**. The only removed baseline failure is `historical-ingestion.test.ts`. Head typecheck/lint/Next build PASS; overall CI FAIL because 18 existing failures remain. These are **known debt requiring isolated tests/fixture/contract reconciliation**, not permission to skip checks or label the gate PASS.
+- Until the outstanding baseline failures are resolved, **G0 gate is incomplete**. The architecture folder migration and read-model rewrites remain deferred to subsequent owner-reviewed checkpoints, even though the blueprint is recorded.
+
 ### Relationship to prior SSOT checkpoints
 
 The material below this addendum is **preserved historical foundation and product checkpoint detail**, not blanket proof of production state on 10 October 2026. In particular, old “pending activation”, “owner merge pending”, and earlier dependency status under Current implementation snapshot and Checkpoint history must be checked against GitHub/Supabase/Vercel. Any future rebaseline should update this dated current-state addendum rather than silently rewriting the chronology.
