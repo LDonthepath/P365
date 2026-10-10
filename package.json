@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node scripts/ci/run-tests.mjs",
+    "typecheck": "tsc --noEmit",
+    "ci:verify": "npm run typecheck && npm run test && npm run lint && npm run build"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.1",

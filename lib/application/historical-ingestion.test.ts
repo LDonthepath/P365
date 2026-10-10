@@ -559,7 +559,7 @@ async function main(): Promise<void> {
   assert.equal(selectiveFirst.providers[0]?.acquired, 2);
   for (const key of ["NFCI", "ANFCI"] as const) {
     const observations = await selectiveStore.observations.findHistory({
-      identity: { domain: "MACRO", seriesKey: key }, order: "ASC",
+      identity: { domain: "MACRO", seriesKey: key }, order: "ASC", limit: 10,
     });
     assert.equal(observations.length, 1);
     assert.equal(observations[0]?.metadata?.unit, "Index");
@@ -572,7 +572,7 @@ async function main(): Promise<void> {
   });
   for (const key of ["NFCI", "ANFCI"] as const) {
     const observations = await selectiveStore.observations.findHistory({
-      identity: { domain: "MACRO", seriesKey: key }, order: "ASC",
+      identity: { domain: "MACRO", seriesKey: key }, order: "ASC", limit: 10,
     });
     assert.equal(observations.length, 1, "replayed selected-series fact stays idempotent");
   }
