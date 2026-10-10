@@ -29,12 +29,31 @@ test("order-book liquidity derives spread and depth-band imbalance without USD c
   assert.equal(result.providerLastUpdateId, 777);
   assert.equal(result.bestBidUsdt, 100000);
   assert.equal(result.bestAskUsdt, 100100);
-  assert.ok(result.spreadBps > 0);
+  // Midpoint 100,050 USDT is the center of each band (not the best bid/ask).
+  assert.equal(result.midUsdt, 100050);
+  assert.equal(result.spreadUsdt, 100);
+  assert.ok(Math.abs(result.spreadBps - (100 / 100050) * 10_000) < 1e-12);
   assert.equal(result.bands.length, 4);
-  assert.equal(result.bands[0].bandBps, 5);
-  assert.equal(result.bands[0].bidDepthBtc, 3);
-  assert.equal(result.bands[0].askDepthBtc, 4);
-  assert.equal(result.bands[0].coverage, "COMPLETE");
+
+  // 5 bps boundaries: bid >= 99,999.975; ask <= 100,100.025.
+  const fiveBps = result.bands[0];
+  assert.equal(fiveBps.bandBps, 5);
+  assert.equal(fiveBps.bidDepthBtc, 1);
+  assert.equal(fiveBps.askDepthBtc, 1.5);
+  assert.equal(fiveBps.bidNotionalUsdt, 100000);
+  assert.equal(fiveBps.askNotionalUsdt, 150150);
+  assert.ok(Math.abs((fiveBps.quoteNotionalImbalance ?? NaN) - ((100000 - 150150) / (100000 + 150150))) < 1e-12);
+  assert.equal(fiveBps.coverage, "COMPLETE");
+
+  // 10 bps includes the next level on each side, with native USDT notionals.
+  const tenBps = result.bands[1];
+  assert.equal(tenBps.bandBps, 10);
+  assert.equal(tenBps.bidDepthBtc, 3);
+  assert.equal(tenBps.askDepthBtc, 4);
+  assert.equal(tenBps.bidNotionalUsdt, 299900);
+  assert.equal(tenBps.askNotionalUsdt, 400525);
+  assert.ok(Math.abs((tenBps.quoteNotionalImbalance ?? NaN) - ((299900 - 400525) / (299900 + 400525))) < 1e-12);
+  assert.equal(tenBps.coverage, "COMPLETE");
 });
 
 test("order-book liquidity marks a band PARTIAL when returned levels do not reach both boundaries", () => {
