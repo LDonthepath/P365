@@ -1,3 +1,4 @@
+import type { MarketReadContext } from "../application/market-read-context";
 import type { Observation } from "../domain/types";
 import type { BaselinePresentation } from "./baseline";
 import type { MaterialMoveMonitorReadModel } from "../application/material-move-monitor";
@@ -98,6 +99,7 @@ export type FinancialMarketPair = {
 
 export type FinancialMarketOverview = {
   asOf: string;
+  readContext: MarketReadContext;
   groups: FinancialMarketGroup[];
   pairs: FinancialMarketPair[];
   comparisonNote: string;
@@ -137,20 +139,28 @@ function predecessor(
   item: Observation,
   baselines: BaselinePresentation[],
   unified: UnifiedMacroPoint[],
+  cutoffMs: number,
 ): { change: number; at: string } | null {
   if (def.changeUnit === "UNAVAILABLE") return null;
   if (def.key === "DGS2" || def.key === "DFII10" || def.key === "dxy.index.usd") {
     const point = unified.find((entry) => entry.seriesKey === def.key);
     if (!point?.latest || !point.previous || point.change === null ||
         point.latest.observationId !== item.id || point.latest.sourceId !== item.sourceId ||
+        point.latest.observedAt !== item.observedAt ||
+        instant(point.latest.retrievedAt) === null || instant(point.latest.retrievedAt)! > cutoffMs ||
+        instant(point.previous.retrievedAt) === null || instant(point.previous.retrievedAt)! > cutoffMs ||
         !Number.isFinite(point.change) ||
         instant(point.previous.observedAt) === null ||
-        instant(point.previous.observedAt)! >= instant(item.observedAt)!) return null;
+        instant(point.previous.observedAt)! >= instant(item.observedAt)! ||
+        instant(point.previous.observedAt)! > cutoffMs) return null;
     return { change: point.change, at: point.previous.observedAt };
   }
   const baseline = baselines.find((entry) => entry.seriesId === def.key);
   if (!baseline || baseline.status !== "VALID" || baseline.sourceId !== item.sourceId ||
-      !baseline.baselineObservedAt || baseline.currentObservedAt.slice(0, 10) !== item.observedAt.slice(0, 10) ||
+      !baseline.baselineObservedAt ||
+      instant(baseline.currentObservedAt) === null || instant(baseline.currentObservedAt)! > cutoffMs ||
+      instant(baseline.baselineObservedAt) === null || instant(baseline.baselineObservedAt)! > cutoffMs ||
+      baseline.currentObservedAt.slice(0, 10) !== item.observedAt.slice(0, 10) ||
       baseline.baselineObservedAt.slice(0, 10) >= item.observedAt.slice(0, 10) ||
       baseline.changeValue === null || !Number.isFinite(baseline.changeValue) ||
       number(baseline.currentValue) !== number(item.value)) return null;
@@ -160,7 +170,9 @@ function predecessor(
 
 /** Compare only the pre-qualified point-in-time MOVE fingerprint, never daily FRED rows. */
 function synchronousPairs(monitor: MaterialMoveMonitorReadModel, asOfMs: number): FinancialMarketPair[] {
-  if (monitor.causalAttribution !== "NOT_EVALUATED") return [];
+  const monitorCutoff = instant(monitor.asOf);
+  if (monitor.causalAttribution !== "NOT_EVALUATED" ||
+      monitorCutoff === null || monitorCutoff > asOfMs) return [];
   const result: FinancialMarketPair[] = [];
   const seen = new Set<string>();
   for (const asset of monitor.assets) {
@@ -213,17 +225,24 @@ function synchronousPairs(monitor: MaterialMoveMonitorReadModel, asOfMs: number)
 }
 
 export function buildFinancialMarketOverview(input: {
-  asOf: string;
+  readContext: MarketReadContext;
   observations: Observation[];
   baselines: BaselinePresentation[];
   unifiedMacro?: UnifiedMacroPoint[];
   materialMove: MaterialMoveMonitorReadModel;
 }): FinancialMarketOverview {
-  const asOfMs = instant(input.asOf);
-  if (asOfMs === null) throw new Error("FMKT-001 requires a valid as-of timestamp");
+  const asOfMs = instant(input.readContext.knowledgeAsOf);
+  const persistedMs = instant(input.readContext.persistedBefore);
+  const evaluatedMs = instant(input.readContext.evaluatedAt);
+  if (asOfMs === null || persistedMs === null || evaluatedMs === null ||
+      persistedMs > asOfMs || evaluatedMs < asOfMs) {
+    throw new Error("FMKT-001 requires a coherent MarketReadContext");
+  }
+  // Never widen eligibility to evaluatedAt (provider fetch may finish later).
+  const cutoffMs = Math.min(asOfMs, persistedMs);
   const unified = input.unifiedMacro ?? [];
   const items = DEFINITIONS.map((def): FinancialMarketRow => {
-    const latest = input.observations.filter((o) => eligible(o, def, asOfMs))
+    const latest = input.observations.filter((o) => eligible(o, def, cutoffMs))
       .sort((a, b) => Date.parse(b.observedAt) - Date.parse(a.observedAt) ||
         Date.parse(b.retrievedAt) - Date.parse(a.retrievedAt))[0];
     if (!latest) return {
@@ -233,7 +252,7 @@ export function buildFinancialMarketOverview(input: {
       changeUnit: def.changeUnit, predecessorAt: null,
       note: def.note ?? "Belum ada observasi canonical qualified pada cutoff ini",
     };
-    const preceding = predecessor(def, latest, input.baselines, unified);
+    const preceding = predecessor(def, latest, input.baselines, unified, cutoffMs);
     return {
       key: def.key, name: def.name, status: latest.quality === "FRESH" ? "TERSEDIA" : "SEBAGIAN",
       value: number(latest.value), unit: def.unit, sourceId: latest.sourceId,
@@ -254,9 +273,10 @@ export function buildFinancialMarketOverview(input: {
         : rows.every((row) => row.status === "TERSEDIA") ? "TERSEDIA" : "SEBAGIAN",
     };
   });
-  const pairs = synchronousPairs(input.materialMove, asOfMs);
+  const pairs = synchronousPairs(input.materialMove, cutoffMs);
   return {
-    asOf: input.asOf,
+    asOf: input.readContext.knowledgeAsOf,
+    readContext: input.readContext,
     groups, pairs,
     comparisonNote: pairs.length === 0
       ? "Belum dapat dibandingkan: tidak ada fingerprint MOVE 60/120 menit yang lolos sinkronisasi pada cutoff ini."
