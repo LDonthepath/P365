@@ -17,6 +17,8 @@ import { MvpFactualContextPanel } from "./mvp-factual-context-panel";
 import { FactualMarketBriefingPanel } from "./factual-market-briefing-panel";
 import { CatalystWirePanel } from "./catalyst-wire-panel";
 import { MaterialMoveMonitorPanel } from "./material-move-monitor-panel";
+import { FinancialMarketOverviewPanel } from "./financial-market-overview-panel";
+import { buildFinancialMarketOverview } from "@/lib/presentation/financial-market-overview";
 
 type Menu = "overview" | "heatmap" | "macro" | "crypto" | "gold" | "context" | "evidence";
 const menuItems: { id: Menu; label: string }[] = [
@@ -557,6 +559,13 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
           <p>Bagian Pasar menampung snapshot lintas pasar, deteksi pergerakan material, dan heatmap faktual. Tidak ada sinyal trading yang ditambahkan.</p>
         </div>
         <OverviewMarketTape data={data} observations={observations} />
+        <FinancialMarketOverviewPanel data={buildFinancialMarketOverview({
+          asOf: data.materialMoveMonitor.asOf,
+          observations: [...observations, ...macroObservations],
+          baselines: baselinePresentations,
+          unifiedMacro: data.ratesInflation.unifiedMacro,
+          materialMove: data.materialMoveMonitor,
+        })} />
         <div style={{ marginTop: "1rem" }}>
           <MaterialMoveMonitorPanel data={data.materialMoveMonitor} />
         </div>
