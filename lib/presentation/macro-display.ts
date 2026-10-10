@@ -1,12 +1,14 @@
 function formatMoney(value: number): string {
-  if (Math.abs(value) >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
-  if (Math.abs(value) >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
-  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
-  return new Intl.NumberFormat("en-US", {
+  const magnitude = Math.abs(value);
+  const sign = value < 0 ? "-" : "";
+  if (magnitude >= 1_000_000_000_000) return `${sign}${(magnitude / 1_000_000_000_000).toFixed(2)}T`;
+  if (magnitude >= 1_000_000_000) return `${sign}${(magnitude / 1_000_000_000).toFixed(2)}B`;
+  if (magnitude >= 1_000_000) return `${sign}${(magnitude / 1_000_000).toFixed(2)}M`;
+  return sign + new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(magnitude);
 }
 
 function dollarScale(unit: string): number | null {
