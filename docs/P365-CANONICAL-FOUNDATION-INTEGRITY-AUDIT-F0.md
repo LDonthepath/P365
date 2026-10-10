@@ -1197,6 +1197,24 @@ baseline and this branch: strict `0.1` floating-point equality and CPI/Core CPI 
 expectation. Those pre-existing failures are recorded, not repaired in this checkpoint.
 Production/visual verification of NEWS-QUALITY-002 remains pending owner merge/deployment.
 
+### ALT-004 — Unified Macro View (10 Oct 2026 WIB)
+
+Status: **IMPLEMENTED / OWNER REVIEW & MERGE PENDING**. Baseline current development
+main is `7ef927ab42524d06970268b95a9abccda0c03858` (9 Oct 2026 18:21:42 WIB).
+Rates & Policy and Briefing 02 reuse one compact DXY / DGS2 / DFII10 projection.
+DXY remains Yahoo `DX-Y.NYB`, distinct from FRED broad USD `DTWEXBGS`. Yield changes
+are percentage-point differences ×100 bps; DXY changes are index-point differences.
+Each series retains its own latest and strictly earlier qualified predecessor value,
+observation date/time, source and retrieval availability. Latest-known same-measurement
+revisions are resolved before numeric/unit/source/quality qualification; UNKNOWN/PARTIAL
+measurements are excluded, while historical STALE facts remain eligible. Acquisition
+quality remains immutable; current recency reuses the existing daily FRED / ICE-session
+policies with holiday/early-close limitations disclosed. No synthetic intraday yield.
+The bounded DXY history replaces the existing MVP latest-point read and is shared with
+Rates & Policy; DGS2/DFII10 reuse their existing history reads. No new provider, dependency,
+cron, durable write, Gold pipeline, material-move algorithm or production deployment.
+Sections 01–05 anchors and existing collapse/expand markup remain intact.
+
 ## 22. Final audit conclusion
 
 P365 should **not** restart its architecture and should **not** add a reasoning engine yet.

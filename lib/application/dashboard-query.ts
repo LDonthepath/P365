@@ -14,7 +14,7 @@ import { buildBriefingEventRepricing } from "./briefing-event-repricing";
 import { buildBriefingConfirmation } from "./briefing-confirmation";
 import { buildNetLiquidityReadModel, type NetLiquidityReadModel } from "./net-liquidity";
 import { buildCentralBankBalanceSheetReadModel, type CentralBankBalanceSheetReadModel } from "./central-bank-balance-sheets";
-import { buildRatesInflationReadModel, type RatesInflationReadModel } from "./rates-inflation";
+import { readDxyMacroHistory, buildRatesInflationReadModel, type RatesInflationReadModel } from "./rates-inflation";
 import {
   buildCreditFinancialConditionsReadModel,
   type CreditFinancialConditionsReadModel,
@@ -221,7 +221,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   const centralBankBalanceSheetsPromise = buildCentralBankBalanceSheetReadModel(
     dashboardHistoricalObservationRepository, asOf,
   );
-  const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf);
+  const dxyHistoryPromise = readDxyMacroHistory(dashboardHistoricalObservationRepository, asOf);
+  const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf, dxyHistoryPromise);
   const creditFinancialConditionsPromise = buildCreditFinancialConditionsReadModel(
     dashboardHistoricalObservationRepository,
     asOf,
@@ -232,6 +233,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     {
       netLiquidity: netLiquidityPromise,
       ratesInflation: ratesInflationPromise,
+      dxyHistory: dxyHistoryPromise,
     },
   );
   const stablecoinLiquidityPromise = buildDashboardStablecoinLiquidity(asOf);

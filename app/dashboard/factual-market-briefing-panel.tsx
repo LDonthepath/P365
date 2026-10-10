@@ -1,5 +1,6 @@
 "use client";
 
+import { UnifiedMacroView } from "./unified-macro-view";
 import type { FactualMarketBriefing } from "@/lib/application/factual-market-briefing";
 import { formatEventResultValue } from "@/lib/presentation/intraday-event-response";
 import { screenMoveCatalystTitles } from "@/lib/presentation/move-catalyst-titles";
@@ -875,18 +876,20 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
       <SectionHeader
         titleId="briefing-rates-policy"
         title="02 · Apa konteks suku bunga dan kebijakan untuk Emas dan Bitcoin?"
-        summary="Konteks Gold: Real yield AS 10 tahun dan Broad USD Index. Konteks Bitcoin: Reserve balances dan spread SOFR−IORB."
+        summary="DXY, Treasury AS 2 tahun, dan real yield AS 10 tahun dibaca bersama; broad USD, cadangan bank, dan spread SOFR−IORB melengkapi konteks."
       />
+
+      <UnifiedMacroView points={ratesPolicy.unifiedMacro} />
 
       {ratesPolicy.evidenceStatus === "AVAILABLE"
         ? <div className="briefing-rates-content">
             <section className="briefing-rate-group" aria-label="Konteks Gold">
-              <h3>Konteks Gold</h3>
+              <h3>Konteks dolar luas untuk Emas</h3>
               {ratesPolicy.gold.length
                 ? <div className="briefing-rates-grid">
                     {ratesPolicy.gold.map((point) => <RatesPolicyBriefingCard key={point.seriesKey} point={point} />)}
                   </div>
-                : <p>Real yield atau Broad USD Index belum tersedia.</p>}
+                : <p>Broad USD Index belum tersedia.</p>}
             </section>
             <section className="briefing-rate-group" aria-label="Konteks Bitcoin">
               <h3>Konteks Bitcoin</h3>

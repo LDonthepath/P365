@@ -6,6 +6,7 @@ import type {
   RatesSeriesPoint,
   RatesSeriesValueUnit,
 } from "@/lib/application/rates-inflation";
+import { UnifiedMacroView } from "./unified-macro-view";
 import type { DataQuality } from "@/lib/domain/types";
 
 const LABELS: Record<RatesSeriesPoint["seriesKey"], string> = {
@@ -44,8 +45,8 @@ const GROUPS: Array<{
   },
   {
     label: "RANTAI TRANSMISI",
-    description: "Treasury 2Y, real yield 10Y, broad USD, dan kemiringan kurva 10Y−2Y.",
-    keys: ["DGS2", "DFII10", "DTWEXBGS", "T10Y2Y"],
+    description: "Broad USD berbeda dari DXY; kemiringan kurva 10Y−2Y ditampilkan terpisah.",
+    keys: ["DTWEXBGS", "T10Y2Y"],
   },
 ];
 
@@ -206,6 +207,8 @@ export function RatesInflationPanel({ data }: { data: RatesInflationReadModel })
       Spread SOFR−IORB dihitung dari observasi yang sinkron secara tanggal. Tidak ada label bullish,
       bearish, regime, atau atribusi sebab-akibat.
     </p>
+
+    <UnifiedMacroView points={data.unifiedMacro} />
 
     {data.status === "UNAVAILABLE"
       ? <p className="muted">{data.reason}</p>

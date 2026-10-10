@@ -223,8 +223,8 @@ test("builds factual Rates & Policy latest/1D/1W facts without regime semantics"
   assert.equal(broadUsd.changeUnit, "PERCENT");
   assert.ok((broadUsd.change1d ?? 0) < 0, "broad USD 1D change is factual percent change");
 
-  assert.equal(repository.queries.length, 15, "8 Rates reads plus 7 bounded SEP median-series reads");
-  assert.ok(repository.queries.every((query) => query.identity.domain === "MACRO"));
+  assert.equal(repository.queries.length, 16, "8 Rates reads plus 7 SEP reads and one shared DXY history");
+  assert.ok(repository.queries.filter((query) => query.identity.seriesKey !== "dxy.index.usd").every((query) => query.identity.domain === "MACRO"));
   assert.ok(repository.queries.every((query) => query.retrievedAtOnOrBefore === "2026-10-06T00:00:00.000Z"));
   const sepQueries = repository.queries.filter((query) => query.identity.seriesKey.startsWith("policy.us.sep.ffr."));
   const ratesQueries = repository.queries.filter((query) => !query.identity.seriesKey.startsWith("policy.us.sep.ffr."));

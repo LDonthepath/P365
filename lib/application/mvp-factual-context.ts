@@ -11,6 +11,8 @@ import {
 } from "./net-liquidity";
 import {
   buildRatesInflationReadModel,
+  buildUnifiedMacroPoint,
+  readDxyMacroHistory,
   type RatesInflationReadModel,
 } from "./rates-inflation";
 
@@ -81,6 +83,7 @@ export type MacroCryptoGoldFactualContext = {
 type SharedReadModels = {
   ratesInflation?: RatesInflationReadModel | Promise<RatesInflationReadModel>;
   netLiquidity?: NetLiquidityReadModel | Promise<NetLiquidityReadModel>;
+  dxyHistory?: Promise<Observation[]>;
 };
 
 type MarketSeriesDefinition = (typeof MARKET_SERIES)[keyof typeof MARKET_SERIES];
@@ -162,9 +165,18 @@ async function buildMarketSeries(
   repository: HistoricalObservationRepository,
   definition: MarketSeriesDefinition,
   asOf: string,
+  sharedLatestHistory?: Promise<Observation[]>,
 ): Promise<FactualMarketSeries> {
   try {
-    const latest = await pointOnOrBefore(repository, definition, asOf, asOf);
+    // DXY is shared with Unified Macro: choose the same qualified point, not
+    // the raw first row (which may be a rejected revision or wrong instrument).
+    const sharedRows = sharedLatestHistory ? await sharedLatestHistory : null;
+    const selectedDxyId = sharedRows
+      ? buildUnifiedMacroPoint("dxy.index.usd", sharedRows, new Date(asOf)).latest?.observationId
+      : null;
+    const latest = sharedRows
+      ? sharedRows.find((row) => row.id === selectedDxyId) ?? null
+      : await pointOnOrBefore(repository, definition, asOf, asOf);
     const latestValue = numericValue(latest);
     if (!latest || latestValue === null) {
       return {
@@ -235,9 +247,10 @@ export async function buildMacroCryptoGoldFactualContext(
   if (!Number.isFinite(asOfMs)) throw new Error("MVP factual context requires a valid asOf cutoff.");
   const cutoff = asOf.toISOString();
 
+  const dxyHistory = shared.dxyHistory ?? readDxyMacroHistory(repository, asOf);
   const ratesInflationPromise = shared.ratesInflation
     ? Promise.resolve(shared.ratesInflation)
-    : buildRatesInflationReadModel(repository, asOf);
+    : buildRatesInflationReadModel(repository, asOf, dxyHistory);
   const netLiquidityPromise = shared.netLiquidity
     ? Promise.resolve(shared.netLiquidity)
     : buildNetLiquidityReadModel(repository, asOf);
@@ -245,7 +258,7 @@ export async function buildMacroCryptoGoldFactualContext(
   const [ratesInflation, netLiquidity, dxy, bitcoin, gold] = await Promise.all([
     ratesInflationPromise,
     netLiquidityPromise,
-    buildMarketSeries(repository, MARKET_SERIES.dxy, cutoff),
+    buildMarketSeries(repository, MARKET_SERIES.dxy, cutoff, dxyHistory),
     buildMarketSeries(repository, MARKET_SERIES.bitcoin, cutoff),
     buildMarketSeries(repository, MARKET_SERIES.gold, cutoff),
   ]);

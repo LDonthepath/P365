@@ -1,3 +1,5 @@
+import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
+import { FRESHNESS_POLICIES, qualityFromMacroCadence, qualityFromMarketHours } from "../domain/freshness";
 import type { DataQuality, Observation } from "../domain/types";
 import type { HistoricalObservationRepository } from "../repositories/types";
 
@@ -69,9 +71,18 @@ export type SepPolicyExpectationReadModel =
     }
   | { status: "UNAVAILABLE"; reason: string };
 
+export type UnifiedMacroKey = "dxy.index.usd" | "DGS2" | "DFII10";
+export type UnifiedMacroPoint = {
+  seriesKey: UnifiedMacroKey;
+  latest: { observationId: string; value: number; observedAt: string; retrievedAt: string; quality: DataQuality; freshness: DataQuality; sourceId: string } | null;
+  previous: { observationId: string; value: number; observedAt: string; retrievedAt: string } | null;
+  change: number | null;
+  reason: string | null;
+};
+
 export type RatesInflationReadModel =
-  | { status: "OK"; series: RatesSeriesPoint[]; sep: SepPolicyExpectationReadModel }
-  | { status: "UNAVAILABLE"; reason: string; sep: SepPolicyExpectationReadModel };
+  | { status: "OK"; series: RatesSeriesPoint[]; sep: SepPolicyExpectationReadModel; unifiedMacro?: UnifiedMacroPoint[] }
+  | { status: "UNAVAILABLE"; reason: string; sep: SepPolicyExpectationReadModel; unifiedMacro?: UnifiedMacroPoint[] };
 
 type SourceSeriesKey = (typeof SOURCE_SERIES)[number];
 
@@ -344,6 +355,75 @@ function buildSpreadPoint(rows: Observation[], asOf: number): RatesSeriesPoint |
   };
 }
 
+/** One bounded durable DXY read shared with the existing MVP factual context. */
+export async function readDxyMacroHistory(
+  repository: HistoricalObservationRepository, asOf: Date,
+): Promise<Observation[]> {
+  try {
+    return await repository.findHistory({
+      identity: { domain: "ASSET", seriesKey: "dxy.index.usd" },
+      sourceId: "yahoo-finance", observedAtOnOrBefore: asOf.toISOString(),
+      retrievedAtOnOrBefore: asOf.toISOString(), order: "DESC", limit: 100,
+    });
+  } catch (error) {
+    console.error("Unified Macro DXY read failed:", error instanceof Error ? error.message : "unknown error");
+    return [];
+  }
+}
+
+export function buildUnifiedMacroPoint(
+  key: UnifiedMacroKey, rows: Observation[], asOf: Date,
+): UnifiedMacroPoint {
+  const dxy = key === "dxy.index.usd";
+  // Resolve revisions before qualification. A rejected latest revision must not
+  // resurrect an older revision of the same measurement.
+  const measurements = new Map<number, Observation>();
+  const ordered = rows.filter((row) => seriesKey(row) === key
+    && row.sourceId === (dxy ? "yahoo-finance" : "fred")
+    && row.domain === (dxy ? "ASSET" : "MACRO")
+    && Number.isFinite(Date.parse(row.observedAt))
+    && Number.isFinite(Date.parse(row.retrievedAt))
+    && Date.parse(row.observedAt) <= Date.parse(row.retrievedAt)
+    && Date.parse(row.retrievedAt) <= asOf.getTime())
+    .sort((a, b) => Date.parse(b.observedAt) - Date.parse(a.observedAt)
+      || Date.parse(b.retrievedAt) - Date.parse(a.retrievedAt) || b.id.localeCompare(a.id));
+  for (const row of ordered) {
+    const at = Date.parse(row.observedAt);
+    if (!measurements.has(at)) measurements.set(at, row);
+  }
+  const qualified = [...measurements.values()].filter((row) => {
+    if (numericValue(row) === null || !["FRESH", "STALE"].includes(row.quality)) return false;
+    if (dxy) return numericValue(row)! > 0 && metadataString(row, "unit") === "Index"
+      && (row.provenance?.nativeSymbol ?? metadataString(row, "symbol")) === "DX-Y.NYB";
+    return metadataString(row, "unit") === "Percent" && metadataString(row, "frequency") === "DAILY"
+      // A FRED date anchor is not a fetch-time quote. Reject legacy fetch-time rows.
+      && Date.parse(row.observedAt) === Date.parse(row.observedAt.slice(0, 10))
+      && (!metadataString(row, "observationDate") || metadataString(row, "observationDate") === row.observedAt.slice(0, 10));
+  });
+  const latest = qualified[0];
+  const previous = qualified[1];
+  if (!latest) return { seriesKey: key, latest: null, previous: null, change: null,
+    reason: "Observasi terkualifikasi belum tersedia dalam riwayat yang dibaca." };
+  const definition = MACRO_SERIES_REGISTRY.find((item) => item.seriesId === key);
+  const freshness = dxy
+    ? latest.metadata?.freshnessCalendar === "ICE_USDX"
+      ? qualityFromMarketHours({ observedAt: latest.observedAt, evaluatedAt: asOf.toISOString(),
+          calendar: "ICE_USDX", maxAgeMs: FRESHNESS_POLICIES.MARKET_REALTIME.maxAgeMs })
+      : "UNKNOWN"
+    : definition ? qualityFromMacroCadence({ observationDate: latest.observedAt.slice(0, 10),
+        evaluatedAt: asOf.toISOString(), frequency: definition.frequency, toleranceMs: definition.freshnessMs }) : "UNKNOWN";
+  const value = numericValue(latest)!;
+  return {
+    seriesKey: key,
+    latest: { observationId: latest.id, value, observedAt: latest.observedAt,
+      retrievedAt: latest.retrievedAt, quality: latest.quality, freshness, sourceId: latest.sourceId },
+    previous: previous ? { observationId: previous.id, value: numericValue(previous)!,
+      observedAt: previous.observedAt, retrievedAt: previous.retrievedAt } : null,
+    change: previous ? (value - numericValue(previous)!) * (dxy ? 1 : 100) : null,
+    reason: previous ? null : "Observasi valid sebelumnya belum tersedia dalam riwayat yang dibaca.",
+  };
+}
+
 /**
  * Read-only factual Rates & Policy slice over durable canonical FRED history.
  *
@@ -356,10 +436,14 @@ function buildSpreadPoint(rows: Observation[], asOf: number): RatesSeriesPoint |
 export async function buildRatesInflationReadModel(
   repository: HistoricalObservationRepository,
   asOf = new Date(),
+  sharedDxyHistory?: Promise<Observation[]>,
 ): Promise<RatesInflationReadModel> {
   const end = asOf.toISOString();
   const start = new Date(asOf.getTime() - 21 * DAY).toISOString();
+  const dxyPromise = sharedDxyHistory ?? readDxyMacroHistory(repository, asOf);
   const sep = await buildSepPolicyExpectationReadModel(repository, asOf);
+  const dxyRows = await dxyPromise;
+  const dxy = buildUnifiedMacroPoint("dxy.index.usd", dxyRows, asOf);
 
   try {
     const histories = await Promise.all(SOURCE_SERIES.map((key) => repository.findHistory({
@@ -367,10 +451,12 @@ export async function buildRatesInflationReadModel(
       observedAtOnOrAfter: start,
       observedAtOnOrBefore: end,
       retrievedAtOnOrBefore: end,
-      order: "ASC",
+      sourceId: key === "DGS2" || key === "DFII10" ? "fred" : undefined,
+      order: key === "DGS2" || key === "DFII10" ? "DESC" : "ASC",
       limit: 100,
     })));
     const rows = histories.flat();
+    const unifiedMacro = [dxy, ...(["DGS2", "DFII10"] as const).map((key) => buildUnifiedMacroPoint(key, rows, asOf))];
 
     const pointsByKey = new Map<RatesSeriesKey, RatesSeriesPoint>();
     for (const key of SOURCE_SERIES) {
@@ -386,11 +472,12 @@ export async function buildRatesInflationReadModel(
     });
 
     if (!points.length) {
-      return { status: "UNAVAILABLE", reason: "Riwayat faktual Rates & Policy belum tersedia.", sep };
+      return { status: "UNAVAILABLE", reason: "Riwayat faktual Rates & Policy belum tersedia.", sep, unifiedMacro };
     }
-    return { status: "OK", series: points, sep };
+    return { status: "OK", series: points, sep, unifiedMacro };
   } catch (error) {
     console.error("Rates & Policy durable read failed:", error instanceof Error ? error.message : "unknown error");
-    return { status: "UNAVAILABLE", reason: "Data faktual Rates & Policy sedang tidak dapat dibaca.", sep };
+    return { status: "UNAVAILABLE", reason: "Data faktual Rates & Policy sedang tidak dapat dibaca.", sep,
+      unifiedMacro: [dxy, ...(["DGS2", "DFII10"] as const).map((key) => buildUnifiedMacroPoint(key, [], asOf))] };
   }
 }
