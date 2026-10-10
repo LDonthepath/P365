@@ -42,6 +42,7 @@ function observation(
       metricId: seriesKey,
       unit: seriesKey === "dxy.index.usd" ? "Index" : "USD",
       freshnessCalendar,
+      ...(seriesKey === "dxy.index.usd" ? { symbol: "DX-Y.NYB" } : {}),
     },
   };
 }
