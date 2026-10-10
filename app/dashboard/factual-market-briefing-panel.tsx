@@ -11,7 +11,7 @@ import {
 } from "./briefing-number-format";
 import type { Direction } from "./components/briefing-primitives";
 import { ChartCard, KpiCard, SectionHeader, StatusBadge } from "./components/briefing-primitives";
-import { marketCurrentSummary, presentMarketMove } from "./briefing-market-current-display";
+import { dominantMaterialMove, marketCurrentSummary, MOVE_INSTRUMENT_LABELS, presentMarketMove } from "./briefing-market-current-display";
 
 const SERIES_LABELS: Record<string, string> = {
   DGS2: "US Treasury 2Y",
@@ -30,7 +30,7 @@ const PRICING_LABELS: Record<string, string> = {
 
 const MOVE_ASSET_LABELS = {
   BTC: "Bitcoin",
-  GOLD: "Emas",
+  GOLD: "Emas berjangka COMEX (GC=F)",
 } as const;
 
 const MOVE_ASSESSMENT_LABELS: Record<
@@ -38,7 +38,7 @@ const MOVE_ASSESSMENT_LABELS: Record<
   string
 > = {
   MATERIAL_MOVE: "INTRADAY TIDAK BIASA",
-  BELOW_MATERIALITY_THRESHOLD: "INTRADAY NORMAL",
+  BELOW_MATERIALITY_THRESHOLD: "DI BAWAH AMBANG MATERIALITAS",
   INSUFFICIENT_DATA: "DATA BELUM CUKUP",
   INCOMPATIBLE: "DATA TIDAK KOMPATIBEL",
   UNKNOWN: "STATUS BELUM PASTI",
@@ -65,7 +65,7 @@ const MOVE_SERIES_LABELS: Record<string, string> = {
   "btc.spot.usd": "BTC",
   "eth.spot.usd": "ETH",
   "dxy.index.usd": "DXY",
-  "gold.futures.usd": "Gold",
+  "gold.futures.usd": "Emas berjangka COMEX (GC=F)",
   "fx.usdjpy.jpy_per_usd": "USD/JPY",
   "fx.usdcnh.cnh_per_usd": "USD/CNH",
 };
@@ -342,7 +342,7 @@ function MarketMoveBriefingItem({
   const screenedNews = screenMoveCatalystTitles(item.evidence?.unscheduledCandidates ?? [], item.asset);
   const unscheduledCandidates = screenedNews.items.slice(0, MAX_MOVE_CATALYST_DETAILS);
   const presentation = presentMarketMove(item);
-  const assetTitle = item.asset === "BTC" ? "Bitcoin (BTC)" : "Emas (berjangka COMEX)";
+  const assetTitle = item.asset === "BTC" ? "Bitcoin (BTC)" : MOVE_INSTRUMENT_LABELS.GOLD;
 
   return <div className="ux2-market-card">
     <KpiCard label={assetTitle}
@@ -800,6 +800,7 @@ function CreditConditionsBriefingItem({
 
 export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefing }) {
   const moves = data.marketMoves;
+  const dominantMove = dominantMaterialMove(moves);
   const ratesPolicy = data.ratesPolicy;
   const creditConditions = data.creditConditions;
   const netLiquidity = data.netLiquidity;
@@ -820,7 +821,9 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
         {moves.evidenceStatus === "AVAILABLE"
           ? moves.materialMoveCount > 0
             ? `${moves.materialMoveCount} PERINGATAN PERGERAKAN`
-            : "TANPA PERINGATAN PERGERAKAN"
+            : moves.items.length === 2 && moves.items.every((item) => item.status === "BELOW_MATERIALITY_THRESHOLD")
+              ? "DI BAWAH AMBANG MATERIALITAS"
+              : "PENILAIAN BELUM LENGKAP"
           : ratesPolicy.evidenceStatus === "AVAILABLE"
               || netLiquidity.evidenceStatus === "AVAILABLE"
               || centralBankAvailableCount > 0
@@ -856,6 +859,16 @@ export function FactualMarketBriefingPanel({ data }: { data: FactualMarketBriefi
     <div className="ux2-market-current">
       <SectionHeader titleId="briefing-market-state-title" title="01 · Apa yang bergerak sekarang?"
         summary={marketCurrentSummary(moves)} />
+      {dominantMove ? <div data-testid="dominant-material-move" style={{ minWidth: 0, display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <StatusBadge label="Pergerakan material" tone="neutral" />
+        <StatusBadge label={{
+          FRESH: "Kualitas observasi: terbaru saat diperoleh",
+          STALE: "Kualitas observasi: tertunda saat diperoleh",
+          PARTIAL: "Kualitas observasi: sebagian",
+          UNKNOWN: "Kualitas observasi: belum pasti",
+        }[dominantMove.item.observationQuality ?? "UNKNOWN"]} tone="neutral" />
+        <span className="ux2-market-note">Sumber {dominantMove.item.sourceId === "yahoo-finance" ? "Yahoo Finance · GC=F" : "CoinGecko"}</span>
+      </div> : null}
       {moves.evidenceStatus === "AVAILABLE"
         ? <div className="ux2-market-grid">
             {moves.items.map((item) => <MarketMoveBriefingItem item={item} key={item.asset} />)}

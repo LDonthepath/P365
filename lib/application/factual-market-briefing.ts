@@ -166,6 +166,7 @@ export type BriefingMarketMove = {
   seriesKey: MaterialMoveMonitorReadModel["assets"][number]["seriesKey"];
   sourceId: string;
   observedAt: string | null;
+  observationQuality?: Observation["quality"];
   marketContext: MaterialMoveMonitorReadModel["assets"][number]["marketContext"];
   status: MaterialMoveMonitorReadModel["assets"][number]["status"];
   hasMaterialMove: boolean;
@@ -291,7 +292,7 @@ function priorityIndex(seriesId: string): number {
 function composeMarketMoves(
   result: MaterialMoveMonitorReadModel | undefined,
 ): FactualMarketBriefing["marketMoves"] {
-  if (!result || result.status === "UNAVAILABLE") {
+  if (!result) {
     return {
       evidenceStatus: "INSUFFICIENT",
       reasoningStatus: "NOT_EVALUATED",
@@ -306,6 +307,7 @@ function composeMarketMoves(
     seriesKey: item.seriesKey,
     sourceId: item.sourceId,
     observedAt: item.observedAt,
+    observationQuality: item.observationQuality,
     marketContext: item.marketContext,
     status: item.status,
     hasMaterialMove: item.hasMaterialMove,
@@ -316,13 +318,15 @@ function composeMarketMoves(
   const materialMoveCount = items.filter((item) => item.hasMaterialMove).length;
 
   return {
-    evidenceStatus: items.length > 0 ? "AVAILABLE" : "INSUFFICIENT",
+    evidenceStatus: items.length > 0 && result.status !== "UNAVAILABLE" ? "AVAILABLE" : "INSUFFICIENT",
     reasoningStatus: "NOT_EVALUATED",
     materialMoveCount,
     items,
     reason: items.length === 0
       ? "Belum ada assessment durable BTC/Gold pada cutoff briefing."
-      : result.status === "PARTIAL"
+      : result.status === "UNAVAILABLE"
+        ? "Observasi durable BTC/Gold belum tersedia pada cutoff briefing."
+        : result.status === "PARTIAL"
         ? "Sebagian assessment BTC/Gold belum tersedia; briefing mempertahankan gap tersebut secara eksplisit."
         : null,
   };
@@ -429,21 +433,26 @@ function composeNetLiquidity(
   };
 }
 
+const GOLD_MOVE_LABEL = "Emas berjangka COMEX (GC=F)";
+
 function assetNames(assets: Array<BriefingMarketMove["asset"]>): string {
-  return assets.map((asset) => asset === "BTC" ? "Bitcoin" : "Gold").join(" dan ");
+  return assets.map((asset) => asset === "BTC" ? "Bitcoin" : GOLD_MOVE_LABEL).join(" dan ");
 }
 
 function composeBriefingResolution(input: {
   marketMoves: FactualMarketBriefing["marketMoves"];
   nextCatalyst: FactualMarketBriefing["nextCatalyst"];
 }): BriefingResolution {
-  if (input.marketMoves.evidenceStatus !== "AVAILABLE") {
+  const hasMaterialMove = input.marketMoves.items.some((item) => item.status === "MATERIAL_MOVE" && item.hasMaterialMove);
+  const allMarketsAssessedBelow = input.marketMoves.items.length === 2
+    && input.marketMoves.items.every((item) => item.status === "BELOW_MATERIALITY_THRESHOLD");
+  if (input.marketMoves.evidenceStatus !== "AVAILABLE" || (!hasMaterialMove && !allMarketsAssessedBelow)) {
     return {
       status: "MARKET_DATA_INSUFFICIENT",
       reasoningStatus: "NOT_EVALUATED",
       materialAssets: [],
       evidenceCompleteness: null,
-      statement: "Penilaian Bitcoin/Gold belum cukup untuk menyusun kesimpulan briefing pada batas waktu ini.",
+      statement: `Penilaian Bitcoin dan ${GOLD_MOVE_LABEL} belum cukup untuk menyusun kesimpulan briefing pada batas waktu ini.`,
       driverStatement: "Pendorong pasar belum dievaluasi karena penilaian pasar belum cukup.",
       watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
         ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat dan pembaruan penilaian pasar."
@@ -461,11 +470,11 @@ function composeBriefingResolution(input: {
       materialAssets: [],
       evidenceCompleteness: null,
       statement:
-        "Belum ada pergerakan material Bitcoin atau Gold pada batas waktu ini. Paket investigasi tidak diaktifkan karena tidak ada pemicu pergerakan yang memenuhi ambang historis.",
+        `Belum ada pergerakan material Bitcoin atau ${GOLD_MOVE_LABEL} pada batas waktu ini. Paket investigasi tidak diaktifkan karena tidak ada pemicu pergerakan yang memenuhi ambang historis.`,
       driverStatement: "Tidak ada pendorong yang dievaluasi karena belum ada pergerakan material yang menjadi target investigasi.",
       watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
         ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat dan apakah muncul pergerakan material baru."
-        : "Pantau perubahan Bitcoin/Gold berikutnya dan peristiwa berdampak tinggi saat tersedia pada data tersimpan.",
+        : `Pantau perubahan Bitcoin dan ${GOLD_MOVE_LABEL} berikutnya dan peristiwa berdampak tinggi saat tersedia pada data tersimpan.`,
     };
   }
 

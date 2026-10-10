@@ -68,9 +68,8 @@ test("badge hanya kelengkapan bukti dari field existing", () => {
     assert.equal(props.badge?.tone,tone);
   }
 });
-test("ringkasan hanya memakai evidenceStatus dan materialMoveCount yang sudah ada", () => {
+test("ringkasan tidak menganggap daftar kosong sebagai pasar normal", () => {
   const baseline = {evidenceStatus:"AVAILABLE", reasoningStatus:"NOT_EVALUATED", materialMoveCount:2,items:[],reason:null} as FactualMarketBriefing["marketMoves"];
-  assert.match(marketCurrentSummary(baseline)??"",/2 pergerakan intraday/);
-  assert.match(marketCurrentSummary({...baseline,materialMoveCount:0})??"",/Tidak ada pergerakan/);
-  assert.equal(marketCurrentSummary({...baseline,evidenceStatus:"INSUFFICIENT"}),null);
+  assert.match(marketCurrentSummary(baseline), /belum tersedia/);
+  assert.doesNotMatch(marketCurrentSummary(baseline), /Tidak ada pergerakan|normal/);
 });

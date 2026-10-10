@@ -61,10 +61,64 @@ export function presentMarketMove(item: BriefingMarketMove) {
   return { price, priceDetail: item.asset === "BTC" ? "per 1 BTC" : null, change, horizons, badge };
 }
 
-export function marketCurrentSummary(moves: FactualMarketBriefing["marketMoves"]): string | null {
-  if (moves.evidenceStatus !== "AVAILABLE") return null;
-  if (moves.materialMoveCount > 0) {
-    return `${moves.materialMoveCount} pergerakan intraday tidak biasa terdeteksi pada pengamatan ini.`;
+export const MOVE_INSTRUMENT_LABELS = {
+  BTC: "BTC",
+  GOLD: "Emas berjangka COMEX (GC=F)",
+} as const;
+
+const ASSESSMENT_LABELS: Record<BriefingMarketMove["status"], string> = {
+  MATERIAL_MOVE: "pergerakan material terdeteksi; rincian pengukuran belum lengkap",
+  BELOW_MATERIALITY_THRESHOLD: "di bawah ambang materialitas",
+  INSUFFICIENT_DATA: "data belum cukup untuk menentukan materialitas",
+  UNKNOWN: "penilaian belum dapat dipastikan",
+  UNAVAILABLE: "observasi tidak tersedia",
+  INCOMPATIBLE: "data tidak kompatibel untuk menentukan materialitas",
+};
+
+/** Only ranks existing MATERIAL_MOVE results. Ties: longer horizon, BTC before GOLD.
+ * No return calculation, detector, threshold, or synthetic start time here.
+ */
+export function dominantMaterialMove(moves: FactualMarketBriefing["marketMoves"]) {
+  const candidates = moves.items.flatMap((item) => {
+    if (item.status !== "MATERIAL_MOVE" || !item.hasMaterialMove) return [];
+    return item.horizons.flatMap((horizon) => {
+      const start = horizon.targetStartObservedAt;
+      const end = horizon.targetEndObservedAt;
+      if (horizon.status !== "MATERIAL_MOVE" || !finite(horizon.signedPercentChange)
+        || !HORIZONS.includes(horizon.horizonMinutes as typeof HORIZONS[number])
+        || !start || !end || !Number.isFinite(Date.parse(start))
+        || !Number.isFinite(Date.parse(end)) || Date.parse(start) >= Date.parse(end)) return [];
+      return [{ item, horizon, startAt: start, endAt: end, signedPercentChange: horizon.signedPercentChange }];
+    });
+  });
+  return candidates.sort((a, b) =>
+    Math.abs(b.signedPercentChange) - Math.abs(a.signedPercentChange)
+    || b.horizon.horizonMinutes - a.horizon.horizonMinutes
+    || a.item.asset.localeCompare(b.item.asset)
+    || a.startAt.localeCompare(b.startAt)
+    || a.endAt.localeCompare(b.endAt)
+  )[0] ?? null;
+}
+
+function observationTime(value: string): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta", day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).format(new Date(value));
+}
+
+export function marketCurrentSummary(moves: FactualMarketBriefing["marketMoves"]): string {
+  const selected = dominantMaterialMove(moves);
+  if (selected) {
+    const { item, horizon, signedPercentChange, startAt, endAt } = selected;
+    const verb = signedPercentChange > 0 ? "naik" : signedPercentChange < 0 ? "turun" : "tidak berubah";
+    const evidence = presentMarketMove(item).badge?.label ?? "Status bukti belum tersedia";
+    return `${MOVE_INSTRUMENT_LABELS[item.asset]} ${verb} ${signed(signedPercentChange)} pada horizon ${horizon.horizonMinutes} menit, pengamatan ${observationTime(startAt)}–${observationTime(endAt)} WIB. ${evidence}. Penyebab belum dinilai.`;
   }
-  return "Tidak ada pergerakan intraday material pada waktu pengamatan ini.";
+  if (moves.items.length === 0) return "Data pemantauan BTC dan Emas berjangka COMEX (GC=F) belum tersedia untuk menentukan materialitas.";
+  const allBelow = moves.items.length === 2
+    && moves.items.every((item) => item.status === "BELOW_MATERIALITY_THRESHOLD");
+  return `${allBelow ? "Tidak ada pergerakan intraday material pada penilaian yang tersedia. " : ""}${moves.items.map((item) =>
+    `${MOVE_INSTRUMENT_LABELS[item.asset]}: ${ASSESSMENT_LABELS[item.status]}`
+  ).join("; ")}.`;
 }

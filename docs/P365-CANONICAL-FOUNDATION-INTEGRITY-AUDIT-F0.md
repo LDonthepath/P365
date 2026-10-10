@@ -1215,6 +1215,38 @@ Rates & Policy; DGS2/DFII10 reuse their existing history reads. No new provider,
 cron, durable write, Gold pipeline, material-move algorithm or production deployment.
 Sections 01–05 anchors and existing collapse/expand markup remain intact.
 
+### ALT-002 — Dominant material move in Briefing 01 (10 Oct 2026 WIB)
+
+Status: **IMPLEMENTED / INDEPENDENT REVIEW & OWNER MERGE PENDING**. Base development
+main is `9bbc4cd5d0d7fd04e7e94b1f0ec9eeb6f059e61c` (10 Oct 2026 09:19:03 WIB),
+with zero open PRs at preflight. Briefing 01 selects one existing calibrated
+`MATERIAL_MOVE` horizon across BTC spot and Yahoo COMEX Gold futures. Ranking is
+descending absolute signed return, then longer horizon, then BTC before GOLD;
+exact timestamp lexical order breaks any remaining duplicate tie. Gold is labeled
+**Emas berjangka COMEX (GC=F)**. #277 remains a separate spot-migration checkpoint.
+
+Monitor projection now carries detector-selected actual start/end `observedAt`
+and immutable target Observation quality. No synthetic start, 24h-return fallback,
+return recalculation, extra detector/fetch, threshold change, provider, durable
+write/history mutation, cron or production deployment. Missing endpoints prevent a
+specific headline and remain explicitly incomplete. Non-material, insufficient,
+unknown, incompatible and unavailable assessments remain distinct. A preview finding
+showed the shared conclusion could still report no material move when Gold was
+insufficient; it now requires both markets below threshold before that negative
+conclusion. This compatibility fix leaves Sections 02–05
+and native details/collapse behavior remain intact; MOVE detail remains available.
+Evidence completeness remains factual and causal attribution NOT_EVALUATED.
+
+Validation: focused detector/application/UI tests 46/46 pass; lint zero errors
+(three existing warnings); Next.js 15.5.26 build passes. Broader relevant suite:
+base 84 pass/5 fail; head 93 pass/the same 5 fail (four existing Gate 3b fixture
+failures plus one outdated Net Liquidity label expectation). Full `tsc --noEmit
+--incremental false` reports the same two missing-query-limit errors in
+`historical-ingestion.test.ts` on base/head; no new type diagnostics. Next.js
+intentionally filters test-file diagnostics during its build type check. These
+unrelated baseline failures are not repaired by ALT-002. Exact-head preview and
+independent acceptance review are recorded in the PR, not claimed as production.
+
 ## 22. Final audit conclusion
 
 P365 should **not** restart its architecture and should **not** add a reasoning engine yet.
