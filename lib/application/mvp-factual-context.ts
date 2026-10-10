@@ -11,6 +11,7 @@ import {
 } from "./net-liquidity";
 import {
   buildRatesInflationReadModel,
+  buildUnifiedMacroPoint,
   readDxyMacroHistory,
   type RatesInflationReadModel,
 } from "./rates-inflation";
@@ -167,8 +168,14 @@ async function buildMarketSeries(
   sharedLatestHistory?: Promise<Observation[]>,
 ): Promise<FactualMarketSeries> {
   try {
-    const latest = sharedLatestHistory
-      ? (await sharedLatestHistory)[0] ?? null
+    // DXY is shared with Unified Macro: choose the same qualified point, not
+    // the raw first row (which may be a rejected revision or wrong instrument).
+    const sharedRows = sharedLatestHistory ? await sharedLatestHistory : null;
+    const selectedDxyId = sharedRows
+      ? buildUnifiedMacroPoint("dxy.index.usd", sharedRows, new Date(asOf)).latest?.observationId
+      : null;
+    const latest = sharedRows
+      ? sharedRows.find((row) => row.id === selectedDxyId) ?? null
       : await pointOnOrBefore(repository, definition, asOf, asOf);
     const latestValue = numericValue(latest);
     if (!latest || latestValue === null) {
