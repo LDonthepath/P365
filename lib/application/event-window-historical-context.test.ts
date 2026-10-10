@@ -47,7 +47,7 @@ function primaryEvent(): Event {
     description: "US CPI",
     jurisdiction: "US",
     scheduledAt,
-    releasedAt: scheduledAt,
+    // This UPCOMING calendar event has not released by the PRE snapshot.
     retrievedAt: "2026-10-15T10:00:00.000Z",
     status: "UPCOMING",
     importance: "HIGH",
