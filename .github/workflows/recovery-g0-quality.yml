@@ -45,6 +45,18 @@ jobs:
         id: build
         continue-on-error: true
         run: npm run build
+      # Compare the exact test runner against main@33406c3 as an audit receipt.
+      # This is diagnostic only; it MUST NOT waive a failing head test suite.
+      - name: Checkout audited base for regression comparison
+        uses: actions/checkout@v4
+        with:
+          ref: 33406c326dc3dc817581cdd586481f9caca601b0
+          path: .g0-baseline
+          persist-credentials: false
+      - name: Record base test results (informational)
+        id: baseline
+        continue-on-error: true
+        run: node scripts/ci/run-tests.mjs --root=.g0-baseline
       - name: Enforce quality gate
         if: always()
         env:
@@ -52,7 +64,8 @@ jobs:
           TEST: ${{ steps.test.outcome }}
           LINT: ${{ steps.lint.outcome }}
           BUILD: ${{ steps.build.outcome }}
+          BASELINE_TEST: ${{ steps.baseline.outcome }}
         shell: bash
         run: |
-          printf 'G0: typecheck=%s tests=%s lint=%s build=%s\n' "$TYPECHECK" "$TEST" "$LINT" "$BUILD"
+          printf 'G0 head: typecheck=%s tests=%s lint=%s build=%s; audited-base-tests=%s\n' "$TYPECHECK" "$TEST" "$LINT" "$BUILD" "$BASELINE_TEST"
           [[ "$TYPECHECK" == success && "$TEST" == success && "$LINT" == success && "$BUILD" == success ]] || exit 1
