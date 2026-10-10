@@ -1,0 +1,58 @@
+name: Recovery G0 — full-project quality gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recovery-g0-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Inventory every unit test
+        run: npm test -- --list
+      # Run all checks even if one fails, to preserve a complete baseline.
+      # Do NOT treat baseline failures as passes or suppress any files.
+      - name: TypeScript typecheck
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck
+      - name: All TypeScript tests
+        id: test
+        continue-on-error: true
+        run: npm run test
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: npm run lint
+      - name: Next.js build
+        id: build
+        continue-on-error: true
+        run: npm run build
+      - name: Enforce quality gate
+        if: always()
+        env:
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          TEST: ${{ steps.test.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+        shell: bash
+        run: |
+          printf 'G0: typecheck=%s tests=%s lint=%s build=%s\n' "$TYPECHECK" "$TEST" "$LINT" "$BUILD"
+          [[ "$TYPECHECK" == success && "$TEST" == success && "$LINT" == success && "$BUILD" == success ]] || exit 1
