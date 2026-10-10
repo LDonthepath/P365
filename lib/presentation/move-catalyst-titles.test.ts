@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createElement } from "react";
+import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FactualMarketBriefingPanel } from "../../app/dashboard/factual-market-briefing-panel";
 import { MaterialMoveMonitorPanel } from "../../app/dashboard/material-move-monitor-panel";
@@ -9,6 +9,20 @@ import type { MaterialMoveMonitorReadModel } from "../application/material-move-
 import { screenMoveCatalystTitles } from "./move-catalyst-titles";
 
 const AS_OF = "2026-10-06T20:00:00.000Z";
+// Next.js uses the automatic JSX runtime, while tsx's standalone G0 test
+// transform resolves preserved TSX to React.createElement. Supply that
+// namespace only while rendering, without changing production components.
+function renderWithTestJsxRuntime(element: React.ReactElement): string {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "React");
+  Object.defineProperty(globalThis, "React", { configurable: true, value: React });
+  try {
+    return renderToStaticMarkup(element);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "React", previous);
+    else Reflect.deleteProperty(globalThis, "React");
+  }
+}
+
 function monitor(titles: string[], coverage: "COMPLETE" | "PARTIAL" = "COMPLETE"): MaterialMoveMonitorReadModel {
   return {
     asOf: AS_OF, status: "OK", causalAttribution: "NOT_EVALUATED",
@@ -54,7 +68,7 @@ function monitor(titles: string[], coverage: "COMPLETE" | "PARTIAL" = "COMPLETE"
 }
 
 function renderBriefing(data: MaterialMoveMonitorReadModel): string {
-  return renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data: composeFactualMarketBriefing({
+  return renderWithTestJsxRuntime(React.createElement(FactualMarketBriefingPanel, { data: composeFactualMarketBriefing({
     baselines: {}, observations: [], asOf: AS_OF, materialMoveMonitor: data,
   }) }));
 }
@@ -98,16 +112,17 @@ test("all-screened candidates do not become missing coverage or zero raw candida
   for (const coverage of ["COMPLETE", "PARTIAL"] as const) {
     const data = monitor(["Best crypto to buy"], coverage);
     const html = renderBriefing(data);
-    assert.ok(html.includes("USD 84.250"));
-    assert.ok(html.includes("+3.10% / 24 jam"));
-    assert.ok(html.includes("Pergerakan intraday tidak biasa terdeteksi."));
-    assert.ok(html.includes("DETAIL PERGERAKAN &amp; EVIDENCE"));
+    assert.ok(html.includes("US$ 84.250"));
+    assert.ok(html.includes("+3,10% (naik)"));
+    assert.ok(html.includes("Perubahan dalam 24 jam"));
+    assert.ok(html.includes("BTC: pergerakan material terdeteksi; rincian pengukuran belum lengkap"));
+    assert.ok(html.includes("RINCIAN PERGERAKAN DAN BUKTI"));
     assert.ok(html.includes("120 menit"));
     assert.ok(html.includes("1 kandidat berita tercatat"));
     assert.ok(html.includes("Tidak ada judul yang ditampilkan setelah penyaringan"));
     assert.ok(!html.includes("+1 kandidat berita lain"));
-    assert.ok(html.includes(coverage === "COMPLETE" ? "Catalyst berita: TERSEDIA" : "Catalyst berita: TERSEDIA SEBAGIAN"));
-    const card = renderToStaticMarkup(createElement(MaterialMoveMonitorPanel, { data }));
+    assert.ok(html.includes(coverage === "COMPLETE" ? "cakupan berita lengkap" : "cakupan berita sebagian"));
+    const card = renderWithTestJsxRuntime(React.createElement(MaterialMoveMonitorPanel, { data }));
     assert.ok(card.includes("84.250 USD"));
     assert.ok(card.includes("+3.10% / 24 jam"));
     assert.ok(card.includes("Pergerakan intraday tidak biasa terdeteksi."));
@@ -149,11 +164,12 @@ test("Gold uses previous-close market context instead of pretending to have a 24
   };
 
   const briefing = renderBriefing(data);
-  const card = renderToStaticMarkup(createElement(MaterialMoveMonitorPanel, { data }));
+  const card = renderWithTestJsxRuntime(React.createElement(MaterialMoveMonitorPanel, { data }));
 
-  assert.ok(briefing.includes("USD 4.149,40"));
-  assert.ok(briefing.includes("-0.90% vs penutupan sebelumnya"));
-  assert.ok(briefing.includes("Tidak ada pergerakan intraday material pada cutoff ini."));
+  assert.ok(briefing.includes("US$ 4.149,40"));
+  assert.ok(briefing.includes("-0,90% (turun)"));
+  assert.ok(briefing.includes("Perubahan terhadap penutupan sebelumnya"));
+  assert.ok(briefing.includes("Emas berjangka COMEX (GC=F): di bawah ambang materialitas"));
   assert.ok(card.includes("4.149,40 USD"));
   assert.ok(card.includes("-0.90% vs penutupan sebelumnya"));
   assert.ok(card.includes("Detail detektor intraday"));
