@@ -43,6 +43,15 @@ function baseline(values: number[], overrides: Partial<HistoricalBaselineEvidenc
   };
 }
 
+function assertNear(actual: number | null, expected: number): void {
+  // percentile_cont-style interpolation can differ by a few binary64 ULPs.
+  const tolerance = 4 * Number.EPSILON * Math.max(1, Math.abs(expected));
+  assert.ok(
+    actual !== null && Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance,
+    `expected interpolated percentile near ${expected} (tolerance ${tolerance}), got ${actual}`,
+  );
+}
+
 test("RPR-002A derives a P90 candidate only from at least 100 qualified samples", () => {
   const values = Array.from({ length: 100 }, (_, index) => index + 1);
   const result = calibrateRepricingThresholdCandidate({
@@ -55,16 +64,44 @@ test("RPR-002A derives a P90 candidate only from at least 100 qualified samples"
 
   assert.equal(REPRICING_CALIBRATION_MIN_SAMPLE_SIZE_V1, 100);
   assert.equal(result.status, "CANDIDATE");
-  assert.equal(result.p50, 50.5);
-  assert.equal(result.p75, 75.25);
-  assert.equal(result.p90, 90.1);
-  assert.equal(result.p95, 95.05);
+  assertNear(result.p50, 50.5);
+  assertNear(result.p75, 75.25);
+  assertNear(result.p90, 90.1);
+  assertNear(result.p95, 95.05);
   assert.deepEqual(result.candidateThreshold, {
     basis: "ABSOLUTE_PERCENT_CHANGE",
     percentile: 90,
-    minimumMagnitude: 90.1,
+    minimumMagnitude: result.p90,
   });
+  assertNear(result.candidateThreshold?.minimumMagnitude ?? null, 90.1);
   assert.equal(result.causalAttribution, "NOT_EVALUATED");
+});
+
+test("RPR-002A P90 interpolates empirical values regardless of sample order", () => {
+  const values = Array.from({ length: 100 }, (_, index) => ((index + 1) ** 2) / 100);
+  const input = {
+    observationKey: "ASSET:btc.spot.usd:coingecko-market",
+    seriesKey: "btc.spot.usd",
+    sourceId: "coingecko-market",
+    comparisonHorizonMs: 600_000,
+  };
+  const ascending = calibrateRepricingThresholdCandidate({
+    ...input,
+    historicalBaseline: baseline(values),
+  });
+  const descending = calibrateRepricingThresholdCandidate({
+    ...input,
+    historicalBaseline: baseline([...values].reverse()),
+  });
+
+  assert.equal(ascending.status, "CANDIDATE");
+  assert.equal(descending.status, "CANDIDATE");
+  // For 100 values, P90 interpolates between positions 90 and 91 at weight 0.1.
+  assertNear(ascending.p90, 81.181);
+  assertNear(descending.p90, 81.181);
+  assert.equal(ascending.p90, descending.p90);
+  assert.equal(ascending.candidateThreshold?.minimumMagnitude, ascending.p90);
+  assert.equal(descending.candidateThreshold?.minimumMagnitude, descending.p90);
 });
 
 test("RPR-002A fails closed below 100 exact-horizon samples", () => {
