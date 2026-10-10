@@ -24,39 +24,29 @@ jobs:
           node-version: '24'
           cache: npm
       - name: Install locked dependencies
+        id: install
         run: npm ci
       - name: Inventory every unit test
+        if: ${{ always() && steps.install.outcome == 'success' }}
         run: npm test -- --list
       # Run all checks even if one fails, to preserve a complete baseline.
       # Do NOT treat baseline failures as passes or suppress any files.
       - name: TypeScript typecheck
         id: typecheck
-        continue-on-error: true
+        if: ${{ always() && steps.install.outcome == 'success' }}
         run: npm run typecheck
       - name: All TypeScript tests
         id: test
-        continue-on-error: true
+        if: ${{ always() && steps.install.outcome == 'success' }}
         run: npm run test
       - name: Lint
         id: lint
-        continue-on-error: true
+        if: ${{ always() && steps.install.outcome == 'success' }}
         run: npm run lint
       - name: Next.js build
         id: build
-        continue-on-error: true
+        if: ${{ always() && steps.install.outcome == 'success' }}
         run: npm run build
-      # Compare the exact test runner against main@33406c3 as an audit receipt.
-      # This is diagnostic only; it MUST NOT waive a failing head test suite.
-      - name: Checkout audited base for regression comparison
-        uses: actions/checkout@v4
-        with:
-          ref: 33406c326dc3dc817581cdd586481f9caca601b0
-          path: .g0-baseline
-          persist-credentials: false
-      - name: Record base test results (informational)
-        id: baseline
-        continue-on-error: true
-        run: node scripts/ci/run-tests.mjs --root=.g0-baseline
       - name: Enforce quality gate
         if: always()
         env:
@@ -64,8 +54,7 @@ jobs:
           TEST: ${{ steps.test.outcome }}
           LINT: ${{ steps.lint.outcome }}
           BUILD: ${{ steps.build.outcome }}
-          BASELINE_TEST: ${{ steps.baseline.outcome }}
         shell: bash
         run: |
-          printf 'G0 head: typecheck=%s tests=%s lint=%s build=%s; audited-base-tests=%s\n' "$TYPECHECK" "$TEST" "$LINT" "$BUILD" "$BASELINE_TEST"
+          printf 'G0: typecheck=%s tests=%s lint=%s build=%s\n' "$TYPECHECK" "$TEST" "$LINT" "$BUILD"
           [[ "$TYPECHECK" == success && "$TEST" == success && "$LINT" == success && "$BUILD" == success ]] || exit 1
