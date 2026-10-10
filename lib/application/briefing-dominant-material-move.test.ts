@@ -98,6 +98,15 @@ test("eligible BTC survives unavailable Gold; evidence completeness stays factua
     assert.match(marketCurrentSummary(briefing([btc]).marketMoves), /Penyebab belum dinilai/);
   }
 });
+test("partial non-material assessments cannot become a negative conclusion for both markets", () => {
+  const btc = { ...asset("BTC", 0.1), status: "BELOW_MATERIALITY_THRESHOLD" as const, hasMaterialMove: false };
+  for (const status of ["INSUFFICIENT_DATA", "UNKNOWN", "UNAVAILABLE", "INCOMPATIBLE"] as const) {
+    const gold = { ...asset("GOLD", 0), status, hasMaterialMove: false };
+    assert.equal(briefing([btc, gold]).resolution.status, "MARKET_DATA_INSUFFICIENT");
+    assert.doesNotMatch(html([btc, gold]), /Belum ada pergerakan material Bitcoin atau Gold/);
+  }
+  assert.equal(briefing([btc]).resolution.status, "MARKET_DATA_INSUFFICIENT");
+});
 test("real detector → monitor → briefing keeps exact endpoints and introduces no reads in composition/render", async () => {
   const end = Date.parse(END);
   const rows: Observation[] = Array.from({ length: 481 }, (_, i) => {

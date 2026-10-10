@@ -1230,13 +1230,16 @@ and immutable target Observation quality. No synthetic start, 24h-return fallbac
 return recalculation, extra detector/fetch, threshold change, provider, durable
 write/history mutation, cron or production deployment. Missing endpoints prevent a
 specific headline and remain explicitly incomplete. Non-material, insufficient,
-unknown, incompatible and unavailable assessments remain distinct. Sections 02–05
+unknown, incompatible and unavailable assessments remain distinct. A preview finding
+showed the shared conclusion could still report no material move when Gold was
+insufficient; it now requires both markets below threshold before that negative
+conclusion. This compatibility fix leaves Sections 02–05
 and native details/collapse behavior remain intact; MOVE detail remains available.
 Evidence completeness remains factual and causal attribution NOT_EVALUATED.
 
-Validation: focused detector/application/UI tests 45/45 pass; lint zero errors
+Validation: focused detector/application/UI tests 46/46 pass; lint zero errors
 (three existing warnings); Next.js 15.5.26 build passes. Broader relevant suite:
-base 84 pass/5 fail; head 92 pass/the same 5 fail (four existing Gate 3b fixture
+base 84 pass/5 fail; head 93 pass/the same 5 fail (four existing Gate 3b fixture
 failures plus one outdated Net Liquidity label expectation). Full `tsc --noEmit
 --incremental false` reports the same two missing-query-limit errors in
 `historical-ingestion.test.ts` on base/head; no new type diagnostics. Next.js

@@ -441,7 +441,10 @@ function composeBriefingResolution(input: {
   marketMoves: FactualMarketBriefing["marketMoves"];
   nextCatalyst: FactualMarketBriefing["nextCatalyst"];
 }): BriefingResolution {
-  if (input.marketMoves.evidenceStatus !== "AVAILABLE") {
+  const hasMaterialMove = input.marketMoves.items.some((item) => item.status === "MATERIAL_MOVE" && item.hasMaterialMove);
+  const allMarketsAssessedBelow = input.marketMoves.items.length === 2
+    && input.marketMoves.items.every((item) => item.status === "BELOW_MATERIALITY_THRESHOLD");
+  if (input.marketMoves.evidenceStatus !== "AVAILABLE" || (!hasMaterialMove && !allMarketsAssessedBelow)) {
     return {
       status: "MARKET_DATA_INSUFFICIENT",
       reasoningStatus: "NOT_EVALUATED",
