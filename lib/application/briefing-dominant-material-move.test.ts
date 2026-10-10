@@ -45,6 +45,7 @@ test("Gold Futures can dominate BTC with accurate identity and negative return",
   const rendered = html(assets);
   assert.match(rendered, /Emas berjangka COMEX \(GC=F\) turun -3,00% pada horizon 60 menit/);
   assert.match(rendered, /Yahoo Finance · GC=F/);
+  assert.match(briefing(assets).resolution.statement, /Emas berjangka COMEX \\(GC=F\\) mengalami pergerakan material/);
   assert.doesNotMatch(rendered, /XAU\/USD Spot|Gold Spot/);
   assert.equal((rendered.match(/data-testid="dominant-material-move"/g) ?? []).length, 1);
 });
@@ -103,7 +104,7 @@ test("partial non-material assessments cannot become a negative conclusion for b
   for (const status of ["INSUFFICIENT_DATA", "UNKNOWN", "UNAVAILABLE", "INCOMPATIBLE"] as const) {
     const gold = { ...asset("GOLD", 0), status, hasMaterialMove: false };
     assert.equal(briefing([btc, gold]).resolution.status, "MARKET_DATA_INSUFFICIENT");
-    assert.doesNotMatch(html([btc, gold]), /Belum ada pergerakan material Bitcoin atau Gold/);
+    assert.doesNotMatch(briefing([btc, gold]).resolution.statement, /Belum ada pergerakan material Bitcoin atau Emas berjangka COMEX/);
   }
   assert.equal(briefing([btc]).resolution.status, "MARKET_DATA_INSUFFICIENT");
 });
