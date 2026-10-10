@@ -1,0 +1,40 @@
+.root { margin-top: 16px; min-width: 0; }
+.heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
+.heading > div { flex: 1 1 390px; min-width: 0; }
+.heading h2 { margin: 6px 0; font-size: clamp(1.1rem, 2vw, 1.5rem); }
+.heading p, .comparison p { margin: 8px 0; color: var(--muted); line-height: 1.55; max-width: 780px; font-size: 13px; }
+.heading small { color: var(--muted); font-size: 12px; }
+.groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.group { min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 14px; }
+.groupHead { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.groupHead h3 { font-size: 15px; margin: 0; }
+.groupHead span { color: var(--muted); font-size: 11px; }
+.rows { display: grid; gap: 8px; }
+.entry { min-width: 0; border-top: 1px solid var(--line); padding-top: 9px; }
+.rowTop { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.instrument { display: grid; min-width: 0; gap: 4px; }
+.instrument strong { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.instrument small { color: var(--muted); font-size: 11px; }
+.metric { display: grid; gap: 4px; text-align: right; margin-left: auto; }
+.metric strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+.metric span { font-size: 10px; color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+.details { margin-top: 7px; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.details summary { cursor: pointer; font-size: 12px; width: fit-content; }
+.details > div { padding: 3px 0; }
+.comparison { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
+.comparisonHead { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.comparisonHead h3 { margin: 0; font-size: 15px; }
+.comparisonHead span { font-size: 11px; color: var(--muted); }
+.comparison > small { color: var(--muted); font-size: 11px; display: block; margin-top: 12px; }
+.pairs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 10px; }
+.pair { display: grid; gap: 5px; border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.pair strong { font-size: 12px; overflow-wrap: anywhere; }
+.pair span { font-size: 12px; font-weight: 600; }
+.pair small { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.empty { padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; }
+@media (max-width: 760px) {
+  .groups, .pairs { grid-template-columns: minmax(0,1fr); }
+  .group { padding: 12px; }
+  .rowTop { gap: 6px; }
+}
