@@ -80,7 +80,7 @@ export function FinancialMarketOverviewPanel({ data }: { data: FinancialMarketOv
               <span>{row.quality === "STALE" ? "Kualitas: perlu diperbarui"
                 : row.quality === "PARTIAL" ? "Kualitas: sebagian"
                 : row.quality === "UNKNOWN" ? "Kualitas: belum pasti"
-                : row.quality === "FRESH" ? "Kualitas: sesuai cadence" : "Belum ada observasi"}</span>
+                : row.quality === "FRESH" ? "Kualitas saat diambil: baik" : "Belum ada observasi"}</span>
             </div>
             <details className={styles.details}>
               <summary>Asal dan waktu</summary>
