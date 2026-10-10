@@ -54,6 +54,22 @@ The conceptual ownership targets are `core/{domain,ports,contracts}`, `modules/{
 
 **Every gate is divisible into small reviewable PRs; one logical change = one PR; owner alone merges.** Verify actual changes with the same tests on base/head and post-merge production SHA/logs/dashboard, within available Vercel Hobby limits. Missing evidence remains `UNVERIFIED`, not PASS.
 
+### Recovery issue-lifecycle amendment — 10 October 2026 (GOV-001)
+
+**Governance outcome:** the owner requested **one bounded task = one GitHub issue = one focused PR**, with the success criteria and exact closure conditions visible before implementation. [Master issue #283](https://github.com/LDonthepath/P365/issues/283) has been converted from a large implementation wish list into a **roadmap/status index**; technical recovery is decomposed into [#286–#314](https://github.com/LDonthepath/P365/issues/286), each carrying scope, acceptance, dependencies, and closure criteria. [Issue #315](https://github.com/LDonthepath/P365/issues/315) owns this governance-documentation-only amendment. Older detailed audit text is preserved as historical context in #283 and comments, not treated as live completion evidence.
+
+**Current verified GitHub state:** `main@8b71885666c2a84620432a5ca4065152a71fb322` incorporates [PR #284](https://github.com/LDonthepath/P365/pull/284), merged on 10 October. [PR #285](https://github.com/LDonthepath/P365/pull/285) remains **DRAFT** and now belongs to execution issue [#295](https://github.com/LDonthepath/P365/issues/295), blocked by the existing 18-test failure baseline. `main@33406c3` recorded 461/480 passing versus the G0 branch 462/480 passing on identical test-runner comparison; these measurements do not claim CI success. This is a dated snapshot; refresh live status before any future work.
+
+**Workflow and closure contract:**
+
+1. Each implementation issue must specify **one outcome**, current status (`BACKLOG`, `BLOCKED`, `READY`, `IN PROGRESS`, `IN REVIEW`, `VERIFIED`, `CLOSED`), affected code surface, exclusions, dependencies, and checkable DoD.
+2. Do not reuse #283 as the implementing PR issue. Do not recreate work already owned by [#277](https://github.com/LDonthepath/P365/issues/277) Gold Spot, [#275](https://github.com/LDonthepath/P365/issues/275) factual briefing, [#242](https://github.com/LDonthepath/P365/issues/242) FRED physical metrics or [#228](https://github.com/LDonthepath/P365/issues/228) scheduler tracker.
+3. A PR in Draft, a commit, Vercel READY, HTTP 200, or a test that only passed on an older branch **does not close** an issue. Closure as **completed** requires owner merge, recorded current-main SHA, all acceptance tests and evidence, and relevant after-merge CI, UI, database readback or deployment verification. Docs/tests-only issues can be closed after verified main/CI without an unnecessary production write. Close as **duplicate/not planned** only with linked evidence or owner decision.
+4. `G0` is the first quality gate; active baseline remediation issues [#286–#294](https://github.com/LDonthepath/P365/issues/286) must be independently verified, and [#295](https://github.com/LDonthepath/P365/issues/295) must establish a passing full-suite CI before broad G1–G5 code restructuring. Verified urgent security defects can be triaged independently. Other issue statuses and dependency map live in #283.
+5. Keep the master open until all mandatory recovery child issues are resolved or expressly deferred with owner approval, and no unowned P0/P1 blockers remain. Update each issue and roadmap on every state transition; never mark a master DONE simply because its issue list exists.
+
+**Implementation policy:** [AGENTS.md](../AGENTS.md) owns agent behavior; this dated SSOT amendment records the recovery issue protocol and snapshot only. Changes to source code, provider, SQL, cron, credentials, or deployment require their own owner-reviewed issue and PR; no implementation is authorized merely by this text.
+
 ### Relationship to prior SSOT checkpoints
 
 The material below this addendum is **preserved historical foundation and product checkpoint detail**, not blanket proof of production state on 10 October 2026. In particular, old “pending activation”, “owner merge pending”, and earlier dependency status under Current implementation snapshot and Checkpoint history must be checked against GitHub/Supabase/Vercel. Any future rebaseline should update this dated current-state addendum rather than silently rewriting the chronology.
