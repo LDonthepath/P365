@@ -46,9 +46,9 @@ test("briefing explains Net Liquidity with weekly primary comparison and four-we
     createElement(FactualMarketBriefingPanel, { data: result }),
   );
 
-  assert.match(html, /USD LIQUIDITY/);
+  assert.match(html, /03 · LIKUIDITAS/);
   assert.match(html, /Net Liquidity AS/);
-  assert.match(html, /03 · Apa yang berubah pada likuiditas dolar AS\?/);
+  assert.match(html, /03 · Apa yang berubah pada likuiditas AS dan neraca bank sentral\?/);
   assert.match(html, /aria-label="Net Liquidity AS \(proxy\)"/);
   assert.match(html, /data-slot="freshness"/);
   assert.match(html, /Observasi gabungan sampai 01 Okt 2026/);
@@ -69,6 +69,62 @@ test("briefing explains Net Liquidity with weekly primary comparison and four-we
   assert.equal(normalized.includes("risk-on"), false);
   assert.equal(normalized.includes("risk-off"), false);
   assert.equal(result.netLiquidity.reason, null);
+});
+
+
+test("briefing distinguishes missing weekly comparison from an available proxy", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    netLiquidity: {
+      ...netLiquidity,
+      change1wBillionsUsd: null,
+      change1wFrom: null,
+      latest: { ...netLiquidity.latest, quality: "STALE" },
+    },
+  });
+
+  assert.equal(result.netLiquidity.evidenceStatus, "AVAILABLE");
+  assert.equal(result.netLiquidity.reason, "Riwayat sekitar satu minggu belum cukup untuk pembanding utama.");
+  assert.equal(result.netLiquidity.change1wBillionsUsd, null);
+  assert.equal(result.netLiquidity.change4wBillionsUsd, -18.4);
+  assert.equal(result.netLiquidity.reasoningStatus, "NOT_EVALUATED");
+
+  const html = renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data: result }));
+  assert.match(html, /6\.225,4 miliar USD/);
+  assert.match(html, /SUDAH LAMA SAAT DIPEROLEH/);
+  assert.match(html, /Belum cukup riwayat sekitar satu minggu untuk menjelaskan perubahan proxy/);
+  assert.match(html, /Dibanding sekitar 1 minggu Belum cukup riwayat/);
+  assert.match(html, /Konteks sekitar 4 minggu: -18,4 miliar USD/);
+  assert.match(html, /Riwayat sekitar satu minggu belum cukup untuk pembanding utama/);
+  assert.doesNotMatch(html, /Proxy Net Liquidity meningkat/);
+  assert.doesNotMatch(html, /Proxy Net Liquidity menurun/);
+  assert.match(html, /bukan arus dana langsung ke Bitcoin/);
+});
+
+test("briefing keeps four-week context explicit when historical comparison is missing", () => {
+  const result = composeFactualMarketBriefing({
+    baselines: {},
+    observations: [],
+    asOf: AS_OF,
+    netLiquidity: {
+      ...netLiquidity,
+      change4wBillionsUsd: null,
+      change4wFrom: null,
+    },
+  });
+
+  assert.equal(result.netLiquidity.evidenceStatus, "AVAILABLE");
+  assert.equal(result.netLiquidity.change1wBillionsUsd, 42.6);
+  assert.equal(result.netLiquidity.change4wBillionsUsd, null);
+  assert.equal(result.netLiquidity.reasoningStatus, "NOT_EVALUATED");
+
+  const html = renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data: result }));
+  assert.match(html, /Dibanding sekitar 1 minggu \+42,6 miliar USD/);
+  assert.match(html, /Konteks sekitar 4 minggu: Belum cukup riwayat/);
+  assert.match(html, /Proxy Net Liquidity meningkat/);
+  assert.match(html, /bukan bukti dana langsung masuk ke Bitcoin/);
 });
 
 test("briefing keeps Net Liquidity insufficient when no read model is available", () => {
