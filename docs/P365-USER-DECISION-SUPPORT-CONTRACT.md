@@ -1,7 +1,7 @@
 # P365 — User & Decision-Support Contract
 
 **Version:** Product Rebaseline v1.0 — keputusan owner 11 Oktober 2026  
-**Status:** Arah produk disetujui owner; otoritatif di repository setelah PR #360 di-merge  
+**Status:** Arah produk disetujui owner; menjadi otoritatif di repository setelah PR dokumentasi untuk issue #360 di-merge  
 **Product identity:** Multi-Asset Financial Market Intelligence & Trader Decision Support System  
 **Primary user:** Self-directed trader yang menganalisis pasar lintas timeframe (intraday, swing, position)  
 **Product boundary:** Intelijen berbasis evidence; bukan sinyal, advis personal, prediksi pasti, atau eksekusi
