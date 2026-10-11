@@ -33,6 +33,7 @@ import {
   type FactualMarketBriefing,
 } from "./factual-market-briefing";
 import { buildCatalystWireReadModel, type CatalystWireReadModel } from "./catalyst-wire";
+import { buildStandaloneMarketContextReadModel, type StandaloneMarketContextReadModel } from "./standalone-market-context";
 import { buildMaterialMoveMonitor, type MaterialMoveMonitorReadModel } from "./material-move-monitor";
 
 export type DashboardData = NormalizedDashboardData & {
@@ -50,6 +51,7 @@ export type DashboardData = NormalizedDashboardData & {
   goldPositioning: GoldPositioningReadModel;
   factualMarketBriefing: FactualMarketBriefing;
   catalystWire: CatalystWireReadModel;
+  standaloneMarketContext: StandaloneMarketContextReadModel;
   materialMoveMonitor: MaterialMoveMonitorReadModel;
 };
 
@@ -59,10 +61,12 @@ type DurableHighImpactEventBundle = {
   contextComplete: boolean;
 };
 
-async function getRecentGdeltEvidence(asOf: Date): Promise<Evidence[]> {
+type ReadEvidenceResult = { rows: Evidence[]; succeeded: boolean };
+
+async function getRecentGdeltEvidence(asOf: Date): Promise<ReadEvidenceResult> {
   const from = new Date(asOf.getTime() - 2 * 60 * 60_000).toISOString();
   try {
-    return await historicalEvidenceRepository.findHistory({
+    const rows = await historicalEvidenceRepository.findHistory({
       sourceId: "gdelt",
       kind: "NEWS",
       effectiveAtOnOrAfter: from,
@@ -70,12 +74,35 @@ async function getRecentGdeltEvidence(asOf: Date): Promise<Evidence[]> {
       order: "DESC",
       limit: 20,
     });
+    return { rows, succeeded: true };
   } catch (error) {
     console.error(
       "Durable GDELT Catalyst Wire read failed:",
       error instanceof Error ? error.message : "unknown error",
     );
-    return [];
+    return { rows: [], succeeded: false };
+  }
+}
+
+async function getRecentBinanceEvidence(asOf: Date): Promise<ReadEvidenceResult> {
+  const from = new Date(asOf.getTime() - 45 * 60_000).toISOString();
+  try {
+    const rows = await historicalEvidenceRepository.findHistory({
+      sourceId: "binance-spot",
+      kind: "OBSERVATION",
+      effectiveAtOnOrAfter: from,
+      retrievedAtOnOrBefore: asOf.toISOString(),
+      order: "DESC",
+      limit: 30,
+    });
+    // The presentation layer qualifies exact 5m identity and complete windows.
+    return { rows, succeeded: true };
+  } catch (error) {
+    console.error(
+      "Durable Binance standalone context read failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    return { rows: [], succeeded: false };
   }
 }
 
@@ -243,6 +270,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const btcEtfFlowPromise = buildDashboardBtcEtfFlow(asOf);
   const goldPositioningPromise = buildGoldPositioningReadModel(dashboardHistoricalObservationRepository, asOf);
   const recentGdeltEvidencePromise = getRecentGdeltEvidence(asOf);
+  const recentBinanceEvidencePromise = getRecentBinanceEvidence(asOf);
   const materialMoveMonitorPromise = buildMaterialMoveMonitor({
     observations: dashboardHistoricalObservationRepository,
     events: historicalEventRepository,
@@ -264,7 +292,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     stablecoinLiquidity,
     btcEtfFlow,
     goldPositioning,
-    recentGdeltEvidence,
+    recentGdeltEvidenceResult,
+    recentBinanceEvidenceResult,
     materialMoveMonitor,
   ] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
@@ -282,6 +311,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     btcEtfFlowPromise,
     goldPositioningPromise,
     recentGdeltEvidencePromise,
+    recentBinanceEvidencePromise,
     materialMoveMonitorPromise,
   ]);
 
@@ -299,8 +329,16 @@ export async function getDashboardData(): Promise<DashboardData> {
   const catalystWire = buildCatalystWireReadModel({
     macroNews: normalized.macroNews,
     cryptoNews: normalized.cryptoNews,
-    gdeltEvidence: recentGdeltEvidence,
+    gdeltEvidence: recentGdeltEvidenceResult.rows,
     asOf: asOf.toISOString(),
+  });
+
+  const standaloneMarketContext = buildStandaloneMarketContextReadModel({
+    asOf: asOf.toISOString(),
+    binanceEvidence: recentBinanceEvidenceResult.rows,
+    gdeltEvidence: recentGdeltEvidenceResult.rows,
+    binanceReadSucceeded: recentBinanceEvidenceResult.succeeded,
+    gdeltReadSucceeded: recentGdeltEvidenceResult.succeeded,
   });
 
   const factualMarketBriefing = composeFactualMarketBriefing({
@@ -337,6 +375,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     goldPositioning,
     factualMarketBriefing,
     catalystWire,
+    standaloneMarketContext,
     materialMoveMonitor,
   };
 }

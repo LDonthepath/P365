@@ -16,6 +16,7 @@ import { IntradayEventResponsePanel } from "./intraday-event-response-panel";
 import { MvpFactualContextPanel } from "./mvp-factual-context-panel";
 import { FactualMarketBriefingPanel } from "./factual-market-briefing-panel";
 import { CatalystWirePanel } from "./catalyst-wire-panel";
+import { StandaloneMarketContextPanel } from "./standalone-market-context-panel";
 import { MaterialMoveMonitorPanel } from "./material-move-monitor-panel";
 import { FinancialMarketOverviewPanel } from "./financial-market-overview-panel";
 import { buildFinancialMarketOverview } from "@/lib/presentation/financial-market-overview";
@@ -551,6 +552,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         <div className="overview-briefing">
           <FactualMarketBriefingPanel data={data.factualMarketBriefing} />
         </div>
+        <StandaloneMarketContextPanel data={data.standaloneMarketContext} />
       </>}
       {activeMenu === "heatmap" && <>
         <div className="page-intro">
