@@ -13,6 +13,10 @@ concurrency:
 
 jobs:
   verify:
+    # Required branch-protection check: unique across all workflows.
+    # Keep the job id for internal compatibility; only the check-run display
+    # name changes. Do not require the path-filtered ECB/BoJ 'verify' job.
+    name: recovery-g0-verify
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
