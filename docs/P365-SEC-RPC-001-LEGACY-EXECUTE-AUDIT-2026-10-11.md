@@ -8,7 +8,7 @@
 
 Three legacy `public` functions have effective `EXECUTE` for `anon` and `authenticated`; all are `SECURITY INVOKER` owned by `postgres`. `PUBLIC` EXECUTE is present on **all three**, so revoking only `anon` is insufficient. `service_role` has a separate direct EXECUTE grant on all three, which can be preserved. No invocation, production SQL mutation, schema migration, scheduler change, or HTTP write probe was executed.
 
-**Important limits of proof:** PostgreSQL catalog rights plus `public` schema USAGE are verified. **The live PostgREST exposed-schema configuration and role-scoped HTTP API route visibility were NOT verified**: neither `pg_settings` nor `pg_db_role_setting` exposed `pgrst.db_schemas`, and the available connector did not expose the project's Data API settings. Do not label actual HTTP invoke/exploit `PROVEN` on this basis. `SECURITY INVOKER` requires additional target-table privileges; an effective EXECUTE grant by itself is not evidence of an unauthenticated write.
+**Important limits of proof:** PostgreSQL catalog rights plus `public` schema USAGE are verified. A follow-up production log readback (below) **positively proves the `public` schema is served via the live Data API**: successful authenticated PostgREST calls to a separately confirmed `public` RPC. However, the exact PostgREST exposed-schema *settings* and **anonymous role-scoped HTTP endpoint visibility for these three legacy RPCs** remain unverified: neither `pg_settings` nor `pg_db_role_setting` exposed `pgrst.db_schemas`, and the available connector did not expose the project's Data API configuration. Do not label actual anonymous HTTP invocation/exploit `PROVEN`. `SECURITY INVOKER` requires underlying table privileges; EXECUTE alone is not evidence of an unauthenticated write.
 
 ## Verified inventory (SQL catalog readback)
 
@@ -23,6 +23,53 @@ Three legacy `public` functions have effective `EXECUTE` for `anon` and `authent
 - `to_regclass('public.market_snapshots')` returns **NULL**; no `market_snapshots` relation with that name appears in catalog. The two legacy snapshot RPCs refer to the missing relation; no evidence they perform successful writes today. Their `SECURITY INVOKER` functions have no privilege-elevation proof.
 - A read-only `pg_proc` definition search found no other SQL function containing these exact legacy function names, and `pg_trigger` returned no triggers invoking them.
 - All 11 active `cron.job` commands in the observed production catalog were checked with explicit name matches: no references to any of the three RPC names.
+
+## Follow-up: effective live `public` Data API exposure and historical access (11 October 2026, ~02:04–02:06 UTC)
+
+Additional **READ-ONLY** evidence collected after the original qualification:
+
+- SQL catalog confirms `public.p365_insert_fred_observations_v1(jsonb)` exists, with `service_role EXECUTE = true`. This routine is **different** from the three legacy targets.
+- The production Supabase `edge_logs` source contains **20 observed POST HTTP 200** requests to `/rest/v1/rpc/p365_insert_fred_observations_v1` in the connector's rolling last-24h window. This is positive, project-specific proof that PostgREST is serving at least this **public-schema RPC**; the schema exposure is **operationally proven**, not assumed from defaults. These were already-existing application calls; the audit **did not invoke a function**.
+- The same read-only logs contain **zero references to `/rest/v1/rpc/append_market_memory`, `/rest/v1/rpc/calculate_oms_and_save`, or `/rest/v1/rpc/process_market_snapshot` in the last 24 hours**. Zero matches is limited to retained/available logs and does **not** prove no long-tail/out-of-repo caller exists.
+- The project API key inventory reports **one enabled legacy `anon` key and one enabled modern publishable key**; no key value was printed or saved in this audit. Enabled public keys alone do not prove which HTTP routes an anonymous request can reach.
+- Repeated current production SQL catalog readback at `2026-10-11 02:04 UTC`: `anon / authenticated / service_role` effective EXECUTE remains **true / true / true** for all three. No DDL/DML/GRANT/REVOKE occurred.
+- The Supabase Security Advisor still reports two `function_search_path_mutable` warnings for the obsolete OMS/snapshot functions. No privilege-escalation exploitation finding was reported for these three `SECURITY INVOKER` functions. Search-path remediation/function rewrite is **not** part of this grant-only issue.
+
+**Remaining HTTP-specific gate:** No trusted connector currently provides a direct authenticated *GET-only* request to this project's `/rest/v1/` OpenAPI endpoint with the `anon` role. Do **not** submit `POST` to the write-capable legacy RPCs merely to test access. The operator can use an existing securely held **legacy public anon key** and perform a **GET-only** OpenAPI metadata check locally, after confirming Data API is enabled:
+
+```bash
+# Supply this value privately using the operator's secure environment.
+# Do not paste it into issue, CI logs or screenshot; do not print its contents.
+export SUPABASE_ANON_KEY="<existing public anon key from secure credential store>"
+
+curl --fail --silent --show-error \\
+  'https://orwhuzexnuochctccqvl.supabase.co/rest/v1/' \\
+  -H "apikey: ${SUPABASE_ANON_KEY}" \\
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \\
+  -H 'Accept: application/openapi+json' \\
+  | jq -r '.paths | keys[] | select(. == "/rpc/append_market_memory" or . == "/rpc/calculate_oms_and_save" or . == "/rpc/process_market_snapshot")'
+```
+
+If supported, record the list of legacy function paths returned with HTTP status and API schema selected (without headers/keys). This is a **metadata check**, not a function invocation; route presence does not show a successful write or override RLS/table grants. A missing path must be interpreted with role/schema-cache/version effects considered. The current tooling cannot run this GET-only authenticated HTTP probe, so **the last gate stays explicitly UNVERIFIED**. The operator must also confirm Data API exposed schemas in the [Supabase dashboard settings](https://supabase.com/dashboard/project/orwhuzexnuochctccqvl/integrations/data_api/settings) or another approved config readback.
+
+**Audit query receipt (`edge_logs`, 24h rolling connector window):**
+
+```sql
+SELECT count(*) AS known_public_rpc_requests,
+  countIf(event_message LIKE 'POST | 200%') AS status_200
+FROM logs WHERE source = 'edge_logs'
+  AND event_message ILIKE '%/rest/v1/rpc/p365_insert_fred_observations_v1%';
+-- measured: 20 / 20
+
+SELECT count(*) AS legacy_rpc_hits_24h
+FROM logs WHERE source = 'edge_logs'
+ AND (event_message ILIKE '%/rest/v1/rpc/append_market_memory%'
+   OR event_message ILIKE '%/rest/v1/rpc/calculate_oms_and_save%'
+   OR event_message ILIKE '%/rest/v1/rpc/process_market_snapshot%');
+-- measured: 0
+```
+
+These are **Supabase unified logs ClickHouse** queries, **not PostgreSQL SQL Editor** queries. They do not change the role permissions.
 
 ## Caller analysis and safeguards
 
@@ -94,7 +141,8 @@ This rollback **reopens anonymous EXECUTE**; it is not a benign generic repair. 
 - [x] Function signatures/owner/INVOKER/ACL and actual anon, auth, service-role effective privileges measured on production catalog.
 - [x] Underlying table permission, SQL function/trigger and active cron checks recorded; production Edge Function inspected; current main app writer inspected.
 - [x] Target-specific read-only SQL, candidate REVOKE, non-destructive rollback and predicted privilege matrix documented.
-- [ ] **Real role-scoped Data API exposed-schema and endpoint evidence** not yet captured (not to be inferred from default config).
+- [x] **Project-specific live `public`-schema Data API RPC traffic** confirmed via 20 successful HTTP 200 calls to distinct FRED RPC; 0 observed calls to three legacy target RPCs in rolling last 24h logs.
+- [ ] **Exact PostgREST setting/anonymous role-scoped HTTP route metadata for the three legacy functions** still not captured; GET-only operator check documented (not to be inferred from default configuration).
 - [ ] **Explicit owner SQL authorization**, then approved production privilege transaction and measured actual after-state / service-role continuity.
 - [ ] Verify any out-of-repo consumers before executing REVOKE; verify post-merge main, exact CI, SQL readback, security-advisor result; only then consider #330 CLOSED (completed).
 
