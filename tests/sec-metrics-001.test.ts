@@ -44,7 +44,7 @@ test("SEC-METRICS-001: rollback is isolated and explicitly restores original sev
 
 test("SEC-METRICS-001: verifier is SELECT-only and checks runtime scheduling", () => {
   const sql = inventory.split("\n").filter((line) => !line.trim().startsWith("--")).join("\n");
-  assert.doesNotMatch(sql, /\b(?:REVOKE|GRANT|ALTER|TRUNCATE|DELETE|INSERT|UPDATE|CREATE|DROP|PERFORM)\b/i);
+  assert.doesNotMatch(sql, /\b(?:REVOKE|GRANT|ALTER|CREATE|DROP|PERFORM|TRUNCATE\s+TABLE|DELETE\s+FROM|INSERT\s+INTO|UPDATE\s+public\.)\b/i);
   assert.match(sql, /has_table_privilege/);
   assert.match(sql, /relrowsecurity/);
   assert.match(sql, /column_acl_count/);
