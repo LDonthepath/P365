@@ -40,13 +40,14 @@ Additional **READ-ONLY** evidence collected after the original qualification:
 ```bash
 # Supply this value privately using the operator's secure environment.
 # Do not paste it into issue, CI logs or screenshot; do not print its contents.
-export SUPABASE_ANON_KEY="<existing public anon key from secure credential store>"
+read -rs -p "Enter existing public anon key (not echoed): " SUPABASE_ANON_KEY
+printf "\\n"
 
-curl --fail --silent --show-error \\
-  'https://orwhuzexnuochctccqvl.supabase.co/rest/v1/' \\
-  -H "apikey: ${SUPABASE_ANON_KEY}" \\
-  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \\
-  -H 'Accept: application/openapi+json' \\
+curl --fail --silent --show-error \
+  'https://orwhuzexnuochctccqvl.supabase.co/rest/v1/' \
+  -H "apikey: ${SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+  -H 'Accept: application/openapi+json' \
   | jq -r '.paths | keys[] | select(. == "/rpc/append_market_memory" or . == "/rpc/calculate_oms_and_save" or . == "/rpc/process_market_snapshot")'
 ```
 
