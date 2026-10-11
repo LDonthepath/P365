@@ -5,7 +5,7 @@ import {
   type HistoricalObservationFitnessPolicy,
 } from "./historical-observation-fitness";
 import { CFTC_GOLD_COT_SERIES_KEYS } from "./observation-semantics";
-import type { ObservationHistoryIdentity } from "../repositories/types";
+import type { ObservationHistoryIdentity } from "./observation-history";
 
 export const HISTORICAL_BASELINE_POLICY_V1 = "point-in-time-historical-baseline-v1" as const;
 

@@ -1,21 +1,11 @@
 import type { EconomicEventResult, EventExpectedType } from "../domain/event-result";
 import type { MarketSnapshot } from "../domain/market-snapshot";
-import type { Context, Event, Evidence, Observation, ObservationDomain } from "../domain/types";
+import type { ObservationHistoryIdentity } from "../domain/observation-history";
+import type { Context, Event, Evidence, Observation } from "../domain/types";
+
+export type { ObservationHistoryIdentity } from "../domain/observation-history";
 
 export type ObservationHistoryOrder = "ASC" | "DESC";
-
-/**
- * Provider-independent logical identity for an Observation series.
- * `seriesKey` reuses the machine semantic key retained by normalization:
- * metadata.seriesId for current FRED observations or metadata.metricId for
- * current market observations. Providers that represent the same logical
- * series must normalize to the same key. Descriptive subjects, source IDs,
- * and per-measurement canonical IDs are not semantic-series identity.
- */
-export type ObservationHistoryIdentity = {
-  domain: ObservationDomain;
-  seriesKey: string;
-};
 
 /**
  * Historical Observation query contract.

@@ -1,15 +1,6 @@
 {
   "version": 1,
   "scope": "production app/**/*.ts(x), lib/**/*.ts(x); excludes *.test.ts(x), *.d.ts",
-  "forbiddenEdges": [
-    "lib/domain/historical-baseline.ts -> lib/repositories/types.ts",
-    "lib/domain/historical-relationship.ts -> lib/repositories/types.ts",
-    "lib/domain/pricing-baseline.ts -> lib/repositories/observation-history.ts"
-  ],
-  "cycleEdges": [
-    "lib/domain/market-snapshot.ts -> lib/domain/pricing-baseline.ts",
-    "lib/domain/pricing-baseline.ts -> lib/repositories/observation-history.ts",
-    "lib/repositories/observation-history.ts -> lib/repositories/types.ts",
-    "lib/repositories/types.ts -> lib/domain/market-snapshot.ts"
-  ]
+  "forbiddenEdges": [],
+  "cycleEdges": []
 }
