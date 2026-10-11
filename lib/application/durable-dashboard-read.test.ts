@@ -32,13 +32,14 @@ function repositories(input: {
   news?: Evidence[];
   events?: Event[];
   failSource?: string;
+  failSeries?: string;
 } = {}) {
   const reads: string[] = [];
   const repo: DurableDashboardRepositories = {
     observations: {
       async findHistory(query) {
         reads.push("obs:" + query.sourceId + ":" + query.identity.seriesKey);
-        if (query.sourceId === input.failSource) throw new Error("database unavailable");
+        if (query.sourceId === input.failSource || query.identity.seriesKey === input.failSeries) throw new Error("database unavailable");
         // Deliberately return future records in some fixtures to test reader-side protection.
         return (input.observations ?? []).filter((item) =>
           item.sourceId === query.sourceId &&
@@ -154,3 +155,45 @@ test("G2-01: invalid time rejects rather than widening the source visibility cut
   await assert.rejects(readDurableDashboardData(new Date("invalid"), repo), /valid as-of/);
 });
 
+
+test("RECOVERY-G1-04: Gold repository failure does not mask healthy DXY and Yahoo aggregate fails closed", async () => {
+  const dxy = observation({
+    id: "dxy", subject: "dxy.index.usd", sourceId: "yahoo-finance",
+    observedAt: "2026-10-12T13:58:00.000Z",
+    retrievedAt: "2026-10-12T13:59:00.000Z",
+    metadata: { metricId: "dxy.index.usd", unit: "USD" },
+  });
+  const { repo } = repositories({
+    observations: [dxy], failSeries: "gold.futures.usd",
+  });
+  const data = await readDurableDashboardData(new Date("2026-10-12T14:00:00.000Z"), repo);
+  assert.equal(data.yahooSeriesHealth?.find((x) => x.seriesKey === "gold.futures.usd")?.status, "ERROR");
+  assert.equal(data.yahooSeriesHealth?.find((x) => x.seriesKey === "dxy.index.usd")?.status, "HEALTHY");
+  assert.equal(data.yahooSeriesHealth?.find((x) => x.seriesKey === "russell2000.index.usd")?.status, "EMPTY");
+  assert.equal(data.providerHealth.find((x) => x.sourceId === "yahoo-finance")?.status, "ERROR");
+  assert.ok(data.unavailableSources.some((x) => x.includes("COMEX") && x.includes("gagal")));
+  assert.ok(!data.unavailableSources.some((x) => x.includes("DXY (Yahoo")));
+  assert.equal(data.observations.find((x) => x.metadata?.metricId === "gold.futures.usd"), undefined);
+  assert.equal(data.observations.find((x) => x.metadata?.metricId === "dxy.index.usd")?.id, "dxy");
+});
+
+test("RECOVERY-G1-04: empty or stale Gold stays independently disclosed despite healthy DXY", async () => {
+  const dxy = observation({
+    id: "dxy", subject: "dxy.index.usd", sourceId: "yahoo-finance",
+    observedAt: "2026-10-12T13:58:00.000Z",
+    retrievedAt: "2026-10-12T13:59:00.000Z",
+    metadata: { metricId: "dxy.index.usd" },
+  });
+  const gold = observation({
+    id: "gold", subject: "gold.futures.usd", sourceId: "yahoo-finance",
+    observedAt: "2026-10-09T20:00:00.000Z",
+    retrievedAt: "2026-10-09T20:01:00.000Z",
+    metadata: { metricId: "gold.futures.usd" },
+  });
+  const { repo } = repositories({ observations: [dxy, gold] });
+  const data = await readDurableDashboardData(new Date("2026-10-12T14:00:00.000Z"), repo);
+  assert.equal(data.yahooSeriesHealth?.find((x) => x.seriesKey === "dxy.index.usd")?.status, "HEALTHY");
+  assert.notEqual(data.yahooSeriesHealth?.find((x) => x.seriesKey === "gold.futures.usd")?.status, "HEALTHY");
+  assert.notEqual(data.providerHealth.find((x) => x.sourceId === "yahoo-finance")?.status, "HEALTHY");
+  assert.ok(data.unavailableSources.some((x) => x.includes("COMEX")));
+});
