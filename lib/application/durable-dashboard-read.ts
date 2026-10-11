@@ -4,6 +4,10 @@ import { buildDashboardContexts } from "../domain/context";
 import { qualityFromMacroCadence, qualityFromMarketHours, freshnessPolicyForFamily, type MarketFreshnessCalendar } from "../domain/freshness";
 import type { DataQuality, Event, Evidence, Observation, ProviderHealth } from "../domain/types";
 import type { NormalizedDashboardData } from "../normalization/dashboard-normalization";
+import {
+  YAHOO_MARKET_SERIES, aggregateYahooHealth, yahooSeriesUnavailable,
+  type YahooSeriesHealth,
+} from "../normalization/yahoo-market-health";
 import type { HistoricalObservationRepository, HistoricalEvidenceRepository, HistoricalEventRepository } from "../repositories/types";
 import { compareObservationHistory } from "../repositories/observation-history";
 
@@ -158,6 +162,7 @@ export async function readDurableDashboardData(
   if (!Number.isFinite(asOf.getTime())) throw new Error("Dashboard requires a valid as-of cutoff");
   const cutoff = asOf.toISOString();
   const failures = new Set<string>();
+  const yahooSeriesFailures = new Set<string>();
 
   const observationResults = await Promise.all(SERIES.map(async (series) => {
     try {
@@ -169,7 +174,8 @@ export async function readDurableDashboardData(
       });
       return latestQualified(rows, series, cutoff);
     } catch {
-      failures.add(series.sourceId);
+      if (series.sourceId === "yahoo-finance") yahooSeriesFailures.add(series.seriesKey);
+      else failures.add(series.sourceId);
       return null;
     }
   }));
@@ -220,11 +226,27 @@ export async function readDurableDashboardData(
     .sort((a, b) => Date.parse(a.dateISO) - Date.parse(b.dateISO)).slice(0, 6);
 
   const all: Array<Observation | Event | Evidence> = [...observations, ...events, ...newsEvidence];
+  const yahooSeriesHealth: YahooSeriesHealth[] = YAHOO_MARKET_SERIES.map(({ seriesKey }) => ({
+    ...providerHealth(
+      "yahoo-finance",
+      observations.filter((row) => row.sourceId === "yahoo-finance"
+        && (row.metadata?.metricId === seriesKey || row.metadata?.seriesId === seriesKey)),
+      new Set(yahooSeriesFailures.has(seriesKey) ? ["yahoo-finance"] : []),
+    ),
+    seriesKey,
+  }));
+  const yahooMarketHealth = aggregateYahooHealth(yahooSeriesHealth);
   const providerHealthRows = PROVIDERS.map((sourceId) =>
-    providerHealth(sourceId, all.filter((row) => row.sourceId === sourceId), failures));
-  const unavailableSources = providerHealthRows.filter((row) => row.status !== "HEALTHY")
-    .map((row) => `${row.sourceId}: ${row.status === "ERROR" ? "gagal membaca histori" :
-      row.status === "STALE" ? "data terakhir sudah lama" : "belum ada data durabel"}`);
+    sourceId === "yahoo-finance"
+      ? yahooMarketHealth
+      : providerHealth(sourceId, all.filter((row) => row.sourceId === sourceId), failures));
+  const unavailableSources = [
+    ...providerHealthRows.filter((row) =>
+      row.sourceId !== "yahoo-finance" && row.status !== "HEALTHY")
+      .map((row) => `${row.sourceId}: ${row.status === "ERROR" ? "gagal membaca histori" :
+        row.status === "STALE" ? "data terakhir sudah lama" : "belum ada data durabel"}`),
+    ...yahooSeriesUnavailable(yahooSeriesHealth),
+  ];
 
   return {
     macroNews, cryptoNews, calendarEvents,
@@ -235,6 +257,7 @@ export async function readDurableDashboardData(
     contexts: buildDashboardContexts({ observations, events, createdAt: cutoff }),
     evidence: newsEvidence,
     providerHealth: providerHealthRows,
+    yahooSeriesHealth,
   };
 }
 
