@@ -1,8 +1,8 @@
 import "server-only";
 import { beginMarketReadContext, completeMarketReadContext, type MarketReadContext } from "./market-read-context";
 import type { FactualBaseline } from "../domain/baseline";
-import { ingestDashboardData } from "../ingestion/dashboard-ingestion";
-import { normalizeDashboardData, type NormalizedDashboardData } from "../normalization/dashboard-normalization";
+import { readDurableDashboardData } from "./durable-dashboard-read";
+import type { NormalizedDashboardData } from "../normalization/dashboard-normalization";
 import { historicalEventRepository, historicalEvidenceRepository, historicalObservationRepository } from "../repositories/dashboard-repository";
 import type { Event, Evidence } from "../domain/types";
 import {
@@ -243,8 +243,8 @@ async function buildDashboardBtcEtfFlow(asOf: Date): Promise<BtcEtfFlowReadModel
 export async function getDashboardData(): Promise<DashboardData> {
   const readContext = beginMarketReadContext(new Date());
   const asOf = new Date(readContext.knowledgeAsOf);
-  // Start the independent durable event-response read immediately so it runs
-  // alongside provider ingestion/normalization and baseline work.
+  // A dashboard GET composes only already-persisted evidence. Cron ingestion is
+  // a separate write-side capability and is never called during rendering.
   const intradayEventMonitorPromise = getIntradayEventMonitor();
   const durableHighImpactEventBundlePromise = getDurableHighImpactEventBundle(asOf);
   const netLiquidityPromise = buildDashboardNetLiquidity(asOf);
@@ -277,8 +277,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     evidence: historicalEvidenceRepository,
     asOf: asOf.toISOString(),
   });
-  const ingestion = await ingestDashboardData();
-  const normalized = normalizeDashboardData(ingestion);
+  const normalized = await readDurableDashboardData(asOf, {
+    observations: dashboardHistoricalObservationRepository,
+    evidence: historicalEvidenceRepository,
+    events: historicalEventRepository,
+  });
 
   const [
     macroBaselines,
