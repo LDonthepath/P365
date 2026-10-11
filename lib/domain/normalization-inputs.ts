@@ -34,4 +34,34 @@ type CanonicalDailyFact = {
   metadata: Record<string, string | number | boolean | null>;
 };
 
-export type CanonicalLiquidityInput = CanonicalDailyFact & { pegType: str¶»§q«^
+export type CanonicalLiquidityInput = CanonicalDailyFact & { pegType: string };
+export type CanonicalEtfFlowInput = CanonicalDailyFact & { providerTradingDate: string };
+export type CanonicalPositioningInput = CanonicalDailyFact & {
+  reportDate: string; frequency: string;
+};
+export type CanonicalSepInput = CanonicalDailyFact & {
+  factType: string; releaseDate: string;
+};
+
+export type CanonicalMacroInput = {
+  series: {
+    seriesId: string; subject: string; frequency: MacroCadenceFrequency;
+    unit: string; source: string; domain: "MACRO" | "ASSET";
+    freshnessMs: number;
+  };
+  value: string; observationDate: string;
+  previousValue: string | null; vintageDate: string | null;
+  releasedAt: string | null; retrievedAt: string;
+  provenance: ObservationProvenance;
+};
+
+export type CanonicalFomcInput = {
+  scheduledAt: string; label: string; sourceUrl: string;
+};
+
+/** Provider-independent health summary; maps SUCCESS to canonical HEALTHY. */
+export type ProviderHealthInput<T> = {
+  status: "SUCCESS" | "EMPTY" | "ERROR" | "UNAVAILABLE";
+  data: T[];
+  message?: string;
+};
