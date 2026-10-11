@@ -41,6 +41,20 @@ Historical as-of eligibility was evaluated on the **same fixed 18 UUIDs** in sou
 
 Re-runnable [Neon sample verification SELECT script](../scripts/ops/db_backup_001_neon_sample_verify.sql) is committed; run it **only on `br-cold-hill-b3vq6nhq`**, not production or another schema. The initial source selection was a moment-in-time snapshot of the latest 3 rows per type, so rerunning it later will select different newly ingested records and produce a different manifest. That is expected.
 
+### Additional live FRED factual revision pair (separate SQL table; not part of 18-row manifest)
+
+The source SQL inventory also located a **genuine pair of FRED Observation versions** with the same `payload.identity.measurementId`, **two different `payload.value` factual values**, and **two different `payload.identity.revisionFingerprint` values**. The versions were captured 1 October 2026 at 13:31 UTC and 8 October 2026 at 13:31 UTC. Both rows were transferred into a separate Neon-only `recovery_drill_331.fred_observation_revision_pair` table, created from the staging table structure. No production rows were changed. The original 18-row manifest above remains intact.
+
+| Check | Supabase source | Neon revision table | Result |
+|---|---|---|---|
+| Same measurement identity, two historical rows | 2 rows, 1 measurement ID | 2 rows, 1 measurement ID | **PASS** |
+| Distinct factual values | 2 | 2 | **PASS** |
+| Distinct revision fingerprints | 2 | 2 | **PASS** |
+| Revision-pair content manifest | `7fd554d31e6b4e30062dd9cb30c408f0` | `7fd554d31e6b4e30062dd9cb30c408f0` | **PASS** |
+| As-of 5 October 2026 UTC, physical capture + payload retrieval | Earlier version only | Earlier version only | **PASS** |
+
+This is direct evidence that **one real canonical FRED factual revision** survived SQL copying without overwriting its earlier version. It does **not** prove that all revision families, database functions, or an incident-scale backup restore are correct. The FRED revision control gate/heads still have the independent actual source state `enforced=false`, `epoch=0`, `heads=0` as recorded above. [Revision-specific verification SQL](../scripts/ops/db_backup_001_neon_fred_revision_verify.sql) is SELECT-only.
+
 ## Critical limitations — reasons Issue #331 stays OPEN
 
 **This is a partial SQL record-transfer drill, not an actual backup/restore of a complete database.** The following remain untested:
