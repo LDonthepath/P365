@@ -9,7 +9,7 @@ import type { HyperliquidPerpOrderBookSnapshot } from "../data/hyperliquid-perp-
 import { soSoValueBackfillRangeError, type SoSoValueBtcEtfFlowBackfillRange, type SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
 import { cftcGoldCotBackfillRangeError, type CftcGoldCotBackfillRange, type CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { ProviderId, ProviderResult } from "../data/types";
-import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, federalReserveSepToCanonicalRecords, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../domain/normalize";
+import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, federalReserveSepToCanonicalRecords, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../normalization/provider-canonical";
 import { gdeltGalSnapshotsToEvidence } from "./gdelt-gal-history";
 import { buildBinanceBtcSpotFlowWindow } from "./btc-spot-flow";
 import { btcSpotFlowWindowsToEvidence } from "./btc-spot-flow-history";

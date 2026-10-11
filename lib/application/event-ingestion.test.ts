@@ -9,7 +9,7 @@ import { providerResult, type CalendarEvent, type ProviderResult } from "../data
 import { economicEventResultDedupeKey, type EconomicEventResult } from "../domain/event-result";
 import { reconcileEvents } from "../domain/event-identity";
 import type { Event } from "../domain/types";
-import { calendarToCanonicalRecords, fomcToCanonicalRecords } from "../domain/normalize";
+import { calendarToCanonicalRecords, fomcToCanonicalRecords } from "../normalization/provider-canonical";
 import { normalizeBiquoteEconomicCalendar } from "../normalization/biquote-economic-calendar";
 import {
   InMemoryContextRepository,

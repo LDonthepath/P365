@@ -3,7 +3,7 @@ import { biquoteCountryCode, type EventIngestionJurisdiction } from "../data/eve
 import type { FomcEventInput } from "../data/federal-reserve-events";
 import type { CalendarEvent, ProviderId, ProviderResult } from "../data/types";
 import type { EconomicEventResult } from "../domain/event-result";
-import { calendarToCanonicalRecords, fomcToCanonicalRecords, P365_SOURCES } from "../domain/normalize";
+import { calendarToCanonicalRecords, fomcToCanonicalRecords, P365_SOURCES } from "../normalization/provider-canonical";
 import type { Evidence, Event } from "../domain/types";
 import { normalizeBiquoteEconomicCalendar } from "../normalization/biquote-economic-calendar";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";

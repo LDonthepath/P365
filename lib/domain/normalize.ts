@@ -1,12 +1,8 @@
-import type { CalendarEvent, NewsItem, ProviderResult } from "../data/types";
-import type { CryptoMarketObservationInput } from "../data/crypto-market";
-import type { DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
-import type { SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
-import type { CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
-import type { MacroObservationInput } from "../data/fred";
-import type { FomcEventInput } from "../data/federal-reserve-events";
-import type { FederalReserveSepObservationInput } from "../data/federal-reserve-sep";
-import { forexFactoryJurisdiction } from "../data/event-jurisdiction";
+import type {
+  CalendarCanonicalInput, CanonicalNewsInput, CanonicalMarketInput,
+  CanonicalLiquidityInput, CanonicalEtfFlowInput, CanonicalPositioningInput,
+  CanonicalMacroInput, CanonicalFomcInput, CanonicalSepInput, ProviderHealthInput,
+} from "./normalization-inputs";
 import type { DataQuality, Evidence, Event, Observation, ObservationSemantics, ProviderHealth, SourceHealthStatus } from "./types";
 import { buildObservationIdentity, observationEvidenceId, observationRevisionId } from "./observation-identity";
 import { buildEventIdentity } from "./event-identity";
@@ -35,7 +31,7 @@ function hashId(prefix: string, value: string): string {
   return `${prefix}-${Math.abs(hash).toString(36)}`;
 }
 
-function macroObservationQuality(item: MacroObservationInput): DataQuality {
+function macroObservationQuality(item: CanonicalMacroInput): DataQuality {
   return qualityFromMacroCadence({
     observationDate: item.observationDate,
     frequency: item.series.frequency,
@@ -54,7 +50,7 @@ function isValidMacroObservationContext(observationDate: string, retrievedAt: st
     && date.getTime() <= retrieved.getTime();
 }
 
-export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] {
+export function newsToEvidence(items: CanonicalNewsInput[], sourceId: string): Evidence[] {
   const retrievedAt = new Date().toISOString();
   return items.map((item) => ({
     id: hashId("evidence", `${sourceId}:${item.id}`),
@@ -69,10 +65,10 @@ export function newsToEvidence(items: NewsItem[], sourceId: string): Evidence[] 
   }));
 }
 
-export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
+export function calendarToCanonicalRecords(items: CalendarCanonicalInput[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
   const retrievedAt = new Date().toISOString();
   const canonical = items.map((item) => {
-    const jurisdiction = forexFactoryJurisdiction(item.country);
+    const jurisdiction = item.jurisdiction;
     const scheduledAt = new Date(item.dateISO).toISOString();
     const identity = buildEventIdentity({
       subject: item.event,
@@ -117,7 +113,7 @@ export function calendarToCanonicalRecords(items: CalendarEvent[], sourceId: str
   };
 }
 
-export function cryptoMarketToObservations(items: CryptoMarketObservationInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
+export function cryptoMarketToObservations(items: CanonicalMarketInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
   const normalized = items.map((item) => {
     const domain = item.metricId.startsWith("crypto.") ? "MARKET" as const : "ASSET" as const;
     const value = String(item.value);
@@ -171,7 +167,7 @@ export function cryptoMarketToObservations(items: CryptoMarketObservationInput[]
 
 /** Converts validated DefiLlama peggedUSD aggregates into canonical facts. */
 export function stablecoinLiquidityToCanonicalRecords(
-  items: DefiLlamaStablecoinObservationInput[],
+  items: CanonicalLiquidityInput[],
 ): { observations: Observation[]; evidence: Evidence[] } {
   const sourceId = P365_SOURCES.defiLlamaStablecoins.id;
   const normalized = items.map((item) => {
@@ -227,7 +223,7 @@ export function stablecoinLiquidityToCanonicalRecords(
 
 /** Converts maturity-qualified SoSoValue provider aggregates into canonical facts. */
 export function btcEtfFlowToCanonicalRecords(
-  items: SoSoValueBtcEtfFlowObservationInput[],
+  items: CanonicalEtfFlowInput[],
 ): { observations: Observation[]; evidence: Evidence[] } {
   const sourceId = P365_SOURCES.soSoValueEtfFlow.id;
   const normalized = items.map((item) => {
@@ -280,7 +276,7 @@ export function btcEtfFlowToCanonicalRecords(
 
 /** Converts validated CFTC Disaggregated Futures Only Gold positions into canonical facts. */
 export function cftcGoldCotToCanonicalRecords(
-  items: CftcGoldCotObservationInput[],
+  items: CanonicalPositioningInput[],
 ): { observations: Observation[]; evidence: Evidence[] } {
   const sourceId = P365_SOURCES.cftcGoldCot.id;
   const normalized = items.map((item) => {
@@ -337,7 +333,7 @@ export function cftcGoldCotToCanonicalRecords(
 
 /** Converts official Federal Reserve SEP medians and dot-count buckets into canonical factual expectations. */
 export function federalReserveSepToCanonicalRecords(
-  items: FederalReserveSepObservationInput[],
+  items: CanonicalSepInput[],
 ): { observations: Observation[]; evidence: Evidence[] } {
   const sourceId = P365_SOURCES.federalReserve.id;
   const normalized = items.map((item) => {
@@ -397,7 +393,7 @@ export function federalReserveSepToCanonicalRecords(
 }
 
 /** Converts validated FRED records into canonical facts without interpretation. */
-export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
+export function macroToCanonicalRecords(items: CanonicalMacroInput[], sourceId: string): { observations: Observation[]; evidence: Evidence[] } {
   const eligibleItems = items.filter((item) => isValidMacroObservationContext(item.observationDate, item.retrievedAt));
   const normalized = eligibleItems.map((item) => {
     const metadata = {
@@ -456,7 +452,7 @@ export function macroToCanonicalRecords(items: MacroObservationInput[], sourceId
   };
 }
 
-export function fomcToCanonicalRecords(items: FomcEventInput[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
+export function fomcToCanonicalRecords(items: CanonicalFomcInput[], sourceId: string): { events: Event[]; evidence: Evidence[] } {
   const retrievedAt = new Date().toISOString();
   const evidence = items.map((item) => ({
     id: hashId("evidence", `${sourceId}:fomc:${item.scheduledAt}`),
@@ -520,7 +516,7 @@ export function observationFromCanonicalFact(input: {
   };
 }
 
-export function providerHealthForResult<T>(sourceId: string, result: ProviderResult<T>): ProviderHealth {
+export function providerHealthForResult<T>(sourceId: string, result: ProviderHealthInput<T>): ProviderHealth {
   const status: SourceHealthStatus = result.status === "SUCCESS" ? "HEALTHY" : result.status;
   return {
     sourceId,
