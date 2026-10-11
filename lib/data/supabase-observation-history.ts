@@ -63,9 +63,15 @@ export class SupabaseHistoricalObservationRepository implements HistoricalObserv
       : new Date(query.observedAtOnOrBefore).toISOString();
 
     const observations: Observation[] = [];
+    // Latest-value consumers commonly need only 8 records. The old fixed
+    // 250-candidate request over-fetched every short history on each dashboard
+    // GET. Starting with at least 2x the requested limit leaves room for
+    // corrections, while the existing paging/tie-group proof below preserves
+    // exact point-in-time and revision semantics for dense histories.
+    const firstBatchSize = Math.min(this.candidateBatchSize, Math.max(16, query.limit * 2));
     let offset = 0;
     while (offset < this.maxCandidateScan) {
-      const batchSize = Math.min(this.candidateBatchSize, this.maxCandidateScan - offset);
+      const batchSize = Math.min(firstBatchSize, this.maxCandidateScan - offset);
       const response = await this.fetcher(
         `${url}/rest/v1/rpc/${OBSERVATION_HISTORY_RPC}`,
         {
