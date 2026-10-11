@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "scope": "production app/**/*.ts(x), lib/**/*.ts(x); excludes *.test.ts(x), *.d.ts",
+  "forbiddenEdges": [
+    "lib/domain/historical-baseline.ts -> lib/repositories/types.ts",
+    "lib/domain/historical-relationship.ts -> lib/repositories/types.ts",
+    "lib/domain/normalize.ts -> lib/data/cftc-gold-cot.ts",
+    "lib/domain/normalize.ts -> lib/data/crypto-market.ts",
+    "lib/domain/normalize.ts -> lib/data/defillama-stablecoins.ts",
+    "lib/domain/normalize.ts -> lib/data/event-jurisdiction.ts",
+    "lib/domain/normalize.ts -> lib/data/federal-reserve-events.ts",
+    "lib/domain/normalize.ts -> lib/data/federal-reserve-sep.ts",
+    "lib/domain/normalize.ts -> lib/data/fred.ts",
+    "lib/domain/normalize.ts -> lib/data/sosovalue-etf-flow.ts",
+    "lib/domain/normalize.ts -> lib/data/types.ts",
+    "lib/domain/pricing-baseline.ts -> lib/repositories/observation-history.ts"
+  ],
+  "cycleEdges": [
+    "lib/domain/market-snapshot.ts -> lib/domain/pricing-baseline.ts",
+    "lib/domain/pricing-baseline.ts -> lib/repositories/observation-history.ts",
+    "lib/repositories/observation-history.ts -> lib/repositories/types.ts",
+    "lib/repositories/types.ts -> lib/domain/market-snapshot.ts"
+  ]
+}
