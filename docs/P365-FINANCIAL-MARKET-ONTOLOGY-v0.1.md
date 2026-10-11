@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-> **Product-scope supersession — 11 October 2026:** Owner approved **Multi-Asset Financial Market Intelligence across intraday, swing and position horizons** with macro as state/regime *context*. The active product contract is [User & Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md), supported by the **Market Universe activation contract in §1.0 below** and [product roadmap in issue #360](https://github.com/LDonthepath/P365/issues/360). Sections 1.1–1.3, 8 and 10 below record **original v0.1 MVP/priority decisions**, not an active prohibition on expansion of the product beyond Crypto + Gold. The semantic ontology and non-destructive compatibility invariants remain normative. **No additional runtime/provider, derived State/Regime or trading logic is authorized by this note.**
+> **Product-scope supersession — 11 October 2026 (latest MVP clarification):** The **first MVP is evidence-driven Macro Catalyst & Narrative Intelligence**, able to synthesize macro changes and candidate catalysts **without market-asset price or MOVE inputs**. Multi-asset Financial Market Intelligence across intraday/swing/position remains the **later product direction**. The active product contract is [User & Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md); future market universe gates remain in §1.0; the [phase roadmap in issue #360](https://github.com/LDonthepath/P365/issues/360) prioritizes a self-sufficient macro narrative MVP before asset activation. Original v0.1 Crypto+Gold-first implementation text in §§1.1–1.3, 8 and 10 is historical, not a current MVP gate. Semantic/temporal invariants remain normative. **No additional runtime/provider, derived State/Regime or trading logic is authorized by this note.**
 
 P365 is a **Financial Market Intelligence System**. Its long-term product ontology is broader than the MVP, but the **MVP implementation boundary is intentionally limited to Macro + Crypto + Gold**.
 
@@ -44,9 +44,19 @@ Briefing
 
 Current implementation domains are an implementation subset, not the product boundary.
 
+### 0.1 First MVP scope: self-contained macro catalyst and narrative (11 October 2026)
+
+The initial MVP makes **economic-reality, policy, expectations/pricing, rates, liquidity/funding and fiscal context** first-class *sources for reasoning*. It must find qualified changes versus valid historical/expectation baselines, surface **candidate** macro catalysts, and compose new source-linked narratives that explain confirmations, contradictions, unknowns and what to watch. A candidate inferred from data is **not** a newly occurred event and must never be persisted as a source-reported Event without provenance.
+
+**Macro liquidity measurements must retain distinct semantics:** policy/liquidity stocks (reserves, central-bank balance sheet, TGA/RRP), funding prices/spreads, changes in those series, and empirically qualified actual flows. None implies observed fund rotation to BTC, Gold, equities or other instruments without separate data.
+
+**Risk-on/risk-off is a cross-asset market-regime research target, not a required MVP label:** no market price/ETF/futures data is mandatory for the first macro narrative. Macro economic/policy conditions may be described without claiming a global risk-on/off market state. A macro regime claim remains deferred until calibrated history/point-in-time evidence supports it.
+
+The first MVP does **not** require family-by-family first-class rollout from the market universe below. Preserve multi-asset instrument ontology for later phases; it is not a mandate to add new providers or derived state modules now.
+
 ### 1.0 Current product market universe and activation policy (owner decision 11 October 2026)
 
-The **product target** covers major global financial markets; the **implementation subset** is enabled only when instruments, provider rights, history and trader-value criteria are validated. The original Crypto/Gold vertical slice below is historical implementation context, **not the ceiling for first-class market products**. This subsection governs market-universe/readiness planning; §2–§9 continue to govern canonical semantics. The corresponding **phased implementation roadmap lives in [issue #360](https://github.com/LDonthepath/P365/issues/360)**, not another document.
+The **long-term product target** covers major global financial markets **after the standalone macro-catalyst/narrative MVP**; the **implementation subset** is enabled only when instruments, provider rights, history and trader-value criteria are validated. The original Crypto/Gold vertical slice below is historical implementation context, **not the ceiling for first-class market products**. This subsection governs market-universe/readiness planning; §2–§9 continue to govern canonical semantics. The corresponding **phased implementation roadmap lives in [issue #360](https://github.com/LDonthepath/P365/issues/360)**, not another document.
 
 | Family | Representative product universe (not proof of data availability) | Typical decision question | Critical semantic limits |
 | --- | --- | --- | --- |
@@ -78,7 +88,7 @@ A separate **operational health axis** must report PARTIAL/STALE/UNKNOWN/UNAVAIL
 
 **Horizon fitness:** intraday, swing, and position can produce conflicting states for the same asset. Use actual compatible sample endpoints and instrument calendars. Daily rates, lagged credit, ETF-flow and macro releases are context for short windows, not silently contemporaneous 5-minute confirmation. Regime is a higher-order derived/model claim, not a provider observation; **no State or Regime implementation is activated by this documentation**.
 
-**Rollout policy:** prioritize breadth of *qualified factual* cross-market coverage, then deeper pilot state/structure for BTC and Gold plus at least one non-BTC/Gold market before claiming a portable state model. Broader first-class market activation follows measured user value, not category completeness. Exact phase gates and dependencies are recorded in issue #360; recovery #283 and paused #350/#353 remain independent.
+**Rollout policy:** first validate macro change → candidate catalyst → evidence-linked narrative independent of traded assets. Only **after macro MVP acceptance**, prioritize breadth of *qualified factual* cross-market coverage, then market-state/risk-on-off research with its own point-in-time, model and calibration gates. Broader first-class market activation follows measured user value, not category completeness. Exact phase gates and dependencies are recorded in issue #360; recovery #283 and paused #350/#353 remain independent.
 
 ### 1.1 Original MVP boundary (historical product scope; superseded)
 
