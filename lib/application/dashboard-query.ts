@@ -28,6 +28,8 @@ import { buildStablecoinLiquidityReadModel, type StablecoinLiquidityReadModel } 
 import { buildBtcEtfFlowReadModel, type BtcEtfFlowReadModel } from "./btc-etf-flow";
 import { buildGoldPositioningReadModel, type GoldPositioningReadModel } from "./gold-positioning";
 import { withHistoricalObservationConcurrencyLimit } from "./historical-observation-concurrency";
+import { createDashboardObservationReadScope } from "./dashboard-observation-read-scope";
+import type { HistoricalObservationRepository } from "../repositories/types";
 import {
   composeFactualMarketBriefing,
   type FactualMarketBriefing,
@@ -189,9 +191,9 @@ function dashboardReadError(label: string, error: unknown): void {
   );
 }
 
-async function buildDashboardNetLiquidity(asOf: Date): Promise<NetLiquidityReadModel> {
+async function buildDashboardNetLiquidity(asOf: Date, observations: HistoricalObservationRepository): Promise<NetLiquidityReadModel> {
   try {
-    return await buildNetLiquidityReadModel(dashboardHistoricalObservationRepository, asOf);
+    return await buildNetLiquidityReadModel(observations, asOf);
   } catch (error) {
     dashboardReadError("Dashboard net liquidity durable read", error);
     return {
@@ -202,11 +204,11 @@ async function buildDashboardNetLiquidity(asOf: Date): Promise<NetLiquidityReadM
 }
 
 async function buildDashboardStablecoinLiquidity(
-  asOf: Date,
+  asOf: Date, observations: HistoricalObservationRepository,
 ): Promise<StablecoinLiquidityReadModel> {
   try {
     return await buildStablecoinLiquidityReadModel(
-      dashboardHistoricalObservationRepository,
+      observations,
       asOf,
     );
   } catch (error) {
@@ -222,10 +224,10 @@ async function buildDashboardStablecoinLiquidity(
   }
 }
 
-async function buildDashboardBtcEtfFlow(asOf: Date): Promise<BtcEtfFlowReadModel> {
+async function buildDashboardBtcEtfFlow(asOf: Date, observations: HistoricalObservationRepository): Promise<BtcEtfFlowReadModel> {
   try {
     return await buildBtcEtfFlowReadModel(
-      dashboardHistoricalObservationRepository,
+      observations,
       asOf,
     );
   } catch (error) {
@@ -241,24 +243,27 @@ async function buildDashboardBtcEtfFlow(asOf: Date): Promise<BtcEtfFlowReadModel
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
+  const readStartedMs = performance.now();
+  const readScope = createDashboardObservationReadScope(dashboardHistoricalObservationRepository);
+  const scopedObservations = readScope.repository;
   const readContext = beginMarketReadContext(new Date());
   const asOf = new Date(readContext.knowledgeAsOf);
   // A dashboard GET composes only already-persisted evidence. Cron ingestion is
   // a separate write-side capability and is never called during rendering.
   const intradayEventMonitorPromise = getIntradayEventMonitor();
   const durableHighImpactEventBundlePromise = getDurableHighImpactEventBundle(asOf);
-  const netLiquidityPromise = buildDashboardNetLiquidity(asOf);
+  const netLiquidityPromise = buildDashboardNetLiquidity(asOf, scopedObservations);
   const centralBankBalanceSheetsPromise = buildCentralBankBalanceSheetReadModel(
-    dashboardHistoricalObservationRepository, asOf,
+    scopedObservations, asOf,
   );
-  const dxyHistoryPromise = readDxyMacroHistory(dashboardHistoricalObservationRepository, asOf);
-  const ratesInflationPromise = buildRatesInflationReadModel(dashboardHistoricalObservationRepository, asOf, dxyHistoryPromise);
+  const dxyHistoryPromise = readDxyMacroHistory(scopedObservations, asOf);
+  const ratesInflationPromise = buildRatesInflationReadModel(scopedObservations, asOf, dxyHistoryPromise);
   const creditFinancialConditionsPromise = buildCreditFinancialConditionsReadModel(
-    dashboardHistoricalObservationRepository,
+    scopedObservations,
     asOf,
   );
   const mvpFactualContextPromise = buildMacroCryptoGoldFactualContext(
-    dashboardHistoricalObservationRepository,
+    scopedObservations,
     asOf,
     {
       netLiquidity: netLiquidityPromise,
@@ -266,22 +271,23 @@ export async function getDashboardData(): Promise<DashboardData> {
       dxyHistory: dxyHistoryPromise,
     },
   );
-  const stablecoinLiquidityPromise = buildDashboardStablecoinLiquidity(asOf);
-  const btcEtfFlowPromise = buildDashboardBtcEtfFlow(asOf);
-  const goldPositioningPromise = buildGoldPositioningReadModel(dashboardHistoricalObservationRepository, asOf);
+  const stablecoinLiquidityPromise = buildDashboardStablecoinLiquidity(asOf, scopedObservations);
+  const btcEtfFlowPromise = buildDashboardBtcEtfFlow(asOf, scopedObservations);
+  const goldPositioningPromise = buildGoldPositioningReadModel(scopedObservations, asOf);
   const recentGdeltEvidencePromise = getRecentGdeltEvidence(asOf);
   const recentBinanceEvidencePromise = getRecentBinanceEvidence(asOf);
   const materialMoveMonitorPromise = buildMaterialMoveMonitor({
-    observations: dashboardHistoricalObservationRepository,
+    observations: scopedObservations,
     events: historicalEventRepository,
     evidence: historicalEvidenceRepository,
     asOf: asOf.toISOString(),
   });
   const normalized = await readDurableDashboardData(asOf, {
-    observations: dashboardHistoricalObservationRepository,
+    observations: scopedObservations,
     evidence: historicalEvidenceRepository,
     events: historicalEventRepository,
   });
+  const projectionReadyMs = performance.now();
 
   const [
     macroBaselines,
@@ -301,7 +307,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   ] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
-      dashboardHistoricalObservationRepository,
+      scopedObservations,
     ),
     intradayEventMonitorPromise,
     durableHighImpactEventBundlePromise,
@@ -317,6 +323,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     recentBinanceEvidencePromise,
     materialMoveMonitorPromise,
   ]);
+
+  const modelsReadyMs = performance.now();
 
   const eventRepricing = buildBriefingEventRepricing({
     monitor: intradayEventMonitor,
@@ -362,6 +370,18 @@ export async function getDashboardData(): Promise<DashboardData> {
   // Dashboard rendering is a read/presentation path. Durable canonical writes
   // are owned by the authenticated cron ingestion workers so a page visit
   // cannot become a second ingestion/persistence clock.
+  const composedMs = performance.now();
+  const elapsedMs = Math.round(composedMs - readStartedMs);
+  if (elapsedMs >= 5_000) {
+    // One bounded aggregate log; no query identities, market values or secrets.
+    console.info("P365 dashboard read performance", JSON.stringify({
+      elapsedMs,
+      projectionReadyMs: Math.round(projectionReadyMs - readStartedMs),
+      modelsReadyMs: Math.round(modelsReadyMs - readStartedMs),
+      composeMs: Math.round(composedMs - modelsReadyMs),
+      observationReads: readScope.stats(),
+    }));
+  }
   return {
     ...normalized,
     marketReadContext: completeMarketReadContext(readContext, new Date()),
