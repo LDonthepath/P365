@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createElement } from "react";
+import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { BtcSpotFlowWindow } from "./btc-spot-flow";
 import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
@@ -11,6 +11,19 @@ import { buildStandaloneMarketContextReadModel } from "./standalone-market-conte
 import { StandaloneMarketContextPanel } from "../../app/dashboard/standalone-market-context-panel";
 
 const AS_OF = "2026-10-11T12:00:00.000Z";
+
+// The standalone G0 tsx runner transpiles preserved TSX as React.createElement.
+// Mirror the existing test-only bridge; do not alter production UI components.
+function renderWithTestJsxRuntime(element: React.ReactElement): string {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "React");
+  Object.defineProperty(globalThis, "React", { configurable: true, value: React });
+  try {
+    return renderToStaticMarkup(element);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "React", previous);
+    else Reflect.deleteProperty(globalThis, "React");
+  }
+}
 
 function flow(observedAt: string, net = 4): BtcSpotFlowWindow {
   const end = Date.parse(observedAt);
@@ -81,7 +94,7 @@ test("no MOVE trigger is needed: Binance + both GDELT assets render independent 
   assert.equal(output.causalAttribution, "NOT_EVALUATED");
   assert.equal(JSON.stringify({ binanceEvidence, gdeltEvidence }), before);
 
-  const html = renderToStaticMarkup(createElement(StandaloneMarketContextPanel, {data: output}));
+  const html = renderWithTestJsxRuntime(React.createElement(StandaloneMarketContextPanel, {data: output}));
   assert.match(html, /Apa yang teramati di pasar sekarang\?/);
   assert.match(html, /Binance BTCUSDT/);
   assert.match(html, /Kandidat berita BTC dan Emas/);
