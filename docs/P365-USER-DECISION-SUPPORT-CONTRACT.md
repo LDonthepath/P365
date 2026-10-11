@@ -1,110 +1,108 @@
 # P365 — User & Decision-Support Contract
 
-**Version:** Product Rebaseline v1.0 — keputusan owner 11 Oktober 2026  
-**Status:** Arah produk disetujui owner; menjadi otoritatif di repository setelah PR dokumentasi untuk issue #360 di-merge  
-**Product identity:** Multi-Asset Financial Market Intelligence & Trader Decision Support System  
-**Primary user:** Self-directed trader yang menganalisis pasar lintas timeframe (intraday, swing, position)  
-**Product boundary:** Intelijen berbasis evidence; bukan sinyal, advis personal, prediksi pasti, atau eksekusi
+**Version:** Product Rebaseline v1.1 — owner direction 11 Oktober 2026  
+**Status:** Approved **product intent**; canonical in repo only after PR #361 is owner-merged  
+**Long-term product:** Multi-Asset Financial Market Intelligence & Trader Decision Support (intraday, swing, position)  
+**Immediate MVP:** **Evidence-Based Macro Catalyst & Narrative Intelligence** — dapat menghasilkan analisis makro secara mandiri **tanpa harus memilih/menjelaskan satu aset**  
+**Boundary:** Bukan trading signal, prediction, autonomous execution, atau klaim penyebab tanpa bukti.
 
-## 1. Product promise
+## 1. Prioritas produk dan batas MVP
 
-P365 membantu trader memahami **kondisi pasar saat ini**, **perubahan penting**, **konteks lintas aset dan makro**, **bukti yang mendukung/bertentangan**, **ketidakpastian**, serta **kondisi yang perlu dipantau** sebelum trader membuat keputusannya sendiri.
+P365 pada **MVP pertama** harus dapat memproses data makro terverifikasi menjadi **narasi analitis yang baru, tertelusur, dan relevan bagi trader**. Tujuan MVP bukan menambah jumlah indikator di dashboard, mencari headline, membuat daftar economic calendar, mendeteksi pergerakan BTC/Gold, atau lebih dulu mengklasifikasi harga aset.
 
-P365 adalah **market-first, multi-asset, multi-horizon**. P365 tidak memerlukan economic event atau material MOVE sebagai parent untuk menghasilkan pembacaan yang berguna. BTC dan Gold tetap menjadi implementation deep slices yang sudah tersedia, **bukan batas produk atau syarat yang menghalangi first-class market lain secara permanen**. Aktivasi tiap pasar tetap bertahap dan memerlukan qualification eksplisit.
+Urutan produk yang disetujui:
 
-Macro berperan sebagai **environmental context** (economic/policy/liquidity state dan contextual regime), bukan penjelas kausal otomatis bagi pergerakan satu instrumen. State/regime instrumen harus diturunkan dari data pasar pada horizon dan metodologi yang didefinisikan. Macro tidak boleh menggantikan informasi price structure, volatility, liquidity, flow dan positioning.
+1. **Makro mandiri (MVP sekarang):** identifikasi perubahan makro dan relevansi relatif terhadap history, consensus/expectation yang sah bila tersedia, dan kondisi sebelumnya; hasilkan *candidate catalyst*, konteks/interpretasi bersyarat, counter-evidence, ketidakpastian, dan *what to watch*.
+2. **Macro liquidity / policy / financial-conditions context:** tampilkan arah perubahan pada **variabel makro yang terukur**, misalnya reserves, funding spreads, central bank balance sheet, TGA/RRP dan policy expectations. **Jangan** mengklaim bahwa data agregat tersebut membuktikan aliran modal ke instrumen tertentu.
+3. **Lintas aset nanti, melalui issue tersendiri:** aplikasikan analisis makro yang sudah qualified ke instrumen/market, kemudian uji risk-on/risk-off lintas market, price response/flow dan market regime jika data dan kalibrasi memenuhi syarat.
 
-**Otoritas yang digunakan:** [Financial Market Ontology §1.0](P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md) memuat cakupan market universe dan activation gates; [issue #360](https://github.com/LDonthepath/P365/issues/360) memuat roadmap produk PRB-0…PRB-6 dan acceptance; [recovery #283](https://github.com/LDonthepath/P365/issues/283) memuat sequencing rekayasa fondasi. Tidak membuat dokumen roadmap/universe paralel.
+Visi multi-asset tetap berlaku, tetapi **bukan MVP exit gate pertama**. Crypto/Gold yang sudah dikembangkan tidak dibuang; pekerjaan terkait aset tidak menjadi dependensi wajib untuk membuktikan kemampuan membuat narasi makro.
 
-## 2. Model nilai untuk trader
+**Otoritas:** [Financial Market Ontology](P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md) untuk klasifikasi dan future market universe; [issue #360](https://github.com/LDonthepath/P365/issues/360) untuk phase roadmap dan acceptance; [recovery #283](https://github.com/LDonthepath/P365/issues/283) untuk engineering/reliability gates. Hindari dokumen parallel.
 
-Pembacaan dasar P365, termasuk saat pasar relatif tenang, harus menjawab:
+## 2. Empat kemampuan wajib dalam MVP makro pertama
 
-1. **What is the market doing?** Market state pada horizon yang dipilih: arah/struktur, volatilitas, aktivitas, liquidity, breadth/participation bila relevan, serta perubahan terakhir.
-2. **What is changing?** Perubahan fakta relatif terhadap predecessor dan baseline yang benar; materialitas tidak boleh ditentukan dari threshold tebakan.
-3. **How broad or divergent is the move?** Keselarasan/kontradiksi antar instrumen yang benar-benar comparable, tanpa mengasumsikan korelasi atau transmisi sebagai sebab.
-4. **What is the macro backdrop?** Economic/policy/liquidity state, risiko jadwal dan regime kontekstual, dengan frekuensi data dan tanggal publikasinya masing-masing.
-5. **What supports and challenges this interpretation?** Market evidence, data coverage, conflict, serta confidence/uncertainty bila dapat dikalibrasi.
-6. **What could change the assessment?** Kondisi observasi berikutnya, kandidat invalidation, dan data yang masih belum tersedia. Ini bukan instruction entry/exit.
-
-Tidak semua pertanyaan harus menghasilkan jawaban numerik. **INSUFFICIENT / UNKNOWN / NOT_EVALUATED** yang disertai alasan lebih benar daripada klaim tanpa bukti.
-
-## 3. Definisi operasional yang tidak boleh dicampur
-
-| Istilah | Makna | Source/method boundary |
+| Kemampuan | Pertanyaan utama | Outcome minimum |
 | --- | --- | --- |
-| Market observation | Harga, yield, volume, flow, OI, funding, spread, dsb. sebagai fakta instrumen | Source-qualified + provenance/temporal |
-| Market state | Kondisi deskriptif satu instrumen atau kelompok pada **horizon tertentu** (trend, range, volatilitas, partisipasi) | Derived; methodology, baseline & version diperlukan |
-| Market regime | Pola perilaku lebih persisten, dengan kriteria onset, transition, exit dan evidence historis | Derived/model; butuh validasi point-in-time + kalibrasi |
-| Macro backdrop/state | Keadaan growth, inflation, labor, policy, liquidity/funding, USD/rates secara kontekstual | Factual/derived dibedakan, cadence tetap eksplisit |
-| Macro regime | Klasifikasi perubahan fase makro yang dapat dipertanggungjawabkan | Derived; tidak sama dengan kondisi pasar satu aset |
-| Catalyst/event | Peristiwa terjadwal atau tak terjadwal yang relevan untuk monitoring | Temporal evidence; proximity bukan causality |
-| Cross-market relation | Co-move, relative strength, divergence, lag atau korelasi pada interval qualified | Comparative fact/statistic; transmission/causality harus tetap NOT_EVALUATED kecuali ada metodologi dan validasi khusus |
+| **Macro Change Detection** | Apa yang berubah dan seberapa tidak biasa? | Temukan perubahan aktual pada indikator growth, inflation, labor, policy, yields, funding/liquidity yang benar-benar eligible; nilai versus predecessor, history, consensus/forecast atau rilis sebelumnya **hanya jika tersedia dan sebanding** |
+| **Macro Catalyst Qualification** | Perubahan mana yang layak dianggap pemicu/perkembangan makro penting? | Buat daftar **candidate macro catalysts** dari perubahan yang lolos aturan signifikansi & kelayakan, dengan waktu rilis, asal data, novelty, disagreement dan status CONFIRMED_FACT / HYPOTHESIS / INSUFFICIENT. P365 **tidak membuat event/headline palsu** |
+| **Evidence-Based Macro Narrative** | Apa makna rangkaian perubahan tersebut? | Sintesis lintas tema makro menjadi narasi orisinal yang menyebut *what changed*, dibanding basis apa, konsekuensi/interpretasi **bersyarat**, bukti yang mendukung, yang bertentangan, dan informasi yang belum ada; bukan headline rephrasing atau daftar metrik |
+| **Macro Context & Monitoring** | State/kondisi makro sekarang dan apa yang bisa mengubahnya? | Pembacaan kontekstual growth/inflation/policy/liquidity/financial conditions serta data/rilis/ambang observasi yang patut dipantau berikutnya; status UNKNOWN/NOT_EVALUATED eksplisit bila bukti kurang |
 
-Regime tidak boleh direkayasa dari satu indikator seperti DXY, VIX, yield atau funding. Juga tidak boleh menggunakan satu label global untuk menyembunyikan state berlawanan pada horizon berbeda.
+**MVP tidak boleh dianggap selesai jika hanya menghasilkan teks generik yang tampak masuk akal.** Setiap klaim numerik/naratif harus bisa menunjuk ke evidence ID, sumber, observed/released/retrieved timestamps, vintage/revision, unit, comparison basis, reasoning/method version, dan peran data (fact/expectation/pricing/proxy/interpretation).
 
-## 4. Horizon contract
+### 2.1 Arti “membuat katalis sendiri”
 
-| Horizon decision | Tujuan | Contoh cadences/constraints |
-| --- | --- | --- |
-| Intraday | Session movement, perubahan kondisi likuiditas/volatilitas, anomaly | Menit/jam hanya jika data dan session/venue qualified |
-| Swing | Struktur multi-hari/mingguan, persistence, volatility transition | Data harian dengan kalender perdagangan dan baseline |
-| Position | Tren multi-minggu/bulanan, regime shift, kontekstual makro | History cukup panjang, policy/economic release vintage |
+P365 boleh **menemukan kandidat katalis dari perubahan data**, contohnya revisi historis besar, rilis di luar ekspektasi, perubahan stance yang didukung beberapa ukuran, atau divergensi inflasi versus tenaga kerja. Kandidat demikian berbeda dari:
+- **Event faktual:** data release, keputusan, pernyataan resmi atau kejadian yang benar-benar tercatat.
+- **Hypothesis:** cerita/implikasi ekonomi yang mungkin konsisten dengan sejumlah bukti, **belum** diuji sebagai sebab market move.
+- **Market impact/causal attribution:** membutuhkan evidence harga dan metode pengujian tersendiri **di luar MVP makro pertama**.
 
-Ini **horizon analitis**, bukan janji ingest/freshness. P365 harus menampilkan horizon, sample/window, last effective observation, retrieved/available time, market session, quality dan completeness. Ketidakselarasan cadence harus dipisah sebagai context, bukan disulap menjadi pergerakan serempak.
+Output aman: “Perubahan X dan Y konsisten dengan kemungkinan meningkatnya tekanan Z, tetapi A dan B belum mengonfirmasi; pantau C.” Output tidak aman: “X menyebabkan BTC turun” atau “Fed pasti akan memangkas suku bunga”, apabila bukti tidak mendukung.
 
-## 5. Produk dan alur informasi
+### 2.2 Source selection dan tematik
 
-**Information hierarchy**:
+Mulai dari **existing qualified durable facts**, bukan menghidupkan sumber baru otomatis:
+- **Growth/activity:** GDP, PMI/ISM, retail sales/industrial production ketika valid.
+- **Inflation:** CPI, PCE, PPI, inflation expectations apabila sumber dan basis sah.
+- **Labor:** NFP, unemployment, wages, claims/JOLTS dengan konsensus & revision saat ada.
+- **Policy & rates:** FOMC, SEP/dots, policy rates, nominal/real yields, curve; official expectations ≠ market-implied pricing.
+- **Macro liquidity/funding:** Fed balance sheet/reserves, TGA/RRP, money/credit, SOFR/EFFR/IORB spread; bedakan **stock/level, flow/change, cost and proxy**.
 
-1. **Financial Market Overview:** apa kondisi penting lintas market families dan apa yang berubah, dengan coverage dan as-of.
-2. **Market workspace/detail:** state per instrumen dan timeframe, market structure, volatility/liquidity/positioning sesuai evidence qualified; disagreement lintas horizon.
-3. **Cross-market & macro context:** rates, FX, equities, commodities, credit, crypto, policy, growth/inflation/liquidity sebagai konteks, bukan harus menjadi akar analysis.
-4. **Briefing / investigation:** factual change → baseline → supporting/conflicting evidence → uncertainty → watch/invalidation. Material MOVE dan event-trigger hanyalah shortcut opsional.
-5. **Evidence drilldown:** nilai, unit, identitas instrumen, venue, source, cutoff, revision/vintage, methodology, completeness dan sumber error.
+US/China/Japan adalah **kandidat geographical context**, bukan klaim bahwa seluruh seri tersedia. Jangan mengarang harian/intraday jika sumber weekly/monthly. Economic news boleh mendukung fakta apabila source-qualified, bukan syarat membuat narasi.
 
-UI berbahasa Indonesia, membedakan yang terukur, derived, model, serta yang unavailable. Semua pernyataan state/regime perlu referensi evidence dan identitas algoritme.
+## 3. Minimal reasoning path (MVP)
 
-## 6. Universe activation vs product scope
+```text
+Qualified Macro Observations / Events / Expectations / Pricing
+  ↓ point-in-time + source/revision/quality validation
+Compare against correct predecessor / historical distribution / consensus
+  ↓
+Detect qualified macro changes & contradictions
+  ↓
+Assess candidate catalysts (not invented events or causes)
+  ↓
+Synthesize a new evidence-linked macro narrative
+  ↓
+State context + uncertainty + what to watch
+  ↓
+Indonesian Macro Briefing (read-only)
+```
 
-Produk dirancang untuk semua major financial market families yang didaftarkan dalam **Financial Market Ontology §1.0**. Namun setiap market/instrumen hanya boleh dipromosikan dari target/watch menjadi **first-class qualified** melalui data identity, provenance, temporal/session, history, baseline, test, entitlement/cost, dan user-value gates. Keberadaan label keluarga pasar di UI tidak membuktikan readiness provider.
+**Tidak diperlukan:** BTC/Gold MOVE, ETF flow, market prices, cross-asset time alignment, risk-on/off price-regime, trading entry/exit atau asset attribution sebagai input wajib MVP pertama.
 
-**Multi-asset adalah produk, bukan instruksi menghidupkan seluruh provider sekaligus.** Rilis awal tetap memanfaatkan BTC/Gold dan existing qualified cross-market facts, dengan target factual usefulness lintas kelompok sebelum state/regime reasoning diperluas. Provider baru, scheduler, database, credential, deletion, dan paid entitlement memerlukan checkpoint owner terpisah.
+*Attribution* tetap NOT_EVALUATED jika tidak ada cara valid menguji hubungan sebab akibat. Engine boleh menghasilkan “TIDAK CUKUP BUKTI” dengan penyebab, tanpa memaksakan narasi.
 
-## 7. Non-negotiable evidence contracts
+## 4. Temporal, explanation, and risk guardrails
 
-- Canonical Market Memory append-only, provenance, identity, revision/supersession, dan compatibility dipertahankan.
-- Bedakan observed/effective time, published/released time, retrieved/available time dan persisted/captured time. Replay hanya boleh memakai data yang diketahui pada as-of.
-- Price, yield, spread, index point, return, percentage point, dan basis point tidak boleh disamakan. Gold futures GC=F tidak sama dengan XAU/USD spot.
-- Session/venue/calendar, corporate actions/contract rollover bila relevan, time-zone, data gaps dan provider delay harus terlihat; no false common timestamp.
-- Source facts, deterministic derived metrics, model estimates, state/regime serta inference dipisahkan.
-- Misaligned, stale, missing, partial, immature, rate-limited, unauthorized, atau unavailable harus ditandai dengan alasan; dilarang mengisi 0 atau proxy diam-diam.
-- Statistik hubungan tidak otomatis membuktikan mekanisme kausal, prediksi, atau advice.
-- Model dan threshold baru harus punya methodology/version, input lineage, distribution/calibration, confidence limitations, replay/out-of-sample checks serta tests sebelum production adoption.
+1. Pertahankan canonical append-only Market Memory, Observation/Event/Evidence identity, provider provenance, revision/supersession dan F0/recovery invariants.
+2. Bedakan observedAt, released/publishedAt, retrievedAt/knowledge availability, capturedAt; replay tidak boleh melihat data masa depan atau revisi yang belum diketahui.
+3. Perbandingan hanya pada unit, calendar, horizon, basis dan vintage sebanding. Semua klasifikasi *unusual/material* perlu distribusi historis dan kebijakan threshold yang dikalibrasi; **jangan menebak ambang**.
+4. Jangan mengubah policy projection SEP menjadi market pricing; jangan mengubah stock/funding proxy menjadi capital flow terukur.
+5. **Fact → derived comparison → hypothesis/interpretation** ditandai jelas. Confidence hanya jika punya metodologi teruji; tidak boleh memakai confidence numerik dekoratif.
+6. Narasi harus melewati checks untuk contradiction, stale, unavailable, partial, missing, unknown, duplicate, not-yet-released, source immaturity dan unit/sign ambiguity. Teks UI bahasa Indonesia.
+7. Tidak ada panggilan LLM yang diberi kebebasan menambah fakta. Jika AI natural-language dipakai kemudian, inputnya evidence bundle tersaring dan outputnya harus divalidasi, terikat evidence dan dapat diuji deterministik pada level klaim.
 
-## 8. Explicit exclusions
+## 5. MVP acceptance — visible usefulness, not number of indicators
 
-Tidak menghasilkan instruksi BUY/SELL/LONG/SHORT, entry/SL/TP preskriptif, rekomendasi sizing/leverage, portfolio auto-allocation, trading bot, order routing atau klaim prediksi pasti. Evaluasi *setup conditions* dan *invalidation* boleh sebagai **deskripsi bersyarat**, tidak sebagai trade signal tanpa checkpoint produk baru yang eksplisit.
+MVP dianggap selesai setelah satu alur nyata di produksi memungkinkan pengguna membaca sebuah **Macro Briefing** yang:
 
-Tidak boleh menduplikasi data layers, menyulap event-centred pipeline sebagai satu-satunya reasoning path, memaksakan satu timeframe, atau menjanjikan market regime sebelum empirical qualification.
+- [ ] Menghasilkan **narasi baru dari data terverifikasi**, bukan headline tiruan atau template generik/daftar angka.
+- [ ] Menjelaskan minimal satu perubahan makro yang qualified: *before vs after, magnitude, baseline, observed/released/retrieved timestamp, source*.
+- [ ] Menyebut **candidate catalyst** yang layak, **atau** secara eksplisit tidak menetapkan katalis bila data tidak cukup.
+- [ ] Menunjukkan minimal satu *confirming* dan satu *contradicting/missing* dimension **bila ada**, tanpa membuat data sintetis.
+- [ ] Memberi interpretasi makro **bersyarat**, derajat ketidakpastian/gap, dan pengamatan/publikasi selanjutnya yang relevan.
+- [ ] Menghasilkan **UNKNOWN/INSUFFICIENT** yang benar saat provider gagal, data terlalu lama, basis salah atau tidak ada perubahan material.
+- [ ] Menjalankan historical point-in-time replay yang konsisten tanpa look-ahead dan lulus targeted+regression tests.
+- [ ] Berguna meski tidak ada data harga aset, event live, berita baru atau pergerakan MOVE.
+- [ ] Terhubung ke UI Indonesia yang dapat dibaca; diuji dengan fixture positif/negatif serta data produksi yang benar-benar qualified.
 
-## 9. User-value acceptance
+**Acceptance scenario minimum:** (A) macro surprise yang mendukung satu hipotesis; (B) mixed macro signals yang menghasilkan narasi balanced; (C) no fresh material change/insufficient data dengan penjelasan jujur. Domain tersedianya bukti harus ditentukan melalui read-only inventory; tidak mengasumsikan coverage 4 market families.
 
-Suatu slice dianggap berguna bila trader dapat, untuk satu instrumen/horizon nyata:
+## 6. Roadmap/activation boundary
 
-- mengetahui state faktual market dan basis waktu/venue-nya;
-- membedakan perubahan terhadap baseline compatible, bukan hanya latest quote;
-- mengetahui evidence mana yang mendukung dan mana yang menolak pembacaan;
-- melihat macro backdrop yang relevan tanpa klaim sebab otomatis;
-- mengetahui ketidakpastian dan apa yang perlu diawasi berikutnya;
-- menelusuri setiap kesimpulan sampai data, waktu dan metodologinya.
+Riset metodologi, source qualification, engine dan surface UI dibagi menjadi **single-purpose issues dan PR** sesuai [#360](https://github.com/LDonthepath/P365/issues/360). Keputusan product contract **tidak mengaktifkan** deferred `State`, `Risk`, `Regime`, `Intelligence` atau trading features; per-checkpoint owner approval tetap berlaku setelah factual/read model/temporal gates lulus. Pilot pertama adalah **macro narrative synthesis**, bukan generalized asset regime.
 
-**MVP arah baru:** bukan memenuhi setiap instrumen global sekaligus, tetapi **membuktikan alur market-first lintas minimal beberapa keluarga pasar** dengan data yang qualified, sambil memperdalam BTC/Gold sebagai starting implementations. Kriteria detail, keluasan cakupan dan exit gates berada pada roadmap [issue #360](https://github.com/LDonthepath/P365/issues/360); tidak boleh menganggap panel dengan placeholder sebagai bukti keberhasilan.
+**Future after macro MVP:** macro liquidity trajectory, calibrated macro state; kemudian market-specific flow, risk-on/off cross-asset research, BTC/Gold/FX/equity integration menurut user value. Market universe target dalam ontology adalah aspirasi produk jangka panjang, **bukan target wajib sprint MVP**.
 
-## 10. Change control
-
-Keputusan produk ini **tidak mengaktifkan** deferred State/Risk/Intelligence/Regime code. Semua delivery mengikuti AGENTS.md, recovery gates #283, 1 bounded issue = 1 focused PR, owner merger, produksi diverifikasi setelah merge.
-
-Dokumen lama BTC/Gold evidence map tetap normative **untuk slice yang sudah ada**, bukan batas permanen future product. Ringkasan dan milestone lama di F0 adalah historical implementation records; jika tidak lagi selaras dengan kontrak produk ini, lakukan koreksi terkendali, jangan ubah evidence historis diam-diam.
-
-**Kebijakan dokumentasi:** update existing product contract, ontology, AGENTS/README atau issue roadmap terlebih dahulu. Dokumen baru memerlukan pembuktian bahwa existing ownership tidak cukup; hindari competing/abandoned SSOT.
+**Governance:** jangan membuat docs baru bila existing documents/issue roadmap menampung kebutuhan. #283 tetap release safety gate; #350 dan #353 tetap owner-paused. Jangan self-merge.
