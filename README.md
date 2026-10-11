@@ -1,6 +1,8 @@
-# P365 — Market Intelligence System
+# P365 — Multi-Asset Financial Market Intelligence
 
-P365 adalah private market-intelligence dashboard untuk membaca kondisi pasar berbasis data dan evidence. Sistem ini **bukan** trading bot, execution system, signal copier, atau price predictor.
+P365 adalah **Multi-Asset Financial Market Intelligence & Trader Decision Support System** untuk trader lintas timeframe (intraday, swing, position). Sistem membantu memahami **market state, market regime bila terkalibrasi, cross-market evidence, dan macro backdrop**. Makro adalah konteks state/regime, bukan titik awal wajib atau sebab otomatis pergerakan harga. Sistem ini **bukan** trading bot, execution system, signal copier, atau price predictor.
+
+**Arah produk owner 11 Oktober 2026:** [User & Decision-Support Contract](docs/P365-USER-DECISION-SUPPORT-CONTRACT.md) · [Market Universe v1.0](docs/P365-MARKET-UNIVERSE-CONTRACT-v1.0.md) · [Product Rebaseline Roadmap v1.0](docs/P365-PRODUCT-REBASELINE-ROADMAP-v1.0.md). Produk multi-asset tidak berarti semua source/market atau reasoning State/Regime sudah aktif. Recovery roadmap #283 dan canonical foundation safety gates tetap berlaku.
 
 ## Purpose
 
@@ -17,7 +19,7 @@ Tujuan akhirnya adalah menghasilkan **Market Briefing** yang membantu pengguna m
 
 P365 karena itu tidak boleh berhenti pada pembacaan angka atau headline. Angka ekonomi, kebijakan moneter, likuiditas, market pricing, dan pergerakan aset harus dibaca **relatif terhadap rezim yang sedang berlaku dan ekspektasi yang sudah di-price oleh market**.
 
-Mental model reasoning P365:
+Model reasoning historis event/repricing (salah satu jalur, **bukan lagi gerbang wajib**):
 
 ```text
 Observe
@@ -43,9 +45,11 @@ Prinsip utama:
 
 Setiap layer, data source, model, dan UI harus dapat dipertanggungjawabkan terhadap tujuan tersebut. Kompleksitas yang hanya membuat dashboard semakin ramai tanpa meningkatkan kemampuan P365 untuk memahami dan menjelaskan market bukan merupakan tujuan produk.
 
-## Current scope
+## Product scope vs current implementation
 
-Implementasi aktif saat ini berfokus pada **Macro + Crypto**. Fondasi domain dibuat market-agnostic agar domain pasar lain dapat ditambahkan kemudian tanpa mengubah kontrak inti.
+**Cakupan produk yang dipilih:** Financial Market Intelligence lintas FX, rates, equities, commodities, crypto, credit/funding, volatility/derivatives; makro sebagai lingkungan konteks. Cakupan target ≠ provider dan data runtime yang sudah terverifikasi.
+
+**Implementation baseline historis:** Pengembangan mula-mula memusat pada Macro + Crypto + Gold/BTC. Semua klaim status berikut adalah snapshot foundation yang harus diverifikasi lagi terhadap current main, code, CI dan production; **bukan** hasil audit coverage live 11 Oktober 2026. Perluasan keluarga pasar pertama-tama harus lulus factual source/horizon/temporal quality gates di roadmap. State/Regime/Intelligence tetap deferred kecuali checkpoint terpisah disetujui owner.
 
 Pipeline canonical dan reasoning boundary:
 
@@ -122,5 +126,7 @@ Dokumentasi operasional fondasi menggunakan satu SSOT:
 
 - `docs/P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md` — **master foundation SSOT**: current state, audit F0, FND-001…FND-019, remediation sequence, completion gates, dan checkpoint history.
 - `docs/P365-ARCHITECTURE.md` — kontrak arsitektur/invariants yang stabil.
-- `docs/P365-USER-DECISION-SUPPORT-CONTRACT.md` — kontrak kebutuhan pengguna dan user-value gate.
+- `docs/P365-USER-DECISION-SUPPORT-CONTRACT.md` — **otoritas arah produk terbaru**: multi-asset, multi-horizon dan macro-as-context.
+- `docs/P365-MARKET-UNIVERSE-CONTRACT-v1.0.md` — keluarga pasar target, instrument identity, data qualification dan activation tier.
+- `docs/P365-PRODUCT-REBASELINE-ROADMAP-v1.0.md` — roadmap produk PRB-0…PRB-6; tidak menggantikan recovery #283.
 - Dokumen requirement/governance khusus tetap terpisah hanya bila bersifat normatif, bukan sebagai competing current-state document.
