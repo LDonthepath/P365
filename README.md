@@ -2,6 +2,8 @@
 
 P365 adalah **Financial Market Intelligence & Trader Decision Support System** dengan visi multi-aset/lintas timeframe. **MVP pertama: Macro Catalyst & Narrative Intelligence** — mendeteksi perubahan makro yang layak diperhatikan dan menyusun **narasi makro sendiri berbasis evidence**, tanpa syarat menganalisis satu aset atau mendeteksi pergerakan harga. Analisis aset, market-wide risk-on/off dan asset attribution adalah fase sesudah MVP makro. Sistem ini bukan trading bot, signal copier, price predictor atau execution system.
 
+**Kedalaman metodologi MVP:** P365 boleh menghitung probabilitas, weighted evidence, ambang risiko, nowcast dan skenario kuantitatif memakai metodologi akademik atau riset institusi terpercaya yang **dikutip dan diuji** pada data/vintage yang sah. Metodologi yang valid memungkinkan perhitungan; yang dilarang hanya angka tanpa sumber/metode atau klaim kausal tak berdasar. Rincian di kontrak produk §5.2 dan roadmap #360.
+
 **Arah produk dan prioritas MVP owner 11 Oktober 2026:** [User & Decision-Support Contract](docs/P365-USER-DECISION-SUPPORT-CONTRACT.md) · [Market Universe (existing ontology §1.0)](docs/P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md) · [Product Roadmap #360](https://github.com/LDonthepath/P365/issues/360). Produk multi-asset tidak berarti semua source/market atau reasoning State/Regime sudah aktif. Recovery roadmap #283 dan canonical foundation safety gates tetap berlaku.
 
 ## Purpose
