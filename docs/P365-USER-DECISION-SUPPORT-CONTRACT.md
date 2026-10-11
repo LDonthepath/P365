@@ -99,6 +99,49 @@ MVP dianggap selesai setelah satu alur nyata di produksi memungkinkan pengguna m
 
 **Acceptance scenario minimum:** (A) macro surprise yang mendukung satu hipotesis; (B) mixed macro signals yang menghasilkan narasi balanced; (C) no fresh material change/insufficient data dengan penjelasan jujur. Domain tersedianya bukti harus ditentukan melalui read-only inventory; tidak mengasumsikan coverage 4 market families.
 
+## 5.1 Macro Intelligence Report — output/reference contract (owner example, 11 Oktober 2026)
+
+The owner-provided **“Analisa Makro Global — Oktober 2026”** is a **reference for report structure, analytical depth and Indonesian presentation**, **NOT** a verified factual source, numerical fixture, calibrated model, or provider specification. Values, dates, ratings, scenario percentages and thresholds in that sample **must never be copied into live outputs unless independently sourced and qualified**.
+
+P365 should aim for a coherent **full analytical report**, not merely cards, news summaries or disconnected tables. Output may be concise if evidence coverage is poor; no section may be padded with invented conclusions to fill a template.
+
+| Section | Required information | Fallback / safety |
+| --- | --- | --- |
+| **Report header / as-of** | Coverage geography, output time/timezone, knowledge cutoff, latest effective dates and covered observation/release intervals | Show missing/partial coverage and report status |
+| **Ringkasan Eksekutif** | Original, concise synthesis of *what materially changed*, macro tension and why a trader should monitor it | “Tidak ada perubahan makro signifikan yang dapat dikualifikasi” if justified; no general-purpose evergreen summary disguised as new |
+| **Macro Regime Classification** | Separate **inflation trend**, growth/labor conditions, monetary policy stance, rates/financial/funding conditions where evidence permits; identify mixed/transition/unknown | No single overall regime inferred from one series; label *market-wide risk-on/off* NOT_EVALUATED if cross-market method unqualified |
+| **Evidence Table** | Indicator, measured value, explicit unit, reference date, vintage, source and evidence ID, predecessor/consensus/historical baseline, compatible change, interpretation and confidence/quality reason | Omit unsupported deltas and “weights” or mark missing; never infer strength from level alone |
+| **Konflik & Ketidakpastian** | Confirming, contradicting and missing dimensions; limitations and alternative hypotheses | Negative and missing evidence must be distinguishable |
+| **Skenario Makro** | Conditional base/alternative economic paths, assumptions, catalysts, confirmations and invalidation with time horizon | **No invented numerical probabilities**, expected policy rate path, macro price target, or arbitrary trigger levels; descriptive scenario hierarchy allowed without probability |
+| **Katalis 7–30 Hari** | Known official dates and qualified potential new releases/decisions; separate unscheduled *candidate drivers* from scheduled events | No fabricated calendar, meeting, official speech, outcome or certainty; only dated when time proven |
+| **Risk Flags & Invalidation** | Evidence-grounded macro/funding/fiscal/geopolitical risks and what observation would weaken the thesis | Hypotheses named conditional; thresholds only if historically/officially justified |
+| **Data Quality Log** | Missing series/comparisons, staleness, source reliability, vintage/release lag, eligible as-of, classification fitness | Transparent UNKNOWN/INSUFFICIENT; no numeric “confidence” without validated calculation |
+
+**Regime boundary:** The first MVP may narrate *macro environment classifications* (e.g. disinflation, growth cooling, tight policy) **only after qualified rate-of-change, baseline and methodology checks**. A **cross-asset risk-on/off** market classification remains deferred. Financial conditions should not be labeled loose/tight from a lone VIX or credit series without an approved composite/benchmark.
+
+### Claim-level proof rules prompted by the example
+
+1. **Price/index level is not an inflation growth rate:** CPI/PCE level alone does not establish YoY disinflation; derive YoY/MoM only from qualified same-series compatible history, with revisions, seasonality and units. Five-year inflation breakeven measures market compensation, not realized CPI/PCE or the Fed target itself.
+2. **Employment stock is not payroll change:** PAYEMS employment level cannot prove NFP monthly gain without an eligible predecessor and seasonal-vintage compatibility. Any stated “positive NFP” must refer to qualified monthly difference/release.
+3. **Yield level is not term premium causality:** Elevated 10Y/30Y yield alone does not prove fiscal/term-premium attribution. Curve inversion/re-steepening is not by itself proof of recession timing or soft landing.
+4. **A single risk gauge is not risk-on:** Low VIX, narrow one credit spread and DXY level do not independently qualify a universal risk-on label. Cross-market interpretation is a later model/data-gated capability.
+5. **Levels and comparison windows must match:** A quoted 52-week extreme is not proof of current trend without qualified series identity/calendar, matching timestamps and methodology. Distinguish rates in bps, percentages, index points, source-native prices and inflation expectations.
+6. **Forecasts and thresholds are conditional:** The example's scenario percentages, Fed-cut timing, unemployment/yield/spread trigger levels must be treated as **illustrative**, not calibrated truths. Percentage probabilities require model definition, version, historical calibration, backtests and uncertainty. Without that, show *base / alternative / downside / unresolved* as qualitative scenarios, not false precision.
+7. **Weights and confidence need method:** A table column “Tinggi/Sedang” or “Confidence: Sedang” requires a stated assessment rubric tied to data coverage, economic relevance and internal contradictions; do not treat an adjective or percentage as scientifically measured confidence by default.
+8. **Timing and input accountability:** Qualify official release dates, scheduled events and availability cutoff for each factual statement. A source call's absence does not mean underlying economic series is unavailable; distinguish **not fetched / not qualified / actually unavailable**.
+9. **Narrative is not a cosmetic summary:** A paragraph should explain *how multiple qualified facts interact as a conditional economic mechanism*, surface alternative explanations, and cite exact evidence references. No LLM-created facts beyond the vetted evidence bundle; assertions must survive automatic claim/evidence consistency checks.
+
+### MVP evaluation fixtures derived from the example
+
+- **Full-evidence:** qualified inflation/labor/policy/funding observations yield an executive synthesis, evidence table, candidate catalyst, supported & contradicted interpretation, conditional scenarios and watchlist.
+- **Mixed:** cooling labor with tight funding or policy evidence generates **mixed/uncertain** conclusions rather than inventing a neat soft-landing narrative.
+- **Partial:** no compatible CPI/PCE YoY, no NFP monthly predecessor, or no verified official calendar → state precise coverage gaps, suppress unsupported trend and dates while still discussing eligible remaining facts.
+- **No-change:** no new meaningful macro development → produce a coherent status update and explicitly state **no new qualified catalyst**, not a fabricated event.
+- **Historical replay:** output must only cite measurements and revisions available by the requested as-of; identical evidence bundle, model/methodology version and settings must yield testably consistent factual claims.
+- **Asset independence:** complete the report without any BTC/Gold prices or MOVE trigger.
+
+**Presentation:** The first MVP target is a usable, polished Indonesian narrative report with evidence drilldown, not a fixed count of rows or a fixed global risk verdict. Existing briefing and canonical evidence models must be reused where eligible; UI/model changes require separate approved issues.
+
 ## 6. Roadmap/activation boundary
 
 Riset metodologi, source qualification, engine dan surface UI dibagi menjadi **single-purpose issues dan PR** sesuai [#360](https://github.com/LDonthepath/P365/issues/360). Keputusan product contract **tidak mengaktifkan** deferred `State`, `Risk`, `Regime`, `Intelligence` atau trading features; per-checkpoint owner approval tetap berlaku setelah factual/read model/temporal gates lulus. Pilot pertama adalah **macro narrative synthesis**, bukan generalized asset regime.
