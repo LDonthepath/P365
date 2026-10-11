@@ -1,11 +1,13 @@
 # P365 Financial Market Ontology & Data Foundation v0.1
 
-**Status:** Active normative foundation contract  
+**Status:** Active normative **semantic ontology**; historic MVP product/priority text superseded by Product Rebaseline v1.0  
 **Product ontology scope:** Global multi-asset financial-market information model  
-**MVP implementation scope:** **Macro + Crypto + Gold**  
+**Original v0.1 implementation slice:** **Macro + Crypto + Gold**; not the 11 October 2026 product boundary  
 **Implementation effect:** Documentation-only. This contract does **not** authorize provider expansion, runtime migration, State/Regime activation, or trading logic.
 
 ## 1. Purpose
+
+> **Product-scope supersession — 11 October 2026:** Owner approved **Multi-Asset Financial Market Intelligence across intraday, swing and position horizons** with macro as state/regime *context*. The active product contract is [User & Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md), supported by [Market Universe v1.0](P365-MARKET-UNIVERSE-CONTRACT-v1.0.md) and [Product Rebaseline Roadmap v1.0](P365-PRODUCT-REBASELINE-ROADMAP-v1.0.md). Sections 1.1–1.3, 8 and 10 below record **original v0.1 MVP/priority decisions**, not an active prohibition on expansion of the product beyond Crypto + Gold. The semantic ontology and non-destructive compatibility invariants remain normative. **No additional runtime/provider, derived State/Regime or trading logic is authorized by this note.**
 
 P365 is a **Financial Market Intelligence System**. Its long-term product ontology is broader than the MVP, but the **MVP implementation boundary is intentionally limited to Macro + Crypto + Gold**.
 
@@ -42,7 +44,7 @@ Briefing
 
 Current implementation domains are an implementation subset, not the product boundary.
 
-### 1.1 MVP boundary
+### 1.1 Original MVP boundary (historical product scope; superseded)
 
 The ontology and the MVP are intentionally different layers:
 
@@ -84,7 +86,7 @@ For MVP, P365 should complete a defensible reasoning chain inside those three sc
 
 Existing non-MVP cross-asset observations such as S&P 500, Nasdaq, Russell 2000, VIX, WTI and IG/HY spreads may remain as **supporting evidence** if already present and useful for context/transmission. They are not authorization to expand Equity, Volatility, Oil, or Credit into first-class MVP product modules.
 
-### 1.2 Explicitly outside MVP first-class scope
+### 1.2 Original exclusions (historical scope; superseded)
 
 Unless required as supporting evidence for Macro/Crypto/Gold reasoning, defer first-class implementation of:
 
@@ -102,7 +104,7 @@ The additive runtime compatibility rules for canonical Observation semantics are
 
 The normative evidence requirements for the MVP traded markets are defined in `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`. That contract owns the shared Macro driver map, BTC-specific flow/derivatives evidence, Gold-specific flow/positioning evidence, relationship methodology, and event-window evidence requirements.
 
-### 1.3 MVP operating thesis
+### 1.3 Original vertical-slice operating thesis (historical; still a valid starting implementation)
 
 The MVP is intentionally a **vertical slice**, not a broad terminal.
 
@@ -642,7 +644,7 @@ Legend:
 | Repricing / transmission | MISSING |
 | Risk Appetite / Regime / Intelligence | DEFERRED |
 
-## 8. Priority model
+## 8. Historical priority model (not the current product roadmap)
 
 Priority describes implementation dependency, **not market importance**.
 
@@ -720,7 +722,7 @@ Required future compatibility rules:
 7. A runtime migration must include mapping tests for every current FRED/Yahoo/CoinGecko family before any stored-history compatibility change.
 8. Do not combine ontology migration with provider expansion in the same PR.
 
-## 10. Revised foundation dependency sequence
+## 10. Original foundation dependency sequence (historical)
 
 ```text
 A. Financial Market Ontology & Data Foundation documentation freeze
@@ -783,6 +785,8 @@ This contract does not:
 - authorize AI-generated market conclusions;
 - authorize trading advice or execution.
 
-The immediate purpose is narrower:
+The original v0.1 product constraint was narrower:
 
-> **Give P365 one scalable semantic map for the financial market while keeping MVP delivery constrained to Macro + Crypto + Gold.**
+> **Historical  v0.1:** Give P365 one scalable semantic map for the financial market while keeping MVP delivery constrained to Macro + Crypto + Gold.
+
+**Current product direction (11 October 2026):** multi-asset, multi-horizon market-first intelligence. Crypto + Gold remain initial deep implementations, while other market families become first-class only after their own data/methodology/release qualification. Macro provides environmental state/regime context. See linked v1.0 product contract/universe/roadmap above; the canonical ontology and foundation recovery safety gates remain in force.
