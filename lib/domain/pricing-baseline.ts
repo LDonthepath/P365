@@ -6,7 +6,7 @@ import type {
   ObservationDomain,
   ObservationSemantics,
 } from "./types";
-import { compareObservationHistory, observationSemanticSeriesKey } from "../repositories/observation-history";
+import { compareObservationHistory, observationSemanticSeriesKey } from "./observation-history";
 
 export type PricingBaselineStatus =
   | "VALID"

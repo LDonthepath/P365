@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ObservationHistoryIdentity } from "../repositories/types";
+import type { ObservationHistoryIdentity } from "./observation-history";
 
 export const HISTORICAL_RELATIONSHIP_POLICY_V1 = "historical-relationship-evidence-v1" as const;
 
