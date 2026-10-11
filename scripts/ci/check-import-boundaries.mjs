@@ -10,7 +10,7 @@
  * or any newly cyclic edge (even within a pre-existing SCC), fails CI. Never
  * rewrite the baseline automatically during the CI check.
  */
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -166,6 +166,7 @@ console.log("[ARCH-IMPORT-001] modules=" + files.length + " edges=" + edges.leng
   + " cyclic-edges=" + cycleEdges.length);
 for (const component of cyclicComponents) console.log("  [CYCLE SCC] " + component.join(", "));
 if (generate) {
+  mkdirSync(dirname(baselinePath), { recursive: true });
   writeFileSync(baselinePath, JSON.stringify(snapshot, null, 2) + "\n");
   console.log("[ARCH-IMPORT-001] WROTE BASELINE (review this diff): " + relativeName(baselinePath));
 } else {
