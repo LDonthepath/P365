@@ -77,6 +77,7 @@ PGDATABASE="$P365_SOURCE_DB_URL" pg_dump \
 
 [[ -s "$partial" ]] || fail "encrypted output empty"
 mv -n -- "$partial" "$final"
+[[ ! -e "$partial" ]] || fail "backup finalization collision; refusing existing destination"
 [[ -s "$final" ]] || fail "encrypted output did not finalize"
 (cd -- "$target_dir" && sha256sum "$name") > "$checksum"
 [[ -s "$checksum" ]] || fail "checksum missing"
