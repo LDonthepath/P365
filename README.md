@@ -2,7 +2,7 @@
 
 P365 adalah **Multi-Asset Financial Market Intelligence & Trader Decision Support System** untuk trader lintas timeframe (intraday, swing, position). Sistem membantu memahami **market state, market regime bila terkalibrasi, cross-market evidence, dan macro backdrop**. Makro adalah konteks state/regime, bukan titik awal wajib atau sebab otomatis pergerakan harga. Sistem ini **bukan** trading bot, execution system, signal copier, atau price predictor.
 
-**Arah produk owner 11 Oktober 2026:** [User & Decision-Support Contract](docs/P365-USER-DECISION-SUPPORT-CONTRACT.md) · [Market Universe v1.0](docs/P365-MARKET-UNIVERSE-CONTRACT-v1.0.md) · [Product Rebaseline Roadmap v1.0](docs/P365-PRODUCT-REBASELINE-ROADMAP-v1.0.md). Produk multi-asset tidak berarti semua source/market atau reasoning State/Regime sudah aktif. Recovery roadmap #283 dan canonical foundation safety gates tetap berlaku.
+**Arah produk owner 11 Oktober 2026:** [User & Decision-Support Contract](docs/P365-USER-DECISION-SUPPORT-CONTRACT.md) · [Market Universe (existing ontology §1.0)](docs/P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md) · [Product Roadmap #360](https://github.com/LDonthepath/P365/issues/360). Produk multi-asset tidak berarti semua source/market atau reasoning State/Regime sudah aktif. Recovery roadmap #283 dan canonical foundation safety gates tetap berlaku.
 
 ## Purpose
 
@@ -127,6 +127,6 @@ Dokumentasi operasional fondasi menggunakan satu SSOT:
 - `docs/P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md` — **master foundation SSOT**: current state, audit F0, FND-001…FND-019, remediation sequence, completion gates, dan checkpoint history.
 - `docs/P365-ARCHITECTURE.md` — kontrak arsitektur/invariants yang stabil.
 - `docs/P365-USER-DECISION-SUPPORT-CONTRACT.md` — **otoritas arah produk terbaru**: multi-asset, multi-horizon dan macro-as-context.
-- `docs/P365-MARKET-UNIVERSE-CONTRACT-v1.0.md` — keluarga pasar target, instrument identity, data qualification dan activation tier.
-- `docs/P365-PRODUCT-REBASELINE-ROADMAP-v1.0.md` — roadmap produk PRB-0…PRB-6; tidak menggantikan recovery #283.
+- `docs/P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md` (§1.0) — cakupan keluarga pasar target, data identity, readiness dan first-class activation gates.
+- [Issue #360 — Product Roadmap PRB-0…PRB-6](https://github.com/LDonthepath/P365/issues/360) — pelacakan product rebaseline; terpisah dari [Recovery #283](https://github.com/LDonthepath/P365/issues/283).
 - Dokumen requirement/governance khusus tetap terpisah hanya bila bersifat normatif, bukan sebagai competing current-state document.
