@@ -43,6 +43,10 @@ jobs:
         id: test
         if: ${{ always() && steps.install.outcome == 'success' }}
         run: npm run test
+      - name: AST import boundary regression check
+        id: architecture
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        run: npm run architecture:check
       - name: Lint
         id: lint
         if: ${{ always() && steps.install.outcome == 'success' }}
@@ -56,9 +60,10 @@ jobs:
         env:
           TYPECHECK: ${{ steps.typecheck.outcome }}
           TEST: ${{ steps.test.outcome }}
+          ARCHITECTURE: ${{ steps.architecture.outcome }}
           LINT: ${{ steps.lint.outcome }}
           BUILD: ${{ steps.build.outcome }}
         shell: bash
         run: |
-          printf 'G0: typecheck=%s tests=%s lint=%s build=%s\n' "$TYPECHECK" "$TEST" "$LINT" "$BUILD"
-          [[ "$TYPECHECK" == success && "$TEST" == success && "$LINT" == success && "$BUILD" == success ]] || exit 1
+          printf 'G0: typecheck=%s tests=%s architecture=%s lint=%s build=%s\n' "$TYPECHECK" "$TEST" "$ARCHITECTURE" "$LINT" "$BUILD"
+          [[ "$TYPECHECK" == success && "$TEST" == success && "$ARCHITECTURE" == success && "$LINT" == success && "$BUILD" == success ]] || exit 1
