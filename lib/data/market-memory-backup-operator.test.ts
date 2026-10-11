@@ -18,19 +18,19 @@ function setup() {
   mkdirSync(backups);
   const mockDump = `#!/usr/bin/env bash
 set -eu
-if [[ "${1:-}" == "--version" ]]; then
+if [[ "\${1:-}" == "--version" ]]; then
   echo 'pg_dump (PostgreSQL) 17.6'
   exit 0
 fi
 # URI must be in PGDATABASE env, never in the process argv.
-[[ "${PGDATABASE:-}" == *"orwhuzexnuochctccqvl"* ]]
+[[ "\${PGDATABASE:-}" == *"orwhuzexnuochctccqvl"* ]]
 [[ "$*" != *"synthetic-pass"* ]]
 printf 'fixture-only-public-schema'
-if [[ "${P365_TEST_FAIL_DUMP:-}" == 'true' ]]; then exit 33; fi
+if [[ "\${P365_TEST_FAIL_DUMP:-}" == 'true' ]]; then exit 33; fi
 `;
   const mockAge = `#!/usr/bin/env bash
 set -eu
-[[ "${1:-}" == "--encrypt" ]]
+[[ "\${1:-}" == "--encrypt" ]]
 # Echoing fake bytes is acceptable IN THIS TEST ONLY, NEVER in production.
 # A real operator must install the audited age binary.
 cat
