@@ -1,6 +1,6 @@
 # P365 — User & Decision-Support Contract
 
-**Version:** Product Rebaseline v1.2 — macro report output reference, owner direction 11 Oktober 2026  
+**Version:** Product Rebaseline v1.3 — research-grounded quantitative macro methods, owner direction 11 Oktober 2026  
 **Status:** Approved **product intent**; canonical in repo only after PR #361 is owner-merged  
 **Long-term product:** Multi-Asset Financial Market Intelligence & Trader Decision Support (intraday, swing, position)  
 **Immediate MVP:** **Evidence-Based Macro Catalyst & Narrative Intelligence** — dapat menghasilkan analisis makro secara mandiri **tanpa harus memilih/menjelaskan satu aset**  
@@ -112,10 +112,10 @@ P365 should aim for a coherent **full analytical report**, not merely cards, new
 | **Macro Regime Classification** | Separate **inflation trend**, growth/labor conditions, monetary policy stance, rates/financial/funding conditions where evidence permits; identify mixed/transition/unknown | No single overall regime inferred from one series; label *market-wide risk-on/off* NOT_EVALUATED if cross-market method unqualified |
 | **Evidence Table** | Indicator, measured value, explicit unit, reference date, vintage, source and evidence ID, predecessor/consensus/historical baseline, compatible change, interpretation and confidence/quality reason | Omit unsupported deltas and “weights” or mark missing; never infer strength from level alone |
 | **Konflik & Ketidakpastian** | Confirming, contradicting and missing dimensions; limitations and alternative hypotheses | Negative and missing evidence must be distinguishable |
-| **Skenario Makro** | Conditional base/alternative economic paths, assumptions, catalysts, confirmations and invalidation with time horizon | **No invented numerical probabilities**, expected policy rate path, macro price target, or arbitrary trigger levels; descriptive scenario hierarchy allowed without probability |
+| **Skenario Makro** | Conditional base/alternative economic paths, assumptions, catalysts, confirmations and invalidation with time horizon | Probabilitas, forecast, dan ambang numerik **diizinkan** bila dihitung atau diambil dari metode ilmiah/otoritas tepercaya yang benar-benar memenuhi eligibility, waktu, cakupan, parameter dan evaluasi; jika tidak, gunakan skenario kualitatif |
 | **Katalis 7–30 Hari** | Known official dates and qualified potential new releases/decisions; separate unscheduled *candidate drivers* from scheduled events | No fabricated calendar, meeting, official speech, outcome or certainty; only dated when time proven |
-| **Risk Flags & Invalidation** | Evidence-grounded macro/funding/fiscal/geopolitical risks and what observation would weaken the thesis | Hypotheses named conditional; thresholds only if historically/officially justified |
-| **Data Quality Log** | Missing series/comparisons, staleness, source reliability, vintage/release lag, eligible as-of, classification fitness | Transparent UNKNOWN/INSUFFICIENT; no numeric “confidence” without validated calculation |
+| **Risk Flags & Invalidation** | Evidence-grounded macro/funding/fiscal/geopolitical risks and what observation would weaken the thesis | Hypotheses named conditional; numerical thresholds and ranges may follow published indicator definitions or validated estimation, with scope and sensitivity disclosed |
+| **Data Quality Log** | Missing series/comparisons, staleness, source reliability, vintage/release lag, eligible as-of, classification fitness | Transparent UNKNOWN/INSUFFICIENT; numeric confidence and model intervals are allowed with model/estimation source, calibration and evaluation |
 
 **Regime boundary:** The first MVP may narrate *macro environment classifications* (e.g. disinflation, growth cooling, tight policy) **only after qualified rate-of-change, baseline and methodology checks**. A **cross-asset risk-on/off** market classification remains deferred. Financial conditions should not be labeled loose/tight from a lone VIX or credit series without an approved composite/benchmark.
 
@@ -126,8 +126,8 @@ P365 should aim for a coherent **full analytical report**, not merely cards, new
 3. **Yield level is not term premium causality:** Elevated 10Y/30Y yield alone does not prove fiscal/term-premium attribution. Curve inversion/re-steepening is not by itself proof of recession timing or soft landing.
 4. **A single risk gauge is not risk-on:** Low VIX, narrow one credit spread and DXY level do not independently qualify a universal risk-on label. Cross-market interpretation is a later model/data-gated capability.
 5. **Levels and comparison windows must match:** A quoted 52-week extreme is not proof of current trend without qualified series identity/calendar, matching timestamps and methodology. Distinguish rates in bps, percentages, index points, source-native prices and inflation expectations.
-6. **Forecasts and thresholds are conditional:** The example's scenario percentages, Fed-cut timing, unemployment/yield/spread trigger levels must be treated as **illustrative**, not calibrated truths. Percentage probabilities require model definition, version, historical calibration, backtests and uncertainty. Without that, show *base / alternative / downside / unresolved* as qualitative scenarios, not false precision.
-7. **Weights and confidence need method:** A table column “Tinggi/Sedang” or “Confidence: Sedang” requires a stated assessment rubric tied to data coverage, economic relevance and internal contradictions; do not treat an adjective or percentage as scientifically measured confidence by default.
+6. **Forecasts and thresholds are conditional:** The **specific values in the sample** are illustrative, not validated P365 estimates. But P365 **may calculate its own probabilities, weights, risk thresholds, forecasts and scenarios** from fit-for-purpose published or peer-reviewed methodology using eligible input vintages. Disclose model target/horizon, assumptions, version, empirical performance, uncertainty and source. If not qualified, provide qualitative alternatives rather than invented precision.
+7. **Weights and confidence need method:** Weights, “Tinggi/Sedang” and numeric confidence may come from documented qualitative rubrics or calculated/published research models. Show whether the estimate is source-published, a faithful replication or an independently validated P365 adaptation.
 8. **Timing and input accountability:** Qualify official release dates, scheduled events and availability cutoff for each factual statement. A source call's absence does not mean underlying economic series is unavailable; distinguish **not fetched / not qualified / actually unavailable**.
 9. **Narrative is not a cosmetic summary:** A paragraph should explain *how multiple qualified facts interact as a conditional economic mechanism*, surface alternative explanations, and cite exact evidence references. No LLM-created facts beyond the vetted evidence bundle; assertions must survive automatic claim/evidence consistency checks.
 
@@ -141,6 +141,49 @@ P365 should aim for a coherent **full analytical report**, not merely cards, new
 - **Asset independence:** complete the report without any BTC/Gold prices or MOVE trigger.
 
 **Presentation:** The first MVP target is a usable, polished Indonesian narrative report with evidence drilldown, not a fixed count of rows or a fixed global risk verdict. Existing briefing and canonical evidence models must be reused where eligible; UI/model changes require separate approved issues.
+
+## 5.2 Research-grounded macro methodology — quantitative analysis ALLOWED
+
+**Owner clarification:** the report's probabilities, evidence weights, risk thresholds, macro regime classifications, model forecasts, nowcasts and scenario distributions are legitimate **target product outputs**, not prohibited formats. They may be calculated from **credible first-party methodology, official central-bank research, academic papers or peer-reviewed models**, provided the specific method, data, implementation and application can be defended. The **example's** numbers are not automatically valid.
+
+### Model provenance levels (must remain distinct)
+
+| Level | Output and conditions |
+| --- | --- |
+| **Official observation** | Factual released macro series; preserve source identity, vintage, release/knowledge time, units and adjustments |
+| **Source-published statistical estimate** | Display source model's rate/probability/indicator, clearly attributed; check original target, horizon, calculation as-of, licensing, known accuracy and revisions |
+| **Published model replicated by P365** | Compute equations/parameters from a research publication; validate reproduction on reference fixtures and eligible live/history input data |
+| **Adapted or estimated P365 model** | Disclose modified assumptions and model/parameter version; perform time-separated/out-of-sample backtesting, probability calibration, sensitivity and bias checks |
+| **Qualitative macro scenario** | Explain assumptions, conditions, conflicts and uncertainty without presenting an arbitrary percentage as model output |
+
+**Source reputation alone does not validate the P365 implementation** or authorize transplanting a probability from one event/horizon to a different one. A trustworthy paper establishes a candidate methodology; exact applicable data, timing, reproduced calculations and evaluation remain necessary.
+
+### Research examples for method selection (candidates, not runtime/provider approval)
+
+| Analytical question | Credible source or paper | Target/limitation |
+| --- | --- | --- |
+| How are economic expansions/recessions assessed? | [NBER Business Cycle Dating](https://www.nber.org/research/business-cycle-dating/business-cycle-dating-procedure-frequently-asked-questions) | Depth, breadth and duration; **retrospective** dating, not a mechanical real-time probability |
+| Is labor weakness reaching a published warning threshold? | [Sahm Rule real-time indicator, FRED](https://fred.stlouisfed.org/series/SAHMREALTIME) | 3-month unemployment average rise of **0.50 percentage points** versus prior 12-month minimum. This is a published rule, not a guessed trigger |
+| What is a model-based 12-month recession probability? | [NY Fed Yield Curve Indicator](https://www.newyorkfed.org/research/capital_markets/ycfaq) | Term-spread model based on **10Y minus 3M** Treasury slope; its model probability is not an interchangeable probability for soft landing or Fed cuts |
+| How can financial conditions be quantified? | [Chicago Fed NFCI methodology](https://www.chicagofed.org/research/data/nfci/background) | Broad standardized multi-indicator composite; don't infer its reading from one VIX or credit series |
+| How can inflation be nowcast before release? | [Cleveland Fed Inflation Nowcasting](https://www.clevelandfed.org/our-research/indicators-and-data/inflation-nowcasting) | Defined pre-release CPI/PCE model output, distinct from official CPI/PCE data |
+| How can macro releases alter a contemporaneous GDP estimate? | [NY Fed Staff Nowcast](https://www.newyorkfed.org/research/policy/nowcast/) | Dynamic factor/Bayesian/Kalman framework; new macro releases update model estimates rather than creating imaginary events |
+| How can probabilities be objectively tested? | [Gneiting & Raftery (2007), JASA](https://doi.org/10.1198/016214506000001437); [Gneiting et al. (2007), JRSS B](https://doi.org/10.1111/j.1467-9868.2007.00587.x) | Proper scoring, calibration and sharpness diagnostics; **evaluation methodology**, not supplied macro scenario odds |
+
+References above are **candidate methods**, not proof that all required time series/providers already exist in P365 or that source terms/licensing permit every use.
+
+### Calculation and acceptance requirements
+
+1. Each model-derived statement has a reproducible chain: **source/paper + cited method/formula → exact target/units/horizon → input evidence IDs and vintage/as-of → parameter/version → estimate → uncertainty/evaluation**.
+2. Choose methods per question; NBER recession dating, Sahm labor warnings, NY Fed recession probability and NFCI financial conditions have **different target variables** and must not be treated as interchangeable labels.
+3. **Probabilities are allowed:** either quote a qualified published estimate with publisher attribution, or estimate/calibrate a P365 model with appropriate historical sample, rolling-origin/out-of-sample testing and reliability metrics (e.g., proper scoring). Do not falsely claim independent validation of a publisher's model.
+4. **Weights are allowed:** learned statistical/factor loadings or justified published composites may quantify contributions. Document feature signs, missing data handling, multicollinearity, stability and context.
+5. **Numeric thresholds are allowed:** official indicator thresholds, defensible published research or transparently estimated history-based levels; record units, lookback, sensitivities and target. Avoid arbitrary values presented as scientific results.
+6. **Scenario probabilities are allowed:** specify mutually exclusive/exhaustive events if percentages sum to 100; otherwise label overlapping/conditional probability events. A model that forecasts a recession does not automatically assign four-scenario “soft landing/hard landing/stagflation/reacceleration” odds.
+7. Reports must separate observed fact, derived calculation, published estimate, P365 model, causal hypothesis and narrative inference. **Model-based doesn't mean causal proof**; retain uncertainty and cross-model disagreement.
+8. If published data is accessible but a faithful model replication is not, show the original source estimate with attribution rather than manufacturing a P365 number. If neither is available, mark NOT_EVALUATED and explain missing inputs.
+
+**Design decision:** the macro narrator should consume an evidence/model-results bundle and reason over those outputs; it should **not invent calculations through fluent prose**. Implementation of new models still requires small owner-approved issues/PRs; this contract authorizes the target behavior, not direct runtime activation.
 
 ## 6. Roadmap/activation boundary
 
