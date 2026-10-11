@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-> **Product-scope supersession — 11 October 2026:** Owner approved **Multi-Asset Financial Market Intelligence across intraday, swing and position horizons** with macro as state/regime *context*. The active product contract is [User & Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md), supported by [Market Universe v1.0](P365-MARKET-UNIVERSE-CONTRACT-v1.0.md) and [Product Rebaseline Roadmap v1.0](P365-PRODUCT-REBASELINE-ROADMAP-v1.0.md). Sections 1.1–1.3, 8 and 10 below record **original v0.1 MVP/priority decisions**, not an active prohibition on expansion of the product beyond Crypto + Gold. The semantic ontology and non-destructive compatibility invariants remain normative. **No additional runtime/provider, derived State/Regime or trading logic is authorized by this note.**
+> **Product-scope supersession — 11 October 2026:** Owner approved **Multi-Asset Financial Market Intelligence across intraday, swing and position horizons** with macro as state/regime *context*. The active product contract is [User & Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md), supported by the **Market Universe activation contract in §1.0 below** and [product roadmap in issue #360](https://github.com/LDonthepath/P365/issues/360). Sections 1.1–1.3, 8 and 10 below record **original v0.1 MVP/priority decisions**, not an active prohibition on expansion of the product beyond Crypto + Gold. The semantic ontology and non-destructive compatibility invariants remain normative. **No additional runtime/provider, derived State/Regime or trading logic is authorized by this note.**
 
 P365 is a **Financial Market Intelligence System**. Its long-term product ontology is broader than the MVP, but the **MVP implementation boundary is intentionally limited to Macro + Crypto + Gold**.
 
@@ -43,6 +43,42 @@ Briefing
 ```
 
 Current implementation domains are an implementation subset, not the product boundary.
+
+### 1.0 Current product market universe and activation policy (owner decision 11 October 2026)
+
+The **product target** covers major global financial markets; the **implementation subset** is enabled only when instruments, provider rights, history and trader-value criteria are validated. The original Crypto/Gold vertical slice below is historical implementation context, **not the ceiling for first-class market products**. This subsection governs market-universe/readiness planning; §2–§9 continue to govern canonical semantics. The corresponding **phased implementation roadmap lives in [issue #360](https://github.com/LDonthepath/P365/issues/360)**, not another document.
+
+| Family | Representative product universe (not proof of data availability) | Typical decision question | Critical semantic limits |
+| --- | --- | --- | --- |
+| FX / USD | ICE DXY, EUR/USD, USD/JPY, USD/CNH, separate broad-dollar indices | Which currencies are strengthening and on which horizon? | DXY ≠ trade-weighted USD; base/quote currency, session and fixing |
+| Sovereign rates / bonds | US 2Y/10Y nominal yield, real 10Y, spreads, qualified policy-pricing products | How did yield level/curve change? | Yield/spread in bps and maturity; daily FRED ≠ intraday |
+| Equities | S&P 500, Nasdaq-100, Russell 2000, later sector/breadth | Are index moves confirmed by broader participation? | Index ≠ ETF ≠ futures; exchange hours, corporate actions |
+| Commodities | Gold spot XAU/USD, COMEX gold futures, silver, WTI/Brent, copper | Are commodity trends broad or specific? | Spot ≠ futures; contract/expiry/roll; avoid unlabeled GC=F as spot |
+| Crypto | BTC, ETH, other qualified spot assets; eligible Binance-listed Futures instruments as a discovery universe | Are structure, liquidity, participation and derivatives aligned? | Venue, spot/perp/delivery, quote currency, listing changes and funding |
+| Credit & funding | IG/HY spreads, benchmark SOFR/repo and qualified funding measures | Is stress rising or easing? | Credit cadence and released lag cannot masquerade as a synchronous move |
+| Volatility / derivatives | VIX, implied/realized vol, term structure, OI, basis, COT when sourced | Is movement confirmed by volatility or positioning? | Implied ≠ realized, participant/venue and model provenance |
+| Macro backdrop | US/China/Japan growth, inflation, labor, policy and global liquidity/fiscal context where qualified | What environment is the market operating in? | Macro provides state/regime context, **not automatic price causality** |
+
+This list is a target *seed*, not an exhaustive physical series registry. The full Binance Futures listed universe is a **candidate discovery boundary only**, not approval for new endpoints, backfilling every pair or perpetual five-minute persistence. Free-first, provider-licensed, quota- and storage-bounded activation stays subject to separate owner approval.
+
+**Per-instrument readiness must be tracked on distinct axes:**
+
+| Readiness | Acceptance |
+| --- | --- |
+| TARGET | Market/instrument identified in product plan; no provider availability claim |
+| INVENTORIED | Potential source/series found; data identity, entitlement or runtime eligibility may still be unknown |
+| FACTUAL_QUALIFIED | Qualified instrument identity, source, native unit, as-of chronology, lineage, history/freshness and readable facts |
+| COMPARABLE_QUALIFIED | Predecessor, window, session, currency/unit and timestamps support the stated comparison |
+| STATE_QUALIFIED | Derived market-state method versioned, historically calibrated, reproducible without future leakage, valid per instrument/horizon |
+| REGIME_QUALIFIED | Persistence/transition criteria, out-of-sample/replay stability, explicit unknowns and approved model limitations |
+
+A separate **operational health axis** must report PARTIAL/STALE/UNKNOWN/UNAVAILABLE even for qualified instruments. Six empty family headings do not count as six qualified markets.
+
+**First-class activation gate** requires: (1) unambiguous canonical identity, venue, base/quote, spot/index/future and contract semantics; (2) source provenance, entitlement/licensing, cost/rate-limit qualification; (3) observed/effective, released/published, retrieved/available and persisted/captured times plus market-calendar/session; (4) durable qualified history, revisions, gaps and point-in-time replay; (5) unit-correct baseline/predecessor and comparable intervals; (6) an observable trader-use case in the UI with supporting/conflicting evidence; (7) measured read budget, storage and provider cadence with security guardrails; and (8) focused/regression testing and owner-approved production verification.
+
+**Horizon fitness:** intraday, swing, and position can produce conflicting states for the same asset. Use actual compatible sample endpoints and instrument calendars. Daily rates, lagged credit, ETF-flow and macro releases are context for short windows, not silently contemporaneous 5-minute confirmation. Regime is a higher-order derived/model claim, not a provider observation; **no State or Regime implementation is activated by this documentation**.
+
+**Rollout policy:** prioritize breadth of *qualified factual* cross-market coverage, then deeper pilot state/structure for BTC and Gold plus at least one non-BTC/Gold market before claiming a portable state model. Broader first-class market activation follows measured user value, not category completeness. Exact phase gates and dependencies are recorded in issue #360; recovery #283 and paused #350/#353 remain independent.
 
 ### 1.1 Original MVP boundary (historical product scope; superseded)
 
