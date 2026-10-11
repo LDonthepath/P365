@@ -14,7 +14,7 @@ P365 adalah **market-first, multi-asset, multi-horizon**. P365 tidak memerlukan 
 
 Macro berperan sebagai **environmental context** (economic/policy/liquidity state dan contextual regime), bukan penjelas kausal otomatis bagi pergerakan satu instrumen. State/regime instrumen harus diturunkan dari data pasar pada horizon dan metodologi yang didefinisikan. Macro tidak boleh menggantikan informasi price structure, volatility, liquidity, flow dan positioning.
 
-**Dokumen terkait:** [Market Universe v1.0](P365-MARKET-UNIVERSE-CONTRACT-v1.0.md), [Rebaseline Roadmap v1.0](P365-PRODUCT-REBASELINE-ROADMAP-v1.0.md). Ontologi serta invariant historis tetap berada pada dokumen canonical yang sudah ada. Audit/recovery #283 tetap mengatur fakta implementasi dan sequencing pekerjaan fondasi.
+**Otoritas yang digunakan:** [Financial Market Ontology §1.0](P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md) memuat cakupan market universe dan activation gates; [issue #360](https://github.com/LDonthepath/P365/issues/360) memuat roadmap produk PRB-0…PRB-6 dan acceptance; [recovery #283](https://github.com/LDonthepath/P365/issues/283) memuat sequencing rekayasa fondasi. Tidak membuat dokumen roadmap/universe paralel.
 
 ## 2. Model nilai untuk trader
 
@@ -67,7 +67,7 @@ UI berbahasa Indonesia, membedakan yang terukur, derived, model, serta yang unav
 
 ## 6. Universe activation vs product scope
 
-Produk dirancang untuk semua major financial market families yang didaftarkan dalam **Market Universe Contract v1.0**. Namun setiap market/instrumen hanya boleh dipromosikan dari target/watch menjadi **first-class qualified** melalui data identity, provenance, temporal/session, history, baseline, test, entitlement/cost, dan user-value gates. Keberadaan label keluarga pasar di UI tidak membuktikan readiness provider.
+Produk dirancang untuk semua major financial market families yang didaftarkan dalam **Financial Market Ontology §1.0**. Namun setiap market/instrumen hanya boleh dipromosikan dari target/watch menjadi **first-class qualified** melalui data identity, provenance, temporal/session, history, baseline, test, entitlement/cost, dan user-value gates. Keberadaan label keluarga pasar di UI tidak membuktikan readiness provider.
 
 **Multi-asset adalah produk, bukan instruksi menghidupkan seluruh provider sekaligus.** Rilis awal tetap memanfaatkan BTC/Gold dan existing qualified cross-market facts, dengan target factual usefulness lintas kelompok sebelum state/regime reasoning diperluas. Provider baru, scheduler, database, credential, deletion, dan paid entitlement memerlukan checkpoint owner terpisah.
 
@@ -99,10 +99,12 @@ Suatu slice dianggap berguna bila trader dapat, untuk satu instrumen/horizon nya
 - mengetahui ketidakpastian dan apa yang perlu diawasi berikutnya;
 - menelusuri setiap kesimpulan sampai data, waktu dan metodologinya.
 
-**MVP arah baru:** bukan memenuhi setiap instrumen global sekaligus, tetapi **membuktikan alur market-first lintas minimal beberapa keluarga pasar** dengan data yang qualified, sambil memperdalam BTC/Gold sebagai starting implementations. Kriteria detail, keluasan cakupan dan exit gates berada pada roadmap; tidak boleh menganggap panel dengan placeholder sebagai bukti keberhasilan.
+**MVP arah baru:** bukan memenuhi setiap instrumen global sekaligus, tetapi **membuktikan alur market-first lintas minimal beberapa keluarga pasar** dengan data yang qualified, sambil memperdalam BTC/Gold sebagai starting implementations. Kriteria detail, keluasan cakupan dan exit gates berada pada roadmap [issue #360](https://github.com/LDonthepath/P365/issues/360); tidak boleh menganggap panel dengan placeholder sebagai bukti keberhasilan.
 
 ## 10. Change control
 
 Keputusan produk ini **tidak mengaktifkan** deferred State/Risk/Intelligence/Regime code. Semua delivery mengikuti AGENTS.md, recovery gates #283, 1 bounded issue = 1 focused PR, owner merger, produksi diverifikasi setelah merge.
 
 Dokumen lama BTC/Gold evidence map tetap normative **untuk slice yang sudah ada**, bukan batas permanen future product. Ringkasan dan milestone lama di F0 adalah historical implementation records; jika tidak lagi selaras dengan kontrak produk ini, lakukan koreksi terkendali, jangan ubah evidence historis diam-diam.
+
+**Kebijakan dokumentasi:** update existing product contract, ontology, AGENTS/README atau issue roadmap terlebih dahulu. Dokumen baru memerlukan pembuktian bahwa existing ownership tidak cukup; hindari competing/abandoned SSOT.
