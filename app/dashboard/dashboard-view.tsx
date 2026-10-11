@@ -560,7 +560,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         </div>
         <OverviewMarketTape data={data} observations={observations} />
         <FinancialMarketOverviewPanel data={buildFinancialMarketOverview({
-          asOf: data.materialMoveMonitor.asOf,
+          readContext: data.marketReadContext,
           observations: [...observations, ...macroObservations],
           baselines: baselinePresentations,
           unifiedMacro: data.ratesInflation.unifiedMacro,

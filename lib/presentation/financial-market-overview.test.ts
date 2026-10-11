@@ -5,6 +5,7 @@ import type { Observation } from "../domain/types";
 import type { BaselinePresentation } from "./baseline";
 import type { MaterialMoveMonitorReadModel } from "../application/material-move-monitor";
 import { buildFinancialMarketOverview } from "./financial-market-overview";
+import { beginMarketReadContext, completeMarketReadContext } from "../application/market-read-context";
 
 const ASOF = "2026-10-09T14:00:00.000Z";
 const EMPTY_MOVE: MaterialMoveMonitorReadModel = {
@@ -27,7 +28,7 @@ function observation(
 function build(observations: Observation[], baselines: BaselinePresentation[] = [],
   materialMove: MaterialMoveMonitorReadModel = EMPTY_MOVE) {
   return buildFinancialMarketOverview({
-    asOf: ASOF, observations, baselines, materialMove,
+    readContext: beginMarketReadContext(new Date(ASOF)), observations, baselines, materialMove,
   });
 }
 
@@ -100,7 +101,7 @@ test("DGS2, DFII10 and DXY do not synthesize a second change outside unified mac
   const model = build([dgs]);
   assert.equal(row(model, "DGS2").change, null);
   const withUnified = buildFinancialMarketOverview({
-    asOf: ASOF, observations: [dgs], baselines: [], materialMove: EMPTY_MOVE,
+    readContext: beginMarketReadContext(new Date(ASOF)), observations: [dgs], baselines: [], materialMove: EMPTY_MOVE,
     unifiedMacro: [{
       seriesKey: "DGS2",
       latest: { observationId: dgs.id, value: 4.05, observedAt: dgs.observedAt,
@@ -177,4 +178,63 @@ test("Pasar board is wired once, collapses details and does not request a new pr
   assert.equal(build([], [], move(1)).causalAttribution, "NOT_EVALUATED");
   assert.equal(build([], [], move(1, 121000)).causalAttribution, "NOT_EVALUATED");
   assert.doesNotMatch(jsx, /fetch\(|createClient|insert\(/);
+});
+
+test("G1 time travel: late provider acquisition is never an earlier known fact", () => {
+  const initial = beginMarketReadContext(new Date(ASOF));
+  const finalized = completeMarketReadContext(initial, new Date("2026-10-09T14:05:00Z"));
+  const historical = observation("SOFR", "4.05", "fred", "2026-10-08T00:00:00Z",
+    "FRESH", "2026-10-09T13:58:00Z");
+  const late = observation("SOFR", "4.06", "fred", "2026-10-09T13:59:00Z",
+    "FRESH", "2026-10-09T14:01:00Z");
+  const frozen = buildFinancialMarketOverview({
+    readContext: finalized, observations: [late, historical], baselines: [], materialMove: EMPTY_MOVE,
+  });
+  assert.equal(frozen.asOf, ASOF);
+  assert.equal(frozen.readContext.evaluatedAt, "2026-10-09T14:05:00.000Z");
+  assert.equal(row(frozen, "SOFR").value, 4.05);
+  assert.equal(row(frozen, "SOFR").retrievedAt, historical.retrievedAt);
+  assert.deepEqual(frozen.groups, buildFinancialMarketOverview({
+    readContext: initial, observations: [historical], baselines: [], materialMove: EMPTY_MOVE,
+  }).groups);
+  const nextCutoff = beginMarketReadContext(new Date("2026-10-09T14:06:00Z"));
+  const later = buildFinancialMarketOverview({
+    readContext: nextCutoff, observations: [late, historical], baselines: [], materialMove: {
+      ...EMPTY_MOVE, asOf: nextCutoff.knowledgeAsOf,
+    },
+  });
+  assert.equal(row(later, "SOFR").value, 4.06);
+  assert.equal(frozen.causalAttribution, "NOT_EVALUATED");
+});
+
+test("G1 disallows post-cutoff unified predecessor even for an eligible latest", () => {
+  const item = observation("DGS2", "4.05");
+  const readContext = beginMarketReadContext(new Date(ASOF));
+  const latest = { observationId: item.id, value: 4.05, observedAt: item.observedAt,
+    retrievedAt: item.retrievedAt, quality: "FRESH" as const, freshness: "FRESH" as const,
+    sourceId: "fred" };
+  const previous = { observationId: "previous", value: 4, observedAt: "2026-10-07T00:00:00Z",
+    retrievedAt: "2026-10-09T14:01:00Z" };
+  const model = buildFinancialMarketOverview({
+    readContext, observations: [item], baselines: [], materialMove: EMPTY_MOVE,
+    unifiedMacro: [{ seriesKey: "DGS2", latest, previous, change: 5, reason: null }],
+  });
+  assert.equal(row(model, "DGS2").value, 4.05);
+  assert.equal(row(model, "DGS2").change, null);
+});
+
+test("G1 ignores MOVE fingerprints evaluated after the historical cutoff", () => {
+  const futureMonitor = move(-0.1);
+  const late = { ...futureMonitor, asOf: "2026-10-09T14:01:00.000Z" };
+  assert.ok(build([], [], futureMonitor).pairs.length > 0);
+  assert.equal(build([], [], late).pairs.length, 0);
+});
+
+test("G1 rejects an incoherent or forward-leaking read context", () => {
+  const context = beginMarketReadContext(new Date(ASOF));
+  assert.throws(() => completeMarketReadContext(context, new Date("2026-10-09T13:59:59Z")));
+  assert.throws(() => buildFinancialMarketOverview({
+    readContext: { ...context, persistedBefore: "2026-10-09T14:01:00Z" },
+    observations: [], baselines: [], materialMove: EMPTY_MOVE,
+  }), /MarketReadContext/);
 });

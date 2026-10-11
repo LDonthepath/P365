@@ -1,4 +1,5 @@
 import "server-only";
+import { beginMarketReadContext, completeMarketReadContext, type MarketReadContext } from "./market-read-context";
 import type { FactualBaseline } from "../domain/baseline";
 import { ingestDashboardData } from "../ingestion/dashboard-ingestion";
 import { normalizeDashboardData, type NormalizedDashboardData } from "../normalization/dashboard-normalization";
@@ -35,6 +36,7 @@ import { buildCatalystWireReadModel, type CatalystWireReadModel } from "./cataly
 import { buildMaterialMoveMonitor, type MaterialMoveMonitorReadModel } from "./material-move-monitor";
 
 export type DashboardData = NormalizedDashboardData & {
+  marketReadContext: MarketReadContext;
   macroBaselines: Record<string, FactualBaseline>;
   intradayEventMonitor: IntradayEventMonitorResult;
   durableHighImpactEvents: Event[];
@@ -212,7 +214,8 @@ async function buildDashboardBtcEtfFlow(asOf: Date): Promise<BtcEtfFlowReadModel
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const asOf = new Date();
+  const readContext = beginMarketReadContext(new Date());
+  const asOf = new Date(readContext.knowledgeAsOf);
   // Start the independent durable event-response read immediately so it runs
   // alongside provider ingestion/normalization and baseline work.
   const intradayEventMonitorPromise = getIntradayEventMonitor();
@@ -320,6 +323,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   // cannot become a second ingestion/persistence clock.
   return {
     ...normalized,
+    marketReadContext: completeMarketReadContext(readContext, new Date()),
     macroBaselines,
     intradayEventMonitor: stripIntradayRepricingSource(intradayEventMonitor),
     durableHighImpactEvents: durableHighImpactEventBundle.display,
