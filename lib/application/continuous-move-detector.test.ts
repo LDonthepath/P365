@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { cmeGlobexGoldSessionKey } from "../domain/freshness";
 import type { Observation } from "../domain/types";
 import type {
   HistoricalObservationRepository,
@@ -246,4 +247,135 @@ test("MOVE-001C fails closed when a history query reaches the 500-row bound", as
   assert.equal(result.status, "UNKNOWN");
   assert.ok(result.horizons.every((item) => item.status === "UNKNOWN"));
   assert.match(result.horizons[0].reason ?? "", /500-row limit/);
+});
+
+// RECOVERY-G1-03: 9 October 2026 GC=F close-referenced synthetic fixture.
+// This is NOT a claim that these timestamps/quotes were read from Supabase.
+function goldObservation(id: string, at: number, value: number): Observation {
+  const base = observation({
+    id,
+    observedAt: new Date(at).toISOString(),
+    retrievedAt: new Date(at + 10_000).toISOString(),
+    value,
+  });
+  return {
+    ...base,
+    subject: "GC=F — COMEX Gold futures",
+    sourceId: "yahoo-finance",
+    identity: { ...base.identity!, seriesKey: "gold.futures.usd" },
+    metadata: { ...base.metadata, metricId: "gold.futures.usd", symbol: "GC=F" },
+  };
+}
+
+function goldNearFridayClose(jitter15mMs = 0): {
+  rows: Observation[];
+  target: Observation;
+  asOf: string;
+} {
+  const from = Date.parse("2026-10-08T06:00:00.000Z");
+  const targetAt = Date.parse("2026-10-09T20:55:00.000Z"); // Fri 16:55 EDT; closes at 17:00 ET
+  const requested15mStart = targetAt - 15 * 60_000;
+  const rows: Observation[] = [];
+  for (let at = from, i = 0; at < targetAt; at += STEP_MS, i++) {
+    if (cmeGlobexGoldSessionKey(at) === null) continue;
+    const observedAt = at === requested15mStart ? at + jitter15mMs : at;
+    rows.push(goldObservation("gc-" + i, observedAt, 4000 + i * 0.02));
+  }
+  const target = goldObservation("gc-friday-close", targetAt, 4090);
+  rows.push(target);
+  return { rows, target, asOf: new Date(targetAt + 60_000).toISOString() };
+}
+
+test("RECOVERY-G1-03 reuses COMEX regular Gold sessions including EDT/EST and Friday close", () => {
+  const id = (time: string) => cmeGlobexGoldSessionKey(Date.parse(time));
+  assert.equal(id("2026-10-09T20:55:00.000Z"), "2026-10-08");
+  assert.equal(id("2026-10-09T21:00:00.000Z"), null);
+  assert.equal(id("2026-10-10T16:00:00.000Z"), null);
+  assert.equal(id("2026-10-11T21:59:59.000Z"), null);
+  assert.equal(id("2026-10-11T22:00:00.000Z"), "2026-10-11");
+  assert.equal(id("2026-10-12T00:00:00.000Z"), "2026-10-11");
+  // November standard time: GC closes at 22:00 UTC and opens Sunday at 23:00 UTC.
+  assert.equal(id("2026-11-06T21:55:00.000Z"), "2026-11-05");
+  assert.equal(id("2026-11-06T22:00:00.000Z"), null);
+  assert.equal(id("2026-11-08T23:00:00.000Z"), "2026-11-08");
+});
+
+test("RECOVERY-G1-03 qualifies all four GC=F horizons near 9 Oct close without cross-session calibration samples", async () => {
+  const fixture = goldNearFridayClose();
+  const lookup = new Map(fixture.rows.map((item) => [item.id, item]));
+  const result = await detectContinuousMarketMove({
+    repository: new MemoryHistory(fixture.rows),
+    seriesKey: "gold.futures.usd",
+    targetEnd: fixture.target,
+    asOf: fixture.asOf,
+  });
+
+  assert.deepEqual(result.horizons.map((item) => item.horizonMs / 60_000), [15, 30, 60, 120]);
+  for (const horizon of result.horizons) {
+    assert.ok(["MATERIAL_MOVE", "BELOW_MATERIALITY_THRESHOLD"].includes(horizon.status), horizon.reason);
+    assert.ok(horizon.targetStartObservationId);
+    assert.equal(horizon.alignmentErrorMs, 0);
+    assert.ok(horizon.historicalSampleSize >= 120);
+    assert.equal(cmeGlobexGoldSessionKey(Date.parse(horizon.targetStartObservedAt!)),
+      cmeGlobexGoldSessionKey(Date.parse(horizon.targetEndObservedAt)));
+    for (const sample of horizon.historicalSamples) {
+      const start = lookup.get(sample.startObservationId)!;
+      const end = lookup.get(sample.endObservationId)!;
+      const session = cmeGlobexGoldSessionKey(Date.parse(end.observedAt));
+      assert.ok(session !== null);
+      assert.equal(cmeGlobexGoldSessionKey(Date.parse(start.observedAt)), session);
+    }
+  }
+  assert.equal(result.causalAttribution, "NOT_EVALUATED");
+});
+
+test("RECOVERY-G1-03 rejects 117s near-close start misalignment; BTC 24/7 still keeps 60s limit", async () => {
+  const gold = goldNearFridayClose(117_000);
+  const r = await detectContinuousMarketMove({
+    repository: new MemoryHistory(gold.rows), seriesKey: "gold.futures.usd",
+    targetEnd: gold.target, asOf: gold.asOf,
+  });
+  assert.equal(r.horizons[0].status, "INSUFFICIENT_DATA");
+  assert.equal(r.horizons[0].targetStartObservationId, undefined);
+  assert.match(r.horizons[0].reason ?? "", /alignment tolerance/);
+
+  const btc = regularHistory({ jitter15mStartMs: 117_000 });
+  const btcResult = await detectContinuousMarketMove({
+    repository: new MemoryHistory(btc.rows), seriesKey: "btc.spot.usd",
+    targetEnd: btc.target, asOf: btc.asOf,
+  });
+  assert.equal(btcResult.horizons[0].status, "INSUFFICIENT_DATA");
+});
+
+test("RECOVERY-G1-03 rejects overnight Gold cross-break 120m pair without affecting BTC 24/7 pairing", async () => {
+  const oldAt = Date.parse("2026-10-12T20:10:00.000Z"); // Mon 16:10 EDT, previous session
+  const newAt = Date.parse("2026-10-12T22:10:00.000Z"); // Mon 18:10 EDT, new session
+  const goldRows = [goldObservation("pre-maintenance", oldAt, 4000),
+    goldObservation("post-maintenance", newAt, 4100)];
+  const gold = await detectContinuousMarketMove({
+    repository: new MemoryHistory(goldRows), seriesKey: "gold.futures.usd",
+    targetEnd: goldRows[1], asOf: new Date(newAt + 60_000).toISOString(),
+  });
+  const twoHours = gold.horizons.find((item) => item.horizonMs === 120 * 60_000)!;
+  assert.equal(twoHours.status, "INSUFFICIENT_DATA");
+  assert.equal(twoHours.targetStartObservationId, undefined);
+
+  const btcRows = [observation({ id: "pre-maintenance", observedAt: new Date(oldAt).toISOString(), value: 100 }),
+    observation({ id: "post-maintenance", observedAt: new Date(newAt).toISOString(), value: 110 })];
+  const btc = await detectContinuousMarketMove({
+    repository: new MemoryHistory(btcRows), seriesKey: "btc.spot.usd",
+    targetEnd: btcRows[1], asOf: new Date(newAt + 60_000).toISOString(),
+  });
+  assert.equal(btc.horizons.find((item) => item.horizonMs === 120 * 60_000)?.targetStartObservationId, "pre-maintenance");
+});
+
+test("RECOVERY-G1-03 marks Friday after-close GC=F targets incompatible, never infers a Gold move", async () => {
+  const at = Date.parse("2026-10-09T21:05:00.000Z"); // Fri 17:05 ET, closed
+  const target = goldObservation("closed-quote", at, 4095);
+  const result = await detectContinuousMarketMove({
+    repository: new MemoryHistory([target]), seriesKey: "gold.futures.usd",
+    targetEnd: target, asOf: new Date(at + 60_000).toISOString(),
+  });
+  assert.equal(result.status, "INCOMPATIBLE");
+  assert.ok(result.horizons.every((item) => item.status === "INCOMPATIBLE"));
 });

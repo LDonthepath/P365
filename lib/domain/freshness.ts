@@ -87,6 +87,9 @@ export function qualityFromDailyUtcCadence(input: DailyUtcCadenceFreshnessInput)
 const NEW_YORK_CLOCK = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
   weekday: "short",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
@@ -111,6 +114,37 @@ function newYorkClock(timestampMs: number): { weekday: NewYorkWeekday; secondOfD
     return null;
   }
   return { weekday, secondOfDay: hour * 3600 + minute * 60 + second };
+}
+
+/**
+ * Regular GC=F Globex session identity (date of the 18:00 ET opening).
+ * Reuses the existing CME_GLOBEX_GOLD weekly-hours qualification and
+ * America/New_York clock. Daily 17:00-18:00 ET breaks and weekends have
+ * no session key, so MOVE pairs never bridge a closed exchange window.
+ *
+ * This is a regular-session guard, not a holiday/early-close calendar.
+ * Reference: https://www.cmegroup.com/markets/metals/precious/gold.html
+ */
+export function cmeGlobexGoldSessionKey(timestampMs: number): string | null {
+  if (!Number.isFinite(timestampMs) || !marketFreshnessWindowOpenAt(timestampMs, "CME_GLOBEX_GOLD")) {
+    return null;
+  }
+  const parts = NEW_YORK_CLOCK.formatToParts(new Date(timestampMs));
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+  const clock = newYorkClock(timestampMs);
+  if (
+    !clock || !Number.isInteger(year) || !Number.isInteger(month)
+    || !Number.isInteger(day)
+  ) {
+    return null;
+  }
+  const date = Date.UTC(year, month - 1, day);
+  // 00:00-16:59 ET belongs to the session opened at 18:00 ET
+  // on the preceding local calendar day.
+  return new Date(clock.secondOfDay >= 18 * 3600 ? date : date - DAY)
+    .toISOString().slice(0, 10);
 }
 
 function marketFreshnessWindowOpenAt(timestampMs: number, calendar: MarketFreshnessCalendar): boolean {

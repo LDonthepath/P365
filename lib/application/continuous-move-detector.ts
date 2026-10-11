@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { cmeGlobexGoldSessionKey } from "../domain/freshness";
 import { historicalObservationFitnessEligible } from "../domain/historical-observation-fitness";
 import type { Observation } from "../domain/types";
 import { observationSemanticSeriesKey } from "../repositories/observation-history";
@@ -122,6 +123,8 @@ function nearestObservation(
   desiredAt: number,
   toleranceMs: number,
   beforeExclusive: number,
+  requiredGoldSession?: string,
+  goldSessions?: ReadonlyMap<number, string | null>,
 ): { observation: Observation; observedAt: number; errorMs: number } | undefined {
   let selected:
     | { observation: Observation; observedAt: number; errorMs: number }
@@ -129,6 +132,8 @@ function nearestObservation(
 
   for (const [observedAt, observation] of observations) {
     if (observedAt >= beforeExclusive) continue;
+    if (requiredGoldSession !== undefined
+      && goldSessions?.get(observedAt) !== requiredGoldSession) continue;
     const errorMs = Math.abs(observedAt - desiredAt);
     if (errorMs > toleranceMs) continue;
     if (!selected
@@ -246,6 +251,10 @@ export async function detectContinuousMarketMove(input: {
   const asOf = time(input.asOf);
   const targetEndTime = time(input.targetEnd.observedAt);
   const targetEndValue = numeric(input.targetEnd);
+  const isGoldFutures = input.seriesKey === "gold.futures.usd";
+  const targetGoldSession = isGoldFutures && targetEndTime !== undefined
+    ? cmeGlobexGoldSessionKey(targetEndTime)
+    : null;
 
   const globallyCompatible = asOf !== undefined
     && targetEndTime !== undefined
@@ -255,7 +264,8 @@ export async function detectContinuousMarketMove(input: {
     && seriesKey(input.targetEnd) === definition.seriesKey
     && input.targetEnd.sourceId === definition.sourceId
     && knownBy(input.targetEnd, asOf)
-    && historicalObservationFitnessEligible(input.targetEnd);
+    && historicalObservationFitnessEligible(input.targetEnd)
+    && (!isGoldFutures || targetGoldSession !== null);
 
   let horizons: ContinuousMoveHorizonAssessment[];
 
@@ -315,6 +325,11 @@ export async function detectContinuousMarketMove(input: {
         && numeric(observation) !== undefined);
 
       const byObservedTime = latestByObservedTime(eligible);
+      // Resolve each local exchange session once; historical pairing may
+      // inspect hundreds of candidates across all four horizons.
+      const goldSessions = isGoldFutures
+        ? new Map([...byObservedTime.keys()].map((at) => [at, cmeGlobexGoldSessionKey(at)]))
+        : undefined;
       const selectedTargetEnd = byObservedTime.get(targetEndTime);
       if (!selectedTargetEnd || selectedTargetEnd.id !== input.targetEnd.id) {
         return failureHorizon({
@@ -330,6 +345,8 @@ export async function detectContinuousMarketMove(input: {
         targetEndTime - horizonMs,
         policy.alignmentToleranceMs,
         targetEndTime,
+        targetGoldSession ?? undefined,
+        goldSessions,
       );
       if (!targetStart) {
         return failureHorizon({
@@ -363,11 +380,15 @@ export async function detectContinuousMarketMove(input: {
         .sort(([a], [b]) => a - b);
 
       for (const [endObservedAt, endObservation] of historicalEnds) {
+        const historicalGoldSession = goldSessions?.get(endObservedAt) ?? null;
+        if (isGoldFutures && historicalGoldSession === null) continue;
         const start = nearestObservation(
           byObservedTime,
           endObservedAt - horizonMs,
           policy.alignmentToleranceMs,
           endObservedAt,
+          historicalGoldSession ?? undefined,
+          goldSessions,
         );
         if (!start) continue;
         const startValue = numeric(start.observation);
