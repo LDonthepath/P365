@@ -1,6 +1,6 @@
 # P365 — User & Decision-Support Contract
 
-**Version:** Product Rebaseline v1.1 — owner direction 11 Oktober 2026  
+**Version:** Product Rebaseline v1.2 — macro report output reference, owner direction 11 Oktober 2026  
 **Status:** Approved **product intent**; canonical in repo only after PR #361 is owner-merged  
 **Long-term product:** Multi-Asset Financial Market Intelligence & Trader Decision Support (intraday, swing, position)  
 **Immediate MVP:** **Evidence-Based Macro Catalyst & Narrative Intelligence** — dapat menghasilkan analisis makro secara mandiri **tanpa harus memilih/menjelaskan satu aset**  
