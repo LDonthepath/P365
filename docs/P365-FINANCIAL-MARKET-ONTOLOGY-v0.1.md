@@ -1,11 +1,13 @@
 # P365 Financial Market Ontology & Data Foundation v0.1
 
-**Status:** Active normative foundation contract  
+**Status:** Active normative **semantic ontology**; historic MVP product/priority text superseded by Product Rebaseline v1.0  
 **Product ontology scope:** Global multi-asset financial-market information model  
-**MVP implementation scope:** **Macro + Crypto + Gold**  
+**Original v0.1 implementation slice:** **Macro + Crypto + Gold**; not the 11 October 2026 product boundary  
 **Implementation effect:** Documentation-only. This contract does **not** authorize provider expansion, runtime migration, State/Regime activation, or trading logic.
 
 ## 1. Purpose
+
+> **Product-scope supersession — 11 October 2026 (latest MVP clarification):** The **first MVP is evidence-driven Macro Catalyst & Narrative Intelligence**, able to synthesize macro changes and candidate catalysts **without market-asset price or MOVE inputs**. Multi-asset Financial Market Intelligence across intraday/swing/position remains the **later product direction**. The active product contract is [User & Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md); future market universe gates remain in §1.0; the [phase roadmap in issue #360](https://github.com/LDonthepath/P365/issues/360) prioritizes a self-sufficient macro narrative MVP before asset activation. Original v0.1 Crypto+Gold-first implementation text in §§1.1–1.3, 8 and 10 is historical, not a current MVP gate. Semantic/temporal invariants remain normative. **No additional runtime/provider, derived State/Regime or trading logic is authorized by this note.**
 
 P365 is a **Financial Market Intelligence System**. Its long-term product ontology is broader than the MVP, but the **MVP implementation boundary is intentionally limited to Macro + Crypto + Gold**.
 
@@ -42,7 +44,53 @@ Briefing
 
 Current implementation domains are an implementation subset, not the product boundary.
 
-### 1.1 MVP boundary
+### 0.1 First MVP scope: self-contained macro catalyst and narrative (11 October 2026)
+
+The initial MVP makes **economic-reality, policy, expectations/pricing, rates, liquidity/funding and fiscal context** first-class *sources for reasoning*. It must find qualified changes versus valid historical/expectation baselines, surface **candidate** macro catalysts, and compose new source-linked narratives that explain confirmations, contradictions, unknowns and what to watch. A candidate inferred from data is **not** a newly occurred event and must never be persisted as a source-reported Event without provenance.
+
+**Macro liquidity measurements must retain distinct semantics:** policy/liquidity stocks (reserves, central-bank balance sheet, TGA/RRP), funding prices/spreads, changes in those series, and empirically qualified actual flows. None implies observed fund rotation to BTC, Gold, equities or other instruments without separate data.
+
+**Risk-on/risk-off is a cross-asset market-regime research target, not a required MVP label:** no market price/ETF/futures data is mandatory for the first macro narrative. Macro economic/policy conditions may be described without claiming a global risk-on/off market state. A macro regime claim remains deferred until calibrated history/point-in-time evidence supports it.
+
+The first MVP does **not** require family-by-family first-class rollout from the market universe below. Preserve multi-asset instrument ontology for later phases; it is not a mandate to add new providers or derived state modules now.
+
+### 1.0 Current product market universe and activation policy (owner decision 11 October 2026)
+
+The **long-term product target** covers major global financial markets **after the standalone macro-catalyst/narrative MVP**; the **implementation subset** is enabled only when instruments, provider rights, history and trader-value criteria are validated. The original Crypto/Gold vertical slice below is historical implementation context, **not the ceiling for first-class market products**. This subsection governs market-universe/readiness planning; §2–§9 continue to govern canonical semantics. The corresponding **phased implementation roadmap lives in [issue #360](https://github.com/LDonthepath/P365/issues/360)**, not another document.
+
+| Family | Representative product universe (not proof of data availability) | Typical decision question | Critical semantic limits |
+| --- | --- | --- | --- |
+| FX / USD | ICE DXY, EUR/USD, USD/JPY, USD/CNH, separate broad-dollar indices | Which currencies are strengthening and on which horizon? | DXY ≠ trade-weighted USD; base/quote currency, session and fixing |
+| Sovereign rates / bonds | US 2Y/10Y nominal yield, real 10Y, spreads, qualified policy-pricing products | How did yield level/curve change? | Yield/spread in bps and maturity; daily FRED ≠ intraday |
+| Equities | S&P 500, Nasdaq-100, Russell 2000, later sector/breadth | Are index moves confirmed by broader participation? | Index ≠ ETF ≠ futures; exchange hours, corporate actions |
+| Commodities | Gold spot XAU/USD, COMEX gold futures, silver, WTI/Brent, copper | Are commodity trends broad or specific? | Spot ≠ futures; contract/expiry/roll; avoid unlabeled GC=F as spot |
+| Crypto | BTC, ETH, other qualified spot assets; eligible Binance-listed Futures instruments as a discovery universe | Are structure, liquidity, participation and derivatives aligned? | Venue, spot/perp/delivery, quote currency, listing changes and funding |
+| Credit & funding | IG/HY spreads, benchmark SOFR/repo and qualified funding measures | Is stress rising or easing? | Credit cadence and released lag cannot masquerade as a synchronous move |
+| Volatility / derivatives | VIX, implied/realized vol, term structure, OI, basis, COT when sourced | Is movement confirmed by volatility or positioning? | Implied ≠ realized, participant/venue and model provenance |
+| Macro backdrop | US/China/Japan growth, inflation, labor, policy and global liquidity/fiscal context where qualified | What environment is the market operating in? | Macro provides state/regime context, **not automatic price causality** |
+
+This list is a target *seed*, not an exhaustive physical series registry. The full Binance Futures listed universe is a **candidate discovery boundary only**, not approval for new endpoints, backfilling every pair or perpetual five-minute persistence. Free-first, provider-licensed, quota- and storage-bounded activation stays subject to separate owner approval.
+
+**Per-instrument readiness must be tracked on distinct axes:**
+
+| Readiness | Acceptance |
+| --- | --- |
+| TARGET | Market/instrument identified in product plan; no provider availability claim |
+| INVENTORIED | Potential source/series found; data identity, entitlement or runtime eligibility may still be unknown |
+| FACTUAL_QUALIFIED | Qualified instrument identity, source, native unit, as-of chronology, lineage, history/freshness and readable facts |
+| COMPARABLE_QUALIFIED | Predecessor, window, session, currency/unit and timestamps support the stated comparison |
+| STATE_QUALIFIED | Derived market-state method versioned, historically calibrated, reproducible without future leakage, valid per instrument/horizon |
+| REGIME_QUALIFIED | Persistence/transition criteria, out-of-sample/replay stability, explicit unknowns and approved model limitations |
+
+A separate **operational health axis** must report PARTIAL/STALE/UNKNOWN/UNAVAILABLE even for qualified instruments. Six empty family headings do not count as six qualified markets.
+
+**First-class activation gate** requires: (1) unambiguous canonical identity, venue, base/quote, spot/index/future and contract semantics; (2) source provenance, entitlement/licensing, cost/rate-limit qualification; (3) observed/effective, released/published, retrieved/available and persisted/captured times plus market-calendar/session; (4) durable qualified history, revisions, gaps and point-in-time replay; (5) unit-correct baseline/predecessor and comparable intervals; (6) an observable trader-use case in the UI with supporting/conflicting evidence; (7) measured read budget, storage and provider cadence with security guardrails; and (8) focused/regression testing and owner-approved production verification.
+
+**Horizon fitness:** intraday, swing, and position can produce conflicting states for the same asset. Use actual compatible sample endpoints and instrument calendars. Daily rates, lagged credit, ETF-flow and macro releases are context for short windows, not silently contemporaneous 5-minute confirmation. Regime is a higher-order derived/model claim, not a provider observation; **no State or Regime implementation is activated by this documentation**.
+
+**Rollout policy:** first validate macro change → candidate catalyst → evidence-linked narrative independent of traded assets. Only **after macro MVP acceptance**, prioritize breadth of *qualified factual* cross-market coverage, then market-state/risk-on-off research with its own point-in-time, model and calibration gates. Broader first-class market activation follows measured user value, not category completeness. Exact phase gates and dependencies are recorded in issue #360; recovery #283 and paused #350/#353 remain independent.
+
+### 1.1 Original MVP boundary (historical product scope; superseded)
 
 The ontology and the MVP are intentionally different layers:
 
@@ -84,7 +132,7 @@ For MVP, P365 should complete a defensible reasoning chain inside those three sc
 
 Existing non-MVP cross-asset observations such as S&P 500, Nasdaq, Russell 2000, VIX, WTI and IG/HY spreads may remain as **supporting evidence** if already present and useful for context/transmission. They are not authorization to expand Equity, Volatility, Oil, or Credit into first-class MVP product modules.
 
-### 1.2 Explicitly outside MVP first-class scope
+### 1.2 Original exclusions (historical scope; superseded)
 
 Unless required as supporting evidence for Macro/Crypto/Gold reasoning, defer first-class implementation of:
 
@@ -102,7 +150,7 @@ The additive runtime compatibility rules for canonical Observation semantics are
 
 The normative evidence requirements for the MVP traded markets are defined in `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`. That contract owns the shared Macro driver map, BTC-specific flow/derivatives evidence, Gold-specific flow/positioning evidence, relationship methodology, and event-window evidence requirements.
 
-### 1.3 MVP operating thesis
+### 1.3 Original vertical-slice operating thesis (historical; still a valid starting implementation)
 
 The MVP is intentionally a **vertical slice**, not a broad terminal.
 
@@ -642,7 +690,7 @@ Legend:
 | Repricing / transmission | MISSING |
 | Risk Appetite / Regime / Intelligence | DEFERRED |
 
-## 8. Priority model
+## 8. Historical priority model (not the current product roadmap)
 
 Priority describes implementation dependency, **not market importance**.
 
@@ -720,7 +768,7 @@ Required future compatibility rules:
 7. A runtime migration must include mapping tests for every current FRED/Yahoo/CoinGecko family before any stored-history compatibility change.
 8. Do not combine ontology migration with provider expansion in the same PR.
 
-## 10. Revised foundation dependency sequence
+## 10. Original foundation dependency sequence (historical)
 
 ```text
 A. Financial Market Ontology & Data Foundation documentation freeze
@@ -783,6 +831,8 @@ This contract does not:
 - authorize AI-generated market conclusions;
 - authorize trading advice or execution.
 
-The immediate purpose is narrower:
+The original v0.1 product constraint was narrower:
 
-> **Give P365 one scalable semantic map for the financial market while keeping MVP delivery constrained to Macro + Crypto + Gold.**
+> **Historical  v0.1:** Give P365 one scalable semantic map for the financial market while keeping MVP delivery constrained to Macro + Crypto + Gold.
+
+**Current product direction (11 October 2026):** multi-asset, multi-horizon market-first intelligence. Crypto + Gold remain initial deep implementations, while other market families become first-class only after their own data/methodology/release qualification. Macro provides environmental state/regime context. See linked v1.0 product contract/universe/roadmap above; the canonical ontology and foundation recovery safety gates remain in force.
