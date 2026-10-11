@@ -184,6 +184,9 @@ export type BriefingResolutionStatus =
 export type BriefingResolution = {
   status: BriefingResolutionStatus;
   reasoningStatus: BriefingReasoningStatus;
+  // Assessment coverage is independent from MOVE investigation evidence completeness.
+  assessmentCoverage: "COMPLETE" | "PARTIAL" | "INSUFFICIENT";
+  insufficientAssets: Array<BriefingMarketMove["asset"]>;
   materialAssets: Array<BriefingMarketMove["asset"]>;
   evidenceCompleteness: "EVIDENCE_COMPLETE" | "EVIDENCE_INCOMPLETE" | null;
   statement: string;
@@ -289,6 +292,16 @@ function priorityIndex(seriesId: string): number {
   return index === -1 ? 999 : index;
 }
 
+const REQUIRED_MOVE_ASSETS: Array<BriefingMarketMove["asset"]> = ["BTC", "GOLD"];
+
+function qualifiedMaterial(item: BriefingMarketMove): boolean {
+  return item.status === "MATERIAL_MOVE" && item.hasMaterialMove;
+}
+
+function qualifiedBelow(item: BriefingMarketMove): boolean {
+  return item.status === "BELOW_MATERIALITY_THRESHOLD" && !item.hasMaterialMove;
+}
+
 function composeMarketMoves(
   result: MaterialMoveMonitorReadModel | undefined,
 ): FactualMarketBriefing["marketMoves"] {
@@ -315,20 +328,25 @@ function composeMarketMoves(
     evidence: item.evidence,
     causalAttribution: item.causalAttribution,
   }));
-  const materialMoveCount = items.filter((item) => item.hasMaterialMove).length;
+  const materialMoveCount = items.filter(qualifiedMaterial).length;
+  const assessedAssets = new Set(items
+    .filter((item) => qualifiedMaterial(item) || qualifiedBelow(item))
+    .map((item) => item.asset));
+  const missing = REQUIRED_MOVE_ASSETS.filter((asset) => !assessedAssets.has(asset));
 
   return {
-    evidenceStatus: items.length > 0 && result.status !== "UNAVAILABLE" ? "AVAILABLE" : "INSUFFICIENT",
+    evidenceStatus: assessedAssets.size > 0 ? "AVAILABLE" : "INSUFFICIENT",
     reasoningStatus: "NOT_EVALUATED",
     materialMoveCount,
     items,
     reason: items.length === 0
       ? "Belum ada assessment durable BTC/Gold pada cutoff briefing."
-      : result.status === "UNAVAILABLE"
-        ? "Observasi durable BTC/Gold belum tersedia pada cutoff briefing."
-        : result.status === "PARTIAL"
-        ? "Sebagian assessment BTC/Gold belum tersedia; briefing mempertahankan gap tersebut secara eksplisit."
-        : null,
+      : assessedAssets.size === 0
+        ? "Observasi durable BTC/Gold belum cukup untuk penilaian materialitas pada cutoff briefing."
+        : missing.length > 0
+          ? "Penilaian " + missing.map((asset) => asset === "BTC" ? "Bitcoin" : "Emas berjangka COMEX (GC=F)").join(" dan ")
+            + " belum cukup; fakta aset lainnya tetap ditampilkan."
+          : null,
   };
 }
 
@@ -443,16 +461,42 @@ function composeBriefingResolution(input: {
   marketMoves: FactualMarketBriefing["marketMoves"];
   nextCatalyst: FactualMarketBriefing["nextCatalyst"];
 }): BriefingResolution {
-  const hasMaterialMove = input.marketMoves.items.some((item) => item.status === "MATERIAL_MOVE" && item.hasMaterialMove);
-  const allMarketsAssessedBelow = input.marketMoves.items.length === 2
-    && input.marketMoves.items.every((item) => item.status === "BELOW_MATERIALITY_THRESHOLD");
-  if (input.marketMoves.evidenceStatus !== "AVAILABLE" || (!hasMaterialMove && !allMarketsAssessedBelow)) {
+  // Each instrument is qualified before synthesis; the aggregate monitor status
+  // cannot hide an eligible asset. Contradictory status/flag pairs fail closed.
+  const assessments = REQUIRED_MOVE_ASSETS.map((asset) => {
+    const item = input.marketMoves.items.find((candidate) => candidate.asset === asset);
+    const state = item && qualifiedMaterial(item)
+      ? "MATERIAL" as const
+      : item && qualifiedBelow(item)
+        ? "BELOW" as const
+        : "INSUFFICIENT" as const;
+    return { asset, item, state };
+  });
+  const materialMoves = assessments.flatMap((assessment) =>
+    assessment.state === "MATERIAL" && assessment.item ? [assessment.item] : []);
+  const materialAssets = materialMoves.map((item) => item.asset);
+  const belowAssets = assessments.filter((assessment) => assessment.state === "BELOW").map((assessment) => assessment.asset);
+  const insufficientAssets = assessments.filter((assessment) => assessment.state === "INSUFFICIENT").map((assessment) => assessment.asset);
+  const assessmentCoverage = insufficientAssets.length === 0
+    ? "COMPLETE" as const
+    : insufficientAssets.length === REQUIRED_MOVE_ASSETS.length
+      ? "INSUFFICIENT" as const
+      : "PARTIAL" as const;
+  const gapStatement = insufficientAssets.length > 0
+    ? `Penilaian ${assetNames(insufficientAssets)} belum cukup; kesimpulan lintas aset masih parsial.`
+    : null;
+
+  if (materialMoves.length === 0 && belowAssets.length !== REQUIRED_MOVE_ASSETS.length) {
     return {
       status: "MARKET_DATA_INSUFFICIENT",
       reasoningStatus: "NOT_EVALUATED",
+      assessmentCoverage,
+      insufficientAssets,
       materialAssets: [],
       evidenceCompleteness: null,
-      statement: `Penilaian Bitcoin dan ${GOLD_MOVE_LABEL} belum cukup untuk menyusun kesimpulan briefing pada batas waktu ini.`,
+      statement: belowAssets.length > 0
+        ? `${assetNames(belowAssets)} berada di bawah ambang materialitas pada penilaian yang tersedia. ${gapStatement}`
+        : `Penilaian Bitcoin dan ${GOLD_MOVE_LABEL} belum cukup untuk menyusun kesimpulan briefing pada batas waktu ini.`,
       driverStatement: "Pendorong pasar belum dievaluasi karena penilaian pasar belum cukup.",
       watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
         ? "Pantau peristiwa berdampak tinggi berikutnya yang sudah tercatat dan pembaruan penilaian pasar."
@@ -460,13 +504,12 @@ function composeBriefingResolution(input: {
     };
   }
 
-  const materialMoves = input.marketMoves.items.filter((item) => item.hasMaterialMove);
-  const materialAssets = materialMoves.map((item) => item.asset);
-
   if (materialMoves.length === 0) {
     return {
       status: "NO_MATERIAL_MOVE",
       reasoningStatus: "NOT_EVALUATED",
+      assessmentCoverage,
+      insufficientAssets,
       materialAssets: [],
       evidenceCompleteness: null,
       statement:
@@ -485,17 +528,24 @@ function composeBriefingResolution(input: {
     ? "EVIDENCE_INCOMPLETE" as const
     : "EVIDENCE_COMPLETE" as const;
   const names = assetNames(materialAssets);
+  const belowStatement = belowAssets.length > 0
+    ? ` ${assetNames(belowAssets)} berada di bawah ambang materialitas pada penilaian yang tersedia.`
+    : "";
+  const partialStatement = gapStatement ? ` ${gapStatement}` : "";
 
   return {
     status: evidenceIncomplete
       ? "MATERIAL_MOVE_EVIDENCE_INCOMPLETE"
       : "MATERIAL_MOVE_EVIDENCE_COMPLETE",
     reasoningStatus: "NOT_EVALUATED",
+    assessmentCoverage,
+    insufficientAssets,
     materialAssets,
     evidenceCompleteness,
-    statement: evidenceIncomplete
+    statement: (evidenceIncomplete
       ? `${names} mengalami pergerakan material pada batas waktu ini. Bukti investigasi tersedia, tetapi belum lengkap dalam cakupan aktif.`
-      : `${names} mengalami pergerakan material pada batas waktu ini. Bukti investigasi lengkap dalam cakupan aktif.`,
+      : `${names} mengalami pergerakan material pada batas waktu ini. Bukti investigasi lengkap dalam cakupan aktif.`)
+      + belowStatement + partialStatement,
     driverStatement:
       "Pendorong pasar belum dapat ditetapkan dari bukti faktual yang tersedia; hubungan sebab-akibat belum dievaluasi.",
     watchStatement: input.nextCatalyst.evidenceStatus === "AVAILABLE"
