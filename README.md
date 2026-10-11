@@ -1,23 +1,24 @@
 # P365 — Multi-Asset Financial Market Intelligence
 
-P365 adalah **Multi-Asset Financial Market Intelligence & Trader Decision Support System** untuk trader lintas timeframe (intraday, swing, position). Sistem membantu memahami **market state, market regime bila terkalibrasi, cross-market evidence, dan macro backdrop**. Makro adalah konteks state/regime, bukan titik awal wajib atau sebab otomatis pergerakan harga. Sistem ini **bukan** trading bot, execution system, signal copier, atau price predictor.
+P365 adalah **Financial Market Intelligence & Trader Decision Support System** dengan visi multi-aset/lintas timeframe. **MVP pertama: Macro Catalyst & Narrative Intelligence** — mendeteksi perubahan makro yang layak diperhatikan dan menyusun **narasi makro sendiri berbasis evidence**, tanpa syarat menganalisis satu aset atau mendeteksi pergerakan harga. Analisis aset, market-wide risk-on/off dan asset attribution adalah fase sesudah MVP makro. Sistem ini bukan trading bot, signal copier, price predictor atau execution system.
 
-**Arah produk owner 11 Oktober 2026:** [User & Decision-Support Contract](docs/P365-USER-DECISION-SUPPORT-CONTRACT.md) · [Market Universe (existing ontology §1.0)](docs/P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md) · [Product Roadmap #360](https://github.com/LDonthepath/P365/issues/360). Produk multi-asset tidak berarti semua source/market atau reasoning State/Regime sudah aktif. Recovery roadmap #283 dan canonical foundation safety gates tetap berlaku.
+**Arah produk dan prioritas MVP owner 11 Oktober 2026:** [User & Decision-Support Contract](docs/P365-USER-DECISION-SUPPORT-CONTRACT.md) · [Market Universe (existing ontology §1.0)](docs/P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md) · [Product Roadmap #360](https://github.com/LDonthepath/P365/issues/360). Produk multi-asset tidak berarti semua source/market atau reasoning State/Regime sudah aktif. Recovery roadmap #283 dan canonical foundation safety gates tetap berlaku.
 
 ## Purpose
 
 P365 dibangun untuk **menjelaskan market, bukan sekadar menampilkan market**.
 
-Tujuan akhirnya adalah menghasilkan **Market Briefing** yang membantu pengguna memahami:
+**MVP awal harus menghasilkan Macro Briefing analitis yang berdiri sendiri**, menjawab:
 
-- apa yang sedang berubah di market;
-- mengapa perubahan tersebut terjadi;
-- bagaimana perubahan ekspektasi diterjemahkan menjadi repricing;
-- bagaimana repricing tersebut ditransmisikan antar-aset;
-- bukti apa yang mengonfirmasi atau bertentangan dengan pembacaan tersebut; dan
+- data makro apa yang benar-benar berubah versus basis pembanding yang sah;
+- perubahan mana yang dapat menjadi **candidate catalyst** atau perkembangan makro yang perlu diperhatikan;
+- narasi ekonomi apa yang konsisten dengan bukti, dan mana yang masih hipotesis;
+- bukti apa yang mendukung, bertentangan atau belum tersedia; dan
 - apa yang perlu dimonitor berikutnya.
 
-P365 karena itu tidak boleh berhenti pada pembacaan angka atau headline. Angka ekonomi, kebijakan moneter, likuiditas, market pricing, dan pergerakan aset harus dibaca **relatif terhadap rezim yang sedang berlaku dan ekspektasi yang sudah di-price oleh market**.
+P365 tidak boleh menciptakan economic event palsu, mengklaim sebab pergerakan aset, atau memaksakan label risk-on/off sebelum metodologi dan data multi-aset qualified.
+
+P365 tidak boleh berhenti pada tabel angka atau ringkasan headline. MVP mengutamakan **macro fact → calibrated change/surprise → catalyst candidate → evidence-linked narrative → uncertainty/what-to-watch**. Makro regime, market pricing dan hubungan aset hanya dinyatakan apabila bukti relevan dan qualification teruji.
 
 Model reasoning historis event/repricing (salah satu jalur, **bukan lagi gerbang wajib**):
 
@@ -47,7 +48,7 @@ Setiap layer, data source, model, dan UI harus dapat dipertanggungjawabkan terha
 
 ## Product scope vs current implementation
 
-**Cakupan produk yang dipilih:** Financial Market Intelligence lintas FX, rates, equities, commodities, crypto, credit/funding, volatility/derivatives; makro sebagai lingkungan konteks. Cakupan target ≠ provider dan data runtime yang sudah terverifikasi.
+**Cakupan produk jangka panjang:** Financial Market Intelligence lintas FX, rates, equities, commodities, crypto, credit/funding dan volatility/derivatives. **Namun MVP pertama dibatasi pada narasi makro berbasis data makro yang qualified**: growth, inflation, labor, policy, rates, dan macro liquidity/funding. Tidak perlu coverage empat keluarga aset atau risk-on/off market regime untuk lulus MVP pertama. Cakupan produk target ≠ provider/data runtime yang sudah terverifikasi.
 
 **Implementation baseline historis:** Pengembangan mula-mula memusat pada Macro + Crypto + Gold/BTC. Semua klaim status berikut adalah snapshot foundation yang harus diverifikasi lagi terhadap current main, code, CI dan production; **bukan** hasil audit coverage live 11 Oktober 2026. Perluasan keluarga pasar pertama-tama harus lulus factual source/horizon/temporal quality gates di roadmap. State/Regime/Intelligence tetap deferred kecuali checkpoint terpisah disetujui owner.
 
