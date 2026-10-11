@@ -53,7 +53,7 @@ PY
 # PostgreSQL 17 server: use an equal/newer pg_dump, never an older major client.
 major="$(pg_dump --version | sed -En 's/.*PostgreSQL\) ([0-9]+).*/\1/p')"
 [[ "$major" =~ ^[0-9]+$ ]] || fail "cannot identify pg_dump major version"
-(( 10#$major >= 17 )) || fail "pg_dump 17 or newer required for production PostgreSQL 17"
+(( 10#$major == 17 )) || fail "pg_dump 17 required for source and Neon PostgreSQL 17"
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 name="p365-public-${stamp}.pgdump.age"
@@ -72,7 +72,7 @@ export PGCONNECT_TIMEOUT=20 PGSSLMODE=require
 # exporter or encryptor failure and removes the partial encrypted file.
 PGDATABASE="$P365_SOURCE_DB_URL" pg_dump \
   --format=custom --compress=6 --no-owner --no-privileges \
-  --schema=public --dbname="$P365_SOURCE_DB_URL" \
+  --schema=public \
   | age --encrypt --recipient "$P365_AGE_RECIPIENT" > "$partial"
 
 [[ -s "$partial" ]] || fail "encrypted output empty"
