@@ -4,7 +4,7 @@ import type { FactualBaseline } from "../domain/baseline";
 import { readDurableDashboardData } from "./durable-dashboard-read";
 import type { NormalizedDashboardData } from "../normalization/dashboard-normalization";
 import { historicalEventRepository, historicalEvidenceRepository, historicalObservationRepository } from "../repositories/dashboard-repository";
-import type { Event, Evidence } from "../domain/types";
+import type { Event, Evidence, Observation } from "../domain/types";
 import {
   BTC_ETF_NET_FLOW_SERIES_KEY,
   USD_STABLECOIN_MARKET_CAP_SERIES_KEY,
@@ -246,6 +246,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   const readStartedMs = performance.now();
   const readScope = createDashboardObservationReadScope(dashboardHistoricalObservationRepository);
   const scopedObservations = readScope.repository;
+  // Only qualified history returned by this GET's durable projection may be reused.
+  const macroHistory = new Map<string, Observation[]>();
   const readContext = beginMarketReadContext(new Date());
   const asOf = new Date(readContext.knowledgeAsOf);
   // A dashboard GET composes only already-persisted evidence. Cron ingestion is
@@ -286,7 +288,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     observations: scopedObservations,
     evidence: historicalEvidenceRepository,
     events: historicalEventRepository,
-  });
+  }, macroHistory);
   const projectionReadyMs = performance.now();
 
   const [
@@ -308,6 +310,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
       scopedObservations,
+      macroHistory,
     ),
     intradayEventMonitorPromise,
     durableHighImpactEventBundlePromise,

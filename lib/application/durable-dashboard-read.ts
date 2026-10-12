@@ -180,6 +180,8 @@ function providerHealth(
 export async function readDurableDashboardData(
   asOf: Date,
   repositories: DurableDashboardRepositories,
+  /** Optional GET-local durable macro history; never persisted or shared across requests. */
+  macroHistory?: Map<string, Observation[]>,
 ): Promise<NormalizedDashboardData> {
   if (!Number.isFinite(asOf.getTime())) throw new Error("Dashboard requires a valid as-of cutoff");
   const cutoff = asOf.toISOString();
@@ -194,6 +196,9 @@ export async function readDurableDashboardData(
         observedAtOnOrBefore: cutoff, retrievedAtOnOrBefore: cutoff,
         order: "DESC", limit: 8,
       });
+      if (series.domain === "MACRO" && series.sourceId === "fred") {
+        macroHistory?.set(series.seriesKey, rows);
+      }
       return latestQualified(rows, series, cutoff);
     } catch {
       if (series.sourceId === "yahoo-finance") yahooSeriesFailures.add(series.seriesKey);
@@ -296,4 +301,3 @@ export async function readDurableDashboardData(
     observationReadQuality,
   };
 }
-
