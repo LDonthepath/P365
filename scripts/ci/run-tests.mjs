@@ -1,5 +1,5 @@
 /**
- * Run every repository *.test.ts(x) file with the same pinned tsx runner in
+ * Run every repository *.test.ts(x) file with the same lockfile-pinned tsx runner in
  * CI and local development. This script does not call P365 cron endpoints or
  * touch production infrastructure.
  *
@@ -39,7 +39,7 @@ if (tests.length === 0) {
   console.log(`G0: discovered ${tests.length} TypeScript test files:`);
   for (const name of tests) console.log(name);
 } else {
-  console.log(`G0: running all ${tests.length} TypeScript test files with tsx@4.20.6.`);
+  console.log(`G0: running all ${tests.length} TypeScript test files with locally locked tsx@4.20.6.`);
   // Next.js's server-only marker intentionally throws when imported directly
   // outside a Next.js server bundle. Reuse the existing CI test-only sentinel.
   const temp = mkdtempSync(join(tmpdir(), "p365-g0-tests-"));
@@ -51,9 +51,10 @@ if (tests.length === 0) {
       ...process.env,
       NODE_PATH: [join(temp, "node_modules"), process.env.NODE_PATH].filter(Boolean).join(delimiter),
     };
-    const command = process.platform === "win32" ? "npx.cmd" : "npx";
-    const result = spawnSync(command, [
-      "--yes", "tsx@4.20.6", "--test", "--test-concurrency=4", ...tests,
+    const runner = resolve(root, "node_modules", ".bin", process.platform === "win32" ? "tsx.cmd" : "tsx");
+    if (!existsSync(runner)) throw new Error("G0: local tsx runner missing; run npm ci before npm test");
+    const result = spawnSync(runner, [
+      "--test", "--test-concurrency=4", ...tests,
     ], {
       cwd: root,
       env: environment,
