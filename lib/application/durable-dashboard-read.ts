@@ -3,6 +3,9 @@ import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
 import { buildDashboardContexts } from "../domain/context";
 import { qualityFromMacroCadence, qualityFromMarketHours, freshnessPolicyForFamily, type MarketFreshnessCalendar } from "../domain/freshness";
 import type { DataQuality, Event, Evidence, Observation, ProviderHealth } from "../domain/types";
+import {
+  projectObservationReadQuality, type ObservationReadQuality, type ObservationReadFreshnessPolicy,
+} from "../domain/observation-read-quality";
 import type { NormalizedDashboardData } from "../normalization/dashboard-normalization";
 import {
   YAHOO_MARKET_SERIES, aggregateYahooHealth, yahooSeriesUnavailable,
@@ -75,7 +78,18 @@ function evaluatedQuality(item: Observation, series: Series, asOf: string): Data
   });
 }
 
-function latestQualified(rows: Observation[], series: Series, asOf: string): Observation | null {
+type QualifiedObservationRead = { observation: Observation; readQuality: ObservationReadQuality };
+
+function freshnessPolicyForSeries(series: Series): ObservationReadFreshnessPolicy | undefined {
+  const fred = series.sourceId === "fred"
+    ? MACRO_SERIES_REGISTRY.find((candidate) => candidate.seriesId === series.seriesKey)
+    : undefined;
+  if (fred) return { family: "FRED_MACRO", frequency: fred.frequency, toleranceMs: fred.freshnessMs };
+  if (series.calendar) return { family: "MARKET_REALTIME", calendar: series.calendar };
+  return undefined;
+}
+
+function latestQualified(rows: Observation[], series: Series, asOf: string): QualifiedObservationRead | null {
   const matches = rows.filter((row) =>
     row.domain === series.domain &&
     row.sourceId === series.sourceId &&
@@ -85,7 +99,14 @@ function latestQualified(rows: Observation[], series: Series, asOf: string): Obs
     validAt(row.retrievedAt, asOf));
   if (matches.length === 0) return null;
   const latest = [...matches].sort((a, b) => compareObservationHistory(b, a))[0];
-  return { ...latest, quality: evaluatedQuality(latest, series, asOf) };
+  return {
+    // Preserve the legacy display quality, while exposing immutable stored quality separately.
+    observation: { ...latest, quality: evaluatedQuality(latest, series, asOf) },
+    readQuality: projectObservationReadQuality({
+      observation: latest, seriesKey: series.seriesKey, asOf,
+      policy: freshnessPolicyForSeries(series),
+    }),
+  };
 }
 
 function latestByIdentity<T extends { id: string; retrievedAt: string }>(
@@ -179,7 +200,9 @@ export async function readDurableDashboardData(
       return null;
     }
   }));
-  const observations = observationResults.filter((row): row is Observation => row !== null);
+  const qualifiedReads = observationResults.filter((row): row is QualifiedObservationRead => row !== null);
+  const observations = qualifiedReads.map((row) => row.observation);
+  const observationReadQuality = qualifiedReads.map((row) => row.readQuality);
   const macroObservations = observations.filter((row) => row.domain === "MACRO");
 
   const evidenceResults = await Promise.all(NEWS_SOURCES.map(async (sourceId) => {
@@ -258,6 +281,7 @@ export async function readDurableDashboardData(
     evidence: newsEvidence,
     providerHealth: providerHealthRows,
     yahooSeriesHealth,
+    observationReadQuality,
   };
 }
 

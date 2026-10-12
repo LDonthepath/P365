@@ -197,3 +197,22 @@ test("RECOVERY-G1-04: empty or stale Gold stays independently disclosed despite 
   assert.notEqual(data.providerHealth.find((x) => x.sourceId === "yahoo-finance")?.status, "HEALTHY");
   assert.ok(data.unavailableSources.some((x) => x.includes("COMEX")));
 });
+
+test("RECOVERY-G1-06: typed durable projection retains stored quality separately from evaluated freshness", async () => {
+  const raw = observation({
+    id: "historic-btc",
+    observedAt: "2026-10-11T08:00:00.000Z",
+    retrievedAt: "2026-10-11T08:01:00.000Z",
+  });
+  const { repo } = repositories({ observations: [raw] });
+  const data = await readDurableDashboardData(AS_OF, repo);
+  const diagnostic = data.observationReadQuality?.find((p) => p.observationId === raw.id);
+  assert.ok(diagnostic);
+  assert.equal(diagnostic.ingestionQuality, "FRESH");
+  assert.equal(diagnostic.evaluatedFreshness, "STALE");
+  assert.equal(diagnostic.currentContextFitness, "INELIGIBLE");
+  assert.equal(diagnostic.historicalReferenceFitness, "ELIGIBLE");
+  assert.equal(data.observations[0].quality, "STALE", "legacy display behavior unchanged");
+  assert.equal(raw.quality, "FRESH", "repository canonical fact remains untouched");
+  assert.equal(data.observationReadQuality?.length, data.observations.length);
+});
