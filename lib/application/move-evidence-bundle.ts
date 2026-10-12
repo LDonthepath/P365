@@ -34,6 +34,8 @@ import {
 const MINUTE_MS = 60 * 1000;
 const CROSS_SERIES_ALIGNMENT_TOLERANCE_MS = 2 * MINUTE_MS;
 const SYNCHRONOUS_QUERY_LIMIT = 50;
+// Full bounded union read; overflow falls back to the original per-window queries.
+const SYNCHRONOUS_BATCH_LIMIT = 500;
 const SCHEDULED_EVENT_QUERY_LIMIT = 500;
 const SPOT_FLOW_QUERY_LIMIT = 100;
 const SPOT_FLOW_WINDOW_MS = 5 * MINUTE_MS;
@@ -370,6 +372,7 @@ async function nearestPoint(input: {
   definition: SeriesDefinition;
   desiredAt: string;
   asOf: string;
+  completeHistory?: readonly Observation[];
 }): Promise<
   | { status: "AVAILABLE"; point: MoveEvidencePoint; alignmentErrorMs: number }
   | { status: "MISSING"; reason: string }
@@ -384,18 +387,27 @@ async function nearestPoint(input: {
   const through = new Date(desiredAt + CROSS_SERIES_ALIGNMENT_TOLERANCE_MS).toISOString();
 
   try {
-    const history = await input.repository.findHistory({
-      identity: {
-        domain: input.definition.domain,
-        seriesKey: input.definition.seriesKey,
-      },
-      sourceId: input.definition.sourceId,
-      observedAtOnOrAfter: from,
-      observedAtOnOrBefore: through,
-      retrievedAtOnOrBefore: input.asOf,
-      order: "ASC",
-      limit: SYNCHRONOUS_QUERY_LIMIT,
-    });
+    // An untruncated, source-qualified union is point-in-time complete for
+    // every original ±120s window. Enforce the original 50-row limit locally.
+    const history = input.completeHistory
+      ? input.completeHistory.filter((row) => {
+          const observedAt = timestamp(row.observedAt);
+          return observedAt !== undefined
+            && observedAt >= desiredAt - CROSS_SERIES_ALIGNMENT_TOLERANCE_MS
+            && observedAt <= desiredAt + CROSS_SERIES_ALIGNMENT_TOLERANCE_MS;
+        })
+      : await input.repository.findHistory({
+          identity: {
+            domain: input.definition.domain,
+            seriesKey: input.definition.seriesKey,
+          },
+          sourceId: input.definition.sourceId,
+          observedAtOnOrAfter: from,
+          observedAtOnOrBefore: through,
+          retrievedAtOnOrBefore: input.asOf,
+          order: "ASC",
+          limit: SYNCHRONOUS_QUERY_LIMIT,
+        });
 
     if (history.length >= SYNCHRONOUS_QUERY_LIMIT) {
       return {
@@ -446,6 +458,7 @@ async function buildSynchronousSeries(input: {
   startAt: string;
   endAt: string;
   asOf: string;
+  completeHistory?: readonly Observation[];
 }): Promise<MoveSynchronousSeriesEvidence> {
   const [start, end] = await Promise.all([
     nearestPoint({
@@ -453,12 +466,14 @@ async function buildSynchronousSeries(input: {
       definition: input.definition,
       desiredAt: input.startAt,
       asOf: input.asOf,
+      completeHistory: input.completeHistory,
     }),
     nearestPoint({
       repository: input.repository,
       definition: input.definition,
       desiredAt: input.endAt,
       asOf: input.asOf,
+      completeHistory: input.completeHistory,
     }),
   ]);
 
@@ -1223,10 +1238,54 @@ function investigationWindow(
   };
 }
 
+/**
+ * For multiple material MOVE horizons, an untruncated union of every ±120s
+ * companion window can safely satisfy the legacy point reads. A full 500 rows,
+ * failed read or malformed bounds is NOT proof of completeness: use the
+ * independent legacy per-window queries for that series instead.
+ *
+ * Scoped to one evidence-bundle call; no cross-request/canonical caching.
+ */
+async function readCompleteSynchronousUnions(input: {
+  repository: HistoricalObservationRepository;
+  horizons: readonly MaterialHorizonWindow[];
+  asOf: string;
+}): Promise<ReadonlyMap<string, readonly Observation[]>> {
+  const complete = new Map<string, readonly Observation[]>();
+  if (input.horizons.length < 2) return complete;
+  const timestamps = input.horizons.flatMap((horizon) => [
+    timestamp(horizon.startAt), timestamp(horizon.endAt),
+  ]);
+  if (timestamps.some((value) => value === undefined)) return complete;
+
+  const from = new Date(Math.min(...timestamps as number[]) - CROSS_SERIES_ALIGNMENT_TOLERANCE_MS).toISOString();
+  const through = new Date(Math.max(...timestamps as number[]) + CROSS_SERIES_ALIGNMENT_TOLERANCE_MS).toISOString();
+  await Promise.all(SYNCHRONOUS_SERIES.map(async (definition) => {
+    try {
+      const rows = await input.repository.findHistory({
+        identity: { domain: definition.domain, seriesKey: definition.seriesKey },
+        sourceId: definition.sourceId,
+        observedAtOnOrAfter: from,
+        observedAtOnOrBefore: through,
+        retrievedAtOnOrBefore: input.asOf,
+        order: "ASC",
+        limit: SYNCHRONOUS_BATCH_LIMIT,
+      });
+      if (rows.length < SYNCHRONOUS_BATCH_LIMIT) {
+        complete.set(definition.seriesKey, rows);
+      }
+    } catch {
+      // Fail closed: let the exact legacy ±120s reads decide coverage.
+    }
+  }));
+  return complete;
+}
+
 async function buildSynchronousHorizon(input: {
   repository: HistoricalObservationRepository;
   horizon: MaterialHorizonWindow;
   asOf: string;
+  completeHistories: ReadonlyMap<string, readonly Observation[]>;
 }): Promise<MoveSynchronousHorizonEvidence> {
   const series = await Promise.all(SYNCHRONOUS_SERIES.map((definition) =>
     buildSynchronousSeries({
@@ -1235,6 +1294,7 @@ async function buildSynchronousHorizon(input: {
       startAt: input.horizon.startAt,
       endAt: input.horizon.endAt,
       asOf: input.asOf,
+      completeHistory: input.completeHistories.get(definition.seriesKey),
     })));
 
   const available = series.filter((item) => item.state === "AVAILABLE_SYNCHRONOUS").length;
@@ -1284,12 +1344,20 @@ export async function buildMoveEvidenceBundle(input: {
   }
 
   const asset = targetAsset(input.assessment.seriesKey);
+  const completeHistoriesPromise = readCompleteSynchronousUnions({
+    repository: input.observations,
+    horizons: materialHorizons,
+    asOf: input.assessment.asOf,
+  });
   const [synchronousHorizons, scheduledCatalysts, slowBackground, unscheduledCatalysts, marketStructure] = await Promise.all([
-    Promise.all(materialHorizons.map((horizon) => buildSynchronousHorizon({
-      repository: input.observations,
-      horizon,
-      asOf: input.assessment.asOf,
-    }))),
+    completeHistoriesPromise.then((completeHistories) => Promise.all(
+      materialHorizons.map((horizon) => buildSynchronousHorizon({
+        repository: input.observations,
+        horizon,
+        asOf: input.assessment.asOf,
+        completeHistories,
+      })),
+    )),
     buildScheduledCatalysts({
       repository: input.events,
       startAt: window.startAt,
