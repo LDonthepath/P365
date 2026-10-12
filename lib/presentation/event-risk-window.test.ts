@@ -98,25 +98,25 @@ function ffFiller(count: number, startIso: string): Event[] {
 // 6. Coverage: no Forex Factory data means absence proves nothing.
 assertEqual(buildEventRiskWindow([], NOW, { calendarLimit: LIMIT }).coverage, { kind: "NO_CALENDAR_DATA" }, "empty coverage");
 
-// 7. Coverage: list below the cap is complete.
+// 7. Coverage: list below the cap is still unverified.
 assertEqual(
   buildEventRiskWindow(ffFiller(3, "2026-09-23T10:30:00.000Z"), NOW, { calendarLimit: LIMIT }).coverage,
-  { kind: "COMPLETE" },
-  "below cap complete",
+  { kind: "UNVERIFIED", lastListedAt: "2026-09-23T10:32:00.000Z" },
+  "below cap unverified",
 );
 
 // 8. Coverage: capped list ending before the window end is truncated at its last event.
 assertEqual(
   buildEventRiskWindow(ffFiller(6, "2026-09-23T10:30:00.000Z"), NOW, { calendarLimit: LIMIT }).coverage,
-  { kind: "TRUNCATED", knownUntil: "2026-09-23T10:35:00.000Z" },
+  { kind: "TRUNCATED", lastListedAt: "2026-09-23T10:35:00.000Z" },
   "capped list truncated",
 );
 
-// 9. Coverage: capped list that already reaches past the window end is complete.
+// 9. Beyond-window listed Event does not establish complete coverage.
 assertEqual(
   buildEventRiskWindow([...ffFiller(5, "2026-09-23T10:30:00.000Z"), event({ importance: "LOW", scheduledAt: "2026-09-24T12:00:00.000Z" })], NOW, { calendarLimit: LIMIT }).coverage,
-  { kind: "COMPLETE" },
-  "capped list past window",
+  { kind: "TRUNCATED", lastListedAt: "2026-09-24T12:00:00.000Z" },
+  "capped list still unverified beyond window",
 );
 
 // 10. Countdown text and proximity flag.

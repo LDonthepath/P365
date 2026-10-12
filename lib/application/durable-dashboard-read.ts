@@ -7,6 +7,7 @@ import {
   projectObservationReadQuality, type ObservationReadQuality, type ObservationReadFreshnessPolicy,
 } from "../domain/observation-read-quality";
 import type { NormalizedDashboardData } from "../normalization/dashboard-normalization";
+import { buildCalendarForwardCoverage } from "./calendar-forward-coverage";
 import {
   YAHOO_MARKET_SERIES, aggregateYahooHealth, yahooSeriesUnavailable,
   type YahooSeriesHealth,
@@ -231,12 +232,16 @@ export async function readDurableDashboardData(
     (e.sourceId === "coindesk-rss" || (e.sourceId === "alpha-vantage" && cryptoCategory(e))))).slice(0, 6);
 
   let events: Event[] = [];
+  let eventReadSucceeded = false;
+  let eventHistoryTruncated = false;
   try {
     const rows = await repositories.events.findHistory({
       scheduledAtOnOrAfter: new Date(asOf.getTime() - 48 * 60 * 60_000).toISOString(),
       scheduledAtOnOrBefore: new Date(asOf.getTime() + 7 * 24 * 60 * 60_000).toISOString(),
       retrievedAtOnOrBefore: cutoff, order: "ASC", limit: 200,
     });
+    eventReadSucceeded = true;
+    eventHistoryTruncated = rows.length >= 200;
     events = latestByIdentity(rows.filter((item) => validAt(item.retrievedAt, cutoff)),
       (item) => item.identity?.key ?? item.id);
   } catch {
@@ -244,6 +249,12 @@ export async function readDurableDashboardData(
     failures.add("federal-reserve");
     failures.add("biquote");
   }
+  // No source-enveloped full-window/EMPTY receipts exist in canonical Event
+  // history today. Never infer "no events" or a verified 7-day horizon from
+  // the count of returned Event rows (including zero rows).
+  const calendarForwardCoverage = buildCalendarForwardCoverage({
+    events, asOf: cutoff, eventReadSucceeded, eventHistoryTruncated,
+  });
   const calendarEvents = events.map((item) => calendarFromEvent(item, asOf))
     .filter((row): row is CalendarEvent => row !== null)
     .sort((a, b) => Date.parse(a.dateISO) - Date.parse(b.dateISO)).slice(0, 6);
@@ -273,7 +284,8 @@ export async function readDurableDashboardData(
 
   return {
     macroNews, cryptoNews, calendarEvents,
-    calendarProviderMessage: "Kalender dari histori tersimpan; cakupan event dapat tidak lengkap.",
+    calendarProviderMessage: "Kalender dari histori tersimpan; cakupan 7 hari belum dapat dipastikan tanpa bukti respons per sumber dan wilayah.",
+    calendarForwardCoverage,
     unavailableSources,
     observations, macroObservations, events,
     economicEventResults: [], // no broad, qualified EventResult-history query; never synthesize a consensus

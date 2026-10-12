@@ -33,6 +33,7 @@ function repositories(input: {
   events?: Event[];
   failSource?: string;
   failSeries?: string;
+  failEvents?: boolean;
 } = {}) {
   const reads: string[] = [];
   const repo: DurableDashboardRepositories = {
@@ -58,6 +59,7 @@ function repositories(input: {
     events: {
       async findHistory() {
         reads.push("event-history");
+        if (input.failEvents) throw new Error("event history unavailable");
         return input.events ?? [];
       },
     },
@@ -215,4 +217,43 @@ test("RECOVERY-G1-06: typed durable projection retains stored quality separately
   assert.equal(data.observations[0].quality, "STALE", "legacy display behavior unchanged");
   assert.equal(raw.quality, "FRESH", "repository canonical fact remains untouched");
   assert.equal(data.observationReadQuality?.length, data.observations.length);
+});
+
+test("RECOVERY-G1-05: durable calendar 7-day feed and region coverage never inferred from zero Event rows", async () => {
+  const { repo } = repositories({ events: [] });
+  const result = await readDurableDashboardData(AS_OF, repo);
+  assert.equal(result.calendarForwardCoverage?.windowStart, AS_OF.toISOString());
+  assert.deepEqual(result.calendarForwardCoverage?.regions.map((r) => r.status),
+    ["UNKNOWN", "UNKNOWN", "UNKNOWN"]);
+  assert.equal(result.calendarForwardCoverage?.feeds.length, 3);
+  assert.match(result.calendarProviderMessage ?? "", /belum dapat dipastikan/i);
+});
+
+test("RECOVERY-G1-05: stored US/China/Japan events prove only individual scheduled facts, not full feed", async () => {
+  const base: Event = {
+    id: "event-usa", subject: "US CPI", description: "schedule",
+    sourceId: "forex-factory", scheduledAt: "2026-10-13T12:30:00.000Z",
+    retrievedAt: "2026-10-11T09:00:00.000Z", importance: "HIGH",
+    status: "UPCOMING", evidenceId: "e", jurisdiction: "US",
+  };
+  const { repo } = repositories({ events: [
+    base,
+    { ...base, id: "event-cn", subject: "China CPI", sourceId: "biquote", jurisdiction: "CHINA" },
+    { ...base, id: "event-jp", subject: "Japan GDP", sourceId: "biquote",
+      jurisdiction: "JAPAN", retrievedAt: "2026-10-12T00:00:00.000Z" },
+  ] });
+  const result = await readDurableDashboardData(AS_OF, repo);
+  assert.deepEqual(result.calendarForwardCoverage?.regions.map((r) => [r.status, r.observedEvents]), [
+    ["KNOWN_EVENTS", 1], ["KNOWN_EVENTS", 1], ["UNKNOWN", 0],
+  ]);
+  assert.equal(result.calendarForwardCoverage?.feeds.find((f) => f.sourceId === "federal-reserve")
+    ?.regions.length, 1, "FOMC feed must not imply China/Japan qualification");
+});
+
+test("RECOVERY-G1-05: Event repository read failure is explicitly READ_ERROR, not EMPTY", async () => {
+  const { repo } = repositories({ failEvents: true });
+  const result = await readDurableDashboardData(AS_OF, repo);
+  assert.deepEqual(result.calendarForwardCoverage?.regions.map((r) => r.status),
+    ["READ_ERROR", "READ_ERROR", "READ_ERROR"]);
+  assert.ok(result.unavailableSources.some((s) => s.includes("forex-factory")));
 });
