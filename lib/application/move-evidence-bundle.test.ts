@@ -9,6 +9,7 @@ import {
   InMemoryObservationRepository,
 } from "../repositories/memory";
 import type { ContinuousMoveAssessment } from "./continuous-move-detector";
+import type { HistoricalObservationRepository, ObservationHistoryQuery } from "../repositories/types";
 import {
   BTC_SPOT_FLOW_METHODOLOGY,
   type BtcSpotFlowWindow,
@@ -257,6 +258,137 @@ async function seedCompleteGdeltHistory(input: {
 
   return { snapshotCount, candidateUrl, lateCandidateUrl };
 }
+
+
+test("RECOVERY-G2-05 reduces unique synchronous ASSET reads with complete, PIT-qualified history", async () => {
+  const observations = new InMemoryObservationRepository();
+  const evidence = new InMemoryEvidenceRepository();
+  const events = new InMemoryHistoricalEventRepository(new InMemoryEventRepository());
+  const assessment = materialAssessment();
+  const initial = "2026-10-02T02:30:00.000Z";
+  const middle = "2026-10-02T03:30:00.000Z";
+  const end = "2026-10-02T04:30:00.000Z";
+  await observations.saveMany(synchronous.flatMap(([seriesKey, sourceId, start120, start60, final], index) => [
+    observation({ id: `g2-05-${index}-a`, seriesKey, sourceId, value: start120,
+      observedAt: initial, retrievedAt: "2026-10-02T02:30:10.000Z" }),
+    observation({ id: `g2-05-${index}-b`, seriesKey, sourceId, value: start60,
+      observedAt: middle, retrievedAt: "2026-10-02T03:30:10.000Z" }),
+    observation({ id: `g2-05-${index}-c`, seriesKey, sourceId, value: final,
+      observedAt: end, retrievedAt: "2026-10-02T04:30:10.000Z" }),
+  ]));
+  // Later-known revisions and wrong-source rows must never replace eligible points.
+  await observations.save(observation({ id: "g2-05-late-revision", seriesKey: "dxy.index.usd",
+    sourceId: "yahoo-finance", value: 1, observedAt: end,
+    retrievedAt: "2026-10-02T05:00:00.000Z" }));
+  await observations.save(observation({ id: "g2-05-other-provider", seriesKey: "dxy.index.usd",
+    sourceId: "other-provider", value: 1, observedAt: end,
+    retrievedAt: "2026-10-02T04:30:10.000Z" }));
+
+  const batched: ObservationHistoryQuery[] = [];
+  const batchRepo: HistoricalObservationRepository = {
+    findHistory(query) { batched.push(query); return observations.findHistory(query); },
+  };
+  const legacy: ObservationHistoryQuery[] = [];
+  const legacyRepo: HistoricalObservationRepository = {
+    findHistory(query) {
+      legacy.push(query);
+      if (query.identity.domain === "ASSET" && query.limit === 500) {
+        return Promise.reject(new Error("Batch unavailable; use original per-window reads"));
+      }
+      return observations.findHistory(query);
+    },
+  };
+  const first = await buildMoveEvidenceBundle({ assessment, observations: batchRepo, events, evidence });
+  const reference = await buildMoveEvidenceBundle({ assessment, observations: legacyRepo, events, evidence });
+  assert.equal(first.status, "READY");
+  assert.equal(reference.status, "READY");
+  if (first.status !== "READY" || reference.status !== "READY") return;
+  assert.deepEqual(first.bundle.synchronousMarket, reference.bundle.synchronousMarket,
+    "bulk union must preserve all synchronous points, coverage, timestamps, and reasons");
+  assert.equal(first.bundle.id, reference.bundle.id, "canonical bundle lineage/hash must not change");
+  assert.equal(first.bundle.synchronousMarket.horizons[0].series[2].end?.observationId,
+    "g2-05-2-c", "late DXY revision remains invisible");
+  assert.equal(batched.filter((query) => query.identity.domain === "ASSET" && query.limit === 500).length,
+    6, "six source-qualified union reads, one per companion");
+  assert.equal(batched.filter((query) => query.identity.domain === "ASSET" && query.limit === 50).length,
+    0, "complete union requires no extra window reads");
+  assert.equal(legacy.filter((query) => query.identity.domain === "ASSET" && query.limit === 50).length,
+    24, "legacy path requires two points × two horizons × six companions");
+  assert.ok(batched.filter((query) => query.identity.domain === "ASSET" && query.limit === 500)
+    .every((query) => query.retrievedAtOnOrBefore === assessment.asOf && query.order === "ASC"),
+    "batched PIT cutoff and ordering unchanged");
+});
+
+test("RECOVERY-G2-05 preserves 50-row window saturation and 500-row batch overflow fallback", async () => {
+  const observations = new InMemoryObservationRepository();
+  const evidence = new InMemoryEvidenceRepository();
+  const events = new InMemoryHistoricalEventRepository(new InMemoryEventRepository());
+  const assessment = materialAssessment();
+  // More than 50 source-qualified revisions of one eligible synchronous timestamp.
+  await observations.saveMany(Array.from({ length: 50 }, (_, index) =>
+    observation({
+      id: `saturated-window-${index}`, seriesKey: "btc.spot.usd",
+      sourceId: "coingecko-market", value: index + 1,
+      observedAt: "2026-10-02T02:30:00.000Z",
+      retrievedAt: new Date(Date.parse("2026-10-02T02:30:10.000Z") + index * 1000).toISOString(),
+    }),
+  ));
+  const seen: ObservationHistoryQuery[] = [];
+  const repo: HistoricalObservationRepository = {
+    async findHistory(query) { seen.push(query); return observations.findHistory(query); },
+  };
+  const result = await buildMoveEvidenceBundle({ assessment, observations: repo, events, evidence });
+  assert.equal(result.status, "READY");
+  if (result.status !== "READY") return;
+  assert.equal(result.bundle.synchronousMarket.horizons[1].series[0].state, "UNKNOWN",
+    "a complete union must still honor the original 50-row window saturation");
+  assert.match(result.bundle.synchronousMarket.horizons[1].series[0].reason ?? "", /50-row/);
+  assert.equal(seen.filter((query) => query.identity.domain === "ASSET" && query.limit === 50).length, 0,
+    "complete union stays local even for a saturated window");
+
+  const legacyQueries: ObservationHistoryQuery[] = [];
+  const overflow: HistoricalObservationRepository = {
+    findHistory(query) {
+      legacyQueries.push(query);
+      if (query.identity.domain === "ASSET" && query.limit === 500) {
+        return Promise.resolve(Array.from({ length: 500 }, (_, i) => observation({
+          id: `overflow-${i}`, seriesKey: query.identity.seriesKey,
+          sourceId: query.sourceId ?? "coingecko-market", value: i + 1,
+          observedAt: "2026-10-02T02:30:00.000Z",
+          retrievedAt: "2026-10-02T02:30:10.000Z",
+        })));
+      }
+      return observations.findHistory(query);
+    },
+  };
+  const fallback = await buildMoveEvidenceBundle({ assessment, observations: overflow, events, evidence });
+  assert.equal(fallback.status, "READY");
+  if (fallback.status !== "READY") return;
+  assert.deepEqual(fallback.bundle.synchronousMarket, result.bundle.synchronousMarket,
+    "500-row overflow falls back to exact original window semantics");
+  assert.equal(legacyQueries.filter((query) => query.identity.domain === "ASSET" && query.limit === 50).length,
+    24, "all overflowed companions execute original window queries");
+});
+
+test("RECOVERY-G2-05 keeps single material horizon on legacy query plan", async () => {
+  const observations = new InMemoryObservationRepository();
+  const evidence = new InMemoryEvidenceRepository();
+  const events = new InMemoryHistoricalEventRepository(new InMemoryEventRepository());
+  const assessment = materialAssessment();
+  assessment.horizons[2].status = "BELOW_MATERIALITY_THRESHOLD";
+  assessment.hasMaterialMove = true;
+  assessment.status = "MATERIAL_MOVE";
+  const queries: ObservationHistoryQuery[] = [];
+  const repository: HistoricalObservationRepository = {
+    findHistory(query) { queries.push(query); return observations.findHistory(query); },
+  };
+  const result = await buildMoveEvidenceBundle({ assessment, observations: repository, events, evidence });
+  assert.equal(result.status, "READY");
+  assert.equal(queries.filter((query) => query.identity.domain === "ASSET" && query.limit === 500).length,
+    0, "single horizon avoids speculative union overfetch");
+  assert.equal(queries.filter((query) => query.identity.domain === "ASSET" && query.limit === 50).length,
+    12, "single horizon preserves original start/end query shape");
+});
 
 test("MOVE-002B builds one deterministic point-in-time evidence bundle without writes", async () => {
   const observations = new InMemoryObservationRepository();
