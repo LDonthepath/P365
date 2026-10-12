@@ -1,6 +1,21 @@
 import type { Observation } from "../domain/types";
 import type { HistoricalObservationRepository, ObservationHistoryQuery } from "../repositories/types";
 
+/** Bounded aggregate diagnostic dimensions. These are not user-driven keys. */
+export type DashboardHistoryLimitBucket = "1_TO_8" | "9_TO_100" | "101_TO_500";
+export type DashboardHistoryReadFamily = {
+  domain: Observation["domain"];
+  limitBucket: DashboardHistoryLimitBucket;
+  physicalReads: number;
+  failedReads: number;
+  /** Sum of individual wall elapsed incl. the existing limiter queue, not SQL execution time. */
+  elapsedMs: number;
+};
+
+function limitBucket(limit: number): DashboardHistoryLimitBucket {
+  return limit <= 8 ? "1_TO_8" : limit <= 100 ? "9_TO_100" : "101_TO_500";
+}
+
 /**
  * One dashboard GET owns this cache and its counters. Neither data nor promises
  * are shared across requests. An exact semantic + provenance + time-window +
@@ -15,6 +30,8 @@ export type DashboardObservationReadStats = {
   physicalDurationMs: number;
   slowestPhysicalMs: number;
   maxPhysicalInFlight: number;
+  /** At most 12 coarse domain × limit buckets. No series/source IDs, dates or values. */
+  familyReads: DashboardHistoryReadFamily[];
 };
 
 export function createDashboardObservationReadScope(
@@ -39,6 +56,21 @@ export function createDashboardObservationReadScope(
   let slowestPhysicalMs = 0;
   let physicalInFlight = 0;
   let maxPhysicalInFlight = 0;
+  const families = new Map<string, DashboardHistoryReadFamily>();
+  const domainOrder = ["MACRO", "ASSET", "MARKET", "OTHER"] as const;
+  const bucketOrder: DashboardHistoryLimitBucket[] = ["1_TO_8", "9_TO_100", "101_TO_500"];
+
+  function familyFor(query: ObservationHistoryQuery): DashboardHistoryReadFamily {
+    const domain = domainOrder.includes(query.identity.domain) ? query.identity.domain : "OTHER";
+    const bucket = limitBucket(query.limit);
+    const key = domain + ":" + bucket;
+    let family = families.get(key);
+    if (!family) {
+      family = { domain, limitBucket: bucket, physicalReads: 0, failedReads: 0, elapsedMs: 0 };
+      families.set(key, family);
+    }
+    return family;
+  }
 
   function key(query: ObservationHistoryQuery): string {
     return JSON.stringify([
@@ -53,6 +85,8 @@ export function createDashboardObservationReadScope(
 
   function physicalRead(query: ObservationHistoryQuery, cacheKey?: string): Promise<Observation[]> {
     physicalReads += 1;
+    const family = familyFor(query);
+    family.physicalReads += 1;
     physicalInFlight += 1;
     maxPhysicalInFlight = Math.max(maxPhysicalInFlight, physicalInFlight);
     const started = now();
@@ -64,13 +98,16 @@ export function createDashboardObservationReadScope(
         physicalInFlight -= 1;
         const elapsed = Math.max(0, now() - started);
         physicalDurationMs += elapsed;
+        family.elapsedMs += elapsed;
         slowestPhysicalMs = Math.max(slowestPhysicalMs, elapsed);
       },
       () => {
         physicalInFlight -= 1;
         failedPhysicalReads += 1;
+        family.failedReads += 1;
         const elapsed = Math.max(0, now() - started);
         physicalDurationMs += elapsed;
+        family.elapsedMs += elapsed;
         slowestPhysicalMs = Math.max(slowestPhysicalMs, elapsed);
         if (cacheKey && cache.get(cacheKey) === promise) cache.delete(cacheKey);
       },
@@ -105,6 +142,10 @@ export function createDashboardObservationReadScope(
       physicalDurationMs: Math.round(physicalDurationMs),
       slowestPhysicalMs: Math.round(slowestPhysicalMs),
       maxPhysicalInFlight,
+      familyReads: [...families.values()]
+        .sort((a, b) => domainOrder.indexOf(a.domain) - domainOrder.indexOf(b.domain)
+          || bucketOrder.indexOf(a.limitBucket) - bucketOrder.indexOf(b.limitBucket))
+        .map((family) => ({ ...family, elapsedMs: Math.round(family.elapsedMs) })),
     }),
   };
 }
