@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Event } from "@/lib/domain/types";
+import type { CalendarForwardCoverage, CoverageStatus } from "@/lib/application/calendar-forward-coverage";
 import { ECONOMIC_CALENDAR_LIMIT } from "@/lib/data/types";
 import {
   EVENT_RISK_WINDOW_HOURS,
@@ -41,20 +42,63 @@ function SlotRow({ slot }: { slot: RiskWindowSlot }) {
 }
 
 function CoverageNote({ coverage }: { coverage: RiskWindowCoverage }) {
-  if (coverage.kind === "TRUNCATED") {
-    return (
-      <p className={`muted ${styles.note}`}>
-        Cakupan Forex Factory terverifikasi hanya sampai {clockFormat.format(new Date(coverage.knownUntil))} WIB. Event dari sumber lain masih dapat muncul setelah waktu itu, tetapi daftar setelah batas tersebut belum tentu lengkap.
-      </p>
-    );
-  }
   if (coverage.kind === "NO_CALENDAR_DATA") {
-    return <p className={`muted ${styles.note}`}>Forex Factory belum menyediakan kalender pada tampilan ini. Daftar dapat berasal dari sumber lain dan belum tentu lengkap.</p>;
+    return <p className={`muted ${styles.note}`}>Belum ada jadwal Forex Factory yang dapat dibaca; bukan bukti tidak ada event.</p>;
   }
-  return null;
+  const last = clockFormat.format(new Date(coverage.lastListedAt));
+  return <p className={`muted ${styles.note}`}>
+    Jadwal Forex Factory terakhir dalam daftar pada {last} WIB.
+    {coverage.kind === "TRUNCATED" ? " Daftar mungkin terpotong oleh batas jumlah event." : ""}
+    {" "}Kelengkapan sumber untuk seluruh jendela belum terverifikasi.
+  </p>;
 }
 
-export function EventRiskWindowPanel({ events, asOf }: { events: Event[]; asOf: string }) {
+const regionNames = { US: "AS", CHINA: "China", JAPAN: "Jepang" } as const;
+const sourceNames = {
+  "forex-factory": "Forex Factory",
+  biquote: "Biquote",
+  "federal-reserve": "Federal Reserve",
+} as const;
+const horizonDescriptions = {
+  CURRENT_WEEK_FEED: "feed pekan berjalan; bukan jaminan tujuh hari",
+  BOUNDED_ROLLING_RESPONSE: "respons rolling terbatas; bukan tujuh hari",
+  FOMC_DATES_ONLY: "hanya jadwal FOMC; bukan seluruh kalender AS",
+} as const;
+
+function coverageLabel(status: CoverageStatus, count: number): string {
+  if (status === "KNOWN_EVENTS") return `${count} event tersimpan; kelengkapan belum terbukti`;
+  if (status === "QUALIFIED_EMPTY") return "respons kosong dengan bukti cakupan sumber";
+  if (status === "READ_ERROR") return "gagal membaca histori";
+  return "belum ada bukti cakupan lengkap";
+}
+
+function ForwardCoverageNote({ coverage }: { coverage?: CalendarForwardCoverage }) {
+  if (!coverage) return <p className={`muted ${styles.note}`}>Cakupan kalender 7 hari belum dapat diverifikasi.</p>;
+  return (
+    <div className={styles.note} data-testid="calendar-forward-coverage">
+      <p><strong>Cakupan kalender 7 hari (AS, China, Jepang)</strong></p>
+      <p className="muted">Daftar jadwal yang ditemukan bukan verifikasi bahwa sumber mencakup seluruh tanggal dan wilayah.</p>
+      <ul>
+        {coverage.regions.map((region) => <li key={region.jurisdiction}>
+          {regionNames[region.jurisdiction]}: {coverageLabel(region.status, region.observedEvents)}
+        </li>)}
+      </ul>
+      <ul>
+        {coverage.feeds.map((feed) => <li key={feed.sourceId}>
+          {sourceNames[feed.sourceId]} ({horizonDescriptions[feed.advertisedHorizon]}):
+          {" "}{feed.regions.map((region) =>
+            `${regionNames[region.jurisdiction]} — ${coverageLabel(region.status, region.observedEvents)}`
+          ).join("; ")}
+        </li>)}
+      </ul>
+      <p className="muted">{coverage.provenanceNote}</p>
+    </div>
+  );
+}
+
+export function EventRiskWindowPanel({ events, asOf, forwardCoverage }: {
+  events: Event[]; asOf: string; forwardCoverage?: CalendarForwardCoverage;
+}) {
   // Seed with the server-provided dashboard cutoff so first paint already has a
   // deterministic window; switch to the client clock after mount.
   const [now, setNow] = useState(() => new Date(asOf));
@@ -84,6 +128,7 @@ export function EventRiskWindowPanel({ events, asOf }: { events: Event[]; asOf: 
         </ul>
       )}
       {view && <CoverageNote coverage={view.coverage} />}
+      <ForwardCoverageNote coverage={forwardCoverage} />
       <p className={`muted ${styles.note}`}>Hanya jadwal event. Bukan saran entry atau exit.</p>
     </section>
   );

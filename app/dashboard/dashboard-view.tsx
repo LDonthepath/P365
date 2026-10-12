@@ -628,7 +628,7 @@ export function DashboardView({ data, sessionEmail }: { data: DashboardData; ses
         </div>
         <CatalystWirePanel data={data.catalystWire} />
         <div style={{ marginTop: "1rem" }}>
-          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} />
+          <EventRiskWindowPanel events={[...events, ...data.durableHighImpactEvents]} asOf={data.mvpFactualContext.asOf} forwardCoverage={data.calendarForwardCoverage} />
         </div>
         <div className="menu-grid" style={{ marginTop: "1rem" }}>
           {showNews(macroNews, "BERITA MAKRO")}

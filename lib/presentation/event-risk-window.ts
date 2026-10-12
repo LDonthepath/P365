@@ -31,11 +31,11 @@ export type RiskWindowSlot = {
 };
 
 export type RiskWindowCoverage =
-  /** Every loaded source is known to reach the end of the window. */
-  | { kind: "COMPLETE" }
-  /** The calendar list was capped; events after `knownUntil` are unknown, not absent. */
-  | { kind: "TRUNCATED"; knownUntil: string }
-  /** The main calendar provider returned nothing, so absence proves nothing. */
+  /** Loaded events do not qualify source completeness. */
+  | { kind: "UNVERIFIED"; lastListedAt: string }
+  /** Source list reaches the dashboard cap, so later events may be hidden. */
+  | { kind: "TRUNCATED"; lastListedAt: string }
+  /** Zero loaded events, not a confirmed empty provider response. */
   | { kind: "NO_CALENDAR_DATA" };
 
 export type EventRiskWindow = {
@@ -118,17 +118,19 @@ export function buildEventRiskWindow(events: Event[], now: Date, options: EventR
   return { windowHours, slots: ordered, coverage: coverageFor(events, endMs, options.calendarLimit) };
 }
 
-function coverageFor(events: Event[], windowEndMs: number, calendarLimit: number): RiskWindowCoverage {
+function coverageFor(events: Event[], _windowEndMs: number, calendarLimit: number): RiskWindowCoverage {
   const forexFactory = events.filter((event) => event.sourceId === FOREX_FACTORY_SOURCE_ID);
   if (forexFactory.length === 0) return { kind: "NO_CALENDAR_DATA" };
-  // The ingestion keeps only the nearest N upcoming events of any impact, so a
-  // full list means later events (including HIGH ones) may have been cut.
-  if (forexFactory.length < calendarLimit) return { kind: "COMPLETE" };
-  const times = forexFactory.map((event) => parseMs(event.scheduledAt)).filter((ms): ms is number => ms !== null);
+  // Seeing fewer than N Event rows is NOT proof a provider returned a complete
+  // feed. Likewise, an Event beyond the visible window does not prove that
+  // no other events are missing within the window.
+  const times = forexFactory.map((event) => parseMs(event.scheduledAt))
+    .filter((ms): ms is number => ms !== null);
   if (times.length === 0) return { kind: "NO_CALENDAR_DATA" };
-  const knownUntilMs = Math.max(...times);
-  if (knownUntilMs >= windowEndMs) return { kind: "COMPLETE" };
-  return { kind: "TRUNCATED", knownUntil: new Date(knownUntilMs).toISOString() };
+  const lastListedAt = new Date(Math.max(...times)).toISOString();
+  return forexFactory.length >= calendarLimit
+    ? { kind: "TRUNCATED", lastListedAt }
+    : { kind: "UNVERIFIED", lastListedAt };
 }
 
 /** Indonesian countdown text. Positive = upcoming, negative = already started. */
