@@ -212,6 +212,95 @@ async function main(): Promise<void> {
     order: "DESC",
     limit: 500,
   }, "repository query uses strict predecessor and point-in-time bounds");
+  // Projection results are already durable and source-qualified. Reuse must
+  // eliminate the SECOND physical query without misrepresenting PIT revisions.
+  let reusedRepositoryCalls = 0;
+  const onlyIfUnproven: HistoricalObservationRepository = {
+    async findHistory(): Promise<Observation[]> {
+      reusedRepositoryCalls++;
+      throw new Error("Unexpected unnecessary historical read");
+    },
+  };
+  const compactHistory = new Map([["CPIAUCSL", [current, repositoryPredecessor]]]);
+  const reused = await buildRepositoryBackedMacroFactualBaselines(
+    [current], onlyIfUnproven, compactHistory,
+  );
+  assertEqual(reused.CPIAUCSL.baselineObservationId, repositoryPredecessor.id,
+    "complete projection history chooses the same durable predecessor");
+  assertEqual(reusedRepositoryCalls, 0, "complete projection avoids the physical baseline read");
+
+  const projectedLateRevision = macroObservation(
+    "late-july-revision", "CPIAUCSL", repositoryPredecessor.observedAt,
+    "2026-09-02T00:00:00.000Z", { value: "100" },
+  );
+  const projectedWithLateCorrection = new Map([
+    ["CPIAUCSL", [current, projectedLateRevision, repositoryPredecessor]],
+  ]);
+  const reusedPIT = await buildRepositoryBackedMacroFactualBaselines(
+    [current], onlyIfUnproven, projectedWithLateCorrection,
+  );
+  assertEqual(reusedPIT.CPIAUCSL.baselineObservationId, repositoryPredecessor.id,
+    "late corrections remain invisible at current's retrievedAt cutoff");
+  assertEqual(reusedRepositoryCalls, 0, "late corrections do not require a second query");
+
+  const manyHistorical = Array.from({ length: 6 }, (_, index) =>
+    macroObservation(
+      `older-${index}`, "CPIAUCSL",
+      new Date(Date.parse("2026-06-01T00:00:00.000Z") - index * 30 * 86_400_000).toISOString(),
+      "2026-07-10T00:00:00.000Z",
+    ));
+  const saturatedWithPredecessor = new Map([
+    ["CPIAUCSL", [current, repositoryPredecessor, ...manyHistorical]],
+  ]);
+  const reusedSaturated = await buildRepositoryBackedMacroFactualBaselines(
+    [current], onlyIfUnproven, saturatedWithPredecessor,
+  );
+  assertEqual(reusedSaturated.CPIAUCSL.baselineObservationId, repositoryPredecessor.id,
+    "bounded latest-first prefix with predecessor remains valid when truncated");
+  assertEqual(reusedRepositoryCalls, 0, "safe truncated prefix skips physical predecessor read");
+
+  const samePeriodRows = Array.from({ length: 7 }, (_, index) =>
+    macroObservation(
+      `same-period-${index}`, "CPIAUCSL", current.observedAt,
+      new Date(Date.parse(current.retrievedAt) - (index + 1) * 60_000).toISOString(),
+    ));
+  const fallbackRepo = new StaticHistoryRepository([repositoryPredecessor]);
+  const saturatedWithoutPredecessor = new Map([
+    ["CPIAUCSL", [current, ...samePeriodRows]],
+  ]);
+  const mustFallback = await buildRepositoryBackedMacroFactualBaselines(
+    [current], fallbackRepo, saturatedWithoutPredecessor,
+  );
+  assertEqual(mustFallback.CPIAUCSL.baselineObservationId, repositoryPredecessor.id,
+    "truncated same-period revisions fall back to authoritative history");
+  assertEqual(fallbackRepo.queries.length, 1, "history fallback executes exactly one physical read");
+  assertEqual(fallbackRepo.queries[0].retrievedAtOnOrBefore, current.retrievedAt,
+    "fallback retains strict current-observation knowledge cutoff");
+
+  const badProvenance = new Map([
+    ["CPIAUCSL", [current, { ...repositoryPredecessor, sourceId: "provider-other" }]],
+  ]);
+  const mismatchRepo = new StaticHistoryRepository([repositoryPredecessor]);
+  const mismatch = await buildRepositoryBackedMacroFactualBaselines(
+    [current], mismatchRepo, badProvenance,
+  );
+  assertEqual(mismatch.CPIAUCSL.baselineObservationId, repositoryPredecessor.id,
+    "mixed provider histories are rejected and re-read");
+  assertEqual(mismatchRepo.queries.length, 1, "mismatched provenance requires a physical read");
+
+  const badDate = new Map([
+    ["CPIAUCSL", [current, { ...repositoryPredecessor,
+      metadata: { ...repositoryPredecessor.metadata, observationDate: "2026-08-15" } }]],
+  ]);
+  const dateRepo = new StaticHistoryRepository([repositoryPredecessor]);
+  await buildRepositoryBackedMacroFactualBaselines([current], dateRepo, badDate);
+  assertEqual(dateRepo.queries.length, 1, "date/measurement mismatch bypasses cache");
+
+  const failClosed = await buildRepositoryBackedMacroFactualBaselines(
+    [current], onlyIfUnproven, saturatedWithoutPredecessor,
+  );
+  assertEqual(failClosed.CPIAUCSL.status, "UNKNOWN", "fallback failure remains UNKNOWN, never stale success");
+
 }
 
 void main();
