@@ -25,12 +25,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (official tag commit, 2026-10-12)
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (official tag commit, 2026-10-12)
         with:
-          node-version: 20
+          node-version: '24.21.0'
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -41,15 +41,15 @@ jobs:
           echo "module.exports = {};" > "$RUNNER_TEMP/node_modules/server-only/index.js"
           echo "NODE_PATH=$RUNNER_TEMP/node_modules" >> "$GITHUB_ENV"
       - name: FRED selector, canonical receipt, and history tests
-        run: npx --yes tsx@4.20.6 --test lib/application/fred-release-aware-selection.test.ts lib/application/fred-provider-update-selection.test.ts lib/data/fred-transactional-receipt.test.ts lib/application/fred-selective-forward.test.ts
+        run: ./node_modules/.bin/tsx --test lib/application/fred-release-aware-selection.test.ts lib/application/fred-provider-update-selection.test.ts lib/data/fred-transactional-receipt.test.ts lib/application/fred-selective-forward.test.ts
       - name: Durable ECB BoJ read-model and briefing UI
-        run: npx --yes tsx@4.20.6 --test lib/application/central-bank-balance-sheets.test.ts lib/application/briefing-central-bank-balance-sheets.test.ts lib/application/briefing-visual-hierarchy.test.ts
+        run: ./node_modules/.bin/tsx --test lib/application/central-bank-balance-sheets.test.ts lib/application/briefing-central-bank-balance-sheets.test.ts lib/application/briefing-visual-hierarchy.test.ts
       - name: Native FRED observation/backfill adapter tests
-        run: npx --yes tsx@4.20.6 lib/data/fred-observation-pages.test.ts
+        run: ./node_modules/.bin/tsx lib/data/fred-observation-pages.test.ts
       - name: Semantic invariants
-        run: npx --yes tsx@4.20.6 lib/domain/observation-semantics.test.ts
+        run: ./node_modules/.bin/tsx lib/domain/observation-semantics.test.ts
       - name: Normalization invariants
-        run: npx --yes tsx@4.20.6 lib/domain/normalize-semantics.test.ts
+        run: ./node_modules/.bin/tsx lib/domain/normalize-semantics.test.ts
       - name: Lint
         run: npm run lint
       - name: Build
