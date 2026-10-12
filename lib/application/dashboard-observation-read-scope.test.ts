@@ -126,3 +126,75 @@ test("G2-02: dashboard orchestration uses one scoped history facade and emits sa
   assert.match(body, /if \(elapsedMs >= 5_000\)/);
   assert.match(body, /observationReads: readScope\.stats\(\)/);
 });
+
+test("G2-03: read attribution groups only physical reads by bounded domain and limit, not identities", async () => {
+  let clock = 0;
+  const scoped = createDashboardObservationReadScope({
+    async findHistory(query) {
+      clock += query.limit <= 8 ? 3 : 7;
+      return [fixture];
+    },
+  }, { now: () => clock });
+  const asset = { ...q };
+  const macro = { ...q, identity: { domain: "MACRO" as const, seriesKey: "DGS2" },
+    sourceId: "fred", limit: 100 };
+  const macroDeep = { ...macro, limit: 500 };
+  await scoped.repository.findHistory(asset);
+  await scoped.repository.findHistory(asset); // reuse never adds physical telemetry
+  await scoped.repository.findHistory(macro);
+  await scoped.repository.findHistory(macroDeep);
+  assert.equal(scoped.stats().physicalReads, 3);
+  assert.equal(scoped.stats().reusedReads, 1);
+  assert.deepEqual(scoped.stats().familyReads, [
+    { domain: "MACRO", limitBucket: "9_TO_100", physicalReads: 1, failedReads: 0, elapsedMs: 7 },
+    { domain: "MACRO", limitBucket: "101_TO_500", physicalReads: 1, failedReads: 0, elapsedMs: 7 },
+    { domain: "ASSET", limitBucket: "1_TO_8", physicalReads: 1, failedReads: 0, elapsedMs: 3 },
+  ]);
+  assert.equal(scoped.stats().familyReads.reduce((s, f) => s + f.physicalReads, 0),
+    scoped.stats().physicalReads);
+  assert.doesNotMatch(JSON.stringify(scoped.stats()), /btc\.spot|DGS2|fred|2026-10-11|80000|coingecko/);
+});
+
+test("G2-03: failure, retry and cross-request telemetry are accurately isolated", async () => {
+  let clock = 0;
+  let calls = 0;
+  const underlying = {
+    async findHistory() {
+      calls++;
+      clock += 5;
+      if (calls === 1) throw Error("synthetic transient failure");
+      return [fixture];
+    },
+  };
+  const first = createDashboardObservationReadScope(underlying, { now: () => clock });
+  await assert.rejects(first.repository.findHistory(q), /synthetic transient failure/);
+  assert.deepEqual(first.stats().familyReads, [
+    { domain: "ASSET", limitBucket: "1_TO_8", physicalReads: 1, failedReads: 1, elapsedMs: 5 },
+  ]);
+  await first.repository.findHistory(q);
+  assert.equal(first.stats().familyReads[0].physicalReads, 2);
+  assert.equal(first.stats().familyReads[0].failedReads, 1);
+  assert.equal(first.stats().familyReads[0].elapsedMs, 10);
+  const second = createDashboardObservationReadScope(underlying, { now: () => clock });
+  assert.deepEqual(second.stats().familyReads, []);
+  await second.repository.findHistory(q);
+  assert.equal(second.stats().familyReads[0].physicalReads, 1);
+  assert.equal(calls, 3);
+});
+
+test("G2-03: no arbitrary series/source or limit produces unbounded telemetry keys", async () => {
+  const scoped = createDashboardObservationReadScope({ findHistory: async () => [] });
+  const domains = ["MACRO", "MARKET", "ASSET", "OTHER"] as const;
+  for (const domain of domains) {
+    for (const limit of [1, 8, 9, 100, 101, 500]) {
+      await scoped.repository.findHistory({
+        ...q, identity: { domain, seriesKey: "arbitrary-" + domain + "-" + limit },
+        sourceId: "secret-provider-" + limit, limit,
+      });
+    }
+  }
+  assert.equal(scoped.stats().physicalReads, 24);
+  assert.equal(scoped.stats().familyReads.length, 12);
+  assert.equal(scoped.stats().familyReads.reduce((count, item) => count + item.physicalReads, 0), 24);
+  assert.doesNotMatch(JSON.stringify(scoped.stats()), /arbitrary|secret-provider/);
+});
