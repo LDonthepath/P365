@@ -47,6 +47,111 @@ class StaticHistoryRepository implements HistoricalObservationRepository {
   }
 }
 
+
+/** PRB-BASE-PIT-001 (#402): golden, retrieval-bounded factual baseline cases.
+ * Captured-at eligibility and arbitrary-T current resolution belong to #370.
+ */
+async function goldenRevisedMonthlyPredecessors(): Promise<void> {
+  function monthly(
+    id: string, seriesId: string, period: string, retrievedAt: string,
+    value: string, vintageDate: string, unit: string,
+  ): Observation {
+    return macroObservation(id, seriesId, period + "T00:00:00.000Z", retrievedAt, {
+      value,
+      metadata: { seriesId, observationDate: period, vintageDate, frequency: "MONTHLY", unit },
+    });
+  }
+
+  const cpiUnit = "Index 1982-1984=100";
+  const cpiOld = monthly("gold-cpi-jul-v1", "CPIAUCSL", "2026-07-01",
+    "2026-08-10T12:00:00.000Z", "332.813", "2026-08-10", cpiUnit);
+  const cpiRevised = monthly("gold-cpi-jul-v2", "CPIAUCSL", "2026-07-01",
+    "2026-09-22T12:00:00.000Z", "332.910", "2026-09-22", cpiUnit);
+  const cpiAugustT1 = monthly("gold-cpi-aug-t1", "CPIAUCSL", "2026-08-01",
+    "2026-09-20T23:04:00.000Z", "334.131", "2026-09-11", cpiUnit);
+  const cpiAugustT2 = monthly("gold-cpi-aug-t2", "CPIAUCSL", "2026-08-01",
+    "2026-09-23T12:00:00.000Z", "334.131", "2026-09-11", cpiUnit);
+  const cpiSamePeriod = monthly("gold-cpi-aug-other-version", "CPIAUCSL", "2026-08-01",
+    "2026-09-19T12:00:00.000Z", "334.140", "2026-09-19", cpiUnit);
+  const cpiRepo = new InMemoryObservationRepository();
+  await cpiRepo.saveMany([cpiRevised, cpiSamePeriod, cpiOld]);
+  const cpiBefore = (await buildRepositoryBackedMacroFactualBaselines(
+    [cpiAugustT1], cpiRepo,
+  )).CPIAUCSL;
+  const cpiAfter = (await buildRepositoryBackedMacroFactualBaselines(
+    [cpiAugustT2], cpiRepo,
+  )).CPIAUCSL;
+  assertEqual(cpiBefore.status, "VALID", "CPI original predecessor is valid at T1");
+  assertEqual(cpiBefore.baselineObservationId, cpiOld.id,
+    "CPI July correction acquired after T1 must not leak");
+  assertEqual(cpiBefore.baselineValue, "332.813", "CPI July value known at T1");
+  assertEqual(cpiAfter.baselineObservationId, cpiRevised.id,
+    "CPI July correction acquired before T2 becomes selectable");
+  assertEqual(cpiAfter.baselineValue, "332.910", "CPI revised July value at T2");
+  assertEqual(cpiAfter.baselineObservedAt, "2026-07-01T00:00:00.000Z",
+    "another August version is not a predecessor period");
+
+  const cpiReverseRepo = new InMemoryObservationRepository();
+  await cpiReverseRepo.saveMany([cpiOld, cpiSamePeriod, cpiRevised]);
+  const cpiReordered = (await buildRepositoryBackedMacroFactualBaselines(
+    [cpiAugustT2], cpiReverseRepo,
+  )).CPIAUCSL;
+  assertEqual(cpiReordered.baselineObservationId, cpiRevised.id,
+    "candidate storage order cannot change CPI revision selected");
+
+  const gapRepo = new InMemoryObservationRepository();
+  await gapRepo.save(monthly("gold-cpi-june-only", "CPIAUCSL", "2026-06-01",
+    "2026-07-15T00:00:00.000Z", "330.000", "2026-07-15", cpiUnit));
+  const gap = (await buildRepositoryBackedMacroFactualBaselines(
+    [cpiAugustT1], gapRepo,
+  )).CPIAUCSL;
+  assertEqual(gap.baselineObservedAt, "2026-06-01T00:00:00.000Z",
+    "generic factual predecessor can skip July; this is NOT a valid August MoM pair");
+  assertEqual(gap.baselineObservedAt === "2026-07-01T00:00:00.000Z", false,
+    "calendar MoM layer #372 must reject this missing immediate month");
+
+  const payrollUnit = "Thousands of Persons";
+  const payrollJuly = monthly("gold-pay-july", "PAYEMS", "2026-07-01",
+    "2026-09-01T00:00:00.000Z", "158990", "2026-09-01", payrollUnit);
+  const payrollAugV1 = monthly("gold-pay-aug-v1", "PAYEMS", "2026-08-01",
+    "2026-09-20T23:03:00.000Z", "159075", "2026-09-04", payrollUnit);
+  const payrollAugV2 = monthly("gold-pay-aug-v2", "PAYEMS", "2026-08-01",
+    "2026-10-02T13:31:04.000Z", "159015", "2026-10-02", payrollUnit);
+  const payrollAugFuture = monthly("gold-pay-aug-future", "PAYEMS", "2026-08-01",
+    "2026-10-04T09:00:00.000Z", "159000", "2026-10-04", payrollUnit);
+  const payrollSeptember = monthly("gold-pay-sept", "PAYEMS", "2026-09-01",
+    "2026-10-02T13:32:00.000Z", "159044", "2026-10-02", payrollUnit);
+  const payrollRepo = new InMemoryObservationRepository();
+  await payrollRepo.saveMany([
+    payrollAugFuture, payrollAugV2, payrollJuly, payrollSeptember, payrollAugV1,
+  ]);
+
+  const septemberAtEarlierT = await payrollRepo.findHistory({
+    identity: { domain: "MACRO", seriesKey: "PAYEMS" }, sourceId: "fred",
+    observedAtOnOrAfter: payrollSeptember.observedAt,
+    observedAtOnOrBefore: payrollSeptember.observedAt,
+    retrievedAtOnOrBefore: "2026-09-20T23:04:00.000Z",
+    order: "DESC", limit: 10,
+  });
+  assertEqual(septemberAtEarlierT.length, 0,
+    "PAYEMS September period is not yet acquired at earlier T");
+
+  const payrollBefore = (await buildRepositoryBackedMacroFactualBaselines(
+    [payrollAugV1], payrollRepo,
+  )).PAYEMS;
+  assertEqual(payrollBefore.baselineObservationId, payrollJuly.id,
+    "PAYEMS August earlier view uses July and excludes revised same-period August");
+  const payrollAfter = (await buildRepositoryBackedMacroFactualBaselines(
+    [payrollSeptember], payrollRepo,
+  )).PAYEMS;
+  assertEqual(payrollAfter.status, "VALID", "PAYEMS September is eligible after acquisition");
+  assertEqual(payrollAfter.baselineObservationId, payrollAugV2.id,
+    "PAYEMS selects August revision knowable by T2, not earlier/future version");
+  assertEqual(payrollAfter.baselineValue, "159015", "PAYEMS August revised value at T2");
+  assertEqual(Number(payrollAfter.currentValue) - Number(payrollAfter.baselineValue), 29,
+    "PAYEMS observed adjacent level delta is 29 thousand, not 29 percent");
+}
+
 async function main(): Promise<void> {
   const current = macroObservation(
     "cpi-current",
@@ -301,6 +406,7 @@ async function main(): Promise<void> {
   );
   assertEqual(failClosed.CPIAUCSL.status, "UNKNOWN", "fallback failure remains UNKNOWN, never stale success");
 
+  await goldenRevisedMonthlyPredecessors();
 }
 
 void main();
