@@ -6,6 +6,9 @@
 const SINGLE_RPC = "/rest/v1/rpc/p365_observation_history_candidates_v1";
 const BATCH_RPC = "/rest/v1/rpc/p365_observation_history_candidates_batch_v1";
 const MAX_GROUP = 16;
+// This transport owns the projection half of the GET's four physical
+// read slots; the scoped ordinary-repository lane owns the other two.
+const MAX_CONCURRENT_BATCH_HTTP = 2;
 type Pending = {
   url: string;
   init: RequestInit;
@@ -25,11 +28,13 @@ export function createDashboardBatchFetch(baseFetch: typeof fetch = fetch): {
 } {
   const queue: Pending[] = [];
   let scheduled = false;
+  let activeHttp = 0;
   let networkRequests = 0;
   let sourceRequests = 0;
   let failedBatches = 0;
 
   async function flush(group: Pending[]): Promise<void> {
+    activeHttp++;
     try {
       const first = group[0];
       if (!first) return;
@@ -81,16 +86,22 @@ export function createDashboardBatchFetch(baseFetch: typeof fetch = fetch): {
       failedBatches++;
       // Never present partial data or fall back to stale/unqualified reads.
       group.forEach((part) => part.reject(new Error("Observation batch transport failed closed")));
+    } finally {
+      activeHttp--;
+      schedule();
     }
   }
 
   function schedule(): void {
-    if (scheduled) return;
+    if (scheduled || activeHttp >= MAX_CONCURRENT_BATCH_HTTP || queue.length === 0) return;
     scheduled = true;
     queueMicrotask(() => {
       scheduled = false;
+      if (activeHttp >= MAX_CONCURRENT_BATCH_HTTP) return;
       const group = queue.splice(0, MAX_GROUP);
       if (group.length) void flush(group);
+      // Issue another batch only if a physical HTTP slot is free.
+      // Remaining queries stay GET-local and wait for flush.finally().
       if (queue.length) schedule();
     });
   }

@@ -63,7 +63,7 @@ export function createDashboardObservationReadScope(
   repository: HistoricalObservationRepository;
   forConsumer: (consumer: DashboardReadConsumer) => HistoricalObservationRepository;
   stats: () => DashboardObservationReadStats;
-  /** Install a GET-local projection-only source before any reads. */
+  /** Install a GET-local projection-only source with <=2 physical HTTP calls in flight. */
   useProjectionSource: (repository: HistoricalObservationRepository, transportStats: () => { networkRequests: number; sourceRequests: number; failedBatches: number }) => void;
 } {
   const capacity = options.capacity ?? 256;
@@ -85,13 +85,16 @@ export function createDashboardObservationReadScope(
   const consumers = new Map<DashboardReadConsumer, DashboardConsumerReadFamily>();
   let projectionSource: HistoricalObservationRepository | undefined;
   let projectionTransportStats: (() => { networkRequests: number; sourceRequests: number; failedBatches: number }) | undefined;
-  // One GET-local semaphore protects both legacy and batched projection DB reads.
-  // The retained legacy limiter is nested but cannot raise overall concurrency.
-  // One GET-local four-slot gate bounds the sum of batch and ordinary reads.
+  // With batching enabled, reserve two physical slots for ordinary reads.
+  // Projection queries are logical reads: the GET-local transport (not this
+  // semaphore) caps their actual batch HTTP POSTs at two. Combined network
+  // concurrency therefore remains <=4 even when 50 histories are requested.
+  // With batching disabled, the original repository-level four-slot limiter
+  // remains unchanged.
   let active = 0;
   const waiters: Array<() => void> = [];
   async function sharedFind(query: ObservationHistoryQuery, repository: HistoricalObservationRepository): Promise<Observation[]> {
-    if (active >= 4) await new Promise<void>((resolve) => { waiters.push(resolve); });
+    if (active >= 2) await new Promise<void>((resolve) => { waiters.push(resolve); });
     else active++;
     try {
       return await repository.findHistory(query);
@@ -148,7 +151,14 @@ export function createDashboardObservationReadScope(
     // The consumer is captured synchronously by the route invocation rather than
     // shared mutable state: concurrent callers must not reroute each other.
     const routed = consumer.consumer === "durable_projection" && projectionSource ? projectionSource : source;
-    const promise = Promise.resolve().then(() => projectionSource ? sharedFind(query, routed) : routed.findHistory(query));
+    const promise = Promise.resolve().then(() => {
+      if (!projectionSource || consumer.consumer === "durable_projection") {
+        // Projection must reach its GET-local HTTP coalescer before applying
+        // physical concurrency limits, or 50 PIT queries become singletons.
+        return routed.findHistory(query);
+      }
+      return sharedFind(query, routed);
+    });
     void promise.then(
       () => {
         physicalInFlight -= 1;
