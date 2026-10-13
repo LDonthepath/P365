@@ -254,3 +254,40 @@ test("G2-07: dashboard uses bounded model labels and never fetches on GET", () =
   assert.ok(body);
   assert.doesNotMatch(body, /ingestDashboardData\(|fetch[A-Z]/);
 });
+
+test("G2-08: opt-in projection batching is GET-local, preserves cross-consumer reuse and a shared four-read budget", async () => {
+  let general = 0;
+  let projection = 0;
+  let concurrent = 0;
+  let maxConcurrent = 0;
+  let release!: () => void;
+  const pending = new Promise<void>((r) => { release = r; });
+  const generalSource: HistoricalObservationRepository = { findHistory: async () => {
+    general++; concurrent++; maxConcurrent = Math.max(maxConcurrent, concurrent);
+    await pending; concurrent--; return [fixture];
+  } };
+  const projectionSource: HistoricalObservationRepository = { findHistory: async () => {
+    projection++; concurrent++; maxConcurrent = Math.max(maxConcurrent, concurrent);
+    await pending; concurrent--; return [fixture];
+  } };
+  const get = createDashboardObservationReadScope(generalSource);
+  get.useProjectionSource(projectionSource, () => ({ networkRequests: 1, sourceRequests: projection, failedBatches: 0 }));
+  const queries = Array.from({ length: 12 }, (_, i) => ({
+    ...q, identity: { ...q.identity, seriesKey: "projection-" + i },
+  }));
+  const work = [
+    ...queries.map((query) => get.forConsumer("durable_projection").findHistory(query)),
+    ...queries.map((query) => get.forConsumer("rates_inflation").findHistory(query)),
+  ];
+  await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  assert.ok(maxConcurrent <= 4);
+  release();
+  await Promise.all(work);
+  assert.equal(projection + general, queries.length);
+  assert.equal(get.stats().logicalReads, 24);
+  assert.equal(get.stats().reusedReads, 12);
+  assert.equal(get.stats().projectionBatchTransport?.networkRequests, 1);
+  const nextGet = createDashboardObservationReadScope(generalSource);
+  assert.equal(nextGet.stats().projectionBatchTransport, null);
+  assert.throws(() => get.useProjectionSource(projectionSource, () => ({networkRequests: 0,sourceRequests: 0,failedBatches: 0})));
+});

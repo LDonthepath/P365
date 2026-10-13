@@ -3,7 +3,7 @@ import { beginMarketReadContext, completeMarketReadContext, type MarketReadConte
 import type { FactualBaseline } from "../domain/baseline";
 import { readDurableDashboardData } from "./durable-dashboard-read";
 import type { NormalizedDashboardData } from "../normalization/dashboard-normalization";
-import { historicalEventRepository, historicalEvidenceRepository, historicalObservationRepository } from "../repositories/dashboard-repository";
+import { historicalEventRepository, historicalEvidenceRepository, historicalObservationRepository, createBatchedProjectionObservationRepository } from "../repositories/dashboard-repository";
 import type { Event, Evidence, Observation } from "../domain/types";
 import {
   BTC_ETF_NET_FLOW_SERIES_KEY,
@@ -245,6 +245,11 @@ async function buildDashboardBtcEtfFlow(asOf: Date, observations: HistoricalObse
 export async function getDashboardData(): Promise<DashboardData> {
   const readStartedMs = performance.now();
   const readScope = createDashboardObservationReadScope(dashboardHistoricalObservationRepository);
+  // Owner-gated rollout: an unavailable batch RPC fails closed; no implicit fallback.
+  if (process.env.P365_DURABLE_PROJECTION_BATCH === "enabled" && process.env.P365_MEMORY_PERSISTENCE !== "memory") {
+    const batch = createBatchedProjectionObservationRepository();
+    readScope.useProjectionSource(batch.repository, batch.stats);
+  }
   const scopedObservations = readScope.forConsumer("durable_projection");
   // Only qualified history returned by this GET's durable projection may be reused.
   const macroHistory = new Map<string, Observation[]>();

@@ -4,6 +4,7 @@ import type { Context, Event, Evidence, Observation } from "../domain/types";
 import type { ContextRepository, EventRepository, EvidenceRepository, MarketSnapshotRepository, ObservationRepository, CanonicalWriteReceipt, FredRevisionWriteReceipt } from "../repositories/types";
 import { SupabaseHistoricalEvidenceRepository } from "./supabase-evidence-history";
 import { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
+import { createDashboardBatchFetch } from "./dashboard-observation-batch-fetch";
 import { marketMemoryDedupeKey, marketMemoryEffectiveAt, type CanonicalRecord, type MarketMemoryRecordType } from "./market-memory-record";
 
 type MarketMemoryRow = {
@@ -347,6 +348,14 @@ export const supabaseMarketSnapshotRepository =
   new SupabaseRepository<MarketSnapshot>("SNAPSHOT") satisfies MarketSnapshotRepository;
 
 export const supabaseHistoricalObservationRepository = new SupabaseHistoricalObservationRepository({ config: requireConfig });
+/** GET-local and opt-in: never shares a batch buffer across dashboard requests. */
+export function createBatchedProjectionObservationRepository() {
+  const transport = createDashboardBatchFetch();
+  return {
+    repository: new SupabaseHistoricalObservationRepository({ config: requireConfig, fetch: transport.fetch }),
+    stats: transport.stats,
+  };
+}
 export const supabaseHistoricalEvidenceRepository = new SupabaseHistoricalEvidenceRepository({ config: requireConfig });
 export { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
 export { SupabaseHistoricalEvidenceRepository } from "./supabase-evidence-history";
