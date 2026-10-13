@@ -245,7 +245,7 @@ async function buildDashboardBtcEtfFlow(asOf: Date, observations: HistoricalObse
 export async function getDashboardData(): Promise<DashboardData> {
   const readStartedMs = performance.now();
   const readScope = createDashboardObservationReadScope(dashboardHistoricalObservationRepository);
-  const scopedObservations = readScope.repository;
+  const scopedObservations = readScope.forConsumer("durable_projection");
   // Only qualified history returned by this GET's durable projection may be reused.
   const macroHistory = new Map<string, Observation[]>();
   const readContext = beginMarketReadContext(new Date());
@@ -254,18 +254,18 @@ export async function getDashboardData(): Promise<DashboardData> {
   // a separate write-side capability and is never called during rendering.
   const intradayEventMonitorPromise = getIntradayEventMonitor();
   const durableHighImpactEventBundlePromise = getDurableHighImpactEventBundle(asOf);
-  const netLiquidityPromise = buildDashboardNetLiquidity(asOf, scopedObservations);
+  const netLiquidityPromise = buildDashboardNetLiquidity(asOf, readScope.forConsumer("net_liquidity"));
   const centralBankBalanceSheetsPromise = buildCentralBankBalanceSheetReadModel(
-    scopedObservations, asOf,
+    readScope.forConsumer("central_bank_balances"), asOf,
   );
-  const dxyHistoryPromise = readDxyMacroHistory(scopedObservations, asOf);
-  const ratesInflationPromise = buildRatesInflationReadModel(scopedObservations, asOf, dxyHistoryPromise);
+  const dxyHistoryPromise = readDxyMacroHistory(readScope.forConsumer("dxy_history"), asOf);
+  const ratesInflationPromise = buildRatesInflationReadModel(readScope.forConsumer("rates_inflation"), asOf, dxyHistoryPromise);
   const creditFinancialConditionsPromise = buildCreditFinancialConditionsReadModel(
-    scopedObservations,
+    readScope.forConsumer("credit_conditions"),
     asOf,
   );
   const mvpFactualContextPromise = buildMacroCryptoGoldFactualContext(
-    scopedObservations,
+    readScope.forConsumer("mvp_factual_context"),
     asOf,
     {
       netLiquidity: netLiquidityPromise,
@@ -273,13 +273,13 @@ export async function getDashboardData(): Promise<DashboardData> {
       dxyHistory: dxyHistoryPromise,
     },
   );
-  const stablecoinLiquidityPromise = buildDashboardStablecoinLiquidity(asOf, scopedObservations);
-  const btcEtfFlowPromise = buildDashboardBtcEtfFlow(asOf, scopedObservations);
-  const goldPositioningPromise = buildGoldPositioningReadModel(scopedObservations, asOf);
+  const stablecoinLiquidityPromise = buildDashboardStablecoinLiquidity(asOf, readScope.forConsumer("stablecoin_liquidity"));
+  const btcEtfFlowPromise = buildDashboardBtcEtfFlow(asOf, readScope.forConsumer("btc_etf_flow"));
+  const goldPositioningPromise = buildGoldPositioningReadModel(readScope.forConsumer("gold_positioning"), asOf);
   const recentGdeltEvidencePromise = getRecentGdeltEvidence(asOf);
   const recentBinanceEvidencePromise = getRecentBinanceEvidence(asOf);
   const materialMoveMonitorPromise = buildMaterialMoveMonitor({
-    observations: scopedObservations,
+    observations: readScope.forConsumer("material_move"),
     events: historicalEventRepository,
     evidence: historicalEvidenceRepository,
     asOf: asOf.toISOString(),
@@ -309,7 +309,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   ] = await Promise.all([
     buildRepositoryBackedMacroFactualBaselines(
       normalized.macroObservations,
-      scopedObservations,
+      readScope.forConsumer("macro_baselines"),
       macroHistory,
     ),
     intradayEventMonitorPromise,

@@ -118,7 +118,7 @@ test("G2-02: dashboard orchestration uses one scoped history facade and emits sa
   const code = readFileSync(new URL("./dashboard-query.ts", import.meta.url), "utf8");
   assert.match(code, /createDashboardObservationReadScope\(dashboardHistoricalObservationRepository\)/);
   assert.match(code, /observations: scopedObservations/);
-  assert.match(code, /const materialMoveMonitorPromise = buildMaterialMoveMonitor\([\s\S]*?observations: scopedObservations/);
+  assert.match(code, /const materialMoveMonitorPromise = buildMaterialMoveMonitor\([\s\S]*?observations: readScope\.forConsumer\("material_move"\)/);
   const body = code.split("export async function getDashboardData(): Promise<DashboardData> {")[1];
   assert.ok(body);
   assert.doesNotMatch(body, /ingestDashboardData\(|fetch[A-Z]/);
@@ -197,4 +197,60 @@ test("G2-03: no arbitrary series/source or limit produces unbounded telemetry ke
   assert.equal(scoped.stats().familyReads.length, 12);
   assert.equal(scoped.stats().familyReads.reduce((count, item) => count + item.physicalReads, 0), 24);
   assert.doesNotMatch(JSON.stringify(scoped.stats()), /arbitrary|secret-provider/);
+});
+
+
+test("G2-07: fixed model attribution shares one PIT cache and assigns first physical cost", async () => {
+  let calls = 0;
+  let clock = 0;
+  const scoped = createDashboardObservationReadScope({
+    async findHistory() { calls++; clock += 4; return [fixture]; },
+  }, { now: () => clock });
+  const projection = scoped.forConsumer("durable_projection");
+  const move = scoped.forConsumer("material_move");
+  const [a, b] = await Promise.all([projection.findHistory(q), move.findHistory(q)]);
+  assert.equal(calls, 1);
+  assert.notStrictEqual(a, b);
+  assert.deepEqual(scoped.stats().consumerReads, [
+    { consumer: "durable_projection", logicalReads: 1, physicalReads: 1,
+      reusedReads: 0, failedReads: 0, elapsedMs: 4 },
+    { consumer: "material_move", logicalReads: 1, physicalReads: 0,
+      reusedReads: 1, failedReads: 0, elapsedMs: 0 },
+  ]);
+  assert.equal(scoped.stats().consumerReads.reduce((s, x) => s + x.physicalReads, 0), scoped.stats().physicalReads);
+  assert.doesNotMatch(JSON.stringify(scoped.stats().consumerReads), /btc\.spot|coingecko|80000|2026-10/);
+});
+
+test("G2-07: first physical consumer owns failure; retry and next GET remain isolated", async () => {
+  let calls = 0;
+  const source = { async findHistory() {
+    calls++;
+    if (calls === 1) throw new Error("transient repository failure");
+    return [fixture];
+  } };
+  const first = createDashboardObservationReadScope(source);
+  const a = first.forConsumer("mvp_factual_context");
+  const b = first.forConsumer("rates_inflation");
+  const rejected = await Promise.allSettled([a.findHistory(q), b.findHistory(q)]);
+  assert.deepEqual(rejected.map(x => x.status), ["rejected", "rejected"]);
+  await b.findHistory(q);
+  assert.equal(calls, 2);
+  assert.equal(first.stats().consumerReads.find(x => x.consumer === "mvp_factual_context")?.failedReads, 1);
+  assert.equal(first.stats().consumerReads.find(x => x.consumer === "rates_inflation")?.physicalReads, 1);
+  const next = createDashboardObservationReadScope(source);
+  assert.equal(next.stats().consumerReads.length, 0);
+  await next.forConsumer("durable_projection").findHistory(q);
+  assert.equal(calls, 3);
+});
+
+test("G2-07: dashboard uses bounded model labels and never fetches on GET", () => {
+  const code = readFileSync(new URL("./dashboard-query.ts", import.meta.url), "utf8");
+  for (const name of ["durable_projection", "macro_baselines", "net_liquidity",
+    "central_bank_balances", "dxy_history", "rates_inflation", "credit_conditions",
+    "mvp_factual_context", "stablecoin_liquidity", "btc_etf_flow", "gold_positioning", "material_move"]) {
+    assert.ok(code.includes('readScope.forConsumer("' + name + '")'));
+  }
+  const body = code.split("export async function getDashboardData(): Promise<DashboardData> {")[1];
+  assert.ok(body);
+  assert.doesNotMatch(body, /ingestDashboardData\(|fetch[A-Z]/);
 });
