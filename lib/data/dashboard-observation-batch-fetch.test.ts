@@ -3,6 +3,8 @@ import test from "node:test";
 import type { Observation } from "../domain/types";
 import { SupabaseHistoricalObservationRepository } from "./supabase-observation-history";
 import { createDashboardBatchFetch } from "./dashboard-observation-batch-fetch";
+import { createDashboardObservationReadScope } from "../application/dashboard-observation-read-scope";
+import type { HistoricalObservationRepository } from "../repositories/types";
 
 const asOf = "2026-10-11T00:00:00.000Z";
 const prior = "2026-10-10T00:00:00.000Z";
@@ -126,4 +128,81 @@ test("G2-08: batched transport is newly allocated per GET, never shares history 
   assert.equal(second.getPosts(), 0);
   await second.repository.findHistory(second.query("X"));
   assert.equal(second.getPosts(), 1);
+});
+
+
+test("G2-09: mixed dashboard readers must coalesce 50 projection requests within four network slots", async () => {
+  const pause = (ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); });
+  let generalInFlight = 0;
+  let peakGeneral = 0;
+  const releaseGeneral: Array<() => void> = [];
+  const general: HistoricalObservationRepository = {
+    async findHistory() {
+      generalInFlight++;
+      peakGeneral = Math.max(peakGeneral, generalInFlight);
+      await new Promise<void>((resolve) => { releaseGeneral.push(resolve); });
+      generalInFlight--;
+      return [];
+    },
+  };
+  let httpInFlight = 0;
+  let peakHttp = 0;
+  const http = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+    httpInFlight++;
+    peakHttp = Math.max(peakHttp, httpInFlight);
+    try {
+      await pause(2);
+      const request = JSON.parse(String(init?.body)) as { p_requests: RpcArgs[] };
+      assert.ok(request.p_requests.length >= 1 && request.p_requests.length <= 16);
+      return new Response(JSON.stringify(request.p_requests.map((part, index) => ({
+        request_index: index + 1,
+        id: "id-" + part.p_series_key,
+        effective_at: prior,
+        payload: point("id-" + part.p_series_key, part.p_series_key, prior),
+      }))), { status: 200 });
+    } finally {
+      httpInFlight--;
+    }
+  }) as typeof fetch;
+  const transport = createDashboardBatchFetch(http);
+  const projection = new SupabaseHistoricalObservationRepository({
+    fetch: transport.fetch, config: () => ({ url: "https://private.example", key: "test-only-key" }),
+  });
+  const scope = createDashboardObservationReadScope(general);
+  scope.useProjectionSource(projection, transport.stats);
+  const query = (key: string) => ({
+    identity: { domain: "MACRO" as const, seriesKey: key }, sourceId: "fred",
+    observedAtOnOrBefore: asOf, retrievedAtOnOrBefore: asOf, order: "DESC" as const, limit: 8,
+  });
+
+  // Ordinary dashboard consumers arrive first; production had other model
+  // reads in flight before all 50 durable projection reads were dispatched.
+  const ordinary = Array.from({ length: 4 }, (_, i) =>
+    scope.forConsumer("rates_inflation").findHistory(query("OTHER-" + i)));
+  await pause(3);
+  const results = Promise.all(Array.from({ length: 50 }, (_, i) =>
+    scope.forConsumer("durable_projection").findHistory(query("BATCH-" + i))));
+
+  // Releasing a slow ordinary reader at a time must not make the
+  // projection HTTP client send a singleton request per candidate page.
+  for (let i = 0; i < 4; i++) {
+    for (let attempt = 0; releaseGeneral.length === 0 && attempt < 300; attempt++) await pause(1);
+    assert.ok(releaseGeneral.length > 0, "ordinary source read never acquired a slot");
+    releaseGeneral.shift()!();
+    await pause(8);
+  }
+  const [observations] = await Promise.all([results, Promise.all(ordinary)]);
+  assert.equal(observations.length, 50);
+  observations.forEach((rows, index) => {
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].id, "id-BATCH-" + index);
+  });
+  const stats = transport.stats();
+  assert.equal(stats.sourceRequests, 50);
+  assert.ok(stats.networkRequests < 50, "must reduce physical HTTP POSTs versus 50 source requests");
+  assert.ok(stats.networkRequests <= 10, "bounded mixed contention must coalesce into <=10 HTTP POSTs");
+  assert.ok(peakGeneral <= 2, "reserve at most two general HTTP slots while batch transport is active");
+  assert.ok(peakHttp <= 2, "batch transport may use at most two HTTP slots");
+  assert.ok(peakGeneral + peakHttp <= 4, "combined physical network concurrency stays <=4");
+  assert.equal(stats.failedBatches, 0);
 });
