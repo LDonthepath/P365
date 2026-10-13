@@ -40,6 +40,8 @@ export type DashboardConsumerReadFamily = {
  * retrieval-cutoff + ordering + limit match is required for deduplication.
  */
 export type DashboardObservationReadStats = {
+  /** Actual projection transport POSTs; null when batch transport is not activated. */
+  projectionBatchTransport: { networkRequests: number; sourceRequests: number; failedBatches: number } | null;
   logicalReads: number;
   physicalReads: number;
   reusedReads: number;
@@ -61,6 +63,8 @@ export function createDashboardObservationReadScope(
   repository: HistoricalObservationRepository;
   forConsumer: (consumer: DashboardReadConsumer) => HistoricalObservationRepository;
   stats: () => DashboardObservationReadStats;
+  /** Install a GET-local projection-only source before any reads. */
+  useProjectionSource: (repository: HistoricalObservationRepository, transportStats: () => { networkRequests: number; sourceRequests: number; failedBatches: number }) => void;
 } {
   const capacity = options.capacity ?? 256;
   if (!Number.isInteger(capacity) || capacity < 1) {
@@ -79,6 +83,23 @@ export function createDashboardObservationReadScope(
   let maxPhysicalInFlight = 0;
   const families = new Map<string, DashboardHistoryReadFamily>();
   const consumers = new Map<DashboardReadConsumer, DashboardConsumerReadFamily>();
+  let projectionSource: HistoricalObservationRepository | undefined;
+  let projectionTransportStats: (() => { networkRequests: number; sourceRequests: number; failedBatches: number }) | undefined;
+  // One GET-local semaphore protects both legacy and batched projection DB reads.
+  // The retained legacy limiter is nested but cannot raise overall concurrency.
+  // One GET-local four-slot gate bounds the sum of batch and ordinary reads.
+  let active = 0;
+  const waiters: Array<() => void> = [];
+  async function sharedFind(query: ObservationHistoryQuery, repository: HistoricalObservationRepository): Promise<Observation[]> {
+    if (active >= 4) await new Promise<void>((resolve) => { waiters.push(resolve); });
+    else active++;
+    try {
+      return await repository.findHistory(query);
+    } finally {
+      const next = waiters.shift();
+      if (next) next(); else active--;
+    }
+  }
   const domainOrder = ["MACRO", "ASSET", "MARKET", "OTHER"] as const;
   const bucketOrder: DashboardHistoryLimitBucket[] = ["1_TO_8", "9_TO_100", "101_TO_500"];
 
@@ -124,7 +145,10 @@ export function createDashboardObservationReadScope(
     const started = now();
 
     // Keep a promise in the cache before the underlying asynchronous read runs.
-    const promise = Promise.resolve().then(() => source.findHistory(query));
+    // The consumer is captured synchronously by the route invocation rather than
+    // shared mutable state: concurrent callers must not reroute each other.
+    const routed = consumer.consumer === "durable_projection" && projectionSource ? projectionSource : source;
+    const promise = Promise.resolve().then(() => projectionSource ? sharedFind(query, routed) : routed.findHistory(query));
     void promise.then(
       () => {
         physicalInFlight -= 1;
@@ -172,9 +196,15 @@ export function createDashboardObservationReadScope(
   }
 
   return {
+    useProjectionSource: (repository, transportStats) => {
+      if (logicalReads !== 0 || projectionSource) throw new Error("Projection transport must be configured once, before dashboard reads.");
+      projectionSource = repository;
+      projectionTransportStats = transportStats;
+    },
     repository: { findHistory: (query) => findForConsumer(query, "unattributed") },
     forConsumer: (consumer) => ({ findHistory: (query) => findForConsumer(query, consumer) }),
     stats: () => ({
+      projectionBatchTransport: projectionTransportStats?.() ?? null,
       logicalReads, physicalReads, reusedReads, failedPhysicalReads,
       uncachedCapacityReads,
       physicalDurationMs: Math.round(physicalDurationMs),

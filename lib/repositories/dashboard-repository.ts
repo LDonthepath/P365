@@ -1,4 +1,4 @@
-import { supabaseCanonicalRepositories, supabaseHistoricalEvidenceRepository, supabaseHistoricalObservationRepository, supabaseMarketSnapshotRepository } from "../data/market-memory-store";
+import { supabaseCanonicalRepositories, supabaseHistoricalEvidenceRepository, supabaseHistoricalObservationRepository, supabaseMarketSnapshotRepository, createBatchedProjectionObservationRepository } from "../data/market-memory-store";
 import { supabaseEconomicEventResultRepository } from "../data/economic-event-result-repository";
 import { supabaseHistoricalEconomicEventResultRepository } from "../data/supabase-event-result-history";
 import { supabaseHistoricalEventRepository } from "../data/supabase-event-history";
@@ -23,6 +23,8 @@ export const canonicalRepositories: CanonicalRepositories =
         contexts: new InMemoryContextRepository(),
       }
     : supabaseCanonicalRepositories;
+
+export { createBatchedProjectionObservationRepository };
 
 export const historicalObservationRepository: HistoricalObservationRepository =
   process.env.P365_MEMORY_PERSISTENCE === "memory"
