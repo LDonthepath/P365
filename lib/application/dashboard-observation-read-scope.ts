@@ -16,6 +16,24 @@ function limitBucket(limit: number): DashboardHistoryLimitBucket {
   return limit <= 8 ? "1_TO_8" : limit <= 100 ? "9_TO_100" : "101_TO_500";
 }
 
+/** Fixed labels; never log series/provider IDs, timestamps, market values or secrets. */
+export const DASHBOARD_READ_CONSUMERS = [
+  "durable_projection", "macro_baselines", "net_liquidity",
+  "central_bank_balances", "dxy_history", "rates_inflation",
+  "credit_conditions", "mvp_factual_context", "stablecoin_liquidity",
+  "btc_etf_flow", "gold_positioning", "material_move", "unattributed",
+] as const;
+export type DashboardReadConsumer = (typeof DASHBOARD_READ_CONSUMERS)[number];
+export type DashboardConsumerReadFamily = {
+  consumer: DashboardReadConsumer;
+  logicalReads: number;
+  physicalReads: number;
+  reusedReads: number;
+  failedReads: number;
+  /** Accumulated wall time includes limiter queueing, not PostgreSQL execution alone. */
+  elapsedMs: number;
+};
+
 /**
  * One dashboard GET owns this cache and its counters. Neither data nor promises
  * are shared across requests. An exact semantic + provenance + time-window +
@@ -32,6 +50,8 @@ export type DashboardObservationReadStats = {
   maxPhysicalInFlight: number;
   /** At most 12 coarse domain × limit buckets. No series/source IDs, dates or values. */
   familyReads: DashboardHistoryReadFamily[];
+  /** A physical request belongs to its first model; other models count cache reuse. */
+  consumerReads: DashboardConsumerReadFamily[];
 };
 
 export function createDashboardObservationReadScope(
@@ -39,6 +59,7 @@ export function createDashboardObservationReadScope(
   options: { capacity?: number; now?: () => number } = {},
 ): {
   repository: HistoricalObservationRepository;
+  forConsumer: (consumer: DashboardReadConsumer) => HistoricalObservationRepository;
   stats: () => DashboardObservationReadStats;
 } {
   const capacity = options.capacity ?? 256;
@@ -57,6 +78,7 @@ export function createDashboardObservationReadScope(
   let physicalInFlight = 0;
   let maxPhysicalInFlight = 0;
   const families = new Map<string, DashboardHistoryReadFamily>();
+  const consumers = new Map<DashboardReadConsumer, DashboardConsumerReadFamily>();
   const domainOrder = ["MACRO", "ASSET", "MARKET", "OTHER"] as const;
   const bucketOrder: DashboardHistoryLimitBucket[] = ["1_TO_8", "9_TO_100", "101_TO_500"];
 
@@ -72,6 +94,15 @@ export function createDashboardObservationReadScope(
     return family;
   }
 
+  function consumerFor(name: DashboardReadConsumer): DashboardConsumerReadFamily {
+    let consumer = consumers.get(name);
+    if (!consumer) {
+      consumer = { consumer: name, logicalReads: 0, physicalReads: 0, reusedReads: 0, failedReads: 0, elapsedMs: 0 };
+      consumers.set(name, consumer);
+    }
+    return consumer;
+  }
+
   function key(query: ObservationHistoryQuery): string {
     return JSON.stringify([
       query.identity.domain, query.identity.seriesKey,
@@ -83,8 +114,9 @@ export function createDashboardObservationReadScope(
     ]);
   }
 
-  function physicalRead(query: ObservationHistoryQuery, cacheKey?: string): Promise<Observation[]> {
+  function physicalRead(query: ObservationHistoryQuery, consumer: DashboardConsumerReadFamily, cacheKey?: string): Promise<Observation[]> {
     physicalReads += 1;
+    consumer.physicalReads += 1;
     const family = familyFor(query);
     family.physicalReads += 1;
     physicalInFlight += 1;
@@ -99,15 +131,18 @@ export function createDashboardObservationReadScope(
         const elapsed = Math.max(0, now() - started);
         physicalDurationMs += elapsed;
         family.elapsedMs += elapsed;
+        consumer.elapsedMs += elapsed;
         slowestPhysicalMs = Math.max(slowestPhysicalMs, elapsed);
       },
       () => {
         physicalInFlight -= 1;
         failedPhysicalReads += 1;
         family.failedReads += 1;
+        consumer.failedReads += 1;
         const elapsed = Math.max(0, now() - started);
         physicalDurationMs += elapsed;
         family.elapsedMs += elapsed;
+        consumer.elapsedMs += elapsed;
         slowestPhysicalMs = Math.max(slowestPhysicalMs, elapsed);
         if (cacheKey && cache.get(cacheKey) === promise) cache.delete(cacheKey);
       },
@@ -115,27 +150,30 @@ export function createDashboardObservationReadScope(
     return promise;
   }
 
+  async function findForConsumer(query: ObservationHistoryQuery, name: DashboardReadConsumer): Promise<Observation[]> {
+    logicalReads += 1;
+    const consumer = consumerFor(name);
+    consumer.logicalReads += 1;
+    const k = key(query);
+    let pending = cache.get(k);
+    if (pending) {
+      reusedReads += 1;
+      consumer.reusedReads += 1;
+    } else if (cache.size < capacity) {
+      pending = physicalRead(query, consumer, k);
+      cache.set(k, pending);
+    } else {
+      // A bounded cache must never deny or silently alter an eligible read.
+      uncachedCapacityReads += 1;
+      pending = physicalRead(query, consumer);
+    }
+    // Preserve independent consumer-mutable values on every return path.
+    return structuredClone(await pending);
+  }
+
   return {
-    repository: {
-      async findHistory(query) {
-        logicalReads += 1;
-        const k = key(query);
-        let pending = cache.get(k);
-        if (pending) {
-          reusedReads += 1;
-        } else if (cache.size < capacity) {
-          pending = physicalRead(query, k);
-          cache.set(k, pending);
-        } else {
-          // A bounded cache must never deny or silently alter an eligible read.
-          uncachedCapacityReads += 1;
-          pending = physicalRead(query);
-        }
-        // Each consumer receives an independent value, like the original
-        // repository; a caller cannot mutate another consumer's cached rows.
-        return structuredClone(await pending);
-      },
-    },
+    repository: { findHistory: (query) => findForConsumer(query, "unattributed") },
+    forConsumer: (consumer) => ({ findHistory: (query) => findForConsumer(query, consumer) }),
     stats: () => ({
       logicalReads, physicalReads, reusedReads, failedPhysicalReads,
       uncachedCapacityReads,
@@ -146,6 +184,9 @@ export function createDashboardObservationReadScope(
         .sort((a, b) => domainOrder.indexOf(a.domain) - domainOrder.indexOf(b.domain)
           || bucketOrder.indexOf(a.limitBucket) - bucketOrder.indexOf(b.limitBucket))
         .map((family) => ({ ...family, elapsedMs: Math.round(family.elapsedMs) })),
+      consumerReads: [...consumers.values()]
+        .sort((a, b) => DASHBOARD_READ_CONSUMERS.indexOf(a.consumer) - DASHBOARD_READ_CONSUMERS.indexOf(b.consumer))
+        .map((consumer) => ({ ...consumer, elapsedMs: Math.round(consumer.elapsedMs) })),
     }),
   };
 }
