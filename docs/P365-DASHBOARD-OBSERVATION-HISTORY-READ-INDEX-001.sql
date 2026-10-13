@@ -8,6 +8,11 @@
 --
 -- The migration is additive and does not alter canonical rows, retention, RLS,
 -- provider cadence, or statement_timeout.
+--
+-- G2-06: Existing indexes from the initial activation remain unchanged. On an
+-- already activated project, run ONLY the CREATE OR REPLACE FUNCTION block
+-- after owner approval; do not rerun/rebuild the indexes or change grants.
+-- Verify EXPLAIN, candidate parity and production GETs before closure.
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_market_memory_obs_series_history_v1
 ON public.market_memory (
@@ -78,16 +83,20 @@ BEGIN
     RAISE EXCEPTION 'observedAt lower bound must not exceed upper bound' USING ERRCODE = '22023';
   END IF;
 
+  -- Split the semantic-identity OR into separate ordered index scans. A
+  -- BitmapOr over the two expression indexes cannot preserve index order and
+  -- may read/sort all matching history for a small top-N. Each branch keeps
+  -- enough rows for the final offset+limit; UNION removes the same row when
+  -- both legacy metadata identifiers happen to match. This is equivalent to
+  -- the original OR predicate even for dual-key rows and pagination.
   IF p_sort_desc THEN
     RETURN QUERY
-    SELECT mm.id, mm.effective_at, mm.payload
-    FROM public.market_memory AS mm
+    WITH series_candidates AS MATERIALIZED (
+      SELECT mm.id, mm.effective_at, mm.payload
+      FROM public.market_memory AS mm
     WHERE mm.record_type = 'OBSERVATION'
       AND mm.payload ->> 'domain' = p_domain
-      AND (
-        mm.payload #>> '{metadata,seriesId}' = p_series_key
-        OR mm.payload #>> '{metadata,metricId}' = p_series_key
-      )
+      AND mm.payload #>> '{metadata,seriesId}' = p_series_key
       AND (p_source_id IS NULL OR mm.payload ->> 'sourceId' = p_source_id)
       AND mm.captured_at <= p_captured_at_on_or_before
       AND mm.effective_at >= COALESCE(
@@ -98,19 +107,44 @@ BEGIN
         p_observed_at_on_or_before,
         'infinity'::timestamptz
       )
-    ORDER BY mm.effective_at DESC, mm.id DESC
+      ORDER BY mm.effective_at DESC, mm.id DESC
+      LIMIT (p_limit + p_offset)
+    ), metric_candidates AS MATERIALIZED (
+      SELECT mm.id, mm.effective_at, mm.payload
+      FROM public.market_memory AS mm
+    WHERE mm.record_type = 'OBSERVATION'
+      AND mm.payload ->> 'domain' = p_domain
+      AND mm.payload #>> '{metadata,metricId}' = p_series_key
+      AND (p_source_id IS NULL OR mm.payload ->> 'sourceId' = p_source_id)
+      AND mm.captured_at <= p_captured_at_on_or_before
+      AND mm.effective_at >= COALESCE(
+        p_observed_at_on_or_after,
+        '-infinity'::timestamptz
+      )
+      AND mm.effective_at <= COALESCE(
+        p_observed_at_on_or_before,
+        'infinity'::timestamptz
+      )
+      ORDER BY mm.effective_at DESC, mm.id DESC
+      LIMIT (p_limit + p_offset)
+    )
+    SELECT candidates.id, candidates.effective_at, candidates.payload
+    FROM (
+      SELECT * FROM series_candidates
+      UNION
+      SELECT * FROM metric_candidates
+    ) AS candidates
+    ORDER BY candidates.effective_at DESC, candidates.id DESC
     LIMIT p_limit
     OFFSET p_offset;
   ELSE
     RETURN QUERY
-    SELECT mm.id, mm.effective_at, mm.payload
-    FROM public.market_memory AS mm
+    WITH series_candidates AS MATERIALIZED (
+      SELECT mm.id, mm.effective_at, mm.payload
+      FROM public.market_memory AS mm
     WHERE mm.record_type = 'OBSERVATION'
       AND mm.payload ->> 'domain' = p_domain
-      AND (
-        mm.payload #>> '{metadata,seriesId}' = p_series_key
-        OR mm.payload #>> '{metadata,metricId}' = p_series_key
-      )
+      AND mm.payload #>> '{metadata,seriesId}' = p_series_key
       AND (p_source_id IS NULL OR mm.payload ->> 'sourceId' = p_source_id)
       AND mm.captured_at <= p_captured_at_on_or_before
       AND mm.effective_at >= COALESCE(
@@ -121,7 +155,34 @@ BEGIN
         p_observed_at_on_or_before,
         'infinity'::timestamptz
       )
-    ORDER BY mm.effective_at ASC, mm.id ASC
+      ORDER BY mm.effective_at ASC, mm.id ASC
+      LIMIT (p_limit + p_offset)
+    ), metric_candidates AS MATERIALIZED (
+      SELECT mm.id, mm.effective_at, mm.payload
+      FROM public.market_memory AS mm
+    WHERE mm.record_type = 'OBSERVATION'
+      AND mm.payload ->> 'domain' = p_domain
+      AND mm.payload #>> '{metadata,metricId}' = p_series_key
+      AND (p_source_id IS NULL OR mm.payload ->> 'sourceId' = p_source_id)
+      AND mm.captured_at <= p_captured_at_on_or_before
+      AND mm.effective_at >= COALESCE(
+        p_observed_at_on_or_after,
+        '-infinity'::timestamptz
+      )
+      AND mm.effective_at <= COALESCE(
+        p_observed_at_on_or_before,
+        'infinity'::timestamptz
+      )
+      ORDER BY mm.effective_at ASC, mm.id ASC
+      LIMIT (p_limit + p_offset)
+    )
+    SELECT candidates.id, candidates.effective_at, candidates.payload
+    FROM (
+      SELECT * FROM series_candidates
+      UNION
+      SELECT * FROM metric_candidates
+    ) AS candidates
+    ORDER BY candidates.effective_at ASC, candidates.id ASC
     LIMIT p_limit
     OFFSET p_offset;
   END IF;
