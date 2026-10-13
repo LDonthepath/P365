@@ -60,6 +60,72 @@ FND-002/FND-002Q answer:
 
 That is a predecessor comparison, not a distribution.
 
+
+### Macro factual predecessor and value knowable at T — additive PIT clarification (#402)
+
+This section clarifies the existing FND-002/FND-002Q factual baseline for revisable
+monthly CPI/PAYEMS series. It **does not modify** the frozen HIST-001A intraday
+exact-horizon historical-distribution pairing, transformations or calibration.
+
+1. **Measurement versus version.** A measurement is identified by its approved
+   canonical series/domain, source, observed calendar period, and compatible
+   unit/frequency/seasonal-adjustment basis. Distinct Observation IDs,
+   repeated fetches and date-only vintage markers for the same period are
+   versions, not additional economic periods. A changed numeric value under
+   compatible semantics is a possible factual revision; a new vintage or ID
+   without a changed value is not itself a numeric revision. Retain append-only
+   versions, canonical identity, provenance, evidence and immutable quality.
+2. **Value knowable at knowledge cutoff T.** A stored version is durable-known
+   at T only if its SQL captured_at is at/before T and its valid retrievedAt,
+   when present, is also at/before T. An older payload lacking retrievedAt
+   may use captured_at alone as conservative *durable* knowability; never
+   manufacture a fetch or publisher time. The observation period, official
+   publication schedule, confirmed publisher release time, FRED date-only
+   vintage and series last_updated are distinct clocks and cannot override
+   P365 retrieval/capture. Exclude unqualified future, corrupted or ambiguous
+   versions. A retroactively backfilled old vintage is NOT knowable at T if
+   P365 captured it later.
+3. **Same T for both versions.** Resolve the current period and predecessor
+   period independently from eligible versions at the **same T**. Within
+   each period, use existing qualified repository acquisition/revision ordering
+   to select the latest *knowable* value; preserve source/evidence lineage.
+   When two different values are truly indistinguishable in their proven
+   revision order, fail with UNKNOWN, not an arbitrary lexical-ID choice.
+   A correction that arrives after T never changes the earlier replay.
+4. **Meaning of predecessor.** The generic factual predecessor is the latest
+   compatible *strictly earlier measurement period*. A second version of the
+   current period is never its predecessor. For a **monthly MoM transform**,
+   however, the calculation predecessor must be the **immediately preceding
+   calendar month**, even if the generic factual selector instead finds June
+   when July is missing for an August target. **YoY** needs the same calendar
+   month exactly 12 months earlier; different dates/vintages do not substitute.
+   A missing exact calendar predecessor is INSUFFICIENT for that transform;
+   never nearest-neighbor, interpolate or forward-fill.
+5. **Unit and measurement discipline.** CPI SA monthly index MoM is
+   100 * (index[t]/index[t-1] - 1), with positive denominator; it is not
+   automatically the published CPI *unadjusted headline YoY*. PAYEMS SA MoM
+   is level[t] - level[t-1], measured in **thousands of persons**, not a
+   percent rate. Compare only approved same-series source, unit, frequency
+   and seasonal basis, with compatible revision lineage. Neither number
+   alone proves statistical materiality, source release surprise or causality.
+6. **Existing implementation boundary.** The legacy factual-baseline builder
+   queries predecessors through the supplied *current Observation's retrievedAt*;
+   it does not accept an arbitrary T, independently choose all current-period
+   versions at T, or prove SQL captured_at <= T by itself. The bounded
+   source-qualified #370 macro as-of read model must enforce **both** clock
+   cutoffs; #372 will enforce exact calendar predecessor for transformations.
+   Do not silently reinterpret the legacy builder's generic predecessor as
+   validated MoM/YoY.
+
+**Golden contract fixtures:** lib/application/factual-baseline.test.ts checks
+CPI and PAYEMS old/new values before and after *current acquisition cutoffs*,
+same-period revision exclusion, deterministic ordering, missing immediate-month
+behavior, and future PAYEMS non-availability. These tests demonstrate existing
+retrieval-bounded factual behavior, **not** production captured_at replay or
+the still-pending arbitrary-T read model (#370). No code or DB semantics are
+retconned by this additive frozen-contract clarification.
+
+
 ### Expectation Baseline
 
 EXP-001 answers:
