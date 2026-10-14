@@ -252,7 +252,7 @@ test("G2-07: dashboard uses bounded model labels and never fetches on GET", () =
     "mvp_factual_context", "stablecoin_liquidity", "btc_etf_flow", "gold_positioning", "material_move"]) {
     assert.ok(!code.includes('readScope.forConsumer("' + removed + '")'));
   }
-  const body = code.split("export async function getDashboardData(): Promise<DashboardData> {")[1];
+  const body = code.split("export async function getDashboardData(): Promise<MacroDashboardData> {")[1];
   assert.ok(body);
   assert.doesNotMatch(body, /ingestDashboardData\(|fetch[A-Z]/);
 });
