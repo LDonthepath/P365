@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { runHistoricalIngestion } from "./historical-ingestion";
 import test from "node:test";
 import { HISTORICAL_INGESTION_PROVIDERS } from "./historical-ingestion-contract";
 import { RETAINED_MACRO_INGESTION_PROVIDERS } from "./historical-ingestion-macro-providers";
@@ -13,15 +14,17 @@ test("MACRO-CUT-001A: retained macro adapters have an independent provider-impor
   assert.doesNotMatch(code, /crypto-market|yahoo-finance|binance-|defillama|sosovalue|cftc-/);
 });
 
-test("MACRO-CUT-001A: provider inventory stays unchanged and separate from non-MVP adapters", () => {
+test("MACRO-CUT-003D: legacy 13-provider contract remains readable, default acquisition bridge is physically absent", () => {
   assert.equal(HISTORICAL_INGESTION_PROVIDERS.length, 16);
   const retained = new Set<string>(RETAINED_MACRO_INGESTION_PROVIDERS);
   const otherProviders = HISTORICAL_INGESTION_PROVIDERS.filter((provider) => !retained.has(provider));
   assert.equal(otherProviders.length, 13);
   assert.equal(new Set([...RETAINED_MACRO_INGESTION_PROVIDERS, ...otherProviders]).size, 16);
-
-  const nonMacro = readFileSync(new URL("./historical-ingestion-nonmacro-providers.ts", import.meta.url), "utf8");
-  assert.doesNotMatch(nonMacro, /import\("\.\.\/data\/(?:fred|federal-reserve-sep|gdelt-gal)"\)/);
+  assert.equal(existsSync(new URL("./historical-ingestion-nonmacro-providers.ts", import.meta.url)), false);
+  const registry = readFileSync(new URL("./historical-ingestion-provider-registry.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(registry, /historical-ingestion-nonmacro-providers|createNonMacroAcquisition|needsNonMacro/);
+  assert.doesNotMatch(registry, /import\("\.\.\/data\/(?:crypto-market|yahoo-finance-markets|defillama-stablecoins|sosovalue-etf-flow|cftc-gold-cot|binance-spot-flow|binance-order-book|hyperliquid-perp-order-book)"\)/);
+  assert.match(registry, /createRetainedMacroAcquisition/);
 });
 
 test("MACRO-CUT-003B: macro execution/normalization do not statically load market acquisition and adapters", () => {
@@ -35,7 +38,8 @@ test("MACRO-CUT-003B: macro execution/normalization do not statically load marke
   assert.match(executor, /isRetainedMacroHistoricalProvider\(provider\)/);
   assert.match(executor, /await import\("\.\/historical-ingestion-normalization"\)/);
   assert.doesNotMatch(registry, /import \{ createNonMacroAcquisition \} from/);
-  assert.match(registry, /needsNonMacro[\s\S]*?import\("\.\/historical-ingestion-nonmacro-providers"\)/);
+  assert.doesNotMatch(registry, /needsNonMacro|historical-ingestion-nonmacro-providers/);
+  assert.match(registry, /"Nonmacro historical acquisition has been retired"/);
   assert.doesNotMatch(normalizer, /crypto-market|defillama|sosovalue|cftc|binance|hyperliquid|yahoo/);
   assert.match(normalizer, /macroToCanonicalRecords/);
   assert.match(normalizer, /federalReserveSepToCanonicalRecords/);
@@ -45,4 +49,23 @@ test("MACRO-CUT-003B: macro execution/normalization do not statically load marke
     assert.doesNotMatch(source, /from "\.\.\/data\/(?:sosovalue-etf-flow|cftc-gold-cot)"/);
     assert.match(source, /from "\.\.\/data\/provider-backfill-ranges"/);
   }
+});
+
+
+test("MACRO-CUT-003D: non-injected runner fails before initializing repos or fetching retired market providers", async () => {
+  for (const provider of HISTORICAL_INGESTION_PROVIDERS) {
+    if ((RETAINED_MACRO_INGESTION_PROVIDERS as readonly string[]).includes(provider)) continue;
+    await assert.rejects(
+      runHistoricalIngestion({ mode: "FORWARD", providers: [provider] }),
+      new RegExp("Nonmacro historical ingestion is retired: " + provider),
+    );
+  }
+  await assert.rejects(
+    runHistoricalIngestion({ mode: "FORWARD", providers: ["fred", "coingecko-context"] }),
+    /Nonmacro historical ingestion is retired: coingecko-context/,
+  );
+  const runner = readFileSync(new URL("./historical-ingestion.ts", import.meta.url), "utf8");
+  const deny = runner.indexOf("Nonmacro historical ingestion is retired:");
+  const initialize = runner.indexOf("await defaultDependencies(options)");
+  assert.ok(deny >= 0 && initialize > deny, "retirement check must precede default repository initialization");
 });

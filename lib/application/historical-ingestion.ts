@@ -3,6 +3,7 @@ import type { HistoricalIngestionAcquisition, HistoricalIngestionOptions, Histor
 import { defaultDependencies } from "./historical-ingestion-provider-registry";
 import { validateOptions } from "./historical-ingestion-options";
 import { executeProvider } from "./historical-ingestion-executor";
+import { RETAINED_MACRO_INGESTION_PROVIDERS } from "./historical-ingestion-macro-providers";
 
 // Preserve the exact public surface consumed by cron and existing callers.
 export {
@@ -23,6 +24,14 @@ export async function runHistoricalIngestion(
   dependencies: { acquisition?: HistoricalIngestionAcquisition; repositories?: CanonicalRepositories } = {},
 ): Promise<HistoricalIngestionReport> {
   validateOptions(options);
+  // Retire default market acquisition before repository initialization, fetch,
+  // normalization or persistence. Explicitly injected test doubles remain
+  // available for historical contract regression fixtures.
+  const allowed = new Set<string>(RETAINED_MACRO_INGESTION_PROVIDERS);
+  const retired = [...new Set(options.providers)].filter((provider) => !allowed.has(provider));
+  if (retired.length > 0 && !(dependencies.acquisition && dependencies.repositories)) {
+    throw new Error(`Nonmacro historical ingestion is retired: ${retired.join(",")}`);
+  }
   const defaults = dependencies.acquisition && dependencies.repositories
     ? { acquisition: dependencies.acquisition, repositories: dependencies.repositories }
     : await defaultDependencies(options);
