@@ -33,7 +33,6 @@ export type ProviderId =
   | "binance-futures"
   | "hyperliquid"
   | "gdelt"
-  | "bybit-spot"
   | "defillama"
   | "sosovalue"
   | "cftc"
