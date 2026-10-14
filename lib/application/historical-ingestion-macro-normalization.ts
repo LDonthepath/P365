@@ -7,7 +7,7 @@ import {
   macroToCanonicalRecords,
   federalReserveSepToCanonicalRecords,
   P365_SOURCES,
-} from "../normalization/provider-canonical";
+} from "../normalization/provider-canonical-macro";
 import { gdeltGalSnapshotsToEvidence } from "./gdelt-gal-history";
 import type { HistoricalIngestionProvider } from "./historical-ingestion-contract";
 import { RETAINED_MACRO_INGESTION_PROVIDERS } from "./historical-ingestion-macro-providers";
