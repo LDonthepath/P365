@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getDashboardData as getCanonicalDashboardData, type DashboardData } from "../application/dashboard-query";
+import { getDashboardData as getCanonicalDashboardData, type MacroDashboardData } from "../application/dashboard-query";
 
 /**
  * Compatibility boundary for existing dashboard consumers.
@@ -10,8 +10,10 @@ import { getDashboardData as getCanonicalDashboardData, type DashboardData } fro
  * Keep this module as a thin adapter so legacy imports cannot reintroduce a
  * second provider orchestration path.
  */
-export type { DashboardData };
+export type { MacroDashboardData };
+// Type-only compatibility for retired, unmounted panels pending final cleanup.
+export type { DashboardData } from "../application/legacy-dashboard-presentation-types";
 
-export async function getDashboardData(): Promise<DashboardData> {
+export async function getDashboardData(): Promise<MacroDashboardData> {
   return getCanonicalDashboardData();
 }

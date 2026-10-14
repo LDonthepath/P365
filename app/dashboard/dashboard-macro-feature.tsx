@@ -1,6 +1,6 @@
 "use client";
 
-import type { DashboardData } from "@/lib/data/dashboard-data";
+import type { MacroDashboardData } from "@/lib/data/dashboard-data";
 import type { Context, Observation } from "@/lib/domain/types";
 import type { BaselinePresentation } from "@/lib/presentation/baseline";
 import { formatMacroDisplayDelta, formatMacroDisplayValue } from "@/lib/presentation/macro-display";
@@ -73,7 +73,7 @@ function MacroThemeCard({ context, observations, baselines, expanded, onToggle }
 }
 
 
-export function MacroSection({ data, baselinesBySeries, expandedMacroTheme, onToggleMacroTheme }: { data: DashboardData; baselinesBySeries: Map<string, BaselinePresentation>; expandedMacroTheme: string | null; onToggleMacroTheme: (id: string) => void }) {
+export function MacroSection({ data, baselinesBySeries, expandedMacroTheme, onToggleMacroTheme }: { data: MacroDashboardData; baselinesBySeries: Map<string, BaselinePresentation>; expandedMacroTheme: string | null; onToggleMacroTheme: (id: string) => void }) {
   const { contexts, macroObservations } = data;
   const macroContexts = contexts.filter((context) => context.scope.startsWith("MACRO_"));
   return <>

@@ -51,8 +51,10 @@ test("briefing exposes an explicit market-to-macro reading order", () => {
   assert.match(html, /05 · Apa yang berubah pada latar makro\?/);
 
   const styles = readFileSync(new URL("../../app/dashboard/overview-layout.module.css", import.meta.url), "utf8");
-  const dashboard = readFileSync(new URL("../../app/dashboard/dashboard-overview-feature.tsx", import.meta.url), "utf8");
+  const dashboard = readFileSync(new URL("../../app/dashboard/dashboard-shell.tsx", import.meta.url), "utf8");
   assert.match(styles, /font:700 12px\/1\.35 'DM Mono'/);
   assert.match(styles, /@media\(max-width:380px\)[\s\S]*?overflow-x:auto/);
-  assert.match(dashboard, /<h1>Ringkasan Pasar<\/h1>/);
+  // Historical market briefing remains testable but is retired from the active route.
+  assert.doesNotMatch(dashboard, /<OverviewSection/);
+  assert.match(dashboard, /<MacroSection/);
 });

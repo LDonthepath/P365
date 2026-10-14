@@ -6,8 +6,8 @@ import type {
   RatesSeriesPoint,
   RatesSeriesValueUnit,
 } from "@/lib/application/rates-inflation";
-import { UnifiedMacroView } from "./unified-macro-view";
 import type { DataQuality } from "@/lib/domain/types";
+import { UnifiedMacroView } from "./unified-macro-view";
 
 const LABELS: Record<RatesSeriesPoint["seriesKey"], string> = {
   EFFR: "Effective Fed Funds Rate",
@@ -208,7 +208,8 @@ export function RatesInflationPanel({ data }: { data: RatesInflationReadModel })
       bearish, regime, atau atribusi sebab-akibat.
     </p>
 
-    <UnifiedMacroView points={data.unifiedMacro} />
+
+    <UnifiedMacroView points={data.unifiedMacro} includeDxy={false} />
 
     {data.status === "UNAVAILABLE"
       ? <p className="muted">{data.reason}</p>

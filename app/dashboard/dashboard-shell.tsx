@@ -2,37 +2,25 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { DashboardData } from "@/lib/data/dashboard-data";
+import type { MacroDashboardData } from "@/lib/data/dashboard-data";
 import { relativeTimeID } from "@/lib/data/format";
 import { buildBaselinePresentations } from "@/lib/presentation/baseline";
 import { logout, refreshDashboardData } from "./actions";
-import { OverviewSection } from "./dashboard-overview-feature";
-import { MarketSection } from "./dashboard-market-feature";
 import { MacroSection } from "./dashboard-macro-feature";
-import { CryptoSection } from "./dashboard-crypto-feature";
-import { GoldSection } from "./dashboard-gold-feature";
 import { ContextSection } from "./dashboard-context-feature";
-import { EvidenceSection } from "./dashboard-evidence-feature";
 
-type Menu = "overview" | "heatmap" | "macro" | "crypto" | "gold" | "context" | "evidence";
+type Menu = "macro" | "calendar";
 const menuItems: { id: Menu; label: string }[] = [
-  { id: "overview", label: "Ringkasan" },
-  { id: "heatmap", label: "Pasar" },
   { id: "macro", label: "Makro" },
-  { id: "crypto", label: "Crypto" },
-  { id: "gold", label: "Gold" },
-  { id: "context", label: "Konteks" },
-  { id: "evidence", label: "Sumber Data" },
+  { id: "calendar", label: "Kalender" },
 ];
 
 
-export function DashboardShell({ data, sessionEmail }: { data: DashboardData; sessionEmail: string }) {
+export function DashboardShell({ data, sessionEmail }: { data: MacroDashboardData; sessionEmail: string }) {
   const router = useRouter();
-  const [activeMenu, setActiveMenu] = useState<Menu>("overview");
+  const [activeMenu, setActiveMenu] = useState<Menu>("macro");
   const [isRefreshing, startRefresh] = useTransition();
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
-  const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [expandedMacroTheme, setExpandedMacroTheme] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -63,13 +51,8 @@ export function DashboardShell({ data, sessionEmail }: { data: DashboardData; se
     <nav id="dashboard-navigation" className={`filters${navOpen ? " open" : ""}`} aria-label="Bagian dashboard" role="tablist">{menuItems.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeMenu === item.id} className={activeMenu === item.id ? "active" : ""} onClick={() => { setActiveMenu(item.id); setNavOpen(false); }}>{item.label}</button>)}<span>WIB / ASIA-JAKARTA</span></nav>
 
     <div className="dashboard-content" role="tabpanel">
-      {activeMenu === "overview" && <OverviewSection data={data} />}
-      {activeMenu === "heatmap" && <MarketSection data={data} baselinePresentations={baselinePresentations} />}
       {activeMenu === "macro" && <MacroSection data={data} baselinesBySeries={baselinesBySeries} expandedMacroTheme={expandedMacroTheme} onToggleMacroTheme={(id) => setExpandedMacroTheme(expandedMacroTheme === id ? null : id)} />}
-      {activeMenu === "crypto" && <CryptoSection data={data} />}
-      {activeMenu === "gold" && <GoldSection data={data} />}
-      {activeMenu === "context" && <ContextSection data={data} selectedContextId={selectedContextId} expandedGroup={expandedGroup} onSelectContext={(id) => setSelectedContextId(selectedContextId === id ? null : id)} onToggleGroup={(id) => setExpandedGroup(expandedGroup === id ? null : id)} />}
-      {activeMenu === "evidence" && <EvidenceSection data={data} />}
+      {activeMenu === "calendar" && <ContextSection data={data} />}
     </div>
   </main>;
 }

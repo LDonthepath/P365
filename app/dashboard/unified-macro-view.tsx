@@ -27,13 +27,19 @@ function observationTime(value: string, dxy: boolean): string {
 }
 
 /** Pure presentation of the shared Rates & Policy read model; performs no fetch. */
-export function UnifiedMacroView({ points = [] }: { points?: UnifiedMacroPoint[] }) {
-  const available = points.filter((point) => point.latest !== null).length;
-  return <section aria-label="Dolar dan yield AS" style={{ marginTop: "1rem", minWidth: 0 }}>
-    <SectionHeader title="Bagaimana kondisi dolar dan yield AS?"
-      summary={`DXY, Treasury 2 tahun, dan real yield 10 tahun tersedia ${available} dari 3 seri; waktu observasi dibaca terpisah.`} />
+export function UnifiedMacroView({ points = [], includeDxy = true }: {
+  points?: UnifiedMacroPoint[]; includeDxy?: boolean;
+}) {
+  const definitions = includeDxy ? DEFINITIONS : DEFINITIONS.filter((item) => item.key !== "dxy.index.usd");
+  const available = definitions.filter((item) => points.some((point) =>
+    point.seriesKey === item.key && point.latest !== null)).length;
+  return <section aria-label={includeDxy ? "Dolar dan yield AS" : "Yield Treasury AS"} style={{ marginTop: "1rem", minWidth: 0 }}>
+    <SectionHeader title={includeDxy ? "Bagaimana kondisi dolar dan yield AS?" : "Bagaimana kondisi yield Treasury AS?"}
+      summary={includeDxy
+        ? `DXY, Treasury 2 tahun, dan real yield 10 tahun tersedia ${available} dari 3 seri; waktu observasi dibaca terpisah.`
+        : `Treasury 2 tahun dan real yield 10 tahun tersedia ${available} dari 2 seri FRED.`} />
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,240px),1fr))", gap: ".75rem", marginTop: ".75rem" }}>
-      {DEFINITIONS.map(({ key, label, source }) => {
+      {definitions.map(({ key, label, source }) => {
         const point = points.find((item) => item.seriesKey === key);
         const latest = point?.latest;
         const previous = point?.previous;
@@ -62,10 +68,12 @@ export function UnifiedMacroView({ points = [] }: { points?: UnifiedMacroPoint[]
     </div>
     <details className="briefing-rate-details">
       <summary>Baca metode dan keterbatasan data</summary>
-      <p>Perubahan DXY = nilai terakhir − observasi valid sebelumnya (poin indeks). Perubahan yield = selisih nilai persen × 100 bps. Pembanding berasal dari seri yang sama, bukan previous close metadata Yahoo.</p>
+      {includeDxy && <p>Perubahan DXY = nilai terakhir − observasi valid sebelumnya (poin indeks). Perubahan yield = selisih nilai persen × 100 bps. Pembanding berasal dari seri yang sama, bukan previous close metadata Yahoo.</p>}
+      {!includeDxy && <p>Perubahan yield = selisih nilai persen × 100 bps terhadap observasi sebelumnya dari seri FRED yang sama.</p>}
       <p>Hari tanpa observasi, termasuk akhir pekan atau hari libur, dilewati; tanggal pembanding tetap ditampilkan. Tidak ada interpolasi atau carry-forward.</p>
-      <p>Yahoo memakai endpoint chart tidak resmi; keterlambatan quote tidak dijamin. Ketepatan waktu DXY memakai sesi mingguan ICE yang berlaku; kalender hari libur dan penutupan lebih awal belum dimodelkan. FRED memakai toleransi frekuensi harian yang berlaku, bukan jam rilis atau quote intraday.</p>
-      <p>Riwayat dibaca secara terbatas (maksimal 100 baris per seri; FRED 21 hari). Data kosong atau riwayat pembanding tidak cukup tetap ditampilkan sebagai gap. Tampilan ini tidak menyimpulkan penyebab pergerakan Bitcoin atau Emas.</p>
+      {includeDxy && <p>Yahoo memakai endpoint chart tidak resmi; keterlambatan quote tidak dijamin. Ketepatan waktu DXY memakai sesi mingguan ICE yang berlaku; kalender hari libur dan penutupan lebih awal belum dimodelkan. FRED memakai toleransi frekuensi harian yang berlaku, bukan jam rilis atau quote intraday.</p>}
+      {!includeDxy && <p>FRED memakai toleransi frekuensi harian yang berlaku, bukan jam rilis atau quote intraday.</p>}
+      <p>Riwayat dibaca secara terbatas (maksimal 100 baris per seri; FRED 21 hari). Data kosong atau riwayat pembanding tidak cukup tetap ditampilkan sebagai gap. {includeDxy ? "Tampilan ini tidak menyimpulkan penyebab pergerakan Bitcoin atau Emas." : "Tidak ada klaim kausalitas pasar."}</p>
     </details>
   </section>;
 }

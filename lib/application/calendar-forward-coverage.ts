@@ -70,18 +70,23 @@ export function buildCalendarForwardCoverage(input: {
   receipts?: readonly CalendarCoverageReceipt[];
   eventReadSucceeded: boolean;
   eventHistoryTruncated?: boolean;
+  /** Opt-in retained-feed view; default preserves legacy diagnostics. */
+  feedSources?: readonly CalendarFeedId[];
 }): CalendarForwardCoverage {
   const start = parse(input.asOf);
   if (!Number.isFinite(start)) throw new Error("Calendar forward coverage requires valid asOf");
   const end = start + CALENDAR_FORWARD_DAYS * 24 * 60 * 60_000;
   const receipts = input.receipts ?? [];
+  const scopedFeeds = input.feedSources
+    ? FEEDS.filter((feed) => input.feedSources?.includes(feed.sourceId))
+    : FEEDS;
   const visible = input.events.filter((event) => {
     const when = parse(event.scheduledAt ?? "");
     const knownAt = parse(event.retrievedAt);
     return input.eventReadSucceeded && Number.isFinite(when) && Number.isFinite(knownAt)
       && knownAt <= start && when >= start && when <= end
       && CALENDAR_REGIONS.includes(event.jurisdiction as CalendarRegion)
-      && FEEDS.some((feed) => feed.sourceId === event.sourceId);
+      && scopedFeeds.some((feed) => feed.sourceId === event.sourceId);
   });
 
   const statusFor = (sourceId: CalendarFeedId, region: CalendarRegion, observed: number): CoverageStatus => {
@@ -103,7 +108,7 @@ export function buildCalendarForwardCoverage(input: {
     return proven ? "QUALIFIED_EMPTY" : "UNKNOWN";
   };
 
-  const feeds = FEEDS.map((feed): FeedForwardCoverage => {
+  const feeds = scopedFeeds.map((feed): FeedForwardCoverage => {
     const ownEvents = visible.filter((event) => event.sourceId === feed.sourceId);
     const lastListedAt = ownEvents.length > 0
       ? new Date(Math.max(...ownEvents.map((event) => parse(event.scheduledAt!)))).toISOString()
