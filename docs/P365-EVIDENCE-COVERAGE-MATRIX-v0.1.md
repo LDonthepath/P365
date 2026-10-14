@@ -1,8 +1,10 @@
 # P365 Evidence Coverage Matrix v0.1
 
+**Product scope supersession (11 October 2026):** This document describes an **earlier BTC/Gold-oriented implementation slice or a later-phase capability**, not the first-MVP acceptance gate. The current first MVP is **standalone, evidence-linked Macro Catalyst & Narrative Intelligence**; it does **not** require BTC/Gold prices, MOVE, cross-asset attribution or risk-on/off. See [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) and [roadmap #360](https://github.com/LDonthepath/P365/issues/360). Historical priorities and dated runtime snapshots below are retained for traceability and must not override the current product contract or current code.
+
 **Checkpoint:** CRYPTO-STRUCT-001A supporting scope map  
-**Status:** PROPOSED PRIORITIZATION MATRIX — OWNER MERGE PENDING  
-**Product scope:** Macro explanatory layer → Crypto + Gold first-class markets  
+**Status:** Historical BTC/Gold MOVE prioritization and dated provider-status snapshots; not current first-MVP priorities or live merge status  
+**Product scope (historical MOVE/BTC+Gold slice):** Macro explanatory layer → Crypto + Gold first-class markets; not the current macro-only MVP exit gate.  
 **Primary use case:** Intraday market awareness and move-driven investigation  
 **Implementation effect:** Documentation/prioritization only. No provider runtime, credentials, persistence, scheduler, UI, State/Regime/Risk/Intelligence, prediction, or trading logic.
 
@@ -15,9 +17,9 @@ after a material BTC or Gold move.
 
 Priority classes:
 
-- **P0** — required to make intraday move investigation materially more useful;
+- **P0 (legacy MOVE priority)** — required to make the original intraday move investigation materially more useful, not a first-MVP macro narrative gate;
 - **P1** — high-value confirmation/background evidence after P0 coverage exists;
-- **P2** — contextual/enrichment evidence that must not block the MVP;
+- **P2 (legacy MOVE priority)** — contextual/enrichment evidence that did not block the original BTC/Gold move-investigation slice;
 - **DEFER** — do not implement until a concrete downstream question requires it.
 
 Cadence classes:
@@ -397,7 +399,7 @@ market positioning.
 Social-media sentiment is deferred until a free realtime source is both semantically
 useful and operationally defensible.
 
-## 6. Evidence-family ordering for the MVP
+## 6. Evidence-family ordering for the original BTC/Gold MOVE slice (historical)
 
 The implementation order is intentionally not the same as the conceptual evidence tree.
 

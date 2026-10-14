@@ -1,8 +1,10 @@
 # P365 Canonical Semantic Dimensions Compatibility Contract v0.1
 
+**Current product-scope note (11 October 2026):** This compatibility contract originally accompanied the Macro + Crypto + Gold implementation slice; semantic requirements are still normative. The **first P365 MVP** is evidence-linked standalone Macro Catalyst & Narrative Intelligence; BTC/Gold analysis, market prices, MOVE and cross-asset attribution are **not required for macro MVP acceptance**. Original technical, semantic, provider, licensing and point-in-time safeguards below remain applicable to any later activation. See [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md).
+
 **Status:** Active compatibility contract  
 **Scope:** Additive semantic classification for current canonical Observations  
-**MVP boundary:** Macro + Crypto + Gold  
+**Original implementation slice:** Macro + Crypto + Gold (historical product scope; not current MVP gate)  
 **Non-goal:** This contract does not add providers, rewrite Market Memory, change historical query identity, activate reasoning engines, or expand first-class MVP asset classes.
 
 ## 1. Purpose
@@ -349,4 +351,4 @@ FND-003
 Independent Historical Ingestion / Backfill Ownership
 ```
 
-That checkpoint can then collect durable history while preserving both the legacy compatibility contract and the additive semantic meaning required by the Macro + Crypto + Gold MVP.
+That checkpoint can then collect durable history while preserving both the legacy compatibility contract and the additive semantic meaning required by the original Macro + Crypto + Gold implementation slice.

@@ -1,5 +1,7 @@
 # P365 Market Snapshot Contract v0.1
 
+**Product-scope note (11 October 2026):** Market Snapshots and event-window repricing remain valid later-phase capabilities, but are not required inputs to the **first standalone macro narrative MVP**. Point-in-time and immutability invariants remain binding wherever snapshots are used. See [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md).
+
 ## Purpose
 
 A Market Snapshot is an immutable, time-indexed representation of the market state relevant to a defined reasoning scope at a specific capture time.
@@ -218,7 +220,7 @@ A Snapshot does not decide what the market means.
 7. Snapshot contains no hidden directional interpretation.
 8. Snapshot comparison must respect temporal and semantic compatibility.
 9. Historical Snapshots must remain available for audit and before/after analysis.
-10. Snapshot design must remain market-agnostic even though the current implementation scope is Macro + Crypto.
+10. Snapshot design must remain market-agnostic even though the original implementation slice was Macro + Crypto.
 
 ## What v0.1 does not define
 

@@ -1,8 +1,10 @@
 # P365 Event Repricing Contract v0.1
 
+**Product-scope precedence (11 October 2026):** This document preserves the approved **asset-oriented/event-window capability contract** from the earlier Macro + BTC/Gold vertical slice. It remains useful for its own bounded implementation, but **does not set the first MVP exit criteria**. The first MVP is standalone evidence-linked Macro Catalyst & Narrative Intelligence; BTC/Gold prices, MOVE and cross-asset attribution are not mandatory. See [current product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) and [#360](https://github.com/LDonthepath/P365/issues/360). Do not infer runtime activation or new source approval from this scope notice.
+
 **Checkpoint:** RPR-001  
 **Status:** MERGED / production-ready contract — PR #74, merge `bb36fa81be57b8a11603c28e739e5bd2745c7d7a`  
-**Scope:** Macro + Crypto + Gold event-window market response  
+**Scope (original asset-oriented slice):** Macro + Crypto + Gold event-window market response  
 **Prerequisites:** EVW-001, CMP-001, CAP-001 natural production proof
 
 ## Purpose
@@ -115,7 +117,7 @@ Equivalent inputs and equivalent threshold sets therefore produce the same `even
 
 Changing any material input — Snapshot comparison, event/window reference, threshold basis, threshold magnitude, contamination evidence, or resolved response — changes the assessment identity.
 
-## Current MVP usage
+## Original event-window MVP usage (historical product slice)
 
 The natural Durable Goods Orders production proof on 25 Sep 2026 produced compatible COMPLETE PRE/T+5/T+15/T+30/T+60 Snapshot inputs for:
 

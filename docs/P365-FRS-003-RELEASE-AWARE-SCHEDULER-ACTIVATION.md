@@ -1,5 +1,7 @@
 # FRS-003 — FRED provider-update scheduler
 
+**Registry-count provenance (14 October 2026):** The **33-series / 99-request / 891-request** calculations below document the **original FRS-003 planning baseline**, not the current registered universe. `lib/data/macro-registry.ts` has **37 series** at `main@0ee4d3cd`. Do **not** reuse those older request budgets or this dated activation status as a live operating claim; recalculate from current code and verify production cron/configuration before any scheduler action. No cron activation is authorized by this documentation update.
+
 **Status:** provider-update runtime and guarded activation/rollback SQL prepared; production cron is unchanged. Related [#231](https://github.com/LDonthepath/P365/issues/231). This change is opt-in until the owner reviews/merges the code and separately approves the SQL.
 
 ## Runtime behavior

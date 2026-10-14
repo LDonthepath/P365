@@ -1,8 +1,10 @@
 # P365 Data Requirements Matrix v0.1
 
-**Status:** Active current-implementation requirements matrix, rebaselined under the financial-market ontology  
-**Scope:** MVP = **Macro + Crypto + Gold** within a future-compatible global multi-asset architecture  
-**Purpose:** Define field-level requirements and sequencing for the currently implemented foundation. The full product-domain universe and semantic classification are governed by `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`. The MVP driver/evidence requirements for Bitcoin and Gold are governed by `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`.
+**Product scope supersession (11 October 2026):** This document describes an **earlier BTC/Gold-oriented implementation slice or a later-phase capability**, not the first-MVP acceptance gate. The current first MVP is **standalone, evidence-linked Macro Catalyst & Narrative Intelligence**; it does **not** require BTC/Gold prices, MOVE, cross-asset attribution or risk-on/off. See [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) and [roadmap #360](https://github.com/LDonthepath/P365/issues/360). Historical priorities and dated runtime snapshots below are retained for traceability and must not override the current product contract or current code.
+
+**Status:** Evidence-requirements reference for the **original** Macro + Crypto + Gold vertical slice, not the first macro-only MVP implementation plan  
+**Scope (historical 2026 BTC/Gold implementation slice):** **Macro + Crypto + Gold**, retained inside a future-compatible multi-asset architecture; **not** current first-MVP acceptance.  
+**Purpose:** Preserve field-level evidence requirements and earlier implementation sequencing; current macro MVP sequencing follows the product contract and issue #360. The full product-domain universe and semantic classification are governed by `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`. The MVP driver/evidence requirements for Bitcoin and Gold are governed by `P365-MVP-BTC-XAU-EVIDENCE-MAP-v0.1.md`.
 
 ---
 
@@ -40,10 +42,10 @@ It is no longer the complete product-universe map. For market domains and inform
 
 The legacy P0/P1/P2 labels below describe sequencing for the current foundation. They must not be interpreted as a permanent statement that positioning, flows, global policy, or derivatives are outside the P365 product boundary.
 
-For implementation prioritization, the MVP boundary is explicit:
+For **original BTC/Gold-slice** implementation prioritization (historical; superseded as the first-MVP gate), the boundary was:
 
 ```text
-FIRST-CLASS MVP
+ORIGINAL BTC/GOLD IMPLEMENTATION SLICE (HISTORICAL)
 Macro + Crypto + Gold
 
 SUPPORTING EVIDENCE ONLY
@@ -169,7 +171,7 @@ Economic events establish the temporal anchor for surprise and repricing analysi
 
 ### 4.3 Crypto factual observations
 
-For the MVP Macro + Crypto + Gold scope, the minimum factual crypto layer is:
+For the original Macro + Crypto + Gold vertical slice (not macro-first MVP), the minimum factual crypto layer was:
 
 - BTC price
 - ETH price
@@ -419,7 +421,7 @@ A provider endpoint that returns a number but cannot satisfy these requirements 
 
 ## 9. Minimum viable dataset
 
-The MVP must complete a useful reasoning chain for **Macro + Crypto + Gold**, not maximize breadth.
+The **original BTC/Gold implementation slice** aimed to complete a useful reasoning chain for **Macro + Crypto + Gold** rather than maximize breadth; this is not a requirement of the first standalone macro MVP.
 
 ### Macro
 
@@ -462,7 +464,7 @@ Existing S&P 500, Nasdaq, Russell 2000, VIX, WTI and IG/HY data may remain avail
 
 ### Evidence and history
 
-All three MVP scopes require:
+The three **original implementation scopes** required:
 
 - source metadata and evidence linkage;
 - correct publication/release/observation/retrieval timestamps;
@@ -545,7 +547,7 @@ Supporting evidence from an already available non-MVP asset does not violate thi
 
 The September 2026 re-audit against `main@b2275e7dc7424db157bc15193eda2d4033df088e` found that the runtime is ahead of this matrix in several places:
 
-- the FRED registry contains 33 series, including SOFR, IORB, continued claims, JOLTS, quits, Sahm Rule, 10Y breakeven, 10Y-2Y, and IG/HY OAS;
+- at the **September 2026 audited SHA**, the FRED registry contained 33 series, including SOFR, IORB, continued claims, JOLTS, quits, Sahm Rule, 10Y breakeven, 10Y-2Y, and IG/HY OAS;
 - Yahoo provides Gold futures, Russell 2000, and DXY;
 - CoinGecko provides BTC/ETH plus crypto-wide market observations;
 - Biquote provides trial actual/forecast/previous/revision event-result data;

@@ -1,10 +1,12 @@
 # P365 Gold ETF Flow & Holdings Evidence Contract v0.1
 
+**Current product-scope note (11 October 2026):** This is a Gold-specific later-phase market evidence contract. The **first P365 MVP** is evidence-linked standalone Macro Catalyst & Narrative Intelligence; BTC/Gold analysis, market prices, MOVE and cross-asset attribution are **not required for macro MVP acceptance**. Original technical, semantic, provider, licensing and point-in-time safeguards below remain applicable to any later activation. See [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md).
+
 **Status:** CONTRACT DEFINED — RUNTIME SOURCE NOT YET QUALIFIED
 
 **Checkpoint:** GOLD-FLOW-001A contract and source qualification
 
-**MVP scope:** Gold
+**Original asset-oriented scope:** Gold (later-phase relative to the first macro-only MVP)
 
 **Audit date:** 30 September 2026
 

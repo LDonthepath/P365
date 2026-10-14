@@ -1,10 +1,12 @@
 # P365 US SEP / Dot Plot Contract v0.1
 
+**Current product-scope note (11 October 2026):** SEP/dot-plot evidence can support macro-only narratives independently of asset pricing. The **first P365 MVP** is evidence-linked standalone Macro Catalyst & Narrative Intelligence; BTC/Gold analysis, market prices, MOVE and cross-asset attribution are **not required for macro MVP acceptance**. Original technical, semantic, provider, licensing and point-in-time safeguards below remain applicable to any later activation. See [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md).
+
 **Status:** SOURCE QUALIFIED / COMPARISON METHODOLOGY FROZEN / MACRO-SEP-001B PRODUCTION ACTIVE / MACRO-SEP-001C PRODUCTION ACTIVE / PR #199 / `01cad0b5c2b61f449c85ed7f381fcb9791d9f115`
 
 **Checkpoint:** MACRO-SEP-001A — US SEP / Dot Plot Source Qualification & Policy-Path Comparison Boundary
 
-**MVP scope:** Macro explanatory layer → BTC + Gold
+**Original use-case scope:** Macro explanatory layer → BTC + Gold; not the current macro-only MVP gate
 
 **Audit date:** 6 October 2026
 

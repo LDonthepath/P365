@@ -1,5 +1,7 @@
 # Macro Data Foundation v0.1
 
+**Historical implementation checkpoint, not current FRED inventory (14 October 2026):** This v0.1 P0 table records the original **19-series foundation slice**. `lib/data/macro-registry.ts` contains **37 FRED series** at `main@0ee4d3cd`, including subsequent ECB/BoJ balance sheets and NFCI/ANFCI. Registry membership does not prove full durable history, release-time qualification, or freshness. Current first MVP is macro catalyst and evidence-linked narrative per [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md).
+
 ## [IMPLEMENTED] scope
 
 P365 ingests free, official macroeconomic data as canonical `MACRO` Observations. Each observation is linked to an `OBSERVATION` Evidence record. This layer records facts only; it does not make macro conclusions.

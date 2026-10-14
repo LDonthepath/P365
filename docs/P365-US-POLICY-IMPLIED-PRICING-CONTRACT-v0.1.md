@@ -1,10 +1,12 @@
 # P365 US Policy-Implied Pricing Contract v0.1
 
+**Current product-scope note (11 October 2026):** Market-implied policy expectations remain optional qualified macro evidence, not a mandatory BTC/Gold transmission stage. The **first P365 MVP** is evidence-linked standalone Macro Catalyst & Narrative Intelligence; BTC/Gold analysis, market prices, MOVE and cross-asset attribution are **not required for macro MVP acceptance**. Original technical, semantic, provider, licensing and point-in-time safeguards below remain applicable to any later activation. See [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md).
+
 **Status:** CONTRACT FROZEN / FREE-ONLY RE-EVALUATED / NO RUNTIME-APPROVED MEETING-LEVEL SOURCE
 
 **Checkpoint:** MACRO-PRICING-001A contract and source qualification
 
-**MVP scope:** Macro explanatory layer for BTC + Gold
+**Original use-case scope:** Macro explanatory layer for BTC + Gold; current macro MVP can qualify policy expectations without prices
 
 **Audit date:** 1 October 2026
 

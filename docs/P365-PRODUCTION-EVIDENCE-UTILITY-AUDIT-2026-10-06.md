@@ -1,5 +1,7 @@
 # P365 Production Evidence Utility Audit — EVIDENCE-EFF-001A
 
+**Historical product-scope clarification (11 October 2026):** This production-efficiency audit describes the **6 October 2026** BTC/Gold-oriented use case and data retention findings; it is not the current product gate. First MVP acceptance is **standalone evidence-linked Macro Catalyst & Narrative Intelligence**, per [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md). Retention/cleanup recommendations require separate approval; no live migration is implied.
+
 **Status:** AUDIT FROZEN / NO PRODUCTION MUTATION  
 **Checkpoint:** EVIDENCE-EFF-001A — Production Evidence Utility Audit  
 **Base:** `main@a521a60bdd48ded94193e0bd5d98ebdf85007d82`  
@@ -380,4 +382,4 @@ The correct near-term sequence is:
 
 > reduce low-value write-rate → prove storage improvement → then activate new high-value evidence such as durable order-book geometry.
 
-This keeps the system aligned with the MVP objective: Macro explanatory environment → BTC + Gold market intelligence for intraday decision support, without turning Market Memory into an indiscriminate data lake.
+At the time of this 6 October audit, this aligned with the then-current Macro → BTC/Gold intraday objective. The later **standalone macro narrative MVP** supersedes that product-scope claim, without authorizing indiscriminate Market Memory retention or deletion.

@@ -1,15 +1,16 @@
 # P365 Architecture
 
-P365 is a Financial Market Intelligence System designed to explain observable market conditions through a traceable sequence from canonical data to intelligence. The architecture is market-agnostic and future-compatible with a broader multi-asset universe, while the **MVP implementation boundary is Macro + Crypto + Gold**.
+P365 is a Financial Market Intelligence System designed to explain observable market conditions through a traceable sequence from canonical data to intelligence. The architecture is market-agnostic and future-compatible with a broader multi-asset universe, while the **first MVP acceptance boundary is standalone Macro Catalyst & Narrative Intelligence**. Existing Crypto/Gold code remains valid, but is **not a prerequisite** of the first macro MVP.
 
 The normative semantic map for market domains, information classes, jurisdiction, instrument, participant, tenor/horizon, and methodology/provenance is `P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md`.
 
-The broader ontology is not the MVP backlog. For MVP:
+**Authority (14 October 2026):** [Product/Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) defines current MVP acceptance, [Ontology](P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md) defines semantics, [Recovery #283](https://github.com/LDonthepath/P365/issues/283) tracks engineering, and [Product #360](https://github.com/LDonthepath/P365/issues/360) tracks product gates. This document describes architecture, not a verified claim that every component is implemented.
 
-- **Macro** owns the economic/policy/liquidity/rates/USD/event environment required to explain markets.
-- **Crypto** is a first-class market domain.
-- **Gold** is a first-class MVP market domain, represented semantically under Commodity.
-- Existing equity, credit, volatility, oil, or other cross-asset observations may remain supporting evidence, but they are not first-class MVP expansion targets.
+For the **first MVP**:
+- Compare qualified macro facts (growth, inflation, labor, policy, rates, macro liquidity/funding) against temporally valid predecessors, historical distributions and/or qualified expectations.
+- Identify **candidate macro catalysts** (not fabricated scheduled Events) and compose original evidence-linked macro narratives with support, contradictions, uncertainty and what to monitor.
+- The narrative must be useful **without BTC/Gold market prices, MOVE, cross-asset attribution or market risk-on/off**.
+- Keep cross-asset explanation, regime engines, derived State/Risk/Intelligence and trading logic behind independent owner-approved gates. Existing Crypto/Gold capability contracts are preserved as later-phase work.
 
 ## Reasoning boundary
 
@@ -35,7 +36,7 @@ Briefing
 UI
 ```
 
-The UI must remain a presentation layer. Domain reasoning belongs in the domain/data layers and must remain traceable to canonical evidence.
+The diagram is a **target capability map**, not the mandatory MVP execution chain: macro briefing may consume qualified macro observations, baselines and evidence without State, market repricing, cross-asset transmission or derived market regime. The UI must remain a presentation layer. Domain reasoning belongs in the domain/data layers and must remain traceable to canonical evidence.
 
 ## Financial-market semantic model
 
@@ -74,47 +75,34 @@ Current canonical Observation writes now carry optional versioned `semantics` wi
 
 ## Current implementation subset
 
-The current FRED registry is broader than the original Macro-only foundation and includes 33 series across policy, liquidity/funding, economy, rates, FX, credit, equity, volatility, and commodity semantics.
+As verified at `main@0ee4d3cd` (14 October 2026), `lib/data/macro-registry.ts` contains **37 FRED series** across macro and supporting cross-asset categories. The code registry is authoritative for series IDs; a registered series is **not** proof of complete durable history, publication-time qualification or production freshness.
 
 ```text
-CURRENT FRED REGISTRY
+FRED REGISTRY AT main@0ee4d3cd — 37 SERIES
 
-Policy / implementation
-├── FEDFUNDS
-├── EFFR
-├── WALCL
-├── WRESBAL
-└── IORB
+Policy / central-bank balance sheets
+├── FEDFUNDS / EFFR / IORB
+├── WALCL / WRESBAL
+└── ECBASSETSW / JPNASSETS
 
 Liquidity / funding / fiscal
-├── M2SL
-├── WTREGEN
-├── SOFR
-└── RRPONTSYD
+├── M2SL / WTREGEN
+└── SOFR / RRPONTSYD
 
-Economy
-├── CPIAUCSL / CPILFESL
-├── PCEPI / PCEPILFE
-├── UNRATE / PAYEMS
-├── ICSA / CCSA
-├── JTSJOL / JTSQUR
-├── SAHMREALTIME
+Economic activity / prices / labor
+├── CPIAUCSL / CPILFESL / PCEPI / PCEPILFE
+├── UNRATE / PAYEMS / ICSA / CCSA
+├── JTSJOL / JTSQUR / SAHMREALTIME
 └── GDPC1
 
-Rates / inflation pricing / credit / FX
-├── DGS2 / DGS10
-├── DFII10
-├── T10YIE
-├── T10Y2Y
-├── BAMLC0A0CM
-├── BAMLH0A0HYM2
+Rates / inflation pricing / financial conditions / credit / FX
+├── DGS2 / DGS10 / DFII10 / T10YIE / T10Y2Y
+├── NFCI / ANFCI
+├── BAMLC0A0CM / BAMLH0A0HYM2
 └── DTWEXBGS
 
-Cross-asset prices
-├── VIXCLS
-├── SP500
-├── NASDAQCOM
-└── DCOILWTICO
+Supporting cross-asset observations
+└── VIXCLS / SP500 / NASDAQCOM / DCOILWTICO
 ```
 
 Yahoo adds Gold futures, Russell 2000, and DXY; CoinGecko adds BTC/ETH and crypto-wide market observations; Biquote adds trial economic-event result data.
@@ -181,7 +169,7 @@ Temporal / provenance / freshness / identity hardening
         ↓
 Current foundation defect closure
         ↓
-MVP market-universe completion: Macro + Crypto + Gold
+First MVP: macro change → candidate catalysts → evidence-linked macro narrative
         ↓
 Expectation baseline
         ↓
@@ -196,4 +184,4 @@ Secondary positioning / flow / internals
 Derived State → Intelligence → Briefing
 ```
 
-State, Risk, Regime, Intelligence, and Briefing remain downstream of factual/history/baseline/snapshot gates. The financial-market ontology broadens what P365 can represent; it does not authorize premature interpretation.
+Derived State, Risk, Regime and higher-order cross-asset Intelligence remain behind separate approved factual/history/baseline/calibration gates; **macro-only evidence-linked briefing is the first MVP target** and does not depend on completing BTC/Gold or event-window pipelines. The financial-market ontology broadens what P365 can represent; it does not authorize premature interpretation.
