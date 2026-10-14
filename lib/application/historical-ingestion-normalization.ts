@@ -1,16 +1,12 @@
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
-import type { MacroObservationInput } from "../data/fred";
-import type { FederalReserveSepObservationInput } from "../data/federal-reserve-sep";
-import type { GdeltGalFeedSnapshot } from "../data/gdelt-gal";
 import type { BinanceSpotKline } from "../data/binance-spot-flow";
 import type { BinanceOrderBookSnapshot } from "../data/binance-order-book";
 import type { HyperliquidPerpOrderBookSnapshot } from "../data/hyperliquid-perp-order-book";
 import type { SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
 import type { CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { ProviderResult } from "../data/types";
-import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, federalReserveSepToCanonicalRecords, macroToCanonicalRecords, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../normalization/provider-canonical";
-import { gdeltGalSnapshotsToEvidence } from "./gdelt-gal-history";
+import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../normalization/provider-canonical";
 import { buildBinanceBtcSpotFlowWindow } from "./btc-spot-flow";
 import { btcSpotFlowWindowsToEvidence } from "./btc-spot-flow-history";
 import { buildBinanceBtcOrderBookLiquiditySnapshot } from "./btc-order-book-liquidity";
@@ -19,23 +15,21 @@ import {
   binanceBtcSpotOrderBookSnapshotToEvidence,
   hyperliquidBtcPerpOrderBookSnapshotToEvidence,
 } from "./btc-order-book-history";
-import type { Evidence, Observation } from "../domain/types";
+import type { CanonicalHistoricalBatch } from "./historical-ingestion-macro-normalization";
+import { canonicalizeRetainedMacroResult, isRetainedMacroHistoricalProvider } from "./historical-ingestion-macro-normalization";
 
 
 import type { HistoricalIngestionMode, HistoricalIngestionProvider } from "./historical-ingestion-contract";
 
-export type CanonicalHistoricalBatch = { observations: Observation[]; evidence: Evidence[] };
+export type { CanonicalHistoricalBatch } from "./historical-ingestion-macro-normalization";
 
 export function canonicalizeHistoricalResult(
   result: ProviderResult<unknown>,
   provider: HistoricalIngestionProvider,
   mode: HistoricalIngestionMode,
 ): CanonicalHistoricalBatch {
-  if (provider === "fred") {
-    return macroToCanonicalRecords(result.data as MacroObservationInput[], P365_SOURCES.fred.id);
-  }
-  if (provider === "federal-reserve-sep") {
-    return federalReserveSepToCanonicalRecords(result.data as FederalReserveSepObservationInput[]);
+  if (isRetainedMacroHistoricalProvider(provider)) {
+    return canonicalizeRetainedMacroResult(result, provider);
   }
   if (provider === "defillama") {
     const rows = result.data as DefiLlamaStablecoinObservationInput[];
@@ -51,15 +45,6 @@ export function canonicalizeHistoricalResult(
   }
   if (provider === "cftc") {
     return cftcGoldCotToCanonicalRecords(result.data as CftcGoldCotObservationInput[]);
-  }
-  if (provider === "gdelt") {
-    return {
-      observations: [],
-      evidence: gdeltGalSnapshotsToEvidence({
-        snapshots: result.data as GdeltGalFeedSnapshot[],
-        retrievedAt: result.retrievedAt,
-      }),
-    };
   }
   if (provider === "binance-spot") {
     const windows = (result.data as BinanceSpotKline[]).map(buildBinanceBtcSpotFlowWindow);

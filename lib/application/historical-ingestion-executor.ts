@@ -1,7 +1,7 @@
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 import type { HistoricalIngestionAcquisition, HistoricalIngestionMode, HistoricalIngestionProvider, HistoricalIngestionProviderReport, FredPhysicalWriteMetrics } from "./historical-ingestion-contract";
 import { acquireHistoricalResult } from "./historical-ingestion-provider-registry";
-import { canonicalizeHistoricalResult } from "./historical-ingestion-normalization";
+import { canonicalizeRetainedMacroResult, isRetainedMacroHistoricalProvider } from "./historical-ingestion-macro-normalization";
 import { persistHistoricalBatch } from "./historical-ingestion-persistence";
 
 export async function executeProvider(
@@ -11,7 +11,10 @@ export async function executeProvider(
   mode: HistoricalIngestionMode,
 ): Promise<HistoricalIngestionProviderReport> {
   const result = await acquireHistoricalResult(provider, acquisition);
-  const canonical = canonicalizeHistoricalResult(result, provider, mode);
+  const canonical = isRetainedMacroHistoricalProvider(provider)
+    ? canonicalizeRetainedMacroResult(result, provider)
+    : (await import("./historical-ingestion-normalization"))
+      .canonicalizeHistoricalResult(result, provider, mode);
   const normalized = Math.max(canonical.observations.length, canonical.evidence.length);
   const isFred = provider === "fred";
   const metrics: FredPhysicalWriteMetrics | undefined = isFred

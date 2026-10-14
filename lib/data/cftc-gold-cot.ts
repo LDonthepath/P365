@@ -4,6 +4,8 @@ import type { ObservationProvenance } from "../domain/types";
 import { OBSERVATION_PROVIDER_RESOURCES } from "../domain/observation-provenance";
 import { providerFetchPolicy, type ProviderAcquisitionMode } from "./provider-fetch-policy";
 import { providerResult, type ProviderResult } from "./types";
+import { cftcGoldCotBackfillRangeError } from "./provider-backfill-ranges";
+export { CFTC_GOLD_COT_MAX_BACKFILL_CALENDAR_DAYS, cftcGoldCotBackfillRangeError } from "./provider-backfill-ranges";
 
 export const CFTC_PRE_BASE_URL = "https://publicreporting.cftc.gov" as const;
 export const CFTC_GOLD_COT_DATASET_ID = "72hh-3qpy" as const;
@@ -13,7 +15,6 @@ export const CFTC_GOLD_COT_SOURCE_ID = "cftc-gold-cot" as const;
 export const CFTC_GOLD_COT_PROVIDER_RESOURCE = OBSERVATION_PROVIDER_RESOURCES.cftcDisaggregatedFuturesOnly;
 export const CFTC_GOLD_COT_REPORT_FAMILY = "DISAGGREGATED_FUTURES_ONLY" as const;
 export const CFTC_GOLD_COT_FORWARD_REPORT_LIMIT = 8;
-export const CFTC_GOLD_COT_MAX_BACKFILL_CALENDAR_DAYS = 370;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -247,16 +248,6 @@ function isDateOnly(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00.000Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
-
-export function cftcGoldCotBackfillRangeError(range: CftcGoldCotBackfillRange): string | null {
-  if (!isDateOnly(range.from) || !isDateOnly(range.to) || range.from > range.to) {
-    return "CFTC Gold COT BACKFILL requires valid from/to date bounds";
-  }
-  const inclusiveDays = (Date.parse(`${range.to}T00:00:00.000Z`) - Date.parse(`${range.from}T00:00:00.000Z`)) / DAY_MS + 1;
-  return inclusiveDays > CFTC_GOLD_COT_MAX_BACKFILL_CALENDAR_DAYS
-    ? `CFTC Gold COT BACKFILL is limited to ${CFTC_GOLD_COT_MAX_BACKFILL_CALENDAR_DAYS} calendar days`
-    : null;
 }
 
 function reportDate(value: unknown): string {

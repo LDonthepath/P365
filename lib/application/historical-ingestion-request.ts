@@ -6,8 +6,7 @@ import {
   type HistoricalIngestionOptions,
   type HistoricalIngestionProvider,
 } from "./historical-ingestion";
-import { soSoValueBackfillRangeError } from "../data/sosovalue-etf-flow";
-import { cftcGoldCotBackfillRangeError } from "../data/cftc-gold-cot";
+import { soSoValueBackfillRangeError, cftcGoldCotBackfillRangeError } from "../data/provider-backfill-ranges";
 import { MACRO_SERIES_REGISTRY, type MacroSeriesId } from "../data/macro-registry";
 
 export type HistoricalIngestionRequestParseResult =

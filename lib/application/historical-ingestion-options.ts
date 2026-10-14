@@ -1,5 +1,4 @@
-import { soSoValueBackfillRangeError } from "../data/sosovalue-etf-flow";
-import { cftcGoldCotBackfillRangeError } from "../data/cftc-gold-cot";
+import { soSoValueBackfillRangeError, cftcGoldCotBackfillRangeError } from "../data/provider-backfill-ranges";
 import { defiLlamaBackfillRangeError, fredSelectiveBackfillRangeError, type HistoricalIngestionOptions } from "./historical-ingestion-contract";
 
 export function validateOptions(options: HistoricalIngestionOptions): void {
