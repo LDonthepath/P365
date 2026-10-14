@@ -1,63 +1,38 @@
 import type { ProviderId, ProviderResult } from "../data/types";
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 import type { HistoricalIngestionAcquisition, HistoricalIngestionOptions, HistoricalIngestionProvider } from "./historical-ingestion-contract";
+import { createRetainedMacroAcquisition } from "./historical-ingestion-macro-providers";
+import { createNonMacroAcquisition } from "./historical-ingestion-nonmacro-providers";
 
 export async function defaultDependencies(options: HistoricalIngestionOptions): Promise<{
   acquisition: HistoricalIngestionAcquisition;
   repositories: CanonicalRepositories;
 }> {
-  const [binanceSpot, binanceBook, hyperliquidBook, crypto, cftc, defillama, fred, federalReserveSep, gdelt, sosovalue, yahoo, repositories] = await Promise.all([
-    import("../data/binance-spot-flow"),
-    import("../data/binance-order-book"),
-    import("../data/hyperliquid-perp-order-book"),
-    import("../data/crypto-market"),
-    import("../data/cftc-gold-cot"),
-    import("../data/defillama-stablecoins"),
-    import("../data/fred"),
-    import("../data/federal-reserve-sep"),
-    import("../data/gdelt-gal"),
-    import("../data/sosovalue-etf-flow"),
-    import("../data/yahoo-finance-markets"),
+  const [nonMacro, macro, repositories] = await Promise.all([
+    createNonMacroAcquisition(options),
+    createRetainedMacroAcquisition(options),
     import("../repositories/dashboard-repository"),
   ]);
   return {
+    // Preserve existing provider keys, their ordering and their acquisition
+    // contracts while allowing a later checkpoint to remove non-MVP lanes.
     acquisition: {
-      "binance-spot": () => binanceSpot.fetchBinanceBtcSpotKlines({ limit: 3, acquisitionMode: "FRESH" }),
-      "binance-book": () => binanceBook.fetchBinanceBtcOrderBook({ limit: 500, acquisitionMode: "FRESH" }),
-      "hyperliquid-book": () => hyperliquidBook.fetchHyperliquidBtcPerpOrderBook({ acquisitionMode: "FRESH" }),
-      coingecko: () => crypto.fetchCryptoMarketObservations(["BTC", "ETH"], "FRESH"),
-      "coingecko-context": () => crypto.fetchCryptoMarketObservations(["BTC", "ETH"], "FRESH"),
-      fred: () => fred.fetchFredMacroObservations({
-        ...options.fred,
-        acquisitionMode: "FRESH",
-        requireCompleteRange: options.mode === "BACKFILL",
-      }),
-      "federal-reserve-sep": () => federalReserveSep.fetchFederalReserveSepObservations("FRESH"),
-      gold: () => yahoo.fetchGoldFuturesSpot("FRESH"),
-      russell: () => yahoo.fetchRussell2000Index("FRESH"),
-      dxy: () => yahoo.fetchDxyIndex("FRESH"),
-      usdjpy: () => yahoo.fetchUsdJpySpot("FRESH"),
-      usdcnh: () => yahoo.fetchUsdCnhSpot("FRESH"),
-      defillama: () => defillama.fetchDefiLlamaStablecoinObservations({
-        mode: options.mode,
-        acquisitionMode: "FRESH",
-        ...(options.mode === "BACKFILL" ? { range: options.defillama } : {}),
-      }),
-      sosovalue: () => sosovalue.fetchSoSoValueBtcEtfFlowObservations({
-        mode: options.mode,
-        acquisitionMode: "FRESH",
-        ...(options.mode === "BACKFILL" ? { range: options.sosovalue } : {}),
-      }),
-      cftc: () => cftc.fetchCftcGoldCotObservations({
-        mode: options.mode,
-        acquisitionMode: "FRESH",
-        ...(options.mode === "BACKFILL" ? { range: options.cftc } : {}),
-        ...(options.mode === "FORWARD" ? { releaseAware: options.cftcReleaseAware === true } : {}),
-      }),
-      gdelt: () => gdelt.fetchGdeltGalCandidateSnapshots({
-        assets: ["BTC", "GOLD"],
-        acquisitionMode: "FRESH",
-      }),
+      "binance-spot": nonMacro["binance-spot"],
+      "binance-book": nonMacro["binance-book"],
+      "hyperliquid-book": nonMacro["hyperliquid-book"],
+      coingecko: nonMacro.coingecko,
+      "coingecko-context": nonMacro["coingecko-context"],
+      fred: macro.fred,
+      "federal-reserve-sep": macro["federal-reserve-sep"],
+      gold: nonMacro.gold,
+      russell: nonMacro.russell,
+      dxy: nonMacro.dxy,
+      usdjpy: nonMacro.usdjpy,
+      usdcnh: nonMacro.usdcnh,
+      defillama: nonMacro.defillama,
+      sosovalue: nonMacro.sosovalue,
+      cftc: nonMacro.cftc,
+      gdelt: macro.gdelt,
     },
     repositories: repositories.canonicalRepositories,
   };
