@@ -185,9 +185,10 @@ test("HTTP handler authenticates BEFORE planner and returns selected count with 
   });
   const legacy = await handler(new Request("https://p365.example/api/cron/historical-ingestion?providers=fred,coingecko-context",
     { headers: { Authorization: "Bearer correct-secret" } }));
-  assert.equal(legacy.status, 200);
-  assert.equal(plannerCalls, 1, "original cron path never calls release planner");
-  assert.equal((await legacy.json()).fredSchedule, undefined);
+  assert.equal(legacy.status, 400, "retired CoinGecko context cannot be reactivated over HTTP");
+  assert.equal(plannerCalls, 1, "excluded provider request must not invoke FRED planner");
+  assert.equal(ingestions, 1, "excluded provider request must not invoke ingestion");
+  assert.match((await legacy.json()).error, /Nonmacro historical ingestion providers are retired/);
 });
 
 test("no calendar secret or upstream error payload leaks into planner response", async () => {
