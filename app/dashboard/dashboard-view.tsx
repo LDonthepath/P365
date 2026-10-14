@@ -1,8 +1,8 @@
 "use client";
 
-import type { DashboardData } from "@/lib/data/dashboard-data";
+import type { MacroDashboardData } from "@/lib/data/dashboard-data";
 import { DashboardShell } from "./dashboard-shell";
 
-export function DashboardView({ data, sessionEmail }: { data: DashboardData; sessionEmail: string }) {
+export function DashboardView({ data, sessionEmail }: { data: MacroDashboardData; sessionEmail: string }) {
   return <DashboardShell data={data} sessionEmail={sessionEmail} />;
 }

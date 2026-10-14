@@ -182,13 +182,17 @@ export async function readDurableDashboardData(
   repositories: DurableDashboardRepositories,
   /** Optional GET-local durable macro history; never persisted or shared across requests. */
   macroHistory?: Map<string, Observation[]>,
+  options: { macroOnly?: boolean } = {},
 ): Promise<NormalizedDashboardData> {
   if (!Number.isFinite(asOf.getTime())) throw new Error("Dashboard requires a valid as-of cutoff");
   const cutoff = asOf.toISOString();
   const failures = new Set<string>();
   const yahooSeriesFailures = new Set<string>();
 
-  const observationResults = await Promise.all(SERIES.map(async (series) => {
+  // The standalone macro dashboard never requests CoinGecko/Yahoo market history.
+  // The full legacy projection remains isolated for historical tests until PR 3.
+  const selectedSeries = options.macroOnly ? SERIES.filter((series) => series.sourceId === "fred") : SERIES;
+  const observationResults = await Promise.all(selectedSeries.map(async (series) => {
     try {
       const rows = await repositories.observations.findHistory({
         identity: { domain: series.domain, seriesKey: series.seriesKey },
@@ -211,7 +215,8 @@ export async function readDurableDashboardData(
   const observationReadQuality = qualifiedReads.map((row) => row.readQuality);
   const macroObservations = observations.filter((row) => row.domain === "MACRO");
 
-  const evidenceResults = await Promise.all(NEWS_SOURCES.map(async (sourceId) => {
+  const selectedNewsSources = options.macroOnly ? [] : [...NEWS_SOURCES];
+  const evidenceResults = await Promise.all(selectedNewsSources.map(async (sourceId) => {
     try {
       return await repositories.evidence.findHistory({
         sourceId, kind: "NEWS",
@@ -247,25 +252,27 @@ export async function readDurableDashboardData(
     });
     eventReadSucceeded = true;
     eventHistoryTruncated = rows.length >= 200;
-    events = latestByIdentity(rows.filter((item) => validAt(item.retrievedAt, cutoff)),
+    events = latestByIdentity(rows.filter((item) => validAt(item.retrievedAt, cutoff)
+      && (!options.macroOnly || item.sourceId === "forex-factory" || item.sourceId === "federal-reserve")),
       (item) => item.identity?.key ?? item.id);
   } catch {
     failures.add("forex-factory");
     failures.add("federal-reserve");
-    failures.add("biquote");
+    if (!options.macroOnly) failures.add("biquote");
   }
   // No source-enveloped full-window/EMPTY receipts exist in canonical Event
   // history today. Never infer "no events" or a verified 7-day horizon from
   // the count of returned Event rows (including zero rows).
   const calendarForwardCoverage = buildCalendarForwardCoverage({
     events, asOf: cutoff, eventReadSucceeded, eventHistoryTruncated,
+    ...(options.macroOnly ? { feedSources: ["forex-factory", "federal-reserve"] as const } : {}),
   });
   const calendarEvents = events.map((item) => calendarFromEvent(item, asOf))
     .filter((row): row is CalendarEvent => row !== null)
     .sort((a, b) => Date.parse(a.dateISO) - Date.parse(b.dateISO)).slice(0, 6);
 
   const all: Array<Observation | Event | Evidence> = [...observations, ...events, ...newsEvidence];
-  const yahooSeriesHealth: YahooSeriesHealth[] = YAHOO_MARKET_SERIES.map(({ seriesKey }) => ({
+  const yahooSeriesHealth: YahooSeriesHealth[] = (options.macroOnly ? [] : YAHOO_MARKET_SERIES).map(({ seriesKey }) => ({
     ...providerHealth(
       "yahoo-finance",
       observations.filter((row) => row.sourceId === "yahoo-finance"
@@ -275,7 +282,9 @@ export async function readDurableDashboardData(
     seriesKey,
   }));
   const yahooMarketHealth = aggregateYahooHealth(yahooSeriesHealth);
-  const providerHealthRows = PROVIDERS.map((sourceId) =>
+  const visibleProviders: readonly string[] = options.macroOnly
+    ? ["fred", "forex-factory", "federal-reserve"] : PROVIDERS;
+  const providerHealthRows = visibleProviders.map((sourceId) =>
     sourceId === "yahoo-finance"
       ? yahooMarketHealth
       : providerHealth(sourceId, all.filter((row) => row.sourceId === sourceId), failures));
@@ -284,7 +293,7 @@ export async function readDurableDashboardData(
       row.sourceId !== "yahoo-finance" && row.status !== "HEALTHY")
       .map((row) => `${row.sourceId}: ${row.status === "ERROR" ? "gagal membaca histori" :
         row.status === "STALE" ? "data terakhir sudah lama" : "belum ada data durabel"}`),
-    ...yahooSeriesUnavailable(yahooSeriesHealth),
+    ...(!options.macroOnly ? yahooSeriesUnavailable(yahooSeriesHealth) : []),
   ];
 
   return {

@@ -161,12 +161,11 @@ test("misaligned MOVE or missing evidence fails closed without daily-rate compar
   assert.match(build([], [], move(1, 121000)).comparisonNote, /Belum dapat dibandingkan/);
 });
 
-test("Pasar board is wired once, collapses details and does not request a new provider", () => {
+test("retired Pasar board is no longer mounted; legacy presentation remains read-only", () => {
   const shell = readFileSync("app/dashboard/dashboard-shell.tsx", "utf8");
-  const market = readFileSync("app/dashboard/dashboard-market-feature.tsx", "utf8");
   const jsx = readFileSync("app/dashboard/financial-market-overview-panel.tsx", "utf8");
-  assert.equal((market.match(/<FinancialMarketOverviewPanel data=/g) ?? []).length, 1);
-  assert.match(shell, /activeMenu === "heatmap"/);
+  assert.doesNotMatch(shell, /activeMenu === "heatmap"/);
+  assert.doesNotMatch(shell, /<MarketSection/);
   assert.match(jsx, /<details className=\{styles\.details\}>/);
   assert.match(jsx, /<summary>Asal dan waktu<\/summary>/);
   // The displayed warning is Indonesian: "kausalitas", not the stale "causalitas".
