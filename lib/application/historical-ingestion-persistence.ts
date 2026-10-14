@@ -1,6 +1,6 @@
 import type { CanonicalRepositories } from "../repositories/dashboard-repository";
 import type { HistoricalIngestionProvider, FredPhysicalWriteMetrics } from "./historical-ingestion-contract";
-import type { CanonicalHistoricalBatch } from "./historical-ingestion-normalization";
+import type { CanonicalHistoricalBatch } from "./historical-ingestion-macro-normalization";
 
 /**
  * Only this adapter owns persistence semantics and FRED physical write receipts.

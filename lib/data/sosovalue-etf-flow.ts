@@ -4,6 +4,8 @@ import type { ObservationProvenance } from "../domain/types";
 import { OBSERVATION_PROVIDER_RESOURCES } from "../domain/observation-provenance";
 import { providerFetchPolicy, type ProviderAcquisitionMode } from "./provider-fetch-policy";
 import { providerResult, type ProviderResult } from "./types";
+import { soSoValueBackfillRangeError } from "./provider-backfill-ranges";
+export { SOSOVALUE_MAX_BACKFILL_CALENDAR_DAYS, soSoValueBackfillRangeError } from "./provider-backfill-ranges";
 
 export const SOSOVALUE_BASE_URL = "https://openapi.sosovalue.com/openapi/v1" as const;
 export const SOSOVALUE_ETF_FLOW_PROVIDER_RESOURCE = OBSERVATION_PROVIDER_RESOURCES.soSoValueEtfSummaryHistory;
@@ -11,21 +13,9 @@ export const SOSOVALUE_ETF_FLOW_SOURCE_ID = "sosovalue-etf-flow" as const;
 export const SOSOVALUE_ETF_FLOW_MATURITY_POLICY = "SOSOVALUE_ETF_FLOW_MATURITY_V0_1" as const;
 export const SOSOVALUE_ETF_FLOW_COMPLETION_BASIS = "P365_PROVIDER_DATE_ADVANCEMENT" as const;
 export const SOSOVALUE_ETF_FLOW_MATURITY_STATUS = "MATURED_ELIGIBLE_UNDER_P365_POLICY" as const;
-export const SOSOVALUE_MAX_BACKFILL_CALENDAR_DAYS = 28;
 export const SOSOVALUE_HISTORY_LIMIT = 50;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type SoSoValueBtcEtfFlowBackfillRange = { from: string; to: string };
-
-export function soSoValueBackfillRangeError(range: SoSoValueBtcEtfFlowBackfillRange): string | null {
-  if (!isDateOnly(range.from) || !isDateOnly(range.to) || range.from > range.to) {
-    return "SoSoValue BACKFILL requires valid from/to date bounds";
-  }
-  const inclusiveDays = (Date.parse(`${range.to}T00:00:00.000Z`) - Date.parse(`${range.from}T00:00:00.000Z`)) / DAY_MS + 1;
-  return inclusiveDays > SOSOVALUE_MAX_BACKFILL_CALENDAR_DAYS
-    ? `SoSoValue BACKFILL is limited to ${SOSOVALUE_MAX_BACKFILL_CALENDAR_DAYS} calendar days`
-    : null;
-}
 
 export type SoSoValueBtcEtfFlowObservationInput = {
   metricId: "crypto.us_spot_btc_etf_net_flow.usd";
