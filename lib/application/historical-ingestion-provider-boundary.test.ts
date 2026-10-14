@@ -69,3 +69,17 @@ test("MACRO-CUT-003D: non-injected runner fails before initializing repos or fet
   const initialize = runner.indexOf("await defaultDependencies(options)");
   assert.ok(deny >= 0 && initialize > deny, "retirement check must precede default repository initialization");
 });
+
+test("MACRO-CUT-003G: retained macro normalizer is independent of the mixed market-provider adapter", () => {
+  const macro = readFileSync(new URL("./historical-ingestion-macro-normalization.ts", import.meta.url), "utf8");
+  const adapter = readFileSync(new URL("../normalization/provider-canonical-macro.ts", import.meta.url), "utf8");
+  const combined = readFileSync(new URL("../normalization/provider-canonical.ts", import.meta.url), "utf8");
+  assert.match(macro, /from "\.\.\/normalization\/provider-canonical-macro"/);
+  assert.doesNotMatch(macro, /from "\.\.\/normalization\/provider-canonical"/);
+  assert.match(adapter, /export function macroToCanonicalRecords\(/);
+  assert.match(adapter, /export function federalReserveSepToCanonicalRecords\(/);
+  assert.match(adapter, /from "\.\.\/data\/fred"/);
+  assert.match(adapter, /from "\.\.\/data\/federal-reserve-sep"/);
+  assert.doesNotMatch(adapter, /data\/(?:crypto-market|defillama|sosovalue|cftc|binance|hyperliquid)|from "\.\/provider-canonical"/);
+  assert.match(combined, /export \{ macroToCanonicalRecords, federalReserveSepToCanonicalRecords \} from "\.\/provider-canonical-macro"/);
+});
