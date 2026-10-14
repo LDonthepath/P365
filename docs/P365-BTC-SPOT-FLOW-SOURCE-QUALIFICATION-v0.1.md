@@ -5,6 +5,8 @@
 **Scope:** BTC spot taker-flow evidence plus production-active forward durable history  
 **Owner approval:** Binance Spot + Bybit Spot provider expansion approved 4 Oct 2026
 
+**14 October 2026 owner scope decision — MACRO-CUT-003A:** Bybit is excluded from the standalone macro MVP. The Bybit acquisition adapter and recent-trade summarizer are retired at the MACRO-CUT-003A code checkpoint; the qualifications and historical Vercel region-block evidence below remain as a dated record, **not** a current active provider claim. This checkpoint does not delete Market Memory, alter cron, or change the retained Binance legacy contract.
+
 ## 1. Product question
 
 This checkpoint exists to answer one bounded factual question after a material BTC move:
