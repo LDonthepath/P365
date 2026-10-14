@@ -32,6 +32,6 @@ test("MACRO-CUT-002: rendered views only depend on macro and calendar read paths
     assert.doesNotMatch(feature(name), /BTC|GoldSection|IntradayEventResponsePanel|MvpFactualContextPanel|BtcEtfFlowPanel/);
   }
   const query = readFileSync("lib/application/dashboard-query.ts", "utf8");
-  assert.doesNotMatch(query, /intraday-event-monitor|snapshot|material-move-monitor|btc-etf-flow|stablecoin-liquidity|gold-positioning|mvp-factual-context|readDxyMacroHistory/);
+  assert.doesNotMatch(query, /from ["\']\.\/(?:intraday-event-monitor|.*snapshot.*|material-move-monitor|btc-etf-flow|stablecoin-liquidity|gold-positioning|mvp-factual-context)["\']|readDxyMacroHistory|buildMaterialMoveMonitor\(/);
   assert.match(query, /macroOnly: true/);
 });

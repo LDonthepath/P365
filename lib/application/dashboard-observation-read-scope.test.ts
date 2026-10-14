@@ -117,9 +117,9 @@ test("G2-02: bounded cache capacity fails open to physical read without losing e
 test("G2-02: dashboard orchestration uses one scoped history facade and emits safe slow metrics", () => {
   const code = readFileSync(new URL("./dashboard-query.ts", import.meta.url), "utf8");
   assert.match(code, /createDashboardObservationReadScope\(dashboardHistoricalObservationRepository\)/);
-  assert.match(code, /observations: scopedObservations/);
-  assert.match(code, /const materialMoveMonitorPromise = buildMaterialMoveMonitor\([\s\S]*?observations: readScope\.forConsumer\("material_move"\)/);
-  const body = code.split("export async function getDashboardData(): Promise<DashboardData> {")[1];
+  assert.match(code, /observations: readScope\.forConsumer\("durable_projection"\)/);
+  assert.doesNotMatch(code, /buildMaterialMoveMonitor|materialMoveMonitorPromise|readScope\.forConsumer\("material_move"\)/);
+  const body = code.split("export async function getDashboardData(): Promise<MacroDashboardData> {")[1];
   assert.ok(body);
   assert.doesNotMatch(body, /ingestDashboardData\(|fetch[A-Z]/);
   assert.equal((body.match(/dashboardHistoricalObservationRepository/g) || []).length, 1);
@@ -245,10 +245,12 @@ test("G2-07: first physical consumer owns failure; retry and next GET remain iso
 
 test("G2-07: dashboard uses bounded model labels and never fetches on GET", () => {
   const code = readFileSync(new URL("./dashboard-query.ts", import.meta.url), "utf8");
-  for (const name of ["durable_projection", "macro_baselines", "net_liquidity",
-    "central_bank_balances", "dxy_history", "rates_inflation", "credit_conditions",
-    "mvp_factual_context", "stablecoin_liquidity", "btc_etf_flow", "gold_positioning", "material_move"]) {
+  for (const name of ["durable_projection", "macro_baselines", "net_liquidity", "rates_inflation"]) {
     assert.ok(code.includes('readScope.forConsumer("' + name + '")'));
+  }
+  for (const removed of ["central_bank_balances", "dxy_history", "credit_conditions",
+    "mvp_factual_context", "stablecoin_liquidity", "btc_etf_flow", "gold_positioning", "material_move"]) {
+    assert.ok(!code.includes('readScope.forConsumer("' + removed + '")'));
   }
   const body = code.split("export async function getDashboardData(): Promise<DashboardData> {")[1];
   assert.ok(body);

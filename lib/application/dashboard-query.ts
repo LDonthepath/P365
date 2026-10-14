@@ -13,7 +13,7 @@ import { createDashboardObservationReadScope } from "./dashboard-observation-rea
 
 /**
  * The active dashboard contract contains macro context and economic calendar
- * only. Intraday market snapshots and asset read models are not imported.
+ * only. Cross-asset event-window and asset read models are not imported.
  */
 export type MacroDashboardData = NormalizedDashboardData & {
   marketReadContext: MarketReadContext;
@@ -22,7 +22,7 @@ export type MacroDashboardData = NormalizedDashboardData & {
   ratesInflation: RatesInflationReadModel;
 };
 
-const limitedObservationRepository = withHistoricalObservationConcurrencyLimit(
+const dashboardHistoricalObservationRepository = withHistoricalObservationConcurrencyLimit(
   historicalObservationRepository, 4,
 );
 
@@ -30,7 +30,7 @@ export async function getDashboardData(): Promise<MacroDashboardData> {
   const started = performance.now();
   const readContext = beginMarketReadContext(new Date());
   const asOf = new Date(readContext.knowledgeAsOf);
-  const readScope = createDashboardObservationReadScope(limitedObservationRepository);
+  const readScope = createDashboardObservationReadScope(dashboardHistoricalObservationRepository);
   if (process.env.P365_DURABLE_PROJECTION_BATCH === "enabled"
     && process.env.P365_MEMORY_PERSISTENCE !== "memory") {
     const batch = createBatchedProjectionObservationRepository();

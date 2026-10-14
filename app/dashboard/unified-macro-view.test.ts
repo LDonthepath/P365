@@ -56,11 +56,13 @@ test("Macro and Briefing reuse the shared view without duplicate DFII10 or DGS2 
   const briefing = renderToStaticMarkup(createElement(FactualMarketBriefingPanel, { data: composeFactualMarketBriefing({
     baselines: {}, observations: [], asOf, ratesPolicy: rates,
   }) }));
-  for (const html of [macro, briefing]) {
-    for (const label of ["Dolar AS (DXY · ICE)", "Treasury AS 2 tahun", "Real yield AS 10 tahun"]) {
+  for (const label of ["Treasury AS 2 tahun", "Real yield AS 10 tahun"]) {
+    for (const html of [macro, briefing]) {
       assert.equal(html.split(`aria-label="${label}"`).length - 1, 1);
     }
   }
+  assert.doesNotMatch(macro, /Dolar AS \(DXY · ICE\)|Yahoo Finance/);
+  assert.equal(briefing.split('aria-label="Dolar AS (DXY · ICE)"').length - 1, 1);
 });
 
 test("missing series and predecessor unavailable retain all three slots and explicit gaps", async () => {
