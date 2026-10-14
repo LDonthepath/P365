@@ -1,5 +1,7 @@
 # P365 Foundation Master — SSOT v0.1
 
+**14 October 2026 documentation precedence (main@0ee4d3cd):** This SSOT preserves dated operational audits, gates and decisions; **old “current state”, registry totals, or Macro + Crypto + Gold MVP statements are historical to their checkpoint** and not proof of today's production behavior. The current **first product MVP** is standalone, evidence-linked **Macro Catalyst & Narrative Intelligence**, governed by [User & Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) / [#360](https://github.com/LDonthepath/P365/issues/360). At this verified code SHA, `lib/data/macro-registry.ts` contains **37 FRED series** (vs 33 in earlier snapshots). Code registry membership does not prove qualified historical coverage or runtime success. This clarification does **not** rewrite the chronological audits, change technical invariants, or authorize runtime action.
+
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  
 **Historical foundation audit ref (EVR-001):** `main@c7226fcf215a1d27ab2837835361a763a1501ec6`; see 10 October recovery checkpoint below for the latest independently verified ref.
 **Audit boundary:** Product contract → source qualification → provider → ingestion → normalization → canonical domain → temporal/provenance → quality/health → context → persistence/history → baseline → snapshot readiness → cross-asset readiness → expectation/repricing readiness → presentation/UI → deferred reasoning boundaries.

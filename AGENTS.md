@@ -61,4 +61,4 @@ Next.js 15 (App Router), TypeScript, React Server Components + Server Actions, d
 - `lib/domain/` — canonical types, invariant contracts, and domain builders (Baseline, Context, State, Risk, Intelligence)
 - `lib/ingestion/`, `lib/normalization/`, `lib/repositories/`, `lib/application/` — the pipeline boundary (Provider → Ingestion → Normalization → Repository → Application query)
 - `lib/presentation/` — domain-to-UI display conversion
-- `app/dashboard/` — the actual page, server actions, and the (large, single-file) view component
+- `app/dashboard/` — dashboard page, server actions, and feature-oriented presentation modules; check current main for concrete module ownership (recovery G4 extraction has progressed)

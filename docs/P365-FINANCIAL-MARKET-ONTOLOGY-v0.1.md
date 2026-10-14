@@ -9,7 +9,7 @@
 
 > **Product-scope supersession — 11 October 2026 (latest MVP clarification):** The **first MVP is evidence-driven Macro Catalyst & Narrative Intelligence**, able to synthesize macro changes and candidate catalysts **without market-asset price or MOVE inputs**. Multi-asset Financial Market Intelligence across intraday/swing/position remains the **later product direction**. The active product contract is [User & Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md); future market universe gates remain in §1.0; the [phase roadmap in issue #360](https://github.com/LDonthepath/P365/issues/360) prioritizes a self-sufficient macro narrative MVP before asset activation. Original v0.1 Crypto+Gold-first implementation text in §§1.1–1.3, 8 and 10 is historical, not a current MVP gate. Semantic/temporal invariants remain normative. **No additional runtime/provider, derived State/Regime or trading logic is authorized by this note.**
 
-P365 is a **Financial Market Intelligence System**. Its long-term product ontology is broader than the MVP, but the **MVP implementation boundary is intentionally limited to Macro + Crypto + Gold**.
+P365 is a **Financial Market Intelligence System**. Its long-term ontology is multi-asset; **Macro + Crypto + Gold was the original implementation slice**, not the current first-MVP acceptance boundary. The first MVP is standalone Macro Catalyst & Narrative Intelligence. BTC/Gold analysis and asset-price attribution are later-stage capabilities, not gates.
 
 The canonical foundation must represent the mechanisms a self-directed trader/investor uses to understand the market:
 
@@ -692,6 +692,8 @@ Legend:
 
 ## 8. Historical priority model (not the current product roadmap)
 
+**Read as archive:** The priorities and Macro + Crypto + Gold completion requirements in this section describe the earlier asset-oriented vertical slice, not the first macro-only MVP gate. They do not authorize new provider or runtime activation.
+
 Priority describes implementation dependency, **not market importance**.
 
 ### CORE
@@ -835,4 +837,4 @@ The original v0.1 product constraint was narrower:
 
 > **Historical  v0.1:** Give P365 one scalable semantic map for the financial market while keeping MVP delivery constrained to Macro + Crypto + Gold.
 
-**Current product direction (11 October 2026):** multi-asset, multi-horizon market-first intelligence. Crypto + Gold remain initial deep implementations, while other market families become first-class only after their own data/methodology/release qualification. Macro provides environmental state/regime context. See linked v1.0 product contract/universe/roadmap above; the canonical ontology and foundation recovery safety gates remain in force.
+**Current product direction (latest owner clarification, 11 October 2026):** the **first MVP is a self-contained macro change → candidate catalyst → evidence-linked narrative report**. Multi-asset/multi-horizon Financial Market Intelligence remains the longer-term vision; existing BTC/Gold capabilities are retained but are not MVP acceptance dependencies. Qualified macro regime descriptions require calibrated methods and point-in-time evidence; cross-asset risk-on/off and attribution are separate later gates. See linked v1.0 product contract/universe/roadmap above; the canonical ontology and foundation recovery safety gates remain in force.

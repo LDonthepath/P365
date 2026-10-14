@@ -1,9 +1,11 @@
 # P365 Continuous Market Move Detection Contract v0.1
 
+**Product-scope precedence (11 October 2026):** This document preserves the approved **asset-oriented/event-window capability contract** from the earlier Macro + BTC/Gold vertical slice. It remains useful for its own bounded implementation, but **does not set the first MVP exit criteria**. The first MVP is standalone evidence-linked Macro Catalyst & Narrative Intelligence; BTC/Gold prices, MOVE and cross-asset attribution are not mandatory. See [current product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) and [#360](https://github.com/LDonthepath/P365/issues/360). Do not infer runtime activation or new source approval from this scope notice.
+
 **Checkpoint:** MOVE-001A / MOVE-001B / MOVE-001C
 **Status:** MOVE-001A MERGED / PR #151 — MOVE-001B MERGED / PR #153 — MOVE-001C MERGED / PR #154
 **Scope:** Continuous factual move detection for the MVP traded markets
-**Primary MVP targets:** Bitcoin + Gold
+**Original move-detection targets (later-stage capability):** Bitcoin + Gold
 **Supporting context:** Macro, DXY, ETH and other already-qualified evidence
 **Implementation effect:** Documentation only. This checkpoint does not add runtime detection, persistence, scheduler changes, providers, UI, State/Regime/Risk/Intelligence, causal attribution, or trading logic.
 

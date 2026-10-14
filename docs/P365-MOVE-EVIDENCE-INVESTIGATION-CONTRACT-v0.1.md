@@ -1,10 +1,12 @@
 # P365 Move-Centered Evidence Investigation Contract v0.1
 
+**Product-scope precedence (11 October 2026):** This document preserves the approved **asset-oriented/event-window capability contract** from the earlier Macro + BTC/Gold vertical slice. It remains useful for its own bounded implementation, but **does not set the first MVP exit criteria**. The first MVP is standalone evidence-linked Macro Catalyst & Narrative Intelligence; BTC/Gold prices, MOVE and cross-asset attribution are not mandatory. See [current product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) and [#360](https://github.com/LDonthepath/P365/issues/360). Do not infer runtime activation or new source approval from this scope notice.
+
 **Checkpoint:** MOVE-002A + MOVE-002B + MOVE-002C + MOVE-002D  
 **Status:** MOVE-002A MERGED / MOVE-002B READ-ONLY RUNTIME IMPLEMENTED / MOVE-002C BTC SPOT-FLOW REPLAY IMPLEMENTED / MOVE-002D GDELT CATALYST REPLAY IMPLEMENTED  
 **Trigger dependency:** MOVE-001C `ContinuousMoveAssessment.status = MATERIAL_MOVE`  
 **Scope:** Evidence organization and coverage qualification for move-driven investigation  
-**Primary MVP targets:** Bitcoin + Gold  
+**Original investigation targets (later-stage capability):** Bitcoin + Gold  
 **Implementation effect:** MOVE-002A defines the contract; MOVE-002B adds the read-only repository-backed evidence bundle runtime; MOVE-002C adds durable Binance spot-flow replay; MOVE-002D adds durable GDELT BTC/Gold catalyst replay under the same point-in-time cutoff. No provider activation, persistence, scheduler, UI, causal engine, State/Regime/Risk/Intelligence, prediction, or trading logic.
 
 ## 1. Purpose

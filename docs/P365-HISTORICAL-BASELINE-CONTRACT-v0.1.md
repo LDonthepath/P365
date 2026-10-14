@@ -1,9 +1,11 @@
 # P365 Point-in-Time Historical Baseline Contract v0.1
 
+**Product-scope precedence (11 October 2026):** This document preserves the approved **asset-oriented/event-window capability contract** from the earlier Macro + BTC/Gold vertical slice. It remains useful for its own bounded implementation, but **does not set the first MVP exit criteria**. The first MVP is standalone evidence-linked Macro Catalyst & Narrative Intelligence; BTC/Gold prices, MOVE and cross-asset attribution are not mandatory. See [current product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) and [#360](https://github.com/LDonthepath/P365/issues/360). Do not infer runtime activation or new source approval from this scope notice.
+
 **Checkpoint:** HIST-001A  
 **Status:** CONTRACT FROZEN / HIST-001A-D MERGED / HIST-001E EVENT-RESPONSE INTEGRATION IMPLEMENTED / OWNER MERGE PENDING  
 **Scope:** read-only, single-series historical distribution baseline  
-**MVP scope:** Macro explanatory layer + Crypto + Gold
+**Original historical-baseline implementation slice:** Macro explanatory layer + Crypto + Gold (not the standalone macro MVP acceptance)
 
 ## 1. Purpose
 

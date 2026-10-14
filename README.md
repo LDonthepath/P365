@@ -52,7 +52,7 @@ Setiap layer, data source, model, dan UI harus dapat dipertanggungjawabkan terha
 
 **Cakupan produk jangka panjang:** Financial Market Intelligence lintas FX, rates, equities, commodities, crypto, credit/funding dan volatility/derivatives. **Namun MVP pertama dibatasi pada narasi makro berbasis data makro yang qualified**: growth, inflation, labor, policy, rates, dan macro liquidity/funding. Tidak perlu coverage empat keluarga aset atau risk-on/off market regime untuk lulus MVP pertama. Cakupan produk target ≠ provider/data runtime yang sudah terverifikasi.
 
-**Implementation baseline historis:** Pengembangan mula-mula memusat pada Macro + Crypto + Gold/BTC. Semua klaim status berikut adalah snapshot foundation yang harus diverifikasi lagi terhadap current main, code, CI dan production; **bukan** hasil audit coverage live 11 Oktober 2026. Perluasan keluarga pasar pertama-tama harus lulus factual source/horizon/temporal quality gates di roadmap. State/Regime/Intelligence tetap deferred kecuali checkpoint terpisah disetujui owner.
+**Snapshot fondasi historis (bukan inventaris runtime terkini):** Pengembangan mula-mula memusat pada Macro + Crypto + Gold/BTC. Semua klaim status berikut adalah snapshot foundation yang harus diverifikasi lagi terhadap current main, code, CI dan production; **bukan** hasil audit coverage live 11 Oktober 2026. Perluasan keluarga pasar pertama-tama harus lulus factual source/horizon/temporal quality gates di roadmap. State/Regime/Intelligence tetap deferred kecuali checkpoint terpisah disetujui owner.
 
 Pipeline canonical dan reasoning boundary:
 
@@ -78,7 +78,11 @@ Market Briefing
 UI
 ```
 
-Implementasi aktif belum melewati fondasi Baseline/Market Memory; State, Risk, Intelligence, dan Market Briefing tetap deferred.
+Pada snapshot fondasi awal, implementasi belum melewati Baseline/Market Memory. Kemajuan setelah snapshot harus diverifikasi di kode, issue, CI dan produksi; kalimat historis ini bukan status runtime terbaru. Derived State/Risk/Regime/higher-order Intelligence tetap owner-gated; *factual briefing* yang sudah ada tidak dengan sendirinya memenuhi acceptance narasi makro mandiri.
+
+**Referensi kode terverifikasi:** pada `main@0ee4d3cd` (14 Oktober 2026), `lib/data/macro-registry.ts` berisi **37 seri FRED**. Registry kode adalah sumber kebenaran untuk jumlah/ID saat ini; entri registry tidak otomatis membuktikan kelengkapan histori, keterbaruan, atau aktivitas provider di produksi.
+
+Daftar implementasi fondasi historis di bawah ini bukan laporan audit produksi terbaru:
 
 Current implementation sudah mencakup:
 
@@ -86,7 +90,7 @@ Current implementation sudah mencakup:
 - CoinDesk crypto news sebagai Evidence.
 - Forex Factory weekly economic calendar sebagai Event + Evidence.
 - Federal Reserve FOMC calendar sebagai Event + Evidence.
-- FRED structured macro observations untuk 19 P0 series.
+- FRED structured macro observations untuk **19 seri P0 pada tahap fondasi awal** (bukan total registry terkini).
 - CoinGecko sebagai provider utama factual crypto market observations (BTC/ETH price, market cap, total market cap/volume, dominance).
 - FRED + Yahoo Finance untuk factual cross-asset coverage yang sudah qualified pada foundation saat ini.
 - Biquote sebagai trial provider untuk structured economic-event results.
@@ -128,7 +132,7 @@ Untuk deployment Vercel, atur nilai tersebut pada Project Settings → Environme
 Dokumentasi operasional fondasi menggunakan satu SSOT:
 
 - `docs/P365-CANONICAL-FOUNDATION-INTEGRITY-AUDIT-F0.md` — **master foundation SSOT**: current state, audit F0, FND-001…FND-019, remediation sequence, completion gates, dan checkpoint history.
-- `docs/P365-ARCHITECTURE.md` — kontrak arsitektur/invariants yang stabil.
+- `docs/P365-ARCHITECTURE.md` — arsitektur, invariants, MVP makro yang berlaku, dan rujukan registry kode (bukan bukti deployment).
 - `docs/P365-USER-DECISION-SUPPORT-CONTRACT.md` — **otoritas arah produk terbaru**: multi-asset, multi-horizon dan macro-as-context.
 - `docs/P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md` (§1.0) — cakupan keluarga pasar target, data identity, readiness dan first-class activation gates.
 - [Issue #360 — Product Roadmap PRB-0…PRB-6](https://github.com/LDonthepath/P365/issues/360) — pelacakan product rebaseline; terpisah dari [Recovery #283](https://github.com/LDonthepath/P365/issues/283).

@@ -1,8 +1,10 @@
 # P365 Cross-Asset Transmission Contract v0.1
 
+**Product-scope precedence (11 October 2026):** This document preserves the approved **asset-oriented/event-window capability contract** from the earlier Macro + BTC/Gold vertical slice. It remains useful for its own bounded implementation, but **does not set the first MVP exit criteria**. The first MVP is standalone evidence-linked Macro Catalyst & Narrative Intelligence; BTC/Gold prices, MOVE and cross-asset attribution are not mandatory. See [current product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) and [#360](https://github.com/LDonthepath/P365/issues/360). Do not infer runtime activation or new source approval from this scope notice.
+
 **Checkpoint:** TRN-001  
 **Status:** MERGED — PR #75, merge `7a8a3bc60467b1a59a15a48496115adc806b5a51`  
-**Scope:** Macro + Crypto + Gold event-window cross-asset response coherence  
+**Scope (original asset-oriented slice):** Macro + Crypto + Gold event-window cross-asset response coherence  
 **Prerequisites:** CMP-001, RPR-001, EVW-001, CAP-001 natural production proof
 
 ## Purpose
@@ -147,7 +149,7 @@ The complete assessment receives a deterministic `cross-asset-transmission-v1-..
 
 Equivalent rule sets therefore produce the same assessment identity regardless of caller ordering.
 
-## Current MVP boundary
+## Original event-window implementation boundary (historical product slice)
 
 TRN-001 is generic at the domain-contract level but does not expand the MVP universe.
 

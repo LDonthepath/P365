@@ -1,5 +1,7 @@
 # OBS-FRED-001E — Exact Insert Identity & Transaction Ordering Decision Gate
 
+**Count provenance (14 October 2026):** The **33 × 8 = 264** observation figure below is an **observed 8 October 2026 run**, not a statement of today's registry size. Current code lists **37 FRED series** at `main@0ee4d3cd`; the historical SQL receipt and 264 deduped observations remain unchanged. Do not infer current production write counts from either number.
+
 **Status:** PROPOSED CONTRACT / OWNER REVIEW; **DESIGN AND READ-ONLY VERIFICATION ONLY**
 **Issue:** #242. **Code baseline:** `main@9b8da4cb04d5b79b1d5c60c1bc0a7a2576e1aa81` (2026-10-08 07:53:32 UTC).
 **Scope:** one document. Do not deploy a database function, modify an index/trigger, run an ingestion, change cron, wire revision classification, or modify existing Market Memory data in this checkpoint.

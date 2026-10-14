@@ -1,8 +1,10 @@
 # P365 MVP BTC + XAU Evidence & Relationship Map v0.1
 
-**Status:** Proposed normative MVP evidence contract  
+**Product scope supersession (11 October 2026):** This document describes an **earlier BTC/Gold-oriented implementation slice or a later-phase capability**, not the first-MVP acceptance gate. The current first MVP is **standalone, evidence-linked Macro Catalyst & Narrative Intelligence**; it does **not** require BTC/Gold prices, MOVE, cross-asset attribution or risk-on/off. See [product contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) and [roadmap #360](https://github.com/LDonthepath/P365/issues/360). Historical priorities and dated runtime snapshots below are retained for traceability and must not override the current product contract or current code.
+
+**Status:** BTC/Gold-specific evidence design retained for a later-stage market-asset capability; **not** current first-MVP gate  
 **Primary user:** Self-directed retail Crypto + Gold trader  
-**MVP traded markets:** Bitcoin / Crypto + Gold  
+**Original vertical-slice markets:** Bitcoin / Crypto + Gold  
 **Explanatory layer:** Macro  
 **Implementation effect:** Documentation-only. This contract does not authorize provider expansion, runtime reasoning, trading signals, or portfolio/execution logic.
 

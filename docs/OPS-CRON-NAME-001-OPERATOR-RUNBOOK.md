@@ -1,5 +1,7 @@
 # OPS-CRON-NAME-001 — Alias operator untuk job `p365-fred`
 
+**Keterkinian:** angka job, nama, fingerprint dan status review dalam runbook adalah **hasil audit 11 Oktober 2026**, bukan jaminan keadaan produksi saat ini. Periksa `cron.job` read-only dan registry kode sebelum menjalankan prosedur; perubahan dokumentasi ini tidak mengubah scheduler.
+
 **Issue:** [#332](https://github.com/LDonthepath/P365/issues/332)  
 **Jenis keputusan:** **OPERATOR ALIAS** — nama `cron.job.jobname` produksi sengaja **tidak diubah**.  
 **Baseline:** `main@ee1280368dc05b890f3a651d65378781fa267f02` (11 Oktober 2026, sekitar 08.41 WIB).  
@@ -55,7 +57,7 @@ Output menampilkan `jobid`, `actual_jobname`, `operator_label`, `mapping_status`
 Jika `mapping_status='TERVERIFIKASI'`, **gunakan kolom `operator_label`**, bukan nama lama, dalam inspeksi, laporan insiden, dan komunikasi:
 
 - **Job 4 / CoinGecko Context (hourly):** masalahnya dapat memengaruhi `btc.market_cap.usd`, `eth.market_cap.usd`, total market cap, volume 24 jam, dan dominansi BTC/ETH. Ini bukan seri harga spot BTC/ETH 5-menit; *jangan* menyebutnya kegagalan FRED.
-- **Job 24 / FRED Provider Updates (5 menit):** tugasnya memantau pembaruan seri FRED yang terdaftar, bukan menjamin 33 seri berubah setiap 5 menit. Pemeriksaan perubahan provider tidak sama dengan waktu rilis statistik ekonomi.
+- **Job 24 / FRED Provider Updates (5 menit):** tugasnya memantau pembaruan seri FRED yang terdaftar, bukan menjamin setiap seri terdaftar berubah setiap 5 menit (registry kode memuat **37 seri** pada `main@0ee4d3cd`, 14 Oktober 2026). Pemeriksaan perubahan provider tidak sama dengan waktu rilis statistik ekonomi.
 
 Jika `mapping_status` berawalan `DRIFT_`, `JOB_TIDAK_DITEMUKAN`, atau `JOB_NONAKTIF`, query sengaja mengganti label dengan **`ALIAS DITAHAN — PERIKSA DRIFT`**. **Jangan terus memakai mapping lama seolah valid.** Periksa perubahan jadwal, selector, duplikasi aktif, atau job hilang melalui jalur read-only; jangan jalankan skrip legacy untuk "memulihkan" job tanpa owner review.
 
