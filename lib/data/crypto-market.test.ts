@@ -1,41 +1,44 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import { fetchCryptoMarketObservations } from "./crypto-market";
+import type { CryptoMarketObservationInput } from "./crypto-market";
 
-test("dashboard CoinGecko acquisition retains all eight metrics and existing cache policy", async () => {
-  const originalFetch = globalThis.fetch;
-  const calls: Array<{ url: URL; init?: RequestInit }> = [];
-  globalThis.fetch = async (input, init) => {
-    const url = new URL(String(input));
-    calls.push({ url, init });
-    const payload = url.pathname.endsWith("/simple/price")
-      ? {
-        bitcoin: { usd: 100000, usd_market_cap: 2000000, usd_24h_change: 1, last_updated_at: 1791288000 },
-        ethereum: { usd: 4000, usd_market_cap: 500000, usd_24h_change: 2, last_updated_at: 1791288000 },
-      }
-      : { data: {
-        total_market_cap: { usd: 3000000 }, total_volume: { usd: 50000 },
-        market_cap_percentage: { btc: 60, eth: 20 }, updated_at: 1791288000,
-      } };
-    return Response.json(payload);
+test("MACRO-CUT-003O: retained CoinGecko market DTO compiles with historical provenance and freshness", () => {
+  const row: CryptoMarketObservationInput = {
+    metricId: "btc.spot.usd",
+    symbol: "BTC",
+    value: 65000,
+    observedAt: "2026-09-20T00:00:00.000Z",
+    retrievedAt: "2026-09-20T00:01:00.000Z",
+    source: "CoinGecko",
+    provenance: {
+      version: "v1",
+      providerResource: "/simple/price",
+      nativeInstrumentId: "bitcoin",
+    },
+    freshnessCalendar: "CONTINUOUS_24_7",
+    metadata: {
+      unit: "USD",
+      providerAssetId: "bitcoin",
+      changePct: null,
+      changeBasis: "24h",
+    },
   };
-  try {
-    const result = await fetchCryptoMarketObservations();
-    assert.equal(result.providerId, "coingecko");
-    assert.equal(result.status, "SUCCESS");
-    assert.deepEqual(result.data.map((row) => row.metricId), [
-      "btc.spot.usd", "btc.market_cap.usd", "eth.spot.usd", "eth.market_cap.usd",
-      "crypto.total_market_cap.usd", "crypto.total_volume_24h.usd",
-      "crypto.btc_dominance.pct", "crypto.eth_dominance.pct",
-    ]);
-    assert.equal(calls.length, 2);
-    assert.equal(calls[0].url.searchParams.get("include_market_cap"), "true");
-    assert.equal((calls[0].init as { next?: { revalidate: number } }).next?.revalidate, 300);
-    calls.length = 0;
-    const fresh = await fetchCryptoMarketObservations(["BTC", "ETH"], "FRESH");
-    assert.deepEqual(fresh.data.map((row) => row.metricId), result.data.map((row) => row.metricId));
-    assert.ok(calls.every((call) => call.init?.cache === "no-store"));
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  assert.equal(row.metricId, "btc.spot.usd");
+  assert.equal(row.provenance.nativeInstrumentId, "bitcoin");
+  assert.equal(row.freshnessCalendar, "CONTINUOUS_24_7");
+  assert.equal(row.metadata.changePct, null);
+});
+
+test("MACRO-CUT-003O: retired CoinGecko HTTP client absent; historical DTO and source mapping preserved", () => {
+  const source = readFileSync(new URL("./crypto-market.ts", import.meta.url), "utf8");
+  const historical = readFileSync(new URL("../application/historical-ingestion-normalization.ts", import.meta.url), "utf8");
+  const contract = readFileSync(new URL("../application/historical-ingestion-contract.ts", import.meta.url), "utf8");
+  const provenance = readFileSync(new URL("../domain/observation-provenance.ts", import.meta.url), "utf8");
+  assert.match(source, /export type CryptoMarketObservationInput =/);
+  assert.ok(source.split("\n").filter((line) => line.startsWith("import ")).every((line) => line.startsWith("import type ")));
+  assert.doesNotMatch(source, /server-only|fetchCryptoMarketObservations|fetchCoinGecko|api\.coingecko\.com|providerFetchPolicy|\bfetch\(/);
+  assert.match(historical, /import type \{ CryptoMarketObservationInput \} from "\.\.\/data\/crypto-market"/);
+  assert.match(contract, /import type \{ CryptoMarketObservationInput \} from "\.\.\/data\/crypto-market"/);
+  assert.match(provenance, /coinGeckoSimplePrice: "\/simple\/price"/);
 });
