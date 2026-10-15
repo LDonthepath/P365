@@ -83,3 +83,13 @@ test("MACRO-CUT-003G: retained macro normalizer is independent of the mixed mark
   assert.doesNotMatch(adapter, /data\/(?:crypto-market|defillama|sosovalue|cftc|binance|hyperliquid)|from "\.\/provider-canonical"/);
   assert.match(combined, /export \{ macroToCanonicalRecords, federalReserveSepToCanonicalRecords \} from "\.\/provider-canonical-macro"/);
 });
+
+test("MACRO-CUT-003I: orphaned news fetchers removed without deleting historical NEWS source identity", () => {
+  assert.equal(existsSync(new URL("../data/alpha-vantage.ts", import.meta.url)), false);
+  assert.equal(existsSync(new URL("../data/coindesk-rss.ts", import.meta.url)), false);
+  const durable = readFileSync(new URL("./durable-dashboard-read.ts", import.meta.url), "utf8");
+  const types = readFileSync(new URL("../data/types.ts", import.meta.url), "utf8");
+  assert.match(durable, /const NEWS_SOURCES = \["alpha-vantage", "coindesk-rss"\]/);
+  assert.match(types, /"alpha-vantage"/);
+  assert.match(types, /"coindesk-rss"/);
+});
