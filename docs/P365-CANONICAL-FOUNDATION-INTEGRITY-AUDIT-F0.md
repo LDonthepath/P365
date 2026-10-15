@@ -1,5 +1,11 @@
 # P365 Foundation Master — SSOT v0.1
 
+> **15 October 2026 ~14:46 UTC — Operator-approved MACRO-CUT-004 cron state:** Inactive nonmacro pg_cron jobs #4/#10/#15/#20 were unscheduled after a transactionally captured PRIVATE rollback copy at `p365_ops.macro_cut_004_cron_rollback`. Read-back confirms retired jobs absent and protected #2/#3/#5/#6/#23/#24/#25 unchanged. See `docs/OPS-CRON-NAME-001-OPERATOR-RUNBOOK.md` and `scripts/ops/macro_cut_004_cron_rollback_operator.sql`. **Market Memory physical deletion NOT executed**: append-only trigger, Snapshot/Context references, and unverified full restore remain blockers. Owner authorization recorded; do not claim historical cleanup complete.
+
+
+> **15 October 2026 operational addendum — Issue #455 / MACRO-CUT-004:** The single integrated cleanup PR joins provider code and tests, inactive nonmacro cron, persisted history, source identity, and docs. It does NOT authorize Market Memory DELETE, cron unschedule, or canonical source identity rewrite. Live inventory 188,816 rows (103,067 nonmacro review candidates); SNAPSHOT/CONTEXT still reference CoinGecko/Yahoo rows. Full backup/restore #331/#357 and specific owner deletion approvals are absent. See the Market Memory storage audit and `scripts/ops/macro_cut_004_inventory_readonly.sql`. Current first MVP remains macro-only; historical sections below stay chronological.
+
+
 **14 October 2026 documentation precedence (main@0ee4d3cd):** This SSOT preserves dated operational audits, gates and decisions; **old “current state”, registry totals, or Macro + Crypto + Gold MVP statements are historical to their checkpoint** and not proof of today's production behavior. The current **first product MVP** is standalone, evidence-linked **Macro Catalyst & Narrative Intelligence**, governed by [User & Decision-Support Contract](P365-USER-DECISION-SUPPORT-CONTRACT.md) / [#360](https://github.com/LDonthepath/P365/issues/360). At this verified code SHA, `lib/data/macro-registry.ts` contains **37 FRED series** (vs 33 in earlier snapshots). Code registry membership does not prove qualified historical coverage or runtime success. This clarification does **not** rewrite the chronological audits, change technical invariants, or authorize runtime action.
 
 **Status:** **ACTIVE MASTER SSOT — current state, audit findings, remediation roadmap, and foundation gates**  

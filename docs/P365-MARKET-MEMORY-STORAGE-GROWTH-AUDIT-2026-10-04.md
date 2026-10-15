@@ -478,3 +478,36 @@ Updated implementation order:
 The main P365 product roadmap continues separately. Storage housekeeping is recorded here so
 it can be resumed later without losing the audit evidence or applying unsafe age-based
 cleanup.
+
+## MACRO-CUT-004 — Integrated macro-only cleanup (15 October 2026; read-only classification, not data removal)
+
+Owner scope is [Issue #455](https://github.com/LDonthepath/P365/issues/455): a single integrated PR must cover code, tests/legacy, cron, history, metadata/source ID and docs. The following SELECT-only Supabase measurement is **not** a retention decision or DELETE approval; it supersedes earlier row/size estimates solely for this measurement time.
+
+| Measure | Observed at 15 Oct 14:10 UTC |
+| --- | ---: |
+| `public.market_memory` physical records | 188,816 |
+| `pg_total_relation_size('public.market_memory')` | 302 MB |
+| `pg_database_size(current_database())` | 340 MB |
+| Sum `pg_column_size(payload)` | 137 MB |
+| `source_id IS NULL` | 185,153 |
+| `source_id IS NULL AND payload->>'sourceId' IS NULL` | 352 |
+| Conflicting non-null source IDs in column vs payload | 0 |
+| Protected sources (fred/gdelt/biquote/federal-reserve/forex-factory) | 85,395 rows, 46 MB payload |
+| **Nonmacro CANDIDATE_REVIEW (not deletable yet)** | **103,067 rows, 91 MB payload** |
+| Unattributed or SYSTEM | 354 rows, 511 kB payload |
+
+Candidate sources: `alpha-vantage`, `alpha-vantage-market`, `binance-spot`, `cftc-gold-cot`, `coindesk`, `coingecko-market`, `defillama-stablecoins`, `sosovalue-etf-flow`, `yahoo-finance`. None is yet designated safe-to-delete. Explicitly protected history includes FRED 37 series, SEP, GDELT, Forex Factory/Federal Reserve calendars, Biquote/`EVENT_RESULT`, Snapshot job6, canonical evidence IDs, old vintage/revision identity and all linked physical version rows.
+
+**Why blanket DELETE fails:** 181 SNAPSHOTs, 175 with column `observation_ids`, 181 with `evidence_ids`; reference-join identified **212 Yahoo / 190 CoinGecko distinct Observation IDs** plus corresponding Evidence IDs. There are 171 CONTEXT rows, 152 with nonempty JSON `observationIds`; these include **68 CoinGecko distinct referenced Observation IDs**, plus 331 FRED IDs. A nonmacro row count does **not** account for those links, vintage/supersession chains, or external references; there is no safe percentage or retention cutoff yet.
+
+Repeat inventory and reference checks with `scripts/ops/macro_cut_004_inventory_readonly.sql`. A later operator must reconcile real-time drift, select explicit groups and exceptions, establish backup/restore and materialize an **exact-ID archive/rollback** outside the public repo before a controlled cleanup, plus check storage after physical vacuum policy is approved (DELETE alone will not necessarily reduce relation size).
+
+**STOP status:** [DB backup #331](https://github.com/LDonthepath/P365/issues/331) OPEN, [PR #357](https://github.com/LDonthepath/P365/pull/357) still DRAFT; Neon sample restore is not a verified full database backup or full restore. This integrated PR contains **no production DML and no cron changes**. It cannot claim historical cleanup COMPLETE until full verified encrypted offsite `pg_dump -Fc`, isolated full restoration, group-specific literal owner `SETUJU HAPUS <kelompok>`, revision/reference closure, and execution/rollback evidence exist. `scripts/ops/macro_cut_004_execution_blocked.sql` intentionally fails closed.
+
+## MACRO-CUT-004 — Operator-approved cron retirement completed (15 October 2026, ~14:46 UTC)
+
+The owner explicitly approved production removal. The **four inactive nonmacro jobs #4 (CoinGecko context; legacy name p365-fred), #10 (DefiLlama), #15 (SoSoValue) and #20 (CFTC)** were unscheduled transactionally using supported `cron.unschedule`. Exact original commands, schedules, database, username and active=false were first copied into the **private** `p365_ops.macro_cut_004_cron_rollback` relation. The stored command bytes are NOT published, and anon/authenticated/service_role cannot read the schema/table. A live SELECT confirmed all four absent and private backups present.
+
+Retained job state verified unchanged: active #2 GDELT, #5 Forex Factory/Federal Reserve, #6 Snapshot, #24 FRED, #23/#25 operations, plus **#3 Biquote preserved inactive**. `scripts/ops/macro_cut_004_inventory_readonly.sql` now verifies the *post-retirement* state; guarded manual restoration procedure is `scripts/ops/macro_cut_004_cron_rollback_operator.sql` (not automatically executed). If restored, job IDs may differ; source commands and inactive state are validated. This is the **only production mutation** in this checkpoint.
+
+**Historical data deletion did NOT run.** `public.market_memory` has active `market_memory_append_only` DELETE/UPDATE prevention trigger; 181 Snapshots/171 Contexts include retained references into CoinGecko/Yahoo history. Verified full encrypted offsite archive + full isolated restore remain undocumented in #331/#357. The owner's authorization is acknowledged but does not itself remove these technical constraints. Do not bypass triggers or mass purge history without a safe reference/backup path. The remaining data cleanup stays **BLOCKED**, not completed.

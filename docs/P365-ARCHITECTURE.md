@@ -185,3 +185,19 @@ Derived State → Intelligence → Briefing
 ```
 
 Derived State, Risk, Regime and higher-order cross-asset Intelligence remain behind separate approved factual/history/baseline/calibration gates; **macro-only evidence-linked briefing is the first MVP target** and does not depend on completing BTC/Gold or event-window pipelines. The financial-market ontology broadens what P365 can represent; it does not authorize premature interpretation.
+
+## Macro-cut 004: current production read/write and legacy boundary
+
+The 15 October 2026 [integrated cleanup #455](https://github.com/LDonthepath/P365/issues/455) consolidates nonmacro provider code, tests, cron, historical data, metadata/source identity and documentation into **one review PR**. Runtime HTTP acquisition of orphaned providers can be retired independently of their preserved **historical DTO, canonical source IDs and provenance**. Existing durable observation/event/evidence readers may still resolve nonmacro data; retired HTTP import does not justify rewriting or dropping historical observations.
+
+The production macro schedule continues to be owned by Supabase `pg_cron`: #2 GDELT, #5 Forex Factory/Federal Reserve, #6 Snapshot, #24 FRED (plus operational jobs). #3 Biquote stays inactive but adapter + `EVENT_RESULT` data/expectation contract remain protected. The inactive nonmacro #4/#10/#15/#20 jobs are candidates for **separately authorized operator execution**, not automatic changes at merge time.
+
+Even after nonmacro acquisition stops, Source ID/Observation revision/supersession relationships must remain reconstructable: 181 SNAPSHOT rows included reference links to Yahoo/CoinGecko and 171 CONTEXT rows included macro and some CoinGecko references at the 15 October audit. No blind `DELETE`, source ID canonical rewrite or on-merge migration is authorized. See the Market Memory storage audit and `scripts/ops/macro_cut_004_inventory_readonly.sql`; full backup/restore and operator approval remain BLOCKED.
+
+## MACRO-CUT-004 — Operator-approved cron retirement completed (15 October 2026, ~14:46 UTC)
+
+The owner explicitly approved production removal. The **four inactive nonmacro jobs #4 (CoinGecko context; legacy name p365-fred), #10 (DefiLlama), #15 (SoSoValue) and #20 (CFTC)** were unscheduled transactionally using supported `cron.unschedule`. Exact original commands, schedules, database, username and active=false were first copied into the **private** `p365_ops.macro_cut_004_cron_rollback` relation. The stored command bytes are NOT published, and anon/authenticated/service_role cannot read the schema/table. A live SELECT confirmed all four absent and private backups present.
+
+Retained job state verified unchanged: active #2 GDELT, #5 Forex Factory/Federal Reserve, #6 Snapshot, #24 FRED, #23/#25 operations, plus **#3 Biquote preserved inactive**. `scripts/ops/macro_cut_004_inventory_readonly.sql` now verifies the *post-retirement* state; guarded manual restoration procedure is `scripts/ops/macro_cut_004_cron_rollback_operator.sql` (not automatically executed). If restored, job IDs may differ; source commands and inactive state are validated. This is the **only production mutation** in this checkpoint.
+
+**Historical data deletion did NOT run.** `public.market_memory` has active `market_memory_append_only` DELETE/UPDATE prevention trigger; 181 Snapshots/171 Contexts include retained references into CoinGecko/Yahoo history. Verified full encrypted offsite archive + full isolated restore remain undocumented in #331/#357. The owner's authorization is acknowledged but does not itself remove these technical constraints. Do not bypass triggers or mass purge history without a safe reference/backup path. The remaining data cleanup stays **BLOCKED**, not completed.

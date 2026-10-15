@@ -85,3 +85,23 @@ Jika `cron_failed_24h>0` atau dispatch lebih sedikit dari yang diharapkan, tinja
 
 **Rollback:** tidak ada perubahan state scheduler untuk dibatalkan. Revert dua file dokumentasi/SELECT melalui PR bila mapping keliru; berhenti menggunakan alias pada waktu drift dan verifikasi ulang. **Jangan melakukan DDL/DML terhadap `cron.job` sebagai rollback dokumen.**
 
+
+## MACRO-CUT-004 — Retired cron operator boundary (15 Oct 2026)
+
+Owner-approved [Issue #455](https://github.com/LDonthepath/P365/issues/455) consolidates provider-code, tests, cron, Market Memory, source IDs and docs into a **single PR**. This section records a **read-only** operator preflight, **not authorization** to unschedule a job or invoke its endpoint.
+
+Verified from `cron.job.command` on 15 Oct 2026 14:10 UTC: #2 `p365-market-fast` actively calls GDELT, #5 `p365-event-calendar` calls retained calendars, #6 Snapshot, #24 FRED release-aware, #23 storage, and #25 retention are active and **protected**. #3 `p365-event-fast` is **inactive but Biquote-retained**. #4 `p365-fred` is **inactive** but actually called `providers=coingecko-context`, not FRED. Jobs #10 DefiLlama, #15 SoSoValue and #20 CFTC are inactive **retirement candidates**.
+
+Run `scripts/ops/macro_cut_004_inventory_readonly.sql` immediately before any proposed scheduler change. Guard actual job ID, state, schedule, full **command** and MD5 command fingerprint. Baseline fingerprints: #4 `782d0148c1e7cd41d59e484bfb53ffeb`, #10 `9f21d7a688723db4b92eb25dcc2ae660`, #15 `2a3284586383140692bc07c0bfbfbe1a`, #20 `b957907670c619dabfc8d0aac5f59ce6`. A mismatch must STOP operations, not attempt best-effort removal.
+
+**No automatic cron mutation in this PR.** A future operator-approved unschedule requires a **private exact command/schedule snapshot** per retired job before mutation; hashes alone cannot recreate jobs. Rollback means reinstating precisely those operator-captured commands, schedule, state, and job identity semantics, after explicit approval; do not commit command strings, CRON_SECRET, database secrets, or credentials to this public repository. If full rollback cannot be demonstrated privately, do not unschedule. Job #3 remains inactive but preserved. Independently verify retained jobs' natural HTTP receipts, but HTTP200 does not prove Market Memory inserts.
+
+Related: [backup blocker #331](https://github.com/LDonthepath/P365/issues/331), [Snapshot timeout #438](https://github.com/LDonthepath/P365/issues/438). The intentionally blocked execution example is `scripts/ops/macro_cut_004_execution_blocked.sql`.
+
+## MACRO-CUT-004 — Operator-approved cron retirement completed (15 October 2026, ~14:46 UTC)
+
+The owner explicitly approved production removal. The **four inactive nonmacro jobs #4 (CoinGecko context; legacy name p365-fred), #10 (DefiLlama), #15 (SoSoValue) and #20 (CFTC)** were unscheduled transactionally using supported `cron.unschedule`. Exact original commands, schedules, database, username and active=false were first copied into the **private** `p365_ops.macro_cut_004_cron_rollback` relation. The stored command bytes are NOT published, and anon/authenticated/service_role cannot read the schema/table. A live SELECT confirmed all four absent and private backups present.
+
+Retained job state verified unchanged: active #2 GDELT, #5 Forex Factory/Federal Reserve, #6 Snapshot, #24 FRED, #23/#25 operations, plus **#3 Biquote preserved inactive**. `scripts/ops/macro_cut_004_inventory_readonly.sql` now verifies the *post-retirement* state; guarded manual restoration procedure is `scripts/ops/macro_cut_004_cron_rollback_operator.sql` (not automatically executed). If restored, job IDs may differ; source commands and inactive state are validated. This is the **only production mutation** in this checkpoint.
+
+**Historical data deletion did NOT run.** `public.market_memory` has active `market_memory_append_only` DELETE/UPDATE prevention trigger; 181 Snapshots/171 Contexts include retained references into CoinGecko/Yahoo history. Verified full encrypted offsite archive + full isolated restore remain undocumented in #331/#357. The owner's authorization is acknowledged but does not itself remove these technical constraints. Do not bypass triggers or mass purge history without a safe reference/backup path. The remaining data cleanup stays **BLOCKED**, not completed.
