@@ -73,7 +73,7 @@ test("MACRO-CUT-003D: non-injected runner fails before initializing repos or fet
 test("MACRO-CUT-003G: retained macro normalizer is independent of the mixed market-provider adapter", () => {
   const macro = readFileSync(new URL("./historical-ingestion-macro-normalization.ts", import.meta.url), "utf8");
   const adapter = readFileSync(new URL("../normalization/provider-canonical-macro.ts", import.meta.url), "utf8");
-  const combined = readFileSync(new URL("../normalization/provider-canonical.ts", import.meta.url), "utf8");
+  assert.equal(existsSync(new URL("../normalization/provider-canonical.ts", import.meta.url)), false);
   assert.match(macro, /from "\.\.\/normalization\/provider-canonical-macro"/);
   assert.doesNotMatch(macro, /from "\.\.\/normalization\/provider-canonical"/);
   assert.match(adapter, /export function macroToCanonicalRecords\(/);
@@ -81,7 +81,7 @@ test("MACRO-CUT-003G: retained macro normalizer is independent of the mixed mark
   assert.match(adapter, /from "\.\.\/data\/fred"/);
   assert.match(adapter, /from "\.\.\/data\/federal-reserve-sep"/);
   assert.doesNotMatch(adapter, /data\/(?:crypto-market|defillama|sosovalue|cftc|binance|hyperliquid)|from "\.\/provider-canonical"/);
-  assert.match(combined, /export \{ macroToCanonicalRecords, federalReserveSepToCanonicalRecords \} from "\.\/provider-canonical-macro"/);
+  assert.doesNotMatch(macro, /from "\.\.\/normalization\/provider-canonical"/);
 });
 
 test("MACRO-CUT-003I: orphaned news fetchers removed without deleting historical NEWS source identity", () => {
@@ -94,17 +94,15 @@ test("MACRO-CUT-003I: orphaned news fetchers removed without deleting historical
   assert.match(types, /"coindesk-rss"/);
 });
 
-test("MACRO-CUT-003L: no market export from mixed barrel; legacy normalizer retains isolated market-only adapter", () => {
+test("MACRO-CUT-003M: no mixed barrel; legacy normalizer retains isolated market-only adapter", () => {
   const legacy = readFileSync(new URL("./historical-ingestion-normalization.ts", import.meta.url), "utf8");
   const market = readFileSync(new URL("../normalization/provider-canonical-market.ts", import.meta.url), "utf8");
-  const combined = readFileSync(new URL("../normalization/provider-canonical.ts", import.meta.url), "utf8");
+  assert.equal(existsSync(new URL("../normalization/provider-canonical.ts", import.meta.url)), false);
   assert.match(legacy, /from "\.\.\/normalization\/provider-canonical-market"/);
   assert.doesNotMatch(legacy, /from "\.\.\/normalization\/provider-canonical"/);
   assert.doesNotMatch(market, /from "\.\/provider-canonical"|from "\.\/provider-canonical-macro"|from "\.\/provider-canonical-events"/);
   for (const name of ["cryptoMarketToObservations", "stablecoinLiquidityToCanonicalRecords", "btcEtfFlowToCanonicalRecords", "cftcGoldCotToCanonicalRecords"]) {
     assert.ok(market.includes("export function " + name + "("), "missing market adapter " + name);
   }
-  assert.doesNotMatch(combined, /from "\.\/provider-canonical-market"/);
-  assert.doesNotMatch(combined, /(?:cryptoMarketToObservations|stablecoinLiquidityToCanonicalRecords|btcEtfFlowToCanonicalRecords|cftcGoldCotToCanonicalRecords)/);
-  assert.doesNotMatch(combined, /from "\.\.\/data\/(?:crypto-market|defillama|sosovalue|cftc)/);
+  assert.doesNotMatch(market, /from "\.\/provider-canonical"/);
 });

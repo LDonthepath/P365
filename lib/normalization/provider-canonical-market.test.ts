@@ -1,17 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as legacy from "./provider-canonical";
+import { P365_SOURCES as domainSources } from "../domain/normalize";
 import * as market from "./provider-canonical-market";
 
-test("MACRO-CUT-003L: market converter entrypoints stay isolated; source identities and canonical outputs persist", () => {
-  assert.strictEqual(legacy.P365_SOURCES, market.P365_SOURCES);
+test("MACRO-CUT-003M: market adapter retains source registry and outputs without mixed barrel", () => {
+  assert.strictEqual(domainSources, market.P365_SOURCES);
   for (const removed of [
     "cryptoMarketToObservations",
     "stablecoinLiquidityToCanonicalRecords",
     "btcEtfFlowToCanonicalRecords",
     "cftcGoldCotToCanonicalRecords",
   ]) {
-    assert.equal(Object.hasOwn(legacy, removed), false, "mixed barrel still exposes " + removed);
     assert.equal(typeof market[removed as keyof typeof market], "function", "market converter missing: " + removed);
   }
   assert.equal(market.P365_SOURCES.coinGeckoMarket.id, "coingecko-market");
