@@ -1,19 +1,14 @@
-import "server-only";
-
 import type { ObservationProvenance } from "../domain/types";
 import { OBSERVATION_PROVIDER_RESOURCES } from "../domain/observation-provenance";
-import { providerFetchPolicy, type ProviderAcquisitionMode } from "./provider-fetch-policy";
-import { providerResult, type ProviderResult } from "./types";
 import { soSoValueBackfillRangeError } from "./provider-backfill-ranges";
 export { SOSOVALUE_MAX_BACKFILL_CALENDAR_DAYS, soSoValueBackfillRangeError } from "./provider-backfill-ranges";
 
-export const SOSOVALUE_BASE_URL = "https://openapi.sosovalue.com/openapi/v1" as const;
+/** Historical SoSoValue DTO and strict provider-response qualification; no live HTTP client. */
 export const SOSOVALUE_ETF_FLOW_PROVIDER_RESOURCE = OBSERVATION_PROVIDER_RESOURCES.soSoValueEtfSummaryHistory;
 export const SOSOVALUE_ETF_FLOW_SOURCE_ID = "sosovalue-etf-flow" as const;
 export const SOSOVALUE_ETF_FLOW_MATURITY_POLICY = "SOSOVALUE_ETF_FLOW_MATURITY_V0_1" as const;
 export const SOSOVALUE_ETF_FLOW_COMPLETION_BASIS = "P365_PROVIDER_DATE_ADVANCEMENT" as const;
 export const SOSOVALUE_ETF_FLOW_MATURITY_STATUS = "MATURED_ELIGIBLE_UNDER_P365_POLICY" as const;
-export const SOSOVALUE_HISTORY_LIMIT = 50;
 
 export type SoSoValueBtcEtfFlowBackfillRange = { from: string; to: string };
 
@@ -35,16 +30,9 @@ export type SoSoValueBtcEtfFlowObservationInput = {
   metadata: Record<string, string | number | boolean | null>;
 };
 
-export type SoSoValueBtcEtfFlowQuery = {
+export type SoSoValueBtcEtfFlowSelectionQuery = {
   mode: "FORWARD" | "BACKFILL";
   range?: SoSoValueBtcEtfFlowBackfillRange;
-  acquisitionMode?: ProviderAcquisitionMode;
-};
-
-type Dependencies = {
-  fetch?: typeof fetch;
-  now?: () => Date;
-  apiKey?: () => string | undefined;
 };
 
 type ValidRow = { date: string; totalNetInflow: number };
@@ -152,11 +140,6 @@ function inputFromRow(row: ValidRow, retrievedAt: string): SoSoValueBtcEtfFlowOb
   };
 }
 
-function credentialSafeMessage(error: unknown, apiKey: string): string {
-  const message = error instanceof Error ? error.message : "SoSoValue request failed";
-  return apiKey ? message.split(apiKey).join("[REDACTED]") : message;
-}
-
 function selectBackfillRows(
   rows: ValidRow[],
   range: SoSoValueBtcEtfFlowBackfillRange | undefined,
@@ -175,61 +158,26 @@ function selectBackfillRows(
 }
 
 /**
- * Acquires one bounded history response. The provider's newest valid trading
- * date is always a provisional maturity witness and is never returned as a
- * canonical candidate.
+ * Qualified rows from an ALREADY retrieved provider response. No network or writes.
+ * Exclude the newest date unconditionally: provider advancement is the only witness.
+ * Keep the original malformed/future-date and bounded backfill policies.
  */
-export async function fetchSoSoValueBtcEtfFlowObservations(
-  query: SoSoValueBtcEtfFlowQuery,
-  dependencies: Dependencies = {},
-): Promise<ProviderResult<SoSoValueBtcEtfFlowObservationInput>> {
+export function qualifySoSoValueBtcEtfFlowRows(
+  payload: unknown,
+  retrievedAt: string,
+  query: SoSoValueBtcEtfFlowSelectionQuery,
+): SoSoValueBtcEtfFlowObservationInput[] {
   if (query.mode === "BACKFILL") {
-    if (!query.range) return providerResult("sosovalue", "ERROR", [], "SoSoValue BACKFILL requires explicit from/to date bounds");
+    if (!query.range) throw new Error("SoSoValue BACKFILL requires explicit from/to date bounds");
     const rangeError = soSoValueBackfillRangeError(query.range);
-    if (rangeError) return providerResult("sosovalue", "ERROR", [], rangeError);
+    if (rangeError) throw new Error(rangeError);
   }
-  const apiKey = (dependencies.apiKey ?? (() => process.env.SOSOVALUE_API_KEY))();
-  if (!apiKey) {
-    return providerResult("sosovalue", "UNAVAILABLE", [], "SOSOVALUE_API_KEY is not configured");
+  if (!Number.isFinite(Date.parse(retrievedAt))) {
+    throw new Error("SoSoValue retrieval timestamp is invalid");
   }
-  const fetcher = dependencies.fetch ?? fetch;
-  const now = dependencies.now ?? (() => new Date());
-  const url = new URL(`${SOSOVALUE_BASE_URL}${SOSOVALUE_ETF_FLOW_PROVIDER_RESOURCE}`);
-  url.searchParams.set("symbol", "BTC");
-  url.searchParams.set("country_code", "US");
-  url.searchParams.set("limit", String(SOSOVALUE_HISTORY_LIMIT));
-
-  try {
-    const response = await fetcher(url.toString(), {
-      method: "GET",
-      headers: { accept: "application/json", "x-soso-api-key": apiKey },
-      ...providerFetchPolicy(query.acquisitionMode ?? "FRESH", 300),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) throw new Error(`SoSoValue HTTP ${response.status}`);
-    let payload: unknown;
-    try {
-      payload = await response.json();
-    } catch {
-      throw new Error("SoSoValue invalid JSON response");
-    }
-    const retrievedAt = now().toISOString();
-    const rows = validateRows(payload, retrievedAt);
-    const selected = query.mode === "BACKFILL"
-      ? selectBackfillRows(rows, query.range)
-      : rows.slice(1);
-    const data = selected.map((row) => inputFromRow(row, retrievedAt));
-    return providerResult(
-      "sosovalue",
-      data.length > 0 ? "SUCCESS" : "EMPTY",
-      data,
-      data.length > 0 ? undefined : "No maturity-eligible SoSoValue rows in the qualified response",
-      undefined,
-      retrievedAt,
-    );
-  } catch (error) {
-    const retrievedAt = now().toISOString();
-    const message = credentialSafeMessage(error, apiKey);
-    return providerResult("sosovalue", "ERROR", [], message, undefined, retrievedAt);
-  }
+  const rows = validateRows(payload, retrievedAt);
+  const selected = query.mode === "BACKFILL"
+    ? selectBackfillRows(rows, query.range)
+    : rows.slice(1);
+  return selected.map((row) => inputFromRow(row, retrievedAt));
 }
