@@ -6,7 +6,7 @@ import type { HyperliquidPerpOrderBookSnapshot } from "../data/hyperliquid-perp-
 import type { SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
 import type { CftcGoldCotObservationInput } from "../data/cftc-gold-cot";
 import type { ProviderResult } from "../data/types";
-import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../normalization/provider-canonical";
+import { btcEtfFlowToCanonicalRecords, cftcGoldCotToCanonicalRecords, cryptoMarketToObservations, P365_SOURCES, stablecoinLiquidityToCanonicalRecords } from "../normalization/provider-canonical-market";
 import { buildBinanceBtcSpotFlowWindow } from "./btc-spot-flow";
 import { btcSpotFlowWindowsToEvidence } from "./btc-spot-flow-history";
 import { buildBinanceBtcOrderBookLiquiditySnapshot } from "./btc-order-book-liquidity";
