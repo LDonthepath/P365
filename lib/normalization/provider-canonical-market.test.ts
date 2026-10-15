@@ -3,12 +3,17 @@ import test from "node:test";
 import * as legacy from "./provider-canonical";
 import * as market from "./provider-canonical-market";
 
-test("MACRO-CUT-003K: market provider canonical exports retain strict identity and source registry", () => {
+test("MACRO-CUT-003L: market converter entrypoints stay isolated; source identities and canonical outputs persist", () => {
   assert.strictEqual(legacy.P365_SOURCES, market.P365_SOURCES);
-  assert.strictEqual(legacy.cryptoMarketToObservations, market.cryptoMarketToObservations);
-  assert.strictEqual(legacy.stablecoinLiquidityToCanonicalRecords, market.stablecoinLiquidityToCanonicalRecords);
-  assert.strictEqual(legacy.btcEtfFlowToCanonicalRecords, market.btcEtfFlowToCanonicalRecords);
-  assert.strictEqual(legacy.cftcGoldCotToCanonicalRecords, market.cftcGoldCotToCanonicalRecords);
+  for (const removed of [
+    "cryptoMarketToObservations",
+    "stablecoinLiquidityToCanonicalRecords",
+    "btcEtfFlowToCanonicalRecords",
+    "cftcGoldCotToCanonicalRecords",
+  ]) {
+    assert.equal(Object.hasOwn(legacy, removed), false, "mixed barrel still exposes " + removed);
+    assert.equal(typeof market[removed as keyof typeof market], "function", "market converter missing: " + removed);
+  }
   assert.equal(market.P365_SOURCES.coinGeckoMarket.id, "coingecko-market");
   assert.equal(market.P365_SOURCES.defiLlamaStablecoins.id, "defillama-stablecoins");
   assert.equal(market.P365_SOURCES.soSoValueEtfFlow.id, "sosovalue-etf-flow");

@@ -94,7 +94,7 @@ test("MACRO-CUT-003I: orphaned news fetchers removed without deleting historical
   assert.match(types, /"coindesk-rss"/);
 });
 
-test("MACRO-CUT-003K: legacy market normalizer imports market-only provider adapter, preserving retained macro separation", () => {
+test("MACRO-CUT-003L: no market export from mixed barrel; legacy normalizer retains isolated market-only adapter", () => {
   const legacy = readFileSync(new URL("./historical-ingestion-normalization.ts", import.meta.url), "utf8");
   const market = readFileSync(new URL("../normalization/provider-canonical-market.ts", import.meta.url), "utf8");
   const combined = readFileSync(new URL("../normalization/provider-canonical.ts", import.meta.url), "utf8");
@@ -104,6 +104,7 @@ test("MACRO-CUT-003K: legacy market normalizer imports market-only provider adap
   for (const name of ["cryptoMarketToObservations", "stablecoinLiquidityToCanonicalRecords", "btcEtfFlowToCanonicalRecords", "cftcGoldCotToCanonicalRecords"]) {
     assert.ok(market.includes("export function " + name + "("), "missing market adapter " + name);
   }
-  assert.match(combined, /from "\.\/provider-canonical-market"/);
+  assert.doesNotMatch(combined, /from "\.\/provider-canonical-market"/);
+  assert.doesNotMatch(combined, /(?:cryptoMarketToObservations|stablecoinLiquidityToCanonicalRecords|btcEtfFlowToCanonicalRecords|cftcGoldCotToCanonicalRecords)/);
   assert.doesNotMatch(combined, /from "\.\.\/data\/(?:crypto-market|defillama|sosovalue|cftc)/);
 });

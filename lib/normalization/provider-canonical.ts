@@ -5,9 +5,3 @@
 export { P365_SOURCES, providerHealthForResult } from "../domain/normalize";
 export { macroToCanonicalRecords, federalReserveSepToCanonicalRecords } from "./provider-canonical-macro";
 export { calendarToCanonicalRecords, fomcToCanonicalRecords } from "./provider-canonical-events";
-export {
-  cryptoMarketToObservations,
-  stablecoinLiquidityToCanonicalRecords,
-  btcEtfFlowToCanonicalRecords,
-  cftcGoldCotToCanonicalRecords,
-} from "./provider-canonical-market";
