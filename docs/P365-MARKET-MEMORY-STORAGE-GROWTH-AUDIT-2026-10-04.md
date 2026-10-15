@@ -479,7 +479,7 @@ The main P365 product roadmap continues separately. Storage housekeeping is reco
 it can be resumed later without losing the audit evidence or applying unsafe age-based
 cleanup.
 
-## Integrated macro-only cleanup — 15 October 2026 (read-only classification, not data removal)
+## MACRO-CUT-004 — Integrated macro-only cleanup (15 October 2026; read-only classification, not data removal)
 
 Owner scope is [Issue #455](https://github.com/LDonthepath/P365/issues/455): a single integrated PR must cover code, tests/legacy, cron, history, metadata/source ID and docs. The following SELECT-only Supabase measurement is **not** a retention decision or DELETE approval; it supersedes earlier row/size estimates solely for this measurement time.
 
