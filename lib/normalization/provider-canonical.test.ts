@@ -7,7 +7,6 @@ import {
   calendarToCanonicalRecords as calendarFromProvider,
   cryptoMarketToObservations as marketFromProvider,
   macroToCanonicalRecords as macroFromProvider,
-  newsToEvidence as newsFromProvider,
 } from "./provider-canonical";
 import {
   calendarToCanonicalRecords as calendarFromCanonical,
@@ -102,19 +101,21 @@ function main(): void {
     publishedAt: "2026-09-20T00:00:00.000Z", title: "Inflation release",
     summary: "Factual summary", url: "https://example.org/report",
   };
-  const providerNews = newsFromProvider([news], "alpha-vantage")[0];
+  // NEWS remains a durable historical information class even though live news fetchers
+  // and their unused provider-side adapter have been retired.
   const canonicalNews = newsFromCanonical([news], "alpha-vantage")[0];
-  assert.ok(providerNews && canonicalNews);
-  assert.deepEqual(withoutCaptureTimes({
-    ...providerNews, capturedAt: "<capture>", retrievedAt: "<retrieval>",
-  }), withoutCaptureTimes({
-    ...canonicalNews, capturedAt: "<capture>", retrievedAt: "<retrieval>",
-  }));
-  assert.equal(providerNews.publishedAt, news.publishedAt);
+  assert.ok(canonicalNews);
+  assert.equal(canonicalNews.sourceId, "alpha-vantage");
+  assert.equal(canonicalNews.kind, "NEWS");
+  assert.equal(canonicalNews.publishedAt, news.publishedAt);
+  assert.equal(canonicalNews.metadata?.url, news.url);
+  assert.equal(canonicalNews.metadata?.source, news.source);
+  assert.equal(canonicalNews.id, newsFromCanonical([news], "alpha-vantage")[0]?.id);
+  assert.deepEqual(newsFromCanonical([], "alpha-vantage"), []);
 
   // Report a zero-input materiality regression without touching timestamps.
   assert.deepEqual(marketFromProvider([], "coingecko-market"), marketFromCanonical([], "coingecko-market"));
-  console.log("provider-canonical golden fixtures: Forex Factory, BTC, FRED, news, empty PASS");
+  console.log("provider-canonical golden fixtures: Forex Factory, BTC, FRED, historical NEWS, empty PASS");
 }
 
 main();

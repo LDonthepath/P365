@@ -2,7 +2,6 @@
  * Anti-corruption adapters: data-provider DTOs -> stable canonical builder inputs.
  * Keep all provider imports in the normalization layer, never in lib/domain.
  */
-import type { NewsItem } from "../data/types";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { DefiLlamaStablecoinObservationInput } from "../data/defillama-stablecoins";
 import type { SoSoValueBtcEtfFlowObservationInput } from "../data/sosovalue-etf-flow";
@@ -12,7 +11,6 @@ import type {
   CanonicalEtfFlowInput, CanonicalPositioningInput,
 } from "../domain/normalization-inputs";
 import {
-  newsToEvidence as buildNewsEvidence,
   cryptoMarketToObservations as buildMarketRecords,
   stablecoinLiquidityToCanonicalRecords as buildStablecoinRecords,
   btcEtfFlowToCanonicalRecords as buildEtfFlowRecords,
@@ -22,11 +20,6 @@ import {
 export { P365_SOURCES, providerHealthForResult } from "../domain/normalize";
 export { macroToCanonicalRecords, federalReserveSepToCanonicalRecords } from "./provider-canonical-macro";
 export { calendarToCanonicalRecords, fomcToCanonicalRecords } from "./provider-canonical-events";
-
-export function newsToEvidence(items: NewsItem[], sourceId: string) {
-  return buildNewsEvidence(items.map(({ id, title, summary, category, source, publishedAt, url }) =>
-    ({ id, title, summary, category, source, publishedAt, url })), sourceId);
-}
 
 export function cryptoMarketToObservations(items: CryptoMarketObservationInput[], sourceId: string) {
   const qualified: CanonicalMarketInput[] = items.map(({ metricId, symbol, value, observedAt, retrievedAt, provenance, freshnessCalendar, metadata }) =>
