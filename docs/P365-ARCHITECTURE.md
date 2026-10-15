@@ -185,3 +185,11 @@ Derived State → Intelligence → Briefing
 ```
 
 Derived State, Risk, Regime and higher-order cross-asset Intelligence remain behind separate approved factual/history/baseline/calibration gates; **macro-only evidence-linked briefing is the first MVP target** and does not depend on completing BTC/Gold or event-window pipelines. The financial-market ontology broadens what P365 can represent; it does not authorize premature interpretation.
+
+## Macro-cut 004: current production read/write and legacy boundary
+
+The 15 October 2026 [integrated cleanup #455](https://github.com/LDonthepath/P365/issues/455) consolidates nonmacro provider code, tests, cron, historical data, metadata/source identity and documentation into **one review PR**. Runtime HTTP acquisition of orphaned providers can be retired independently of their preserved **historical DTO, canonical source IDs and provenance**. Existing durable observation/event/evidence readers may still resolve nonmacro data; retired HTTP import does not justify rewriting or dropping historical observations.
+
+The production macro schedule continues to be owned by Supabase `pg_cron`: #2 GDELT, #5 Forex Factory/Federal Reserve, #6 Snapshot, #24 FRED (plus operational jobs). #3 Biquote stays inactive but adapter + `EVENT_RESULT` data/expectation contract remain protected. The inactive nonmacro #4/#10/#15/#20 jobs are candidates for **separately authorized operator execution**, not automatic changes at merge time.
+
+Even after nonmacro acquisition stops, Source ID/Observation revision/supersession relationships must remain reconstructable: 181 SNAPSHOT rows included reference links to Yahoo/CoinGecko and 171 CONTEXT rows included macro and some CoinGecko references at the 15 October audit. No blind `DELETE`, source ID canonical rewrite or on-merge migration is authorized. See the Market Memory storage audit and `scripts/ops/macro_cut_004_inventory_readonly.sql`; full backup/restore and operator approval remain BLOCKED.

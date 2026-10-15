@@ -85,3 +85,15 @@ Jika `cron_failed_24h>0` atau dispatch lebih sedikit dari yang diharapkan, tinja
 
 **Rollback:** tidak ada perubahan state scheduler untuk dibatalkan. Revert dua file dokumentasi/SELECT melalui PR bila mapping keliru; berhenti menggunakan alias pada waktu drift dan verifikasi ulang. **Jangan melakukan DDL/DML terhadap `cron.job` sebagai rollback dokumen.**
 
+
+## MACRO-CUT-004 — Retired cron operator boundary (15 Oct 2026)
+
+Owner-approved [Issue #455](https://github.com/LDonthepath/P365/issues/455) consolidates provider-code, tests, cron, Market Memory, source IDs and docs into a **single PR**. This section records a **read-only** operator preflight, **not authorization** to unschedule a job or invoke its endpoint.
+
+Verified from `cron.job.command` on 15 Oct 2026 14:10 UTC: #2 `p365-market-fast` actively calls GDELT, #5 `p365-event-calendar` calls retained calendars, #6 Snapshot, #24 FRED release-aware, #23 storage, and #25 retention are active and **protected**. #3 `p365-event-fast` is **inactive but Biquote-retained**. #4 `p365-fred` is **inactive** but actually called `providers=coingecko-context`, not FRED. Jobs #10 DefiLlama, #15 SoSoValue and #20 CFTC are inactive **retirement candidates**.
+
+Run `scripts/ops/macro_cut_004_inventory_readonly.sql` immediately before any proposed scheduler change. Guard actual job ID, state, schedule, full **command** and MD5 command fingerprint. Baseline fingerprints: #4 `782d0148c1e7cd41d59e484bfb53ffeb`, #10 `9f21d7a688723db4b92eb25dcc2ae660`, #15 `2a3284586383140692bc07c0bfbfbe1a`, #20 `b957907670c619dabfc8d0aac5f59ce6`. A mismatch must STOP operations, not attempt best-effort removal.
+
+**No automatic cron mutation in this PR.** A future operator-approved unschedule requires a **private exact command/schedule snapshot** per retired job before mutation; hashes alone cannot recreate jobs. Rollback means reinstating precisely those operator-captured commands, schedule, state, and job identity semantics, after explicit approval; do not commit command strings, CRON_SECRET, database secrets, or credentials to this public repository. If full rollback cannot be demonstrated privately, do not unschedule. Job #3 remains inactive but preserved. Independently verify retained jobs' natural HTTP receipts, but HTTP200 does not prove Market Memory inserts.
+
+Related: [backup blocker #331](https://github.com/LDonthepath/P365/issues/331), [Snapshot timeout #438](https://github.com/LDonthepath/P365/issues/438). The intentionally blocked execution example is `scripts/ops/macro_cut_004_execution_blocked.sql`.

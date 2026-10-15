@@ -136,3 +136,15 @@ Dokumentasi operasional fondasi menggunakan satu SSOT:
 - `docs/P365-FINANCIAL-MARKET-ONTOLOGY-v0.1.md` (§1.0) — cakupan keluarga pasar target, data identity, readiness dan first-class activation gates.
 - [Issue #360 — Product Roadmap PRB-0…PRB-6](https://github.com/LDonthepath/P365/issues/360) — pelacakan product rebaseline; terpisah dari [Recovery #283](https://github.com/LDonthepath/P365/issues/283).
 - Dokumen requirement/governance khusus tetap terpisah hanya bila bersifat normatif, bukan sebagai competing current-state document.
+
+## MACRO-CUT-004 — Integrated cleanup checkpoint (15 October 2026)
+
+**Owner scope:** [Issue #455](https://github.com/LDonthepath/P365/issues/455). All six cleanup dimensions are evaluated in **one review PR**, not separate provider PRs: code, test/legacy, cron, durable history, metadata/source IDs, and docs. First MVP remains standalone macro catalyst/narrative; this checkpoint does not activate market features.
+
+**Execution split:** removing orphaned live HTTP code and updating tests/docs is eligible for owner review. Database deletion, source-ID rewriting, and cron-job removal are **BLOCKED** from production execution until (a) an encrypted off-site full backup and isolated full restore drill are verified ([#331](https://github.com/LDonthepath/P365/issues/331), [Draft PR #357](https://github.com/LDonthepath/P365/pull/357)), (b) append-only/revision/Snapshot/Context reference closure is proven for each proposed group, and (c) the owner provides literal group-specific deletion approval. Merging the PR is **not** that approval.
+
+**Audited inventory, 15 Oct 2026 14:10 UTC (live counts drift):** 188,816 Market Memory rows; 302 MB relation including indexes; 340 MB DB. By `COALESCE(source_id,payload->>'sourceId')`, 85,395 protected-source rows, 103,067 **candidate-review** nonmacro rows, and 354 unattributed/system rows. The candidate category does not mean safe-to-delete: Snapshot references 212 distinct Yahoo and 190 CoinGecko Observation IDs; Context references 68 CoinGecko Observation IDs, and Snapshot retains corresponding Evidence references. See storage audit and `scripts/ops/macro_cut_004_inventory_readonly.sql` for repeatable SQL.
+
+**Cron classification:** active #2 GDELT, #5 Forex Factory/Federal Reserve calendars, #6 Snapshot, #24 FRED and housekeeping #23/#25; #3 Biquote intentionally inactive but **retained**, #4 CoinGecko-context, #10 DefiLlama, #15 SoSoValue, #20 CFTC inactive candidate jobs. Name does not determine behavior: inspect `cron.job.command` selectors and hash before any change. `scripts/ops/macro_cut_004_execution_blocked.sql` deliberately refuses execution, so no migration-on-merge, automatic deletion, or unintended cron unschedule.
+
+**Metadata/source identity:** retain canonical historical `sourceId`, vintage/revision, provenance, physical row dedupe/supersession chains, and Snapshot/Context links; do not silently rewrite JSON or column values. The integrated PR is **PARTIAL/BLOCKED** for production data/cron retirement until operator gates pass; do not mark database cleanup completed based on code CI.
