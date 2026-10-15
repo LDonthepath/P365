@@ -196,3 +196,13 @@ test("#370: malformed cutoff, unqualified publication and truncated reads fail c
   const truncated = (await buildMacroEvidenceBundle(history(repeated).repo, EARLY)).slots[1];
   assert.equal(truncated.status, "UNAVAILABLE");
 });
+
+
+test("#370: date-only publisher marker is never promoted to an exact release instant", async () => {
+  const row = fact("date-only", "PCEPI", "2026-07-01", "131.659",
+    "2026-09-20T00:00:00Z", "2026-09-20T00:00:00Z");
+  row.observation.metadata!.releasedAt = "2026-09-20";
+  const slot = (await buildMacroEvidenceBundle(history([row]).repo, EARLY)).slots[1];
+  assert.equal(slot.status, "AVAILABLE");
+  assert.equal(slot.latest?.releasedAt, null);
+});
