@@ -108,10 +108,9 @@ News juga belum otomatis dianggap sebagai intelligence. Interpretation hanya bol
 
 1. Salin `.env.example` menjadi `.env.local`.
 2. Isi `DASHBOARD_AUTH_SECRET`, `DASHBOARD_ACCESS_EMAIL`, dan `DASHBOARD_ACCESS_PASSWORD`.
-3. Isi `ALPHA_VANTAGE_API_KEY` untuk provider Alpha Vantage.
-4. Isi `FRED_API_KEY` untuk structured macro observations.
-5. Jalankan `npm install` lalu `npm run dev`.
-6. Buka `http://localhost:3000` dan login menggunakan kredensial yang sudah diatur.
+3. Isi `FRED_API_KEY` untuk structured macro observations.
+4. Jalankan `npm install` lalu `npm run dev`.
+5. Buka `http://localhost:3000` dan login menggunakan kredensial yang sudah diatur.
 
 ## Environment variables
 
