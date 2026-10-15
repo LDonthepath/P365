@@ -1,5 +1,14 @@
 # P365 Market Memory Storage Growth Audit & Deferred Housekeeping Plan
 
+## Latest: MACRO-CUT-FINAL operational readback — 15 Oct 2026
+
+This dated **current status overrides** the older MACRO-CUT-004 "not deleted", "private rollback exists" and "restore is required before execution" text retained below **only as original audit history**. At owner direction, production source data was permanently removed without another archive: **4,812** across seven former nonmacro sources, **68,788** CoinGecko, **29,467** Yahoo = **103,067** physical source rows; **181** mixed Snapshot, **19** CRYPTO_MARKET Context and **2** SYSTEM test rows were also deleted. Mixed Snapshots contained macro event-window facts and cannot be claimed preserved. **636** retired cron execution log rows and both private cleanup/rollback tables removed. No new archive/rollback copies were created. Owner reports an external backup; an independently verified full restore is **not available**.
+
+Readback 15 Oct 16:23 UTC: **85,569** Market Memory rows, **152** retained macro Context, **0** Snapshot, protected macro and Biquote source identities preserved; new macro ingest continues. Database ~**340 MB**, `public.market_memory` relation including indexes ~**302 MB**: PostgreSQL DELETE does not compact files. Do not claim space savings, `VACUUM FULL` suitability or recovered Free plan margin without a separate measured maintenance window. The source inventory query is `COALESCE(source_id,payload->>'sourceId')`; final read-only postcheck lives at `scripts/ops/macro_cut_final_verify_readonly.sql`.
+
+Cron #4/#10/#15/#20 absent; **#6 legacy asset-dependent Snapshot capture was later paused to active=false with command fingerprint unchanged**, while #2 GDELT, #5 event calendars, #23/#24/#25 retain prior schedules and #3 Biquote remains inactive. GDELT Evidence still describes BTC/GOLD asset-news snapshots as an owner-preserved exception; treating it as macro-only would be incorrect. The final PR removes Coinalyze qualification runtime, guards both legacy asset Snapshot HTTP routes, drops stale rollback SQL and updates checks/docs. **No physical Market Memory mutation on PR merge.**
+
+
 **Audit date:** 4 Oct 2026  
 **Status:** DEFERRED OPERATIONAL BACKLOG — AUDIT COMPLETE / NO HOUSEKEEPING IMPLEMENTED  
 **Repository baseline:** `main@bc98af700397c4b3be96094d61be1580d68fff29`  

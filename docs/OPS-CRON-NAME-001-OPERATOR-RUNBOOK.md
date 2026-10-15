@@ -1,5 +1,12 @@
 # OPS-CRON-NAME-001 — Alias operator untuk job `p365-fred`
 
+## Latest operator state — MACRO-CUT-FINAL, 15 Oct 2026
+
+**This supersedes all old MACRO-CUT-004 rollback/permission/inactive-job instructions later in this dated runbook.** Cron #4/#10/#15/#20 are already **absent**; their **636** execution logs and private `p365_ops.macro_cut_004_cron_rollback` were deleted at explicit owner no-archive direction. **Do not run the old MACRO-CUT-004 rollback script; it has been removed from the repository and its backing table no longer exists.** #6 asset-dependent Snapshot capture was set **inactive**, preserving its command checksum `a43bff4ef2df2e3d6c4f4f234e78b1ba`. Active: #2 GDELT, #5 Forex Factory/Federal Reserve calendar, #23 storage, #24 FRED, #25 log retention; inactive and retained: #3 Biquote. Exact cron IDs are only the currently observed identity and must be verified anew before future operations. `scripts/ops/macro_cut_final_verify_readonly.sql` runs SELECT only; no schedule mutation or rollback runs during PR merge.
+
+The final code change fails closed for both old Snapshot capture and repair endpoints (**Bearer auth then HTTP 410; no canonical writes**). Do not reactivate #6 until a separately owner-reviewed, point-in-time-correct **macro-only** snapshot source/requirement contract exists. No cron Bearer security bypass or diagnostics route should be introduced. The owner's deletion removed **181 mixed macro/asset historical Snapshots**, alongside 103,067 nonmacro provider rows and 19 CRYPTO_MARKET Contexts, so macro event-window historical fidelity cannot be assumed. **152** macro Contexts remain. GDELT #2 still processes BTC/GOLD news projections and is protected by owner exception; macro-only semantics need a separate qualification. Database (~340 MB) is logically cleaned, not physically compacted; schedule no automatic `VACUUM FULL`.
+
+
 **Keterkinian:** angka job, nama, fingerprint dan status review dalam runbook adalah **hasil audit 11 Oktober 2026**, bukan jaminan keadaan produksi saat ini. Periksa `cron.job` read-only dan registry kode sebelum menjalankan prosedur; perubahan dokumentasi ini tidak mengubah scheduler.
 
 **Issue:** [#332](https://github.com/LDonthepath/P365/issues/332)  
