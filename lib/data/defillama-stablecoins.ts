@@ -1,14 +1,8 @@
-import "server-only";
-
 import { OBSERVATION_PROVIDER_RESOURCES } from "../domain/observation-provenance";
 import { USD_STABLECOIN_MARKET_CAP_SERIES_KEY } from "../domain/observation-semantics";
 import type { ObservationProvenance } from "../domain/types";
-import { providerFetchPolicy, type ProviderAcquisitionMode } from "./provider-fetch-policy";
-import { providerResult, type ProviderResult } from "./types";
 
-const DEFILLAMA_STABLECOINS_URL = "https://stablecoins.llama.fi/stablecoincharts/all";
-const REQUEST_TIMEOUT_MS = 10_000;
-
+/** Canonical provider-qualified DTO and deterministic validation only; live HTTP acquisition retired. */
 export const DEFILLAMA_STABLECOIN_RESOURCE = OBSERVATION_PROVIDER_RESOURCES.defiLlamaStablecoinChartsAll;
 export const DEFILLAMA_STABLECOIN_PEG_TYPE = "peggedUSD" as const;
 
@@ -29,15 +23,9 @@ export type DefiLlamaStablecoinObservationInput = {
   metadata: Record<string, string | number | boolean | null>;
 };
 
-export type DefiLlamaStablecoinFetchOptions = {
+export type DefiLlamaStablecoinSelectionOptions = {
   mode: "FORWARD" | "BACKFILL";
-  acquisitionMode?: ProviderAcquisitionMode;
   range?: DefiLlamaStablecoinBackfillRange;
-};
-
-export type DefiLlamaStablecoinDependencies = {
-  fetch?: typeof fetch;
-  now?: () => Date;
 };
 
 function dateOnly(value: string): number | null {
@@ -108,7 +96,7 @@ function parseRows(payload: unknown, retrievedAt: string): DefiLlamaStablecoinOb
 
 function selectRows(
   rows: DefiLlamaStablecoinObservationInput[],
-  options: DefiLlamaStablecoinFetchOptions,
+  options: DefiLlamaStablecoinSelectionOptions,
 ): DefiLlamaStablecoinObservationInput[] {
   if (options.mode === "FORWARD") {
     return rows.length === 0
@@ -130,40 +118,14 @@ function selectRows(
     .sort((left, right) => left.observedAt.localeCompare(right.observedAt));
 }
 
-export async function fetchDefiLlamaStablecoinObservations(
-  options: DefiLlamaStablecoinFetchOptions,
-  dependencies: DefiLlamaStablecoinDependencies = {},
-): Promise<ProviderResult<DefiLlamaStablecoinObservationInput>> {
-  const fetcher = dependencies.fetch ?? fetch;
-  try {
-    const response = await fetcher(DEFILLAMA_STABLECOINS_URL, {
-      headers: {
-        accept: "application/json",
-        "user-agent": "P365/1.0 (+https://github.com/LDonthepath/P365)",
-      },
-      ...providerFetchPolicy(options.acquisitionMode ?? "FRESH", 300),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      const detail = (await response.text()).replace(/\s+/g, " ").trim().slice(0, 300);
-      throw new Error(`DefiLlama HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
-    }
-
-    let payload: unknown;
-    try {
-      payload = await response.json() as unknown;
-    } catch {
-      throw new Error("DefiLlama malformed payload: invalid JSON");
-    }
-    const retrievedAt = (dependencies.now ?? (() => new Date()))().toISOString();
-    const data = selectRows(parseRows(payload, retrievedAt), options);
-    if (data.length === 0) {
-      return providerResult("defillama", "EMPTY", [], "DefiLlama returned no qualified rows", undefined, retrievedAt);
-    }
-    return providerResult("defillama", "SUCCESS", data, undefined, undefined, retrievedAt);
-  } catch (error) {
-    const retrievedAt = (dependencies.now ?? (() => new Date()))().toISOString();
-    const message = error instanceof Error ? error.message : "DefiLlama request failed";
-    return providerResult("defillama", "ERROR", [], message, undefined, retrievedAt);
-  }
+/**
+ * Qualifies an already-acquired DefiLlama payload without network access.
+ * Preserves exact historical peggedUSD validation, provenance, and FORWARD/BACKFILL selection.
+ */
+export function qualifyDefiLlamaStablecoinRows(
+  payload: unknown,
+  retrievedAt: string,
+  options: DefiLlamaStablecoinSelectionOptions,
+): DefiLlamaStablecoinObservationInput[] {
+  return selectRows(parseRows(payload, retrievedAt), options);
 }
