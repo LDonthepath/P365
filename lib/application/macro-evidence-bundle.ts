@@ -117,7 +117,9 @@ function selectPoints(
     const vintage = dateOnly(m?.vintageDate);
     const observationPeriod = dateOnly(m?.observationDate);
     const releaseRaw = m?.releasedAt;
-    const releasedAt = typeof releaseRaw === "string" && releaseRaw.trim() ? releaseRaw : null;
+    const releasedAt = typeof releaseRaw === "string"
+      && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(releaseRaw)
+      && Number.isFinite(Date.parse(releaseRaw)) ? releaseRaw : null;
     const releasedMs = releasedAt ? instant(releasedAt) : NaN;
     const numeric = typeof o.value === "string" && o.value.trim() && Number.isFinite(Number(o.value));
     // No fallback to a different source, series, unit, cadence or semantic domain.
