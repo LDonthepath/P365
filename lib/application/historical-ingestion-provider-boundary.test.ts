@@ -106,3 +106,21 @@ test("MACRO-CUT-003M: no mixed barrel; legacy normalizer retains isolated market
   }
   assert.doesNotMatch(market, /from "\.\/provider-canonical"/);
 });
+
+test("MACRO-CUT-003N: retired Yahoo live acquisition is absent, historic Yahoo evidence/read identity remains", () => {
+  assert.equal(existsSync(new URL("../data/yahoo-finance-markets.ts", import.meta.url)), false);
+  const dashboard = readFileSync(new URL("./durable-dashboard-read.ts", import.meta.url), "utf8");
+  const health = readFileSync(new URL("../normalization/yahoo-market-health.ts", import.meta.url), "utf8");
+  const provenance = readFileSync(new URL("../domain/observation-provenance.ts", import.meta.url), "utf8");
+  const types = readFileSync(new URL("../data/types.ts", import.meta.url), "utf8");
+  const registry = readFileSync(new URL("./historical-ingestion-provider-registry.ts", import.meta.url), "utf8");
+
+  assert.match(dashboard, /sourceId: "yahoo-finance"/);
+  assert.match(dashboard, /from "\.\.\/normalization\/yahoo-market-health"/);
+  assert.doesNotMatch(dashboard, /from "\.\.\/data\/yahoo-finance-markets"/);
+  assert.match(health, /export const YAHOO_MARKET_SERIES/);
+  assert.match(health, /sourceId: "yahoo-finance"/);
+  assert.match(provenance, /yahooChart: "\/v8\/finance\/chart"/);
+  assert.match(types, /"yahoo-finance"/);
+  assert.doesNotMatch(registry, /from "\.\.\/data\/yahoo-finance-markets"|import\("\.\.\/data\/yahoo-finance-markets"\)/);
+});
