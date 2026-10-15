@@ -3,10 +3,8 @@ import type { CalendarEvent, NewsItem } from "../data/types";
 import type { CryptoMarketObservationInput } from "../data/crypto-market";
 import type { MacroObservationInput } from "../data/fred";
 import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
-import {
-  calendarToCanonicalRecords as calendarFromProvider,
-  macroToCanonicalRecords as macroFromProvider,
-} from "./provider-canonical";
+import { calendarToCanonicalRecords as calendarFromProvider } from "./provider-canonical-events";
+import { macroToCanonicalRecords as macroFromProvider } from "./provider-canonical-macro";
 import { cryptoMarketToObservations as marketFromProvider } from "./provider-canonical-market";
 import {
   calendarToCanonicalRecords as calendarFromCanonical,
