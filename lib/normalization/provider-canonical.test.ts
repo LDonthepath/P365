@@ -5,9 +5,9 @@ import type { MacroObservationInput } from "../data/fred";
 import { MACRO_SERIES_REGISTRY } from "../data/macro-registry";
 import {
   calendarToCanonicalRecords as calendarFromProvider,
-  cryptoMarketToObservations as marketFromProvider,
   macroToCanonicalRecords as macroFromProvider,
 } from "./provider-canonical";
+import { cryptoMarketToObservations as marketFromProvider } from "./provider-canonical-market";
 import {
   calendarToCanonicalRecords as calendarFromCanonical,
   cryptoMarketToObservations as marketFromCanonical,
