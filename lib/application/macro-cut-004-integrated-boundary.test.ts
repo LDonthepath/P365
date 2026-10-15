@@ -10,7 +10,13 @@ test("MACRO-CUT-004: integrated SQL is read-only / fail-closed, never silently m
   assert.match(sql,/evidence_ids/);
   assert.match(sql,/jsonb_array_elements_text/);
   assert.match(sql,/md5\(j\.command\)/);
-  assert.match(sql,/STOP_DRIFT_OR_ACTIVE_JOB/);
+  const rollback = readFileSync(new URL("../../scripts/ops/macro_cut_004_cron_rollback_operator.sql",import.meta.url),"utf8");
+  assert.match(sql,/PASS_RETIRED_WITH_PRIVATE_ROLLBACK/);
+  assert.match(rollback,/p365_ops\.macro_cut_004_cron_rollback/);
+  assert.match(rollback,/cron\.schedule/);
+  assert.match(rollback,/active:=false/);
+  assert.match(rollback,/STOP: missing or corrupted original commands/);
+  assert.match(sql,/STOP_RETIRED_CRON_DRIFT/);
   const scrub = (text: string) => text.replace(/--[^\n]*/g,"");
   assert.doesNotMatch(scrub(sql),/\b(?:DELETE|UPDATE|TRUNCATE|DROP|ALTER|INSERT|GRANT|REVOKE|CREATE)\s/i);
   assert.doesNotMatch(scrub(execution),/\b(?:DELETE|UPDATE|TRUNCATE|DROP|ALTER|INSERT|GRANT|REVOKE|CREATE)\s/i);

@@ -77,21 +77,21 @@ SELECT j.jobid,j.jobname,j.active,j.schedule,
 FROM cron.job j WHERE j.jobid IN (2,3,4,5,6,10,15,20,23,24,25)
 ORDER BY j.jobid;
 
--- Fail-closed cron retirement preflight; ALL candidate jobs MUST remain inactive with unchanged command.
-SELECT CASE
- WHEN count(*)=4
- AND bool_and(NOT active)
- AND bool_and(
-   CASE jobid
-     WHEN 4 THEN md5(command)='782d0148c1e7cd41d59e484bfb53ffeb'
-     WHEN 10 THEN md5(command)='9f21d7a688723db4b92eb25dcc2ae660'
-     WHEN 15 THEN md5(command)='2a3284586383140692bc07c0bfbfbe1a'
-     WHEN 20 THEN md5(command)='b957907670c619dabfc8d0aac5f59ce6'
-     ELSE false END)
- THEN 'PASS_PREFLIGHT_ONLY_NO_MUTATION'
- ELSE 'STOP_DRIFT_OR_ACTIVE_JOB'
- END AS retired_jobs_guard
-FROM cron.job WHERE jobid IN (4,10,15,20);
+-- Post owner-approval retirement proof (15 Oct 2026): zero live retired jobs
+-- AND four exact private snapshots with unchanged command fingerprints.
+-- DO NOT print or export the privately stored command field.
+WITH live AS (
+  SELECT count(*) AS n FROM cron.job WHERE jobid IN (4,10,15,20)
+), saved AS (
+  SELECT count(*) AS n,
+         bool_and(NOT original_active AND retired_at IS NOT NULL
+                    AND md5(command)=command_fingerprint) AS valid
+  FROM p365_ops.macro_cut_004_cron_rollback
+)
+SELECT CASE WHEN live.n=0 AND saved.n=4 AND saved.valid
+            THEN 'PASS_RETIRED_WITH_PRIVATE_ROLLBACK'
+            ELSE 'STOP_RETIRED_CRON_DRIFT' END AS retired_jobs_guard
+FROM live CROSS JOIN saved;
 
 -- Protect actively running retained jobs and intentionally inactive Biquote #3.
 SELECT CASE WHEN count(*)=7 AND bool_and(CASE WHEN jobid=3 THEN NOT active ELSE active END)
