@@ -101,6 +101,7 @@ function selectPoints(
   rows: CapturedMacroObservation[],
   slot: Slot,
   asOf: string,
+  targetPeriod?: string,
 ): MacroEvidenceSlot {
   const registry = MACRO_SERIES_REGISTRY.find((r) => r.seriesId === slot.seriesId);
   if (!registry || registry.domain !== "MACRO" || registry.source !== "FRED") {
@@ -141,7 +142,8 @@ function selectPoints(
     if (observedMs > cutoff || capturedMs > cutoff
       || (o.retrievedAt != null && retrievedMs > cutoff)
       || (releasedAt !== null && releasedMs > cutoff)
-      || vintage > asOf.slice(0, 10)) continue;
+      || vintage > asOf.slice(0, 10)
+      || (targetPeriod !== undefined && observationPeriod > targetPeriod)) continue;
     if (o.quality !== "FRESH" && o.quality !== "STALE" && o.quality !== "PARTIAL") {
       return empty(slot, "INCOMPATIBLE", "SOURCE_OR_METADATA_MISMATCH");
     }
@@ -165,6 +167,9 @@ function selectPoints(
     || b.point.observationId.localeCompare(a.point.observationId));
   if (qualified.length === 0) return empty(slot, "MISSING", "NO_ELIGIBLE_HISTORY");
   const latest = qualified[0].point;
+  if (targetPeriod !== undefined && latest.observationPeriod !== targetPeriod) {
+    return empty(slot, "MISSING", "NO_ELIGIBLE_HISTORY");
+  }
   if (latest.quality === "STALE") return empty(slot, "STALE", "STALE_QUALITY");
   if (latest.quality === "PARTIAL") return empty(slot, "PARTIAL", "PARTIAL_QUALITY");
   const predecessor = qualified.find((candidate) =>
@@ -201,4 +206,24 @@ export async function buildMacroEvidenceBundle(
     // No unqualified survey/market expectation is silently inferred from levels.
     expectations: { status: "MISSING", gap: "EXPECTATION_NOT_QUALIFIED" },
   };
+}
+
+/**
+ * #372 pilot-only: expose the same #370 qualified PIT point selection for a
+ * specific PCEPI calendar month. No new historical identity or write path.
+ * The comparison layer independently enforces the adjacent month and method.
+ */
+export function selectPcepiMacroEvidenceAt(
+  rows: CapturedMacroObservation[],
+  asOf: string,
+  targetPeriod?: string,
+): MacroEvidenceSlot {
+  if (!Number.isFinite(instant(asOf)) || new Date(instant(asOf)).toISOString() !== asOf) {
+    throw new Error("Invalid PCEPI shared knowledge cutoff");
+  }
+  if (targetPeriod !== undefined
+    && (dateOnly(targetPeriod) !== targetPeriod || !targetPeriod.endsWith("-01"))) {
+    throw new Error("PCEPI target must be a first-of-month calendar period");
+  }
+  return selectPoints(rows, MACRO_SLOTS[1], asOf, targetPeriod);
 }
