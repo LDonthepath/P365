@@ -81,7 +81,7 @@ test("#372: exact rational arithmetic Aug/Jul 2026 agrees with independent SQL",
   assert.equal(value.predecessor?.period, "2026-07-01");
   assert.equal(value.predecessor?.index, "131.172");
   assert.equal(value.roundedPercent, "0.310280");
-  assert.deepEqual(value.exactPercentFraction, { numerator: "40700", denominator: "131172" });
+  assert.deepEqual(value.exactPercentFraction, { numerator: "10175", denominator: "32793" });
   assert.equal(value.outputUnit, "PERCENT_MONTH_OVER_MONTH");
   assert.equal(value.seasonality, "SEASONALLY_ADJUSTED");
   assert.equal(value.significance, "NOT_EVALUATED");
@@ -216,4 +216,17 @@ test("#372: malformed read cutoffs and nonmonth target period are rejected", asy
   await assert.rejects(buildPcepiSaMoM(repo, LATE, "2026-07-02"));
   await assert.rejects(buildPcepiSaMoM(repo, LATE, "2026-13-01"));
   await assert.rejects(buildPcepiSaMoM(repo, LATE, "2026-11-01"));
+});
+
+test("#372: canonical rational is stable across equivalent decimal scales", async () => {
+  const first = await buildPcepiSaMoM(source([
+    row("prior", "2026-07-01", "131.172", retrievedNew, capturedNew),
+    row("current", "2026-08-01", "131.579", retrievedNew, capturedNew),
+  ]), LATE);
+  const padded = await buildPcepiSaMoM(source([
+    row("prior-padded", "2026-07-01", "131.17200", retrievedNew, capturedNew),
+    row("current-padded", "2026-08-01", "131.5790", retrievedNew, capturedNew),
+  ]), LATE);
+  assert.deepEqual(first.exactPercentFraction, padded.exactPercentFraction);
+  assert.equal(first.roundedPercent, padded.roundedPercent);
 });
