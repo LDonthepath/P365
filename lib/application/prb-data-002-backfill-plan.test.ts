@@ -74,7 +74,8 @@ test("#364: all four native sources remain qualified monthly seasonally-adjusted
 test("#364: provider parser rejects scope expansion and window overflow before writes", () => {
   const valid = buildPrbData002DryRunManifest()[0];
   for (const params of [
-    new URLSearchParams(valid.query + "&providers=coingecko"),
+    new URLSearchParams({ providers: "coingecko", mode: "BACKFILL",
+      fredSeries: PRB_DATA_002_SERIES.join(","), from: valid.from, to: valid.to }),
     new URLSearchParams({ providers: "fred,gdelt", mode: "BACKFILL",
       fredSeries: PRB_DATA_002_SERIES.join(","), from: valid.from, to: valid.to }),
     new URLSearchParams({ providers: "fred", mode: "BACKFILL",
