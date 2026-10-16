@@ -97,18 +97,18 @@ function parseIndex(raw: string): IndexDecimal | null {
   // negative/zero values, excess precision, or float coercion.
   if (!/^(?:0|[1-9]\d*)(?:\.\d{1,12})?$/.test(raw)) return null;
   const [whole, decimals = ""] = raw.split(".");
-  const scale = 10n ** BigInt(decimals.length);
+  const scale = BigInt(10) ** BigInt(decimals.length);
   const integer = BigInt(whole + decimals);
-  return integer > 0n ? { integer, scale } : null;
+  return integer > BigInt(0) ? { integer, scale } : null;
 }
 function formatRounded(numerator: bigint, denominator: bigint): string {
-  if (denominator <= 0n) throw new Error("Invalid PCEPI denominator");
-  const negative = numerator < 0n;
+  if (denominator <= BigInt(0)) throw new Error("Invalid PCEPI denominator");
+  const negative = numerator < BigInt(0);
   const absolute = negative ? -numerator : numerator;
-  const micro = (absolute * 1_000_000n * 100n * 2n + denominator) / (2n * denominator);
-  const whole = micro / 1_000_000n;
-  const fraction = (micro % 1_000_000n).toString().padStart(6, "0");
-  return (negative && micro !== 0n ? "-" : "") + whole.toString() + "." + fraction;
+  const micro = (absolute * BigInt(1000000) * BigInt(100) * BigInt(2) + denominator) / (BigInt(2) * denominator);
+  const whole = micro / BigInt(1000000);
+  const fraction = (micro % BigInt(1000000)).toString().padStart(6, "0");
+  return (negative && micro !== BigInt(0) ? "-" : "") + whole.toString() + "." + fraction;
 }
 /**
  * Pure, exactly specified measurement. A #370 qualified current and same-as-of
@@ -169,7 +169,7 @@ export function calculatePcepiSaMoM(
     ...BASIS, status: "AVAILABLE", reason: null, asOf, requestedPeriod,
     current: toEvidence(current), predecessor: toEvidence(previous),
     // 100 × (a/b - 1); numerators below are exact BEFORE the factor of 100.
-    exactPercentFraction: { numerator: (numerator * 100n).toString(), denominator: denominator.toString() },
+    exactPercentFraction: { numerator: (numerator * BigInt(100)).toString(), denominator: denominator.toString() },
     roundedPercent: formatRounded(numerator, denominator),
   };
 }
