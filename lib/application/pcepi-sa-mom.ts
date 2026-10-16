@@ -101,6 +101,16 @@ function parseIndex(raw: string): IndexDecimal | null {
   const integer = BigInt(whole + decimals);
   return integer > BigInt(0) ? { integer, scale } : null;
 }
+function bigintGcd(left: bigint, right: bigint): bigint {
+  let a = left < BigInt(0) ? -left : left;
+  let b = right < BigInt(0) ? -right : right;
+  while (b !== BigInt(0)) {
+    const remainder = a % b;
+    a = b;
+    b = remainder;
+  }
+  return a === BigInt(0) ? BigInt(1) : a;
+}
 function formatRounded(numerator: bigint, denominator: bigint): string {
   if (denominator <= BigInt(0)) throw new Error("Invalid PCEPI denominator");
   const negative = numerator < BigInt(0);
@@ -165,11 +175,16 @@ export function calculatePcepiSaMoM(
   // (a/b-1) exactly: a = now.integer / now.scale, b = prior.integer / prior.scale.
   const numerator = now.integer * prior.scale - prior.integer * now.scale;
   const denominator = prior.integer * now.scale;
+  const percentNumerator = numerator * BigInt(100);
+  // Canonical lowest-terms rational: independent of native input scale formatting.
+  const divisor = bigintGcd(percentNumerator, denominator);
   return {
     ...BASIS, status: "AVAILABLE", reason: null, asOf, requestedPeriod,
     current: toEvidence(current), predecessor: toEvidence(previous),
-    // 100 × (a/b - 1); numerators below are exact BEFORE the factor of 100.
-    exactPercentFraction: { numerator: (numerator * BigInt(100)).toString(), denominator: denominator.toString() },
+    exactPercentFraction: {
+      numerator: (percentNumerator / divisor).toString(),
+      denominator: (denominator / divisor).toString(),
+    },
     roundedPercent: formatRounded(numerator, denominator),
   };
 }
